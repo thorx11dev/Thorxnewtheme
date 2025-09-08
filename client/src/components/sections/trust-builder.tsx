@@ -13,31 +13,75 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
   const totalPaidRef = useRef<HTMLSpanElement>(null);
   const activeUsersRef = useRef<HTMLSpanElement>(null);
   const securityScoreRef = useRef<HTMLSpanElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const [activities, setActivities] = useState<Array<{id: string, text: string, time: string}>>([]);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const { data: stats } = useQuery<{totalPaid: number, activeUsers: number, securityScore: number}>({
     queryKey: ['/api/stats'],
-    enabled: isActive,
+    enabled: true, // Always enable for mobile compatibility
   });
 
   useEffect(() => {
-    if (isActive && stats) {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
+  // Desktop animation (based on isActive)
+  useEffect(() => {
+    if (!isMobile && isActive && stats && !hasAnimated) {
       setTimeout(() => {
-        if (totalPaidRef.current) {
-          CounterDisplay.animateCounter(totalPaidRef.current, stats.totalPaid || 2.5, 'M');
-        }
-        if (activeUsersRef.current) {
-          CounterDisplay.animateCounter(activeUsersRef.current, stats.activeUsers || 45, 'K+');
-        }
-        if (securityScoreRef.current) {
-          CounterDisplay.animateCounter(securityScoreRef.current, stats.securityScore || 99, '%');
-        }
+        animateCounters();
+        setHasAnimated(true);
       }, 500);
     }
-  }, [isActive, stats]);
+  }, [isActive, stats, isMobile, hasAnimated]);
+
+  // Mobile animation (based on intersection observer)
+  useEffect(() => {
+    if (!isMobile || hasAnimated || !stats) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+            setTimeout(() => {
+              animateCounters();
+              setHasAnimated(true);
+            }, 300);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [isMobile, hasAnimated, stats]);
+
+  const animateCounters = () => {
+    if (totalPaidRef.current) {
+      CounterDisplay.animateCounter(totalPaidRef.current, stats?.totalPaid || 2.5, 'M');
+    }
+    if (activeUsersRef.current) {
+      CounterDisplay.animateCounter(activeUsersRef.current, stats?.activeUsers || 45, 'K+');
+    }
+    if (securityScoreRef.current) {
+      CounterDisplay.animateCounter(securityScoreRef.current, stats?.securityScore || 99, '%');
+    }
+  };
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive && !isMobile) return;
+    if (isMobile && !hasAnimated) return; // Wait for intersection on mobile
 
     const activityTexts = [
       "Ahmad K. earned ₨250",
@@ -66,6 +110,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
 
   return (
     <section 
+      ref={sectionRef}
       className={`cinematic-section ${isActive ? 'active' : ''}`}
       data-testid="trust-builder-section"
     >

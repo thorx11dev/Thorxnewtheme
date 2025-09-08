@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import CounterDisplay from "@/components/ui/counter-display";
@@ -12,26 +12,69 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
   const adsCounterRef = useRef<HTMLSpanElement>(null);
   const referralCounterRef = useRef<HTMLSpanElement>(null);
   const dailyCounterRef = useRef<HTMLSpanElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    if (isActive) {
-      // Animate counters when section becomes active
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
+  // Desktop animation (based on isActive)
+  useEffect(() => {
+    if (!isMobile && isActive && !hasAnimated) {
       setTimeout(() => {
-        if (adsCounterRef.current) {
-          CounterDisplay.animateCounter(adsCounterRef.current, 15);
-        }
-        if (referralCounterRef.current) {
-          CounterDisplay.animateCounter(referralCounterRef.current, 250);
-        }
-        if (dailyCounterRef.current) {
-          CounterDisplay.animateCounter(dailyCounterRef.current, 50);
-        }
+        animateCounters();
+        setHasAnimated(true);
       }, 500);
     }
-  }, [isActive]);
+  }, [isActive, isMobile, hasAnimated]);
+
+  // Mobile animation (based on intersection observer)
+  useEffect(() => {
+    if (!isMobile || hasAnimated) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+            setTimeout(() => {
+              animateCounters();
+              setHasAnimated(true);
+            }, 300);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [isMobile, hasAnimated]);
+
+  const animateCounters = () => {
+    if (adsCounterRef.current) {
+      CounterDisplay.animateCounter(adsCounterRef.current, 15);
+    }
+    if (referralCounterRef.current) {
+      CounterDisplay.animateCounter(referralCounterRef.current, 250);
+    }
+    if (dailyCounterRef.current) {
+      CounterDisplay.animateCounter(dailyCounterRef.current, 50);
+    }
+  };
 
   return (
     <section 
+      ref={sectionRef}
       className={`cinematic-section ${isActive ? 'active' : ''}`}
       data-testid="earning-reveal-section"
     >
