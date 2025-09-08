@@ -3,6 +3,7 @@ import {
   type InsertRegistration,
   type User,
   type InsertUser,
+  type UpsertUser,
   type Earning,
   type InsertEarning,
   type AdView,
@@ -27,12 +28,15 @@ export interface IStorage {
   createRegistration(registration: InsertRegistration): Promise<Registration>;
   getRegistrationByEmail(email: string): Promise<Registration | undefined>;
   
-  // User management methods
+  // User management methods (IMPORTANT) these user operations are mandatory for Replit Auth.
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Legacy user methods (keeping for backward compatibility)
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByReferralCode(referralCode: string): Promise<User | undefined>;
-  validateUserPassword(email: string, password: string): Promise<User | undefined>;
   updateUserEarnings(userId: string, amount: string): Promise<void>;
   
   // Earnings methods
@@ -75,14 +79,33 @@ export class DatabaseStorage implements IStorage {
     return undefined;
   }
 
-  // User management methods
+  // User management methods (IMPORTANT) these user operations are mandatory for Replit Auth.
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // Legacy user methods
   async createUser(insertUser: InsertUser): Promise<User> {
-    const hashedPassword = await bcrypt.hash(insertUser.passwordHash, 12);
     const referralCode = this.generateReferralCode();
     
     const userData = {
       ...insertUser,
-      passwordHash: hashedPassword,
       referralCode,
     };
 
@@ -114,13 +137,6 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async validateUserPassword(email: string, password: string): Promise<User | undefined> {
-    const user = await this.getUserByEmail(email);
-    if (!user) return undefined;
-    
-    const isValid = await bcrypt.compare(password, user.passwordHash);
-    return isValid ? user : undefined;
-  }
 
   async updateUserEarnings(userId: string, amount: string): Promise<void> {
     await db
@@ -322,11 +338,12 @@ export class MemStorage implements IStorage {
   }
 
   // Stub implementations for new methods (not used in production)
+  async getUser(id: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async upsertUser(user: UpsertUser): Promise<User> { throw new Error("Not implemented in MemStorage"); }
   async createUser(user: InsertUser): Promise<User> { throw new Error("Not implemented in MemStorage"); }
   async getUserById(id: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async getUserByEmail(email: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async getUserByReferralCode(referralCode: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
-  async validateUserPassword(email: string, password: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async updateUserEarnings(userId: string, amount: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
   async createEarning(earning: InsertEarning): Promise<Earning> { throw new Error("Not implemented in MemStorage"); }
   async getUserEarnings(userId: string, limit?: number): Promise<Earning[]> { throw new Error("Not implemented in MemStorage"); }
