@@ -46,7 +46,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.1) {
             if (!hasAnimated) {
               setTimeout(() => {
                 animateCounters();
@@ -56,7 +56,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
           }
         });
       },
-      { threshold: [0.3, 0.5] }
+      { threshold: [0.1, 0.3, 0.5], rootMargin: '50px' }
     );
 
     if (sectionRef.current) {
@@ -65,6 +65,16 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
 
     return () => observer.disconnect();
   }, [isMobile, hasAnimated]);
+
+  // Mobile animation - Also trigger on isActive change for mobile
+  useEffect(() => {
+    if (isMobile && isActive && !hasAnimated) {
+      setTimeout(() => {
+        animateCounters();
+        setHasAnimated(true);
+      }, 800);
+    }
+  }, [isActive, isMobile, hasAnimated]);
 
   // Reset animation on section change for mobile
   useEffect(() => {

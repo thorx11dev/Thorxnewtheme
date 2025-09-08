@@ -159,10 +159,12 @@
     z-index: 1;
   }
 
-  /* First section specific centering */
+  /* First section specific centering - Enhanced */
   .cinematic-section[data-section="1"] {
     align-items: center;
-    padding-top: 120px;
+    justify-content: center;
+    padding-top: 0;
+    display: flex;
   }
 
   .cinematic-section.active {
@@ -265,10 +267,12 @@
     z-index: 1;
   }
   
-  /* First section mobile specific centering */
+  /* First section mobile specific centering - Enhanced */
   .cinematic-section[data-section="1"] {
     align-items: center;
-    padding-top: 120px;
+    justify-content: center;
+    padding-top: 0;
+    display: flex;
   }
   
   .cinematic-section.active {
