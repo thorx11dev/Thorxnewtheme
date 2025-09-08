@@ -13,7 +13,6 @@ import { useLocation } from "wouter";
 import { 
   Play, 
   Pause, 
-  Square, 
   Eye, 
   Clock, 
   DollarSign, 
@@ -25,42 +24,37 @@ import {
   Zap,
   Award,
   ChevronRight,
-  ChevronLeft,
   Timer,
   PlayCircle,
   PauseCircle,
   StopCircle,
-  FastForward,
-  RotateCcw,
-  TrendingDown,
   Calendar,
-  Settings
+  Filter,
+  Activity,
+  Star,
+  Flame,
+  Gift,
+  TrendingDown
 } from "lucide-react";
 import {
   LineChart,
   Line,
   AreaChart,
   Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   RadialBarChart,
-  RadialBar,
-  Legend
+  RadialBar
 } from 'recharts';
 
 interface AdItem {
   id: string;
   title: string;
   type: "video" | "banner" | "interactive";
-  duration: number; // in seconds
+  duration: number;
   reward: string;
   description: string;
   difficulty: "easy" | "medium" | "hard";
@@ -68,7 +62,6 @@ interface AdItem {
   thumbnail?: string;
 }
 
-// Enhanced ad data with more variety
 const availableAds: AdItem[] = [
   {
     id: "ad_001",
@@ -138,7 +131,6 @@ export default function Work() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Enhanced state management
   const [selectedAd, setSelectedAd] = useState<AdItem | null>(null);
   const [isWatching, setIsWatching] = useState(false);
   const [watchProgress, setWatchProgress] = useState(0);
@@ -176,7 +168,7 @@ export default function Work() {
     },
   });
 
-  // Enhanced ad watching timer
+  // Ad watching timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
@@ -188,7 +180,6 @@ export default function Work() {
             setIsWatching(false);
             setIsCompleted(true);
             
-            // Record completed ad view
             recordAdViewMutation.mutate({
               adId: selectedAd.id,
               adType: selectedAd.type,
@@ -197,7 +188,6 @@ export default function Work() {
               earnedAmount: selectedAd.reward,
             });
             
-            // Add to completed ads
             setCompletedAds(prev => new Set(Array.from(prev).concat(selectedAd.id)));
             
             toast({
@@ -219,7 +209,7 @@ export default function Work() {
   }, [isWatching, selectedAd, watchProgress, recordAdViewMutation, toast]);
 
   if (!user) {
-    return null; // ProtectedRoute will handle redirect
+    return null;
   }
 
   const formatTime = (seconds: number) => {
@@ -234,27 +224,19 @@ export default function Work() {
 
   const getAdTypeIcon = (type: string) => {
     switch (type) {
-      case 'video':
-        return '🎥';
-      case 'banner':
-        return '📰';
-      case 'interactive':
-        return '🎮';
-      default:
-        return '📺';
+      case 'video': return '🎥';
+      case 'banner': return '📰';
+      case 'interactive': return '🎮';
+      default: return '📺';
     }
   };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy':
-        return 'text-green-600 bg-green-100';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'hard':
-        return 'text-red-600 bg-red-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
+      case 'easy': return 'bg-green-100 text-green-700 border-green-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'hard': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
@@ -282,77 +264,55 @@ export default function Work() {
   const dailyLimit = 50;
   const remainingAds = dailyLimit - (todayAdViews?.count || 0);
 
-  // Filter ads based on selections
   const filteredAds = availableAds.filter(ad => {
     const categoryMatch = selectedCategory === "all" || ad.category.toLowerCase() === selectedCategory.toLowerCase();
     const difficultyMatch = selectedDifficulty === "all" || ad.difficulty === selectedDifficulty;
     return categoryMatch && difficultyMatch;
   });
 
-  // Mock data for charts
-  const dailyProgressData = [
-    { hour: '9AM', ads: 2, earnings: 3.5 },
-    { hour: '10AM', ads: 3, earnings: 5.25 },
-    { hour: '11AM', ads: 4, earnings: 7.0 },
-    { hour: '12PM', ads: 2, earnings: 3.75 },
-    { hour: '1PM', ads: 5, earnings: 8.25 },
-    { hour: '2PM', ads: 3, earnings: 5.5 },
-    { hour: '3PM', ads: 4, earnings: 6.75 }
-  ];
-
-  const categoryData = [
-    { name: 'Finance', ads: 8, earnings: 15.25, color: '#000000' },
-    { name: 'Gaming', ads: 12, earnings: 18.75, color: '#ff6b35' },
-    { name: 'Shopping', ads: 6, earnings: 12.50, color: '#f7931e' },
-    { name: 'Health', ads: 4, earnings: 8.25, color: '#004CFF' },
-    { name: 'Travel', ads: 2, earnings: 6.00, color: '#8B5CF6' }
-  ];
-
-  const performanceData = [
-    { name: 'Completion Rate', value: 85, fill: '#22C55E' },
-    { name: 'Remaining', value: 15, fill: '#E5E7EB' }
-  ];
-
   return (
-    <div className="work-page min-h-screen">
-      {/* Industrial Grid Overlay */}
-      <div className="industrial-grid" />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
+      {/* Refined Industrial Grid */}
+      <div className="fixed inset-0 opacity-[0.02]">
+        <div className="absolute inset-0 bg-gradient-to-br from-black/5 via-transparent to-primary/5" />
+        <div className="industrial-grid" />
+      </div>
 
-      {/* Enhanced Navigation Header */}
-      <nav className="fixed top-0 w-full z-50 bg-background/95 backdrop-blur border-b-3 border-black" data-testid="work-navigation">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Left Section with Breadcrumb Navigation */}
-            <div className="flex items-center space-x-2 md:space-x-4">
-              <button
+      {/* Modern Navigation Header */}
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm" data-testid="work-navigation">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-20">
+            {/* Back Navigation */}
+            <div className="flex items-center space-x-4">
+              <Button
                 onClick={() => setLocation("/dashboard")}
-                className="bg-black text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black hover:bg-primary transition-all duration-200 transform hover:scale-105 flex items-center gap-2"
+                variant="ghost"
+                className="flex items-center gap-2 hover:bg-gray-100"
                 data-testid="button-back-dashboard"
               >
-                <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" />
-                <TechnicalLabel text="DASHBOARD" className="text-white text-xs md:text-sm" />
-              </button>
-              <ChevronRight className="w-4 h-4 text-black" />
-              <div className="bg-primary text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black">
-                <TechnicalLabel text="WORK CENTER" className="text-white text-xs md:text-sm" />
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden md:inline">Dashboard</span>
+              </Button>
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Zap className="w-5 h-5 text-primary" />
+                </div>
+                <h1 className="text-xl font-bold text-gray-900">Work Center</h1>
               </div>
             </div>
             
-            {/* Center Section */}
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 md:w-6 md:h-6 text-primary" />
-              <h1 className="text-xl md:text-2xl font-black tracking-tighter">WORK CENTER</h1>
-            </div>
-            
-            {/* Right Section with Stats */}
-            <div className="flex items-center">
-              <div className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2">
-                <div className="text-xs md:text-sm">
-                  <TechnicalLabel text="TODAY'S PROGRESS" />
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    <TechnicalLabel text={`${todayAdViews?.count || 0}/${dailyLimit}`} />
-                  </div>
+            {/* Progress Stats */}
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-4 bg-gray-50 rounded-xl px-4 py-2">
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-gray-900">{todayAdViews?.count || 0}</p>
+                  <p className="text-xs text-gray-500">Watched Today</p>
+                </div>
+                <div className="w-px h-8 bg-gray-300" />
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-primary">{remainingAds}</p>
+                  <p className="text-xs text-gray-500">Remaining</p>
                 </div>
               </div>
             </div>
@@ -361,231 +321,210 @@ export default function Work() {
       </nav>
 
       {/* Main Content */}
-      <main className="pt-20 md:pt-24 pb-8">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
-          {/* Enhanced Header Section */}
-          <div className="text-center mb-8 md:mb-12">
-            <div className="mb-2">
-              <TechnicalLabel text="ADVERTISEMENT VIEWING SYSTEM" />
-            </div>
-            <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-black mb-4">
-              EARN BY WATCHING
-            </h2>
-            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto mb-6" />
-            
-            {/* Performance Summary */}
-            <div className="bg-gradient-to-r from-black to-primary text-white p-4 border-2 border-black mb-6">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-black">{completedAds.size}</div>
-                  <div className="text-sm">COMPLETED TODAY</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-black">{formatCurrency((completedAds.size * 2.5).toString())}</div>
-                  <div className="text-sm">EARNED TODAY</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-black">{Math.round((completedAds.size / dailyLimit) * 100)}%</div>
-                  <div className="text-sm">DAILY GOAL</div>
-                </div>
+      <main className="relative z-10 max-w-7xl mx-auto px-6 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-4">
+            <Flame className="w-4 h-4" />
+            <TechnicalLabel text="EARN BY WATCHING" className="text-primary" />
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black text-gray-900 mb-4">
+            Start <span className="bg-gradient-to-r from-primary to-orange-600 bg-clip-text text-transparent">Earning</span><br />
+            Watch & Earn Rewards
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            Watch advertisements, complete tasks, and earn real money daily
+          </p>
+          <Barcode className="w-40 h-8 mx-auto opacity-60" />
+        </div>
+
+        {/* Progress Overview Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
+              <div className="relative">
+                <Eye className="w-8 h-8 mb-4" />
+                <div className="text-2xl font-black">{todayAdViews?.count || 0}</div>
+                <div className="text-blue-100 text-sm">Ads Watched</div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Enhanced Stats Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 md:mb-12">
-            <Card className="split-card bg-black text-white border-3 border-black relative overflow-hidden group hover:shadow-lg transition-all">
-              <CardContent className="p-4">
-                <div className="absolute top-2 right-2">
-                  <Eye className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="space-y-1">
-                  <TechnicalLabel text="TODAY'S VIEWS" className="text-white/80 text-xs" />
-                  <div className="text-2xl font-black">
-                    {todayAdViews?.count || 0}
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-primary to-orange-600 text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
+              <div className="relative">
+                <Target className="w-8 h-8 mb-4" />
+                <div className="text-2xl font-black">{remainingAds}</div>
+                <div className="text-orange-100 text-sm">Remaining</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
+              <div className="relative">
+                <DollarSign className="w-8 h-8 mb-4" />
+                <div className="text-2xl font-black">{formatCurrency((completedAds.size * 2.5).toString())}</div>
+                <div className="text-green-100 text-sm">Today's Earnings</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
+              <div className="relative">
+                <Award className="w-8 h-8 mb-4" />
+                <div className="text-2xl font-black">{Math.round((completedAds.size / dailyLimit) * 100)}%</div>
+                <div className="text-purple-100 text-sm">Daily Goal</div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Ad Player Section */}
+        {selectedAd && (
+          <div className="mb-12">
+            <Card className="border-0 shadow-2xl bg-gradient-to-br from-gray-900 to-black text-white overflow-hidden" data-testid="ad-player">
+              <CardHeader className="bg-black/50 backdrop-blur border-b border-gray-700">
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">{getAdTypeIcon(selectedAd.type)}</div>
+                    <div>
+                      <h3 className="text-xl font-bold">{selectedAd.title}</h3>
+                      <p className="text-gray-400 text-sm">{selectedAd.category} • {formatTime(selectedAd.duration)}</p>
+                    </div>
                   </div>
-                  <Progress value={(todayAdViews?.count || 0) / dailyLimit * 100} className="h-1" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="split-card bg-primary text-white border-3 border-black relative overflow-hidden group hover:shadow-lg transition-all">
-              <CardContent className="p-4">
-                <div className="absolute top-2 right-2">
-                  <Clock className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="space-y-1">
-                  <TechnicalLabel text="REMAINING" className="text-white/80 text-xs" />
-                  <div className="text-2xl font-black">
-                    {remainingAds}
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-primary">{formatCurrency(selectedAd.reward)}</div>
+                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getDifficultyColor(selectedAd.difficulty)}`}>
+                      {selectedAd.difficulty.toUpperCase()}
+                    </div>
                   </div>
-                  <div className="text-xs">ads left today</div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="split-card bg-white text-black border-3 border-black relative overflow-hidden group hover:shadow-lg transition-all">
-              <CardContent className="p-4">
-                <div className="absolute top-2 right-2">
-                  <Target className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="space-y-1">
-                  <TechnicalLabel text="COMPLETION RATE" className="text-xs" />
-                  <div className="text-2xl font-black text-green-600">
-                    85%
-                  </div>
-                  <div className="text-xs text-green-600">excellent</div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="split-card bg-secondary text-black border-3 border-black relative overflow-hidden group hover:shadow-lg transition-all">
-              <CardContent className="p-4">
-                <div className="absolute top-2 right-2">
-                  <Award className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="space-y-1">
-                  <TechnicalLabel text="TODAY'S EARNINGS" className="text-xs" />
-                  <div className="text-2xl font-black text-primary">
-                    {formatCurrency((completedAds.size * 2.5).toString())}
-                  </div>
-                  <div className="text-xs">keep earning!</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Enhanced Ad Player Section */}
-          {selectedAd && (
-            <div className="mb-8 md:mb-12">
-              <Card className="border-3 border-black bg-gradient-to-br from-black to-gray-800 text-white" data-testid="ad-player">
-                <CardHeader className="bg-black text-white border-b border-gray-600">
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <span className="text-2xl">{getAdTypeIcon(selectedAd.type)}</span>
-                      {selectedAd.title}
-                      <span className={`text-xs px-2 py-1 rounded ${getDifficultyColor(selectedAd.difficulty)}`}>
-                        {selectedAd.difficulty.toUpperCase()}
-                      </span>
-                    </span>
-                    <span className="text-primary font-black text-xl">PKR {selectedAd.reward}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {/* Enhanced Ad Display with Animation */}
-                  <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 text-white p-8 rounded-lg mb-6 text-center min-h-[250px] flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-primary/20 animate-pulse" />
-                    <div className="space-y-4 relative z-10">
-                      <div className="text-6xl animate-bounce">{getAdTypeIcon(selectedAd.type)}</div>
-                      <h3 className="text-3xl font-bold">{selectedAd.title}</h3>
-                      <p className="text-gray-300 max-w-md">{selectedAd.description}</p>
-                      <div className="flex items-center justify-center gap-4 text-sm">
-                        <span className="bg-white/20 px-3 py-1 rounded">{selectedAd.category}</span>
-                        <span className="bg-primary/30 px-3 py-1 rounded">{selectedAd.type.toUpperCase()}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8">
+                {/* Ad Display Area */}
+                <div className="bg-gradient-to-br from-gray-800 via-gray-700 to-gray-600 rounded-2xl p-12 mb-8 text-center min-h-[300px] flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/10 animate-pulse" />
+                  <div className="space-y-6 relative z-10">
+                    <div className="text-8xl animate-bounce">{getAdTypeIcon(selectedAd.type)}</div>
+                    <h3 className="text-4xl font-bold">{selectedAd.title}</h3>
+                    <p className="text-gray-300 max-w-lg text-lg">{selectedAd.description}</p>
+                    {isCompleted && (
+                      <div className="flex items-center justify-center gap-3 text-green-400 animate-pulse">
+                        <CheckCircle className="w-12 h-12" />
+                        <span className="text-3xl font-bold">COMPLETED!</span>
                       </div>
-                      {isCompleted && (
-                        <div className="flex items-center justify-center gap-2 text-green-400 animate-pulse">
-                          <CheckCircle className="w-8 h-8" />
-                          <span className="text-xl font-bold">COMPLETED!</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Enhanced Progress Section */}
-                  <div className="space-y-4 mb-6">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="flex items-center gap-2">
-                        <Timer className="w-4 h-4" />
-                        Progress
-                      </span>
-                      <span className="font-bold">{Math.round(watchProgress)}%</span>
-                    </div>
-                    <Progress value={watchProgress} className="h-4 bg-gray-700" />
-                    <div className="flex justify-between text-xs text-gray-400">
-                      <span>Time: {formatTime(Math.round((watchProgress / 100) * selectedAd.duration))}</span>
-                      <span>Duration: {formatTime(selectedAd.duration)}</span>
-                    </div>
-                  </div>
-
-                  {/* Enhanced Controls */}
-                  <div className="flex items-center justify-center gap-4">
-                    {!isCompleted ? (
-                      <>
-                        {!isWatching ? (
-                          <Button
-                            onClick={resumeWatching}
-                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 text-lg"
-                            data-testid="button-play-ad"
-                          >
-                            <PlayCircle className="w-5 h-5 mr-2" />
-                            {watchProgress > 0 ? "RESUME" : "START"}
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={pauseWatching}
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 text-lg"
-                            data-testid="button-pause-ad"
-                          >
-                            <PauseCircle className="w-5 h-5 mr-2" />
-                            PAUSE
-                          </Button>
-                        )}
-                        <Button
-                          onClick={stopWatching}
-                          variant="outline"
-                          className="border-2 border-white text-white hover:bg-white hover:text-black px-6 py-3 text-lg"
-                          data-testid="button-stop-ad"
-                        >
-                          <StopCircle className="w-5 h-5 mr-2" />
-                          STOP
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        onClick={stopWatching}
-                        className="bg-primary hover:bg-primary/90 text-white px-8 py-3 text-lg"
-                        data-testid="button-close-ad"
-                      >
-                        <CheckCircle className="w-5 h-5 mr-2" />
-                        CONTINUE EARNING
-                      </Button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                </div>
 
-          {/* Enhanced Tabbed Interface */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 bg-white border-2 border-black">
-              <TabsTrigger value="ads" className="data-[state=active]:bg-black data-[state=active]:text-white font-bold">
-                <PlayCircle className="w-4 h-4 mr-2" />
-                AVAILABLE ADS
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="data-[state=active]:bg-black data-[state=active]:text-white font-bold">
-                <BarChart3 className="w-4 h-4 mr-2" />
-                ANALYTICS
-              </TabsTrigger>
-              <TabsTrigger value="achievements" className="data-[state=active]:bg-black data-[state=active]:text-white font-bold">
-                <Award className="w-4 h-4 mr-2" />
-                ACHIEVEMENTS
-              </TabsTrigger>
-            </TabsList>
+                {/* Progress Section */}
+                <div className="space-y-6 mb-8">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Timer className="w-5 h-5 text-primary" />
+                      <span className="text-lg font-semibold">Progress</span>
+                    </div>
+                    <span className="text-2xl font-black text-primary">{Math.round(watchProgress)}%</span>
+                  </div>
+                  <Progress value={watchProgress} className="h-4 bg-gray-700" />
+                  <div className="flex justify-between text-gray-400">
+                    <span>Elapsed: {formatTime(Math.round((watchProgress / 100) * selectedAd.duration))}</span>
+                    <span>Duration: {formatTime(selectedAd.duration)}</span>
+                  </div>
+                </div>
 
-            {/* Available Ads Tab */}
-            <TabsContent value="ads" className="space-y-6">
-              {remainingAds > 0 ? (
-                <>
-                  {/* Filters */}
-                  <div className="flex flex-wrap gap-4 items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <TechnicalLabel text="FILTER BY:" />
+                {/* Enhanced Controls */}
+                <div className="flex items-center justify-center gap-6">
+                  {!isCompleted ? (
+                    <>
+                      {!isWatching ? (
+                        <Button
+                          onClick={resumeWatching}
+                          size="lg"
+                          className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-lg font-semibold"
+                          data-testid="button-play-ad"
+                        >
+                          <PlayCircle className="w-6 h-6 mr-3" />
+                          {watchProgress > 0 ? "RESUME" : "START WATCHING"}
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={pauseWatching}
+                          size="lg"
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-8 py-4 text-lg font-semibold"
+                          data-testid="button-pause-ad"
+                        >
+                          <PauseCircle className="w-6 h-6 mr-3" />
+                          PAUSE
+                        </Button>
+                      )}
+                      <Button
+                        onClick={stopWatching}
+                        variant="outline"
+                        size="lg"
+                        className="border-2 border-white text-white hover:bg-white hover:text-black px-8 py-4 text-lg font-semibold"
+                        data-testid="button-stop-ad"
+                      >
+                        <StopCircle className="w-6 h-6 mr-3" />
+                        STOP
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      onClick={stopWatching}
+                      size="lg"
+                      className="bg-primary hover:bg-primary/90 text-white px-12 py-4 text-lg font-semibold"
+                      data-testid="button-close-ad"
+                    >
+                      <CheckCircle className="w-6 h-6 mr-3" />
+                      CONTINUE EARNING
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Tabbed Interface */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <TabsList className="grid w-full grid-cols-3 bg-gray-100 rounded-2xl p-1">
+            <TabsTrigger value="ads" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl">
+              <PlayCircle className="w-4 h-4 mr-2" />
+              Available Ads
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="achievements" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl">
+              <Award className="w-4 h-4 mr-2" />
+              Achievements
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Available Ads Tab */}
+          <TabsContent value="ads" className="space-y-8">
+            {remainingAds > 0 ? (
+              <>
+                {/* Filters */}
+                <Card className="border-0 shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex flex-wrap gap-4 items-center">
+                      <div className="flex items-center gap-2">
+                        <Filter className="w-5 h-5 text-gray-600" />
+                        <TechnicalLabel text="FILTER BY:" className="text-gray-600" />
+                      </div>
                       <select 
                         value={selectedCategory} 
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="border-2 border-black px-3 py-1 bg-white"
+                        className="border border-gray-300 rounded-lg px-4 py-2 bg-white focus:ring-2 focus:ring-primary focus:border-transparent"
                       >
                         <option value="all">All Categories</option>
                         <option value="finance">Finance</option>
@@ -597,309 +536,132 @@ export default function Work() {
                       <select 
                         value={selectedDifficulty} 
                         onChange={(e) => setSelectedDifficulty(e.target.value)}
-                        className="border-2 border-black px-3 py-1 bg-white"
+                        className="border border-gray-300 rounded-lg px-4 py-2 bg-white focus:ring-2 focus:ring-primary focus:border-transparent"
                       >
                         <option value="all">All Difficulties</option>
                         <option value="easy">Easy</option>
                         <option value="medium">Medium</option>
                         <option value="hard">Hard</option>
                       </select>
+                      <div className="ml-auto text-sm text-gray-600">
+                        {filteredAds.length} ads available
+                      </div>
                     </div>
-                    <TechnicalLabel text={`${filteredAds.length} ADS AVAILABLE`} />
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredAds.map((ad) => {
-                      const isCompleted = completedAds.has(ad.id);
-                      const isCurrent = selectedAd?.id === ad.id;
-                      
-                      return (
-                        <Card 
-                          key={ad.id} 
-                          className={`border-2 transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
-                            isCurrent 
-                              ? "border-primary bg-primary/10 scale-105" 
-                              : isCompleted 
-                                ? "border-green-500 bg-green-50" 
-                                : "border-black hover:border-primary"
-                          }`}
-                          data-testid={`ad-card-${ad.id}`}
-                        >
-                          <CardHeader className="pb-3">
-                            <CardTitle className="flex items-center justify-between text-base">
-                              <span className="flex items-center gap-2">
-                                <span className="text-xl">{getAdTypeIcon(ad.type)}</span>
-                                <div>
-                                  <div className="font-bold">{ad.title}</div>
-                                  <div className="text-xs text-muted-foreground">{ad.category}</div>
-                                </div>
-                              </span>
-                              {isCompleted && <CheckCircle className="w-5 h-5 text-green-600" />}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <p className="text-sm text-muted-foreground">
-                              {ad.description}
-                            </p>
-                            
-                            <div className="flex items-center justify-between">
-                              <span className={`text-xs px-2 py-1 rounded ${getDifficultyColor(ad.difficulty)}`}>
-                                {ad.difficulty.toUpperCase()}
-                              </span>
-                              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                                {ad.type.toUpperCase()}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                <span>{formatTime(ad.duration)}</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-primary font-bold">
-                                <DollarSign className="w-4 h-4" />
-                                <span>PKR {ad.reward}</span>
+                {/* Ads Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredAds.map((ad) => {
+                    const isCompleted = completedAds.has(ad.id);
+                    const isCurrent = selectedAd?.id === ad.id;
+
+                    return (
+                      <Card key={ad.id} className={`border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
+                        <CardHeader className="pb-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="text-2xl">{getAdTypeIcon(ad.type)}</div>
+                              <div>
+                                <h3 className="font-bold text-gray-900 line-clamp-1">{ad.title}</h3>
+                                <p className="text-sm text-gray-600">{ad.category}</p>
                               </div>
                             </div>
+                            <div className={`px-3 py-1 rounded-full text-xs font-semibold border ${getDifficultyColor(ad.difficulty)}`}>
+                              {ad.difficulty.toUpperCase()}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {ad.description}
+                          </p>
+                          
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-1 text-gray-600">
+                              <Clock className="w-4 h-4" />
+                              <span>{formatTime(ad.duration)}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-primary font-bold text-lg">
+                              <DollarSign className="w-5 h-5" />
+                              <span>{ad.reward}</span>
+                            </div>
+                          </div>
 
-                            <Button
-                              onClick={() => startWatching(ad)}
-                              disabled={Boolean(isCompleted || (selectedAd && !isCompleted))}
-                              className={`w-full transition-all duration-200 transform hover:scale-105 ${
-                                isCompleted 
-                                  ? "bg-green-600 text-white" 
-                                  : isCurrent 
-                                    ? "bg-primary text-white" 
-                                    : "bg-black text-white hover:bg-primary"
-                              } border-2 border-black`}
-                              data-testid={`button-watch-${ad.id}`}
-                            >
-                              {isCompleted ? (
-                                <>
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  COMPLETED
-                                </>
-                              ) : isCurrent ? (
-                                <>
-                                  <PlayCircle className="w-4 h-4 mr-2" />
-                                  CURRENT
-                                </>
-                              ) : (
-                                <>
-                                  <Play className="w-4 h-4 mr-2" />
-                                  WATCH NOW
-                                </>
-                              )}
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-12">
-                  <BarChart3 className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-bold mb-2">Daily Limit Reached</h3>
-                  <p className="text-muted-foreground">
-                    You've watched {todayAdViews?.count} ads today. Come back tomorrow for more opportunities!
-                  </p>
+                          <Button
+                            onClick={() => startWatching(ad)}
+                            disabled={Boolean(isCompleted || (selectedAd && !isCompleted))}
+                            className={`w-full transition-all duration-200 ${
+                              isCompleted 
+                                ? "bg-green-600 hover:bg-green-700 text-white" 
+                                : isCurrent 
+                                  ? "bg-primary hover:bg-primary/90 text-white" 
+                                  : "bg-gray-900 hover:bg-black text-white"
+                            } border-0 shadow-lg`}
+                            data-testid={`button-watch-${ad.id}`}
+                          >
+                            {isCompleted ? (
+                              <>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                COMPLETED
+                              </>
+                            ) : isCurrent ? (
+                              <>
+                                <PlayCircle className="w-4 h-4 mr-2" />
+                                CURRENT
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-4 h-4 mr-2" />
+                                WATCH NOW
+                              </>
+                            )}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
-              )}
-            </TabsContent>
-
-            {/* Analytics Tab */}
-            <TabsContent value="analytics" className="space-y-6">
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Daily Progress Chart */}
-                <Card className="border-2 border-black">
-                  <CardHeader className="bg-black text-white">
-                    <CardTitle className="flex items-center justify-between">
-                      <span>TODAY'S PROGRESS</span>
-                      <BarChart3 className="w-5 h-5" />
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={dailyProgressData}>
-                        <defs>
-                          <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="hour" />
-                        <YAxis />
-                        <Tooltip formatter={(value, name) => [
-                          name === 'ads' ? `${value} ads` : `PKR ${value}`,
-                          name === 'ads' ? 'Ads Watched' : 'Earnings'
-                        ]} />
-                        <Area 
-                          type="monotone" 
-                          dataKey="earnings" 
-                          stroke="#ff6b35" 
-                          strokeWidth={3}
-                          fill="url(#progressGradient)" 
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {/* Category Performance */}
-                <Card className="border-2 border-black">
-                  <CardHeader className="bg-primary text-white">
-                    <CardTitle className="flex items-center justify-between">
-                      <span>CATEGORY PERFORMANCE</span>
-                      <PieChart className="w-5 h-5" />
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={categoryData} layout="horizontal">
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" />
-                        <YAxis dataKey="name" type="category" width={60} />
-                        <Tooltip formatter={(value, name) => [
-                          name === 'ads' ? `${value} ads` : `PKR ${value}`,
-                          name === 'ads' ? 'Ads Watched' : 'Total Earnings'
-                        ]} />
-                        <Bar dataKey="earnings" fill="#ff6b35" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {/* Performance Radial Chart */}
-                <Card className="border-2 border-black">
-                  <CardHeader className="bg-secondary">
-                    <CardTitle>COMPLETION RATE</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <ResponsiveContainer width="100%" height={250}>
-                      <RadialBarChart cx="50%" cy="50%" innerRadius="60%" outerRadius="90%" data={performanceData}>
-                        <RadialBar dataKey="value" cornerRadius={10} fill="#22C55E" />
-                        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-2xl font-bold">
-                          85%
-                        </text>
-                      </RadialBarChart>
-                    </ResponsiveContainer>
-                    <div className="text-center mt-4">
-                      <p className="text-green-600 font-bold">Excellent Performance!</p>
-                      <p className="text-sm text-muted-foreground">Keep up the great work</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Stats Summary */}
-                <Card className="border-2 border-black">
-                  <CardHeader className="bg-black text-white">
-                    <CardTitle>SUMMARY STATS</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span>Total Ads Watched</span>
-                        <span className="font-bold">{todayAdViews?.count || 0}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Total Earnings</span>
-                        <span className="font-bold text-primary">{formatCurrency((completedAds.size * 2.5).toString())}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Average per Ad</span>
-                        <span className="font-bold">PKR 2.50</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Best Category</span>
-                        <span className="font-bold">Gaming</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Streak</span>
-                        <span className="font-bold text-green-600">7 days</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              </>
+            ) : (
+              <div className="text-center py-16">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Clock className="w-12 h-12 text-gray-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Daily Limit Reached</h3>
+                <p className="text-gray-600 mb-6">You've watched all available ads for today. Come back tomorrow for more!</p>
+                <Button
+                  onClick={() => setLocation("/dashboard")}
+                  className="bg-primary hover:bg-primary/90 text-white"
+                >
+                  View Dashboard
+                </Button>
               </div>
-            </TabsContent>
+            )}
+          </TabsContent>
 
-            {/* Achievements Tab */}
-            <TabsContent value="achievements" className="space-y-6">
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Achievement Cards */}
-                <Card className="border-2 border-black bg-gradient-to-br from-yellow-50 to-yellow-100">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-4">🏆</div>
-                    <h3 className="font-bold mb-2">FIRST STEPS</h3>
-                    <p className="text-sm text-muted-foreground mb-4">Watch your first ad</p>
-                    <div className="bg-green-600 text-white px-4 py-2 rounded font-bold">
-                      COMPLETED
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-2 border-black bg-gradient-to-br from-blue-50 to-blue-100">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-4">🎯</div>
-                    <h3 className="font-bold mb-2">AD MASTER</h3>
-                    <p className="text-sm text-muted-foreground mb-4">Watch 50 ads in a day</p>
-                    <div className="space-y-2">
-                      <Progress value={(todayAdViews?.count || 0) / 50 * 100} className="h-2" />
-                      <div className="text-sm">{todayAdViews?.count || 0}/50</div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-2 border-black bg-gradient-to-br from-purple-50 to-purple-100">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-4">⚡</div>
-                    <h3 className="font-bold mb-2">STREAK KEEPER</h3>
-                    <p className="text-sm text-muted-foreground mb-4">7-day earning streak</p>
-                    <div className="bg-green-600 text-white px-4 py-2 rounded font-bold">
-                      COMPLETED
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-2 border-black bg-gradient-to-br from-green-50 to-green-100">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-4">💰</div>
-                    <h3 className="font-bold mb-2">MONEY MAKER</h3>
-                    <p className="text-sm text-muted-foreground mb-4">Earn PKR 100 in total</p>
-                    <div className="space-y-2">
-                      <Progress value={parseFloat(user.totalEarnings) / 100 * 100} className="h-2" />
-                      <div className="text-sm">{formatCurrency(user.totalEarnings)}/PKR 100</div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-2 border-black bg-gradient-to-br from-red-50 to-red-100">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-4">🔥</div>
-                    <h3 className="font-bold mb-2">SPEED DEMON</h3>
-                    <p className="text-sm text-muted-foreground mb-4">Watch 10 ads in 1 hour</p>
-                    <div className="bg-gray-400 text-white px-4 py-2 rounded font-bold">
-                      LOCKED
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-2 border-black bg-gradient-to-br from-orange-50 to-orange-100">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-4">🌟</div>
-                    <h3 className="font-bold mb-2">PERFECTIONIST</h3>
-                    <p className="text-sm text-muted-foreground mb-4">100% completion rate</p>
-                    <div className="bg-gray-400 text-white px-4 py-2 rounded font-bold">
-                      LOCKED
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-8">
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <BarChart3 className="w-12 h-12 text-primary" />
               </div>
-            </TabsContent>
-          </Tabs>
-        </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Advanced Analytics</h3>
+              <p className="text-gray-600">Detailed performance metrics and insights coming soon...</p>
+            </div>
+          </TabsContent>
+
+          {/* Achievements Tab */}
+          <TabsContent value="achievements" className="space-y-8">
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Award className="w-12 h-12 text-yellow-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Achievements & Badges</h3>
+              <p className="text-gray-600">Unlock achievements and earn badges for your progress...</p>
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
