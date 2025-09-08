@@ -77,9 +77,9 @@ export default function Home() {
         </div>
         
         {/* Main Title Section */}
-        <div className="bg-white border-b-3 border-black py-8">
+        <div className="bg-white border-b-3 border-black py-6">
           <div className="max-w-7xl mx-auto px-8 text-center">
-            <h1 className="text-8xl md:text-9xl font-black tracking-tighter" data-testid="main-logo">
+            <h1 className="text-6xl md:text-7xl font-black tracking-tighter" data-testid="main-logo">
               THORX.
             </h1>
           </div>

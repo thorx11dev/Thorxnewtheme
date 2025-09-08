@@ -72,7 +72,7 @@ export default function CallToAction({ isActive }: CallToActionProps) {
       className={`cinematic-section ${isActive ? 'active' : ''}`}
       data-testid="call-to-action-section"
     >
-      <div className="max-w-4xl mx-auto px-4 text-center">
+      <div className="max-w-4xl mx-auto px-4 text-center pt-8">
         {/* Technical Header */}
         <div className="mb-12">
           <div className="mb-2">

@@ -35,7 +35,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
       className={`cinematic-section ${isActive ? 'active' : ''}`}
       data-testid="earning-reveal-section"
     >
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4 pt-8">
         {/* Technical Header */}
         <div className="text-center mb-12">
           <div className="mb-2">

@@ -69,7 +69,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
       className={`cinematic-section ${isActive ? 'active' : ''}`}
       data-testid="trust-builder-section"
     >
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4 pt-8">
         {/* Technical Header */}
         <div className="text-center mb-12">
           <div className="mb-2">
