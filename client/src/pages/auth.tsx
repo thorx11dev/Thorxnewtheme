@@ -194,7 +194,7 @@ export default function Auth() {
   };
 
   return (
-    <>
+    <div className="auth-page">
       {/* Industrial Grid Overlay */}
       <div className="industrial-grid" />
 
@@ -639,6 +639,6 @@ export default function Auth() {
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }
