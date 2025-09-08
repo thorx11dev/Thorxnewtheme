@@ -40,24 +40,31 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
         setHasAnimated(true);
       }, 500);
     }
+    // Reset animation state when section becomes inactive
+    if (!isMobile && !isActive) {
+      setHasAnimated(false);
+    }
   }, [isActive, stats, isMobile, hasAnimated]);
 
   // Mobile animation (based on intersection observer)
   useEffect(() => {
-    if (!isMobile || hasAnimated || !stats) return;
+    if (!isMobile || !stats) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.3 && !hasAnimated) {
             setTimeout(() => {
               animateCounters();
               setHasAnimated(true);
             }, 300);
+          } else if (!entry.isIntersecting && entry.intersectionRatio < 0.1) {
+            // Reset animation state when section leaves viewport
+            setHasAnimated(false);
           }
         });
       },
-      { threshold: 0.3 }
+      { threshold: [0.1, 0.3] }
     );
 
     if (sectionRef.current) {
