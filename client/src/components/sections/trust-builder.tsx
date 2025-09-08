@@ -15,7 +15,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
   const securityScoreRef = useRef<HTMLSpanElement>(null);
   const [activities, setActivities] = useState<Array<{id: string, text: string, time: string}>>([]);
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<{totalPaid: number, activeUsers: number, securityScore: number}>({
     queryKey: ['/api/stats'],
     enabled: isActive,
   });

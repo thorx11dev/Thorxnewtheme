@@ -179,6 +179,11 @@
     flex-direction: column;
   }
   
+  .cinematic-section {
+    padding-top: 200px;
+    align-items: flex-start;
+  }
+  
   body {
     overflow: auto;
   }
