@@ -146,7 +146,7 @@
     bottom: 0;
     width: 100%;
     height: 100vh;
-    padding-top: 140px;
+    padding-top: 190px;
     padding-bottom: 40px;
     display: flex;
     align-items: center;
@@ -240,7 +240,7 @@
   }
   
   .cinematic-section {
-    padding-top: 110px;
+    padding-top: 140px;
     padding-bottom: 3rem;
     align-items: center;
     justify-content: center;
@@ -296,9 +296,4 @@
     font-size: 2rem;
   }
   
-  /* First section specific mobile fixes */
-  .cinematic-section:first-of-type {
-    padding-top: 110px;
-    justify-content: center;
-  }
 }
