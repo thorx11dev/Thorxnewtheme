@@ -17,19 +17,19 @@ import {
   Calendar, 
   Clock, 
   ChevronRight,
-  ChevronLeft,
-  ChevronDown,
-  ChevronUp,
   Eye,
   Target,
   Award,
   ArrowUpRight,
-  ArrowDownRight,
   BarChart3,
   PieChart,
-  Settings,
   Zap,
-  TrendingDown
+  Copy,
+  CheckCircle2,
+  Wallet,
+  Activity,
+  Star,
+  Gift
 } from "lucide-react";
 import {
   LineChart,
@@ -45,9 +45,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  Legend
+  ResponsiveContainer
 } from 'recharts';
+import { useToast } from "@/hooks/use-toast";
 
 interface Earning {
   id: string;
@@ -78,8 +78,7 @@ export default function Dashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
-  const [showEarningsDetails, setShowEarningsDetails] = useState(false);
-  const [showReferralDetails, setShowReferralDetails] = useState(false);
+  const { toast } = useToast();
 
   // Fetch user earnings
   const { data: earningsData } = useQuery({
@@ -121,19 +120,12 @@ export default function Dashboard() {
     return `PKR ${parseFloat(amount).toFixed(2)}`;
   };
 
-  const getEarningTypeIcon = (type: string) => {
-    switch (type) {
-      case 'ad_view':
-        return '📺';
-      case 'referral':
-        return '👥';
-      case 'daily_task':
-        return '✅';
-      case 'bonus':
-        return '🎁';
-      default:
-        return '💰';
-    }
+  const copyReferralCode = () => {
+    navigator.clipboard.writeText(user.referralCode);
+    toast({
+      title: "Copied!",
+      description: "Referral code copied to clipboard",
+    });
   };
 
   // Enhanced mock data for charts
@@ -147,18 +139,9 @@ export default function Dashboard() {
     { date: 'Sun', earnings: 9.25, ads: 14, tasks: 3 }
   ];
 
-  const referralProgressData = [
-    { month: 'Jan', referrals: 2, earnings: 25 },
-    { month: 'Feb', referrals: 5, earnings: 62.5 },
-    { month: 'Mar', referrals: 8, earnings: 100 },
-    { month: 'Apr', referrals: 12, earnings: 150 },
-    { month: 'May', referrals: 15, earnings: 187.5 },
-    { month: 'Jun', referrals: 18, earnings: 225 }
-  ];
-
   const earningTypesData = [
-    { name: 'Ad Views', value: 65, color: '#000000' },
-    { name: 'Referrals', value: 25, color: '#ff6b35' },
+    { name: 'Ad Views', value: 65, color: '#ff6b35' },
+    { name: 'Referrals', value: 25, color: '#000000' },
     { name: 'Daily Tasks', value: 7, color: '#f7931e' },
     { name: 'Bonuses', value: 3, color: '#004CFF' }
   ];
@@ -168,61 +151,57 @@ export default function Dashboard() {
   const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
 
   return (
-    <div className="dashboard-page min-h-screen">
-      {/* Industrial Grid Overlay */}
-      <div className="industrial-grid" />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
+      {/* Refined Industrial Grid */}
+      <div className="fixed inset-0 opacity-[0.02]">
+        <div className="absolute inset-0 bg-gradient-to-br from-black/5 via-transparent to-primary/5" />
+        <div className="industrial-grid" />
+      </div>
 
-      {/* Enhanced Navigation Header */}
-      <nav className="fixed top-0 w-full z-50 bg-background/95 backdrop-blur border-b-3 border-black" data-testid="dashboard-navigation">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Left Section with Navigation */}
-            <div className="flex items-center space-x-2 md:space-x-4">
-              <button
-                onClick={() => setLocation("/")}
-                className="bg-black text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black hover:bg-primary transition-all duration-200 transform hover:scale-105"
-                data-testid="button-home"
-              >
-                <TechnicalLabel text="HOME" className="text-white text-xs md:text-sm" />
-              </button>
-              <ChevronRight className="w-4 h-4 text-black" />
-              <button
-                onClick={() => setLocation("/work")}
-                className="bg-primary text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black hover:bg-orange-600 transition-all duration-200 transform hover:scale-105"
-                data-testid="button-work"
-              >
-                <div className="flex items-center gap-1">
-                  <Zap className="w-3 h-3 md:w-4 md:h-4" />
-                  <TechnicalLabel text="WORK" className="text-white text-xs md:text-sm" />
+      {/* Modern Navigation Header */}
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm" data-testid="dashboard-navigation">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo & Brand */}
+            <div className="flex items-center space-x-4">
+              <div className="bg-black text-white p-3 rounded-lg">
+                <TechnicalLabel text="THORX" className="text-white text-sm font-black" />
+              </div>
+              <div className="hidden md:flex items-center space-x-2 text-gray-400">
+                <ChevronRight className="w-4 h-4" />
+                <TechnicalLabel text="DASHBOARD" className="text-gray-600" />
+              </div>
+            </div>
+            
+            {/* User Info & Controls */}
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-4 bg-gray-50 rounded-xl px-4 py-2">
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(user.totalEarnings)} earned</p>
                 </div>
-              </button>
-            </div>
-            
-            {/* Center Section */}
-            <div className="flex items-center">
-              <h1 className="text-xl md:text-2xl font-black tracking-tighter">DASHBOARD</h1>
-            </div>
-            
-            {/* Right Section with User Info */}
-            <div className="flex items-center space-x-2 md:space-x-4">
-              <div className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2">
-                <div className="text-xs md:text-sm">
-                  <TechnicalLabel text={`${user.firstName} ${user.lastName}`} />
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="w-3 h-3" />
-                    <TechnicalLabel text={formatCurrency(user.totalEarnings)} />
-                  </div>
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
+                  {user.firstName[0]}{user.lastName[0]}
                 </div>
               </div>
+              
+              <Button
+                onClick={() => setLocation("/work")}
+                className="bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary text-white border-0 shadow-lg"
+                data-testid="button-work"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Start Working
+              </Button>
+              
               <Button
                 onClick={logout}
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="border-2 border-black hover:bg-red-500 hover:text-white transition-colors"
+                className="text-gray-600 hover:text-gray-900"
                 data-testid="button-logout"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden md:inline ml-2">LOGOUT</span>
               </Button>
             </div>
           </div>
@@ -230,519 +209,404 @@ export default function Dashboard() {
       </nav>
 
       {/* Main Content */}
-      <main className="pt-20 md:pt-24 pb-8">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
-          {/* Enhanced Header Section */}
-          <div className="text-center mb-8 md:mb-12">
-            <div className="mb-2">
-              <TechnicalLabel text="USER CONTROL PANEL" />
-            </div>
-            <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-black mb-4">
-              EARNING CENTER
-            </h2>
-            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto mb-6" />
-            
-            {/* Enhanced Quick Stats Bar */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-black text-white p-3 border-2 border-black relative overflow-hidden group hover:bg-gray-800 transition-colors">
-                <div className="absolute top-0 right-0 w-8 h-8 bg-primary/20 rounded-full transform translate-x-2 -translate-y-2" />
-                <div className="text-sm font-bold">TODAY'S GOAL</div>
-                <div className="text-lg font-black">{Math.round(progressPercentage)}%</div>
-                <Progress value={progressPercentage} className="h-1 mt-2" />
-              </div>
-              <div className="bg-primary text-white p-3 border-2 border-black relative overflow-hidden group hover:bg-orange-600 transition-colors">
-                <div className="absolute top-0 right-0 w-8 h-8 bg-white/20 rounded-full transform translate-x-2 -translate-y-2" />
-                <div className="text-sm font-bold">STREAK</div>
-                <div className="text-lg font-black flex items-center gap-1">
-                  <Award className="w-4 h-4" />
-                  7 DAYS
+      <main className="relative z-10 max-w-7xl mx-auto px-6 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-4">
+            <Star className="w-4 h-4" />
+            <TechnicalLabel text="EARNING DASHBOARD" className="text-primary" />
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black text-gray-900 mb-4">
+            Welcome Back,<br />
+            <span className="bg-gradient-to-r from-primary to-orange-600 bg-clip-text text-transparent">
+              {user.firstName}
+            </span>
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            Track your earnings, manage referrals, and monitor your progress in real-time
+          </p>
+          <Barcode className="w-40 h-8 mx-auto opacity-60" />
+        </div>
+
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          {/* Total Earnings */}
+          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-gray-900 to-black text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full transform translate-x-8 -translate-y-8" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                  <ArrowUpRight className="w-4 h-4 text-green-400" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-white/80 text-sm">Total Earnings</p>
+                  <p className="text-3xl font-black">{formatCurrency(user.totalEarnings)}</p>
+                  <p className="text-green-400 text-sm">+15.2% this week</p>
                 </div>
               </div>
-              <div className="bg-white text-black p-3 border-2 border-black relative overflow-hidden group hover:bg-gray-50 transition-colors">
-                <div className="absolute top-0 right-0 w-8 h-8 bg-primary/20 rounded-full transform translate-x-2 -translate-y-2" />
-                <div className="text-sm font-bold">RANK</div>
-                <div className="text-lg font-black flex items-center gap-1">
+            </CardContent>
+          </Card>
+
+          {/* Available Balance */}
+          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-primary to-orange-600 text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full transform translate-x-8 -translate-y-8" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <DollarSign className="w-5 h-5" />
+                  </div>
+                  <Activity className="w-4 h-4" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-white/80 text-sm">Available Balance</p>
+                  <p className="text-3xl font-black">{formatCurrency(user.availableBalance)}</p>
+                  <p className="text-white/80 text-sm">Ready for withdrawal</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Active Referrals */}
+          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/10 rounded-full transform translate-x-8 -translate-y-8" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Users className="w-5 h-5 text-primary" />
+                  </div>
                   <TrendingUp className="w-4 h-4 text-green-600" />
-                  #142
+                </div>
+                <div className="space-y-1">
+                  <p className="text-gray-600 text-sm">Active Referrals</p>
+                  <p className="text-3xl font-black text-gray-900">{referralsData?.stats.count || 0}</p>
+                  <p className="text-primary text-sm font-semibold">+{formatCurrency(referralsData?.stats.totalEarned || '0.00')} earned</p>
                 </div>
               </div>
-              <div className="bg-secondary text-black p-3 border-2 border-black relative overflow-hidden group hover:bg-gray-200 transition-colors">
-                <div className="absolute top-0 right-0 w-8 h-8 bg-primary/20 rounded-full transform translate-x-2 -translate-y-2" />
-                <div className="text-sm font-bold">LEVEL</div>
-                <div className="text-lg font-black">BRONZE</div>
+            </CardContent>
+          </Card>
+
+          {/* Daily Progress */}
+          <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-green-500 to-emerald-600 text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-white/20 rounded-full transform translate-x-8 -translate-y-8" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <Target className="w-5 h-5" />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-2xl font-black">{Math.round(progressPercentage)}%</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-white/80 text-sm">Daily Goal</p>
+                  <Progress value={progressPercentage} className="h-2 bg-white/20" />
+                  <p className="text-white/80 text-sm">{formatCurrency(currentProgress.toString())} / {formatCurrency(dailyGoal.toString())}</p>
+                </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Enhanced Tabbed Content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <TabsList className="grid w-full grid-cols-4 bg-gray-100 rounded-2xl p-1">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="earnings" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl">
+              <DollarSign className="w-4 h-4 mr-2" />
+              Earnings
+            </TabsTrigger>
+            <TabsTrigger value="referrals" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl">
+              <Users className="w-4 h-4 mr-2" />
+              Referrals
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl">
+              <PieChart className="w-4 h-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-8">
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Weekly Earnings Chart */}
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="text-xl font-bold">Weekly Earnings</span>
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <BarChart3 className="w-5 h-5 text-primary" />
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={earningsChartData}>
+                      <defs>
+                        <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="date" stroke="#666" />
+                      <YAxis stroke="#666" />
+                      <Tooltip 
+                        formatter={(value) => [`PKR ${value}`, 'Earnings']}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="earnings" 
+                        stroke="#ff6b35" 
+                        strokeWidth={3}
+                        fill="url(#earningsGradient)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Earnings Breakdown */}
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="text-xl font-bold">Earnings Breakdown</span>
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <PieChart className="w-5 h-5 text-primary" />
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RechartsPieChart>
+                      <Pie
+                        data={earningTypesData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {earningTypesData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                      />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
             </div>
-          </div>
+          </TabsContent>
 
-          {/* Enhanced Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 md:mb-12">
-            {/* Total Earnings - Enhanced */}
-            <Card className="split-card bg-gradient-to-br from-black to-gray-800 text-white border-3 border-black relative overflow-hidden group hover:shadow-lg transition-all">
-              <CardContent className="p-6">
-                <div className="absolute top-4 right-4">
-                  <DollarSign className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="absolute -top-4 -right-4 w-16 h-16 bg-primary/20 rounded-full" />
-                <div className="space-y-2">
-                  <TechnicalLabel text="TOTAL EARNED" className="text-white/80" />
-                  <div className="text-4xl font-black mb-2">
-                    {formatCurrency(user.totalEarnings)}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <ArrowUpRight className="w-4 h-4 text-green-400" />
-                    <span className="text-green-400">+15.2% this week</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Available Balance - Enhanced */}
-            <Card className="split-card bg-gradient-to-br from-primary to-orange-600 text-white border-3 border-black relative overflow-hidden group hover:shadow-lg transition-all">
-              <CardContent className="p-6">
-                <div className="absolute top-4 right-4">
-                  <TrendingUp className="w-8 h-8 text-white/80 group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/20 rounded-full" />
-                <div className="space-y-2">
-                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-white/80" />
-                  <div className="text-4xl font-black mb-2">
-                    {formatCurrency(user.availableBalance)}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Target className="w-4 h-4" />
-                    <span>Ready for withdrawal</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Referrals - Enhanced */}
-            <Card className="split-card bg-white text-black border-3 border-black relative overflow-hidden group hover:shadow-lg transition-all">
-              <CardContent className="p-6">
-                <div className="absolute top-4 right-4">
-                  <Users className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
-                </div>
-                <div className="absolute -top-4 -right-4 w-16 h-16 bg-primary/20 rounded-full" />
-                <div className="space-y-2">
-                  <TechnicalLabel text="ACTIVE REFERRALS" />
-                  <div className="text-4xl font-black mb-2">
-                    {referralsData?.stats.count || 0}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Award className="w-4 h-4 text-primary" />
-                    <span className="text-primary">+{formatCurrency(referralsData?.stats.totalEarned || '0.00')} earned</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Advanced Tabbed Content */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 bg-white border-2 border-black">
-              <TabsTrigger value="overview" className="data-[state=active]:bg-black data-[state=active]:text-white font-bold">
-                <BarChart3 className="w-4 h-4 mr-2" />
-                OVERVIEW
-              </TabsTrigger>
-              <TabsTrigger value="earnings" className="data-[state=active]:bg-black data-[state=active]:text-white font-bold">
-                <DollarSign className="w-4 h-4 mr-2" />
-                EARNINGS
-              </TabsTrigger>
-              <TabsTrigger value="referrals" className="data-[state=active]:bg-black data-[state=active]:text-white font-bold">
-                <Users className="w-4 h-4 mr-2" />
-                REFERRALS
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="data-[state=active]:bg-black data-[state=active]:text-white font-bold">
-                <PieChart className="w-4 h-4 mr-2" />
-                ANALYTICS
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Overview Tab */}
-            <TabsContent value="overview" className="space-y-6">
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Weekly Earnings Chart */}
-                <Card className="border-2 border-black">
-                  <CardHeader className="bg-black text-white">
-                    <CardTitle className="flex items-center justify-between">
-                      <span>WEEKLY EARNINGS</span>
-                      <BarChart3 className="w-5 h-5" />
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={earningsChartData}>
-                        <defs>
-                          <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`PKR ${value}`, 'Earnings']} />
-                        <Area 
-                          type="monotone" 
-                          dataKey="earnings" 
-                          stroke="#ff6b35" 
-                          strokeWidth={3}
-                          fill="url(#earningsGradient)" 
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {/* Earnings Breakdown Pie Chart */}
-                <Card className="border-2 border-black">
-                  <CardHeader className="bg-primary text-white">
-                    <CardTitle className="flex items-center justify-between">
-                      <span>EARNINGS BREAKDOWN</span>
-                      <PieChart className="w-5 h-5" />
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <RechartsPieChart>
-                        <Pie
-                          data={earningTypesData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {earningTypesData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* Earnings Tab */}
-            <TabsContent value="earnings" className="space-y-6">
-              <div className="grid lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <Card className="border-2 border-black">
-                    <CardHeader className="bg-black text-white">
-                      <CardTitle className="flex items-center justify-between">
-                        <span>RECENT TRANSACTIONS</span>
-                        <button 
-                          onClick={() => setShowEarningsDetails(!showEarningsDetails)}
-                          className="flex items-center gap-1 hover:text-primary transition-colors"
-                        >
-                          {showEarningsDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          {showEarningsDetails ? 'HIDE' : 'SHOW'} DETAILS
-                        </button>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <div className="space-y-0">
-                        {earningsData?.earnings.map((earning, index) => (
-                          <div key={earning.id} className={`p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors ${index === 0 ? 'bg-primary/5' : ''}`} data-testid={`earning-${earning.id}`}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                <div className="text-2xl">
-                                  {getEarningTypeIcon(earning.type)}
-                                </div>
-                                <div>
-                                  <p className="font-bold text-sm">
-                                    {earning.description}
-                                  </p>
-                                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                                    <Calendar className="w-3 h-3" />
-                                    <span>{formatDate(earning.createdAt)}</span>
-                                    <span className="text-primary">•</span>
-                                    <span className="uppercase">{earning.type.replace('_', ' ')}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-black text-primary">
-                                  +{formatCurrency(earning.amount)}
-                                </p>
-                                <p className="text-xs uppercase text-green-600">
-                                  {earning.status}
-                                </p>
-                              </div>
-                            </div>
-                            {showEarningsDetails && (
-                              <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-muted-foreground">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <span>Transaction ID: {earning.id.slice(0, 8)}...</span>
-                                  <span>Type: {earning.type.toUpperCase()}</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )) || (
-                          <div className="text-center py-8">
-                            <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                            <p className="text-muted-foreground">No earnings yet. Start watching ads to earn!</p>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Daily Goal Progress */}
-                  <Card className="border-2 border-black">
-                    <CardHeader className="bg-secondary">
-                      <CardTitle className="text-sm">DAILY GOAL PROGRESS</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span>Progress</span>
-                          <span className="font-bold">{formatCurrency(currentProgress.toString())} / {formatCurrency(dailyGoal.toString())}</span>
-                        </div>
-                        <Progress value={progressPercentage} className="h-3" />
-                        <div className="text-center">
-                          <span className="text-2xl font-black text-primary">{Math.round(progressPercentage)}%</span>
-                          <p className="text-xs text-muted-foreground">of daily goal</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Quick Actions */}
-                  <Card className="border-2 border-black">
-                    <CardHeader className="bg-primary text-white">
-                      <CardTitle className="text-sm">QUICK ACTIONS</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-3">
-                      <Button
-                        onClick={() => setLocation("/work")}
-                        className="w-full bg-black text-white hover:bg-gray-800"
-                        data-testid="button-start-earning"
-                      >
-                        <Zap className="w-4 h-4 mr-2" />
-                        START EARNING
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full border-2 border-black"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        VIEW ALL EARNINGS
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Referrals Tab */}
-            <TabsContent value="referrals" className="space-y-6">
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Referral Code & Management */}
-                <div className="space-y-6">
-                  <Card className="border-2 border-black bg-secondary" data-testid="referral-code-card">
-                    <CardHeader className="bg-black text-white">
-                      <CardTitle className="flex items-center justify-between">
-                        <span>YOUR REFERRAL CODE</span>
-                        <Users className="w-5 h-5" />
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="bg-white border-2 border-black p-4 text-center mb-4">
-                        <code className="text-2xl font-black tracking-wider">{user.referralCode}</code>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" className="border-2 border-black text-xs">
-                          COPY CODE
-                        </Button>
-                        <Button variant="outline" className="border-2 border-black text-xs">
-                          SHARE LINK
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-3 text-center">
-                        Share this code to earn when others join THORX!
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Referral Progress Chart */}
-                  <Card className="border-2 border-black">
-                    <CardHeader className="bg-primary text-white">
-                      <CardTitle>REFERRAL GROWTH</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={referralProgressData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip />
-                          <Line 
-                            type="monotone" 
-                            dataKey="referrals" 
-                            stroke="#ff6b35" 
-                            strokeWidth={3}
-                            dot={{ fill: '#ff6b35', strokeWidth: 2, r: 6 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Referred Users List */}
-                <Card className="border-2 border-black">
-                  <CardHeader className="bg-black text-white">
-                    <CardTitle className="flex items-center justify-between">
-                      <span>YOUR REFERRALS</span>
-                      <button 
-                        onClick={() => setShowReferralDetails(!showReferralDetails)}
-                        className="flex items-center gap-1 hover:text-primary transition-colors"
-                      >
-                        {showReferralDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        {showReferralDetails ? 'HIDE' : 'SHOW'} DETAILS
-                      </button>
-                    </CardTitle>
+          {/* Earnings Tab */}
+          <TabsContent value="earnings" className="space-y-8">
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-bold">Recent Transactions</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="space-y-0">
-                      {referralsData?.referrals.map((referral, index) => (
-                        <div key={referral.id} className={`p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors ${index === 0 ? 'bg-primary/5' : ''}`} data-testid={`referral-${referral.id}`}>
+                      {earningsData?.earnings.map((earning, index) => (
+                        <div key={earning.id} className={`p-6 border-b border-gray-100 hover:bg-gray-50 transition-colors ${index === 0 ? 'bg-primary/5' : ''}`} data-testid={`earning-${earning.id}`}>
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center font-black">
-                                {referral.referred.firstName.charAt(0)}
+                            <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                                <Gift className="w-6 h-6 text-primary" />
                               </div>
                               <div>
-                                <p className="font-bold text-sm">
-                                  {referral.referred.firstName} {referral.referred.lastName}
+                                <p className="font-semibold text-gray-900">
+                                  {earning.description}
                                 </p>
-                                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                                  <Calendar className="w-3 h-3" />
-                                  <span>Joined {formatDate(referral.referred.createdAt)}</span>
+                                <div className="flex items-center space-x-2 text-sm text-gray-500">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>{formatDate(earning.createdAt)}</span>
+                                  <span>•</span>
+                                  <span className="capitalize">{earning.type.replace('_', ' ')}</span>
                                 </div>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm font-black text-primary">
-                                {formatCurrency(referral.totalEarned)}
+                              <p className="text-xl font-bold text-primary">
+                                +{formatCurrency(earning.amount)}
                               </p>
-                              <p className="text-xs uppercase text-green-600">
-                                {referral.status}
+                              <p className="text-sm text-green-600 capitalize">
+                                {earning.status}
                               </p>
                             </div>
                           </div>
-                          {showReferralDetails && (
-                            <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-muted-foreground">
-                              <div className="grid grid-cols-2 gap-4">
-                                <span>Email: {referral.referred.email}</span>
-                                <span>Status: {referral.status.toUpperCase()}</span>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )) || (
-                        <div className="text-center py-8">
-                          <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                          <p className="text-muted-foreground">No referrals yet. Share your code to start earning!</p>
+                        <div className="text-center py-12">
+                          <Clock className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                          <p className="text-gray-500">No earnings yet. Start watching ads to earn!</p>
                         </div>
                       )}
                     </div>
                   </CardContent>
                 </Card>
               </div>
-            </TabsContent>
 
-            {/* Analytics Tab */}
-            <TabsContent value="analytics" className="space-y-6">
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Performance Metrics */}
-                <Card className="border-2 border-black">
-                  <CardHeader className="bg-black text-white">
-                    <CardTitle>PERFORMANCE METRICS</CardTitle>
+              <div className="space-y-6">
+                {/* Quick Actions */}
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-bold">Quick Actions</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-green-50 border border-green-200 rounded">
-                        <ArrowUpRight className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                        <div className="text-2xl font-black text-green-600">+15.2%</div>
-                        <div className="text-sm text-green-700">Weekly Growth</div>
+                  <CardContent className="space-y-4">
+                    <Button
+                      onClick={() => setLocation("/work")}
+                      className="w-full bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-primary text-white border-0"
+                      data-testid="button-start-earning"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Start Earning
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full border-2 hover:bg-gray-50"
+                      data-testid="button-view-history"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View History
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Daily Goal Progress */}
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-bold">Daily Goal</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="text-center">
+                      <div className="text-3xl font-black text-primary mb-2">{Math.round(progressPercentage)}%</div>
+                      <Progress value={progressPercentage} className="h-3 mb-4" />
+                      <p className="text-sm text-gray-600">
+                        {formatCurrency(currentProgress.toString())} of {formatCurrency(dailyGoal.toString())} goal
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Referrals Tab */}
+          <TabsContent value="referrals" className="space-y-8">
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-bold">Your Referrals</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="space-y-0">
+                      {referralsData?.referrals.map((referral, index) => (
+                        <div key={referral.id} className="p-6 border-b border-gray-100 hover:bg-gray-50 transition-colors" data-testid={`referral-${referral.id}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
+                                {referral.referred.firstName[0]}{referral.referred.lastName[0]}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900">
+                                  {referral.referred.firstName} {referral.referred.lastName}
+                                </p>
+                                <p className="text-sm text-gray-500">{referral.referred.email}</p>
+                                <p className="text-xs text-gray-400">
+                                  Joined {formatDate(referral.createdAt)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-primary">
+                                +{formatCurrency(referral.totalEarned)}
+                              </p>
+                              <p className="text-sm text-green-600 capitalize">
+                                {referral.status}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )) || (
+                        <div className="text-center py-12">
+                          <Users className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                          <p className="text-gray-500">No referrals yet. Share your code to earn!</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-6">
+                {/* Referral Code */}
+                <Card className="border-0 shadow-lg bg-gradient-to-br from-gray-900 to-black text-white">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-bold text-white">Your Referral Code</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-white/10 rounded-lg p-4 text-center">
+                      <p className="text-white/80 text-sm mb-2">Share this code:</p>
+                      <code className="text-2xl font-black tracking-wider text-primary">{user.referralCode}</code>
+                    </div>
+                    <Button
+                      onClick={copyReferralCode}
+                      className="w-full bg-white text-black hover:bg-gray-100"
+                      data-testid="button-copy-code"
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy Code
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Referral Stats */}
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-bold">Referral Stats</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-black text-primary">{referralsData?.stats.count || 0}</div>
+                        <div className="text-sm text-gray-600">Total Referrals</div>
                       </div>
-                      <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded">
-                        <Target className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                        <div className="text-2xl font-black text-blue-600">85%</div>
-                        <div className="text-sm text-blue-700">Goal Achievement</div>
-                      </div>
-                      <div className="text-center p-4 bg-purple-50 border border-purple-200 rounded">
-                        <Users className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                        <div className="text-2xl font-black text-purple-600">{referralsData?.stats.count || 0}</div>
-                        <div className="text-sm text-purple-700">Active Referrals</div>
-                      </div>
-                      <div className="text-center p-4 bg-orange-50 border border-orange-200 rounded">
-                        <Award className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-                        <div className="text-2xl font-black text-orange-600">7</div>
-                        <div className="text-sm text-orange-700">Day Streak</div>
+                      <div>
+                        <div className="text-2xl font-black text-green-600">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
+                        <div className="text-sm text-gray-600">Total Earned</div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Activity Breakdown */}
-                <Card className="border-2 border-black">
-                  <CardHeader className="bg-primary text-white">
-                    <CardTitle>ACTIVITY BREAKDOWN</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={earningsChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="ads" fill="#000000" name="Ads Watched" />
-                        <Bar dataKey="tasks" fill="#ff6b35" name="Tasks Completed" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
               </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </TabsContent>
 
-          {/* Enhanced Action Section */}
-          <div className="mt-12 text-center">
-            <div className="mb-6">
-              <h3 className="text-2xl md:text-3xl font-black mb-2">READY TO EARN MORE?</h3>
-              <TechnicalLabel text="WATCH ADS • COMPLETE TASKS • REFER FRIENDS" />
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-8">
+            <div className="text-center py-12">
+              <BarChart3 className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Advanced Analytics</h3>
+              <p className="text-gray-600">Detailed analytics and reporting coming soon...</p>
             </div>
-            <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
-              <Button
-                onClick={() => setLocation("/work")}
-                size="lg"
-                className="bg-black text-white text-xl font-black px-8 py-4 hover:bg-primary transition-all transform hover:scale-105 border-2 border-black"
-                data-testid="button-start-earning-main"
-              >
-                <Zap className="w-5 h-5 mr-2" />
-                START EARNING NOW <ChevronRight className="w-5 h-5 ml-2" />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="text-black border-2 border-black hover:bg-secondary transition-all"
-              >
-                <Settings className="w-5 h-5 mr-2" />
-                SETTINGS
-              </Button>
-            </div>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
