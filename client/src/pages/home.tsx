@@ -9,9 +9,23 @@ import Barcode from "@/components/ui/barcode";
 
 export default function Home() {
   const [currentSection, setCurrentSection] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
   const totalSections = 4;
 
   useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) return; // Disable keyboard navigation on mobile
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === 'ArrowRight') {
         e.preventDefault();
@@ -28,12 +42,32 @@ export default function Home() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [currentSection, totalSections]);
+  }, [currentSection, totalSections, isMobile]);
 
   const handleSectionAdvance = () => {
+    if (isMobile) {
+      // On mobile, smooth scroll to next section instead of changing state
+      const nextSectionElement = document.querySelector(`[data-section="${currentSection + 1}"]`);
+      if (nextSectionElement) {
+        nextSectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+    
     if (currentSection < totalSections) {
       setCurrentSection(prev => prev + 1);
     }
+  };
+  
+  const handleSectionChange = (section: number) => {
+    if (isMobile) {
+      const sectionElement = document.querySelector(`[data-section="${section}"]`);
+      if (sectionElement) {
+        sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
+    setCurrentSection(section);
   };
 
   return (
@@ -75,28 +109,38 @@ export default function Home() {
       </nav>
 
       {/* Sections */}
-      <HookSection 
-        isActive={currentSection === 1} 
-        onAdvance={handleSectionAdvance}
-      />
-      <EarningReveal 
-        isActive={currentSection === 2} 
-        onAdvance={handleSectionAdvance}
-      />
-      <TrustBuilder 
-        isActive={currentSection === 3} 
-        onAdvance={handleSectionAdvance}
-      />
-      <CallToAction 
-        isActive={currentSection === 4}
-      />
+      <div data-section="1">
+        <HookSection 
+          isActive={isMobile || currentSection === 1} 
+          onAdvance={handleSectionAdvance}
+        />
+      </div>
+      <div data-section="2">
+        <EarningReveal 
+          isActive={isMobile || currentSection === 2} 
+          onAdvance={handleSectionAdvance}
+        />
+      </div>
+      <div data-section="3">
+        <TrustBuilder 
+          isActive={isMobile || currentSection === 3} 
+          onAdvance={handleSectionAdvance}
+        />
+      </div>
+      <div data-section="4">
+        <CallToAction 
+          isActive={isMobile || currentSection === 4}
+        />
+      </div>
 
       {/* Navigation Progress */}
-      <NavigationProgress 
-        currentSection={currentSection}
-        totalSections={totalSections}
-        onSectionChange={setCurrentSection}
-      />
+      {!isMobile && (
+        <NavigationProgress 
+          currentSection={currentSection}
+          totalSections={totalSections}
+          onSectionChange={handleSectionChange}
+        />
+      )}
     </>
   );
 }
