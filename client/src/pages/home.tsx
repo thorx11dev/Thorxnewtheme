@@ -44,22 +44,13 @@ export default function Home() {
       {/* Navigation Header */}
       <nav className="fixed top-0 w-full z-50 bg-background border-b-3 border-black" data-testid="navigation-header">
         <div className="max-w-7xl mx-auto px-8">
-          <div className="flex items-center justify-between h-20">
-            {/* Left Section */}
-            <div className="flex items-center space-x-6">
-              <div className="bg-black text-white px-4 py-2 border-2 border-black">
-                <TechnicalLabel text="EARNING SYSTEM V01" className="text-white" />
-              </div>
-              <Barcode className="w-20 h-12" />
-            </div>
-            
-            {/* Navigation Tabs */}
-            <div className="flex items-center space-x-1">
-              <div className="bg-muted border-2 border-black px-6 py-2 text-sm font-semibold">DASHBOARD</div>
-              <div className="bg-muted border-2 border-black px-6 py-2 text-sm font-semibold">CATALOG</div>
-              <div className="bg-muted border-2 border-black px-6 py-2 text-sm font-semibold">ABOUT</div>
-              <div className="bg-muted border-2 border-black px-6 py-2 text-sm font-semibold">CONTACT</div>
-            </div>
+          <div className="flex items-center justify-center h-20">
+            {/* Centered Logo */}
+            <div className="bg-black text-white px-4 py-2 border-2 border-black">
+              <TechnicalLabel text="EARNING SYSTEM V01" className="text-white" />
+            </div></div>
+        </div>
+      </nav>
 
             {/* Right Section */}
             <div className="flex items-center space-x-6">
