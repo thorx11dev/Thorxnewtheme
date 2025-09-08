@@ -27,8 +27,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (isMobile) return; // Disable keyboard navigation on mobile
-    
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -49,7 +47,7 @@ export default function Home() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [currentSection, totalSections, isMobile]);
+  }, [currentSection, totalSections]);
 
   const handleSectionAdvance = () => {
     // Navigate to Auth page for all action buttons
@@ -57,13 +55,6 @@ export default function Home() {
   };
   
   const handleSectionChange = (section: number) => {
-    if (isMobile) {
-      const sectionElement = document.querySelector(`[data-section="${section}"]`);
-      if (sectionElement) {
-        sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      return;
-    }
     setCurrentSection(section);
   };
   
@@ -130,44 +121,40 @@ export default function Home() {
       {/* Sections */}
       <div data-section="1">
         <HookSection 
-          isActive={isMobile || currentSection === 1} 
+          isActive={currentSection === 1} 
           onAdvance={handleSectionAdvance}
         />
       </div>
       <div data-section="2">
         <EarningReveal 
-          isActive={isMobile || currentSection === 2} 
+          isActive={currentSection === 2} 
           onAdvance={handleSectionAdvance}
         />
       </div>
       <div data-section="3">
         <TrustBuilder 
-          isActive={isMobile || currentSection === 3} 
+          isActive={currentSection === 3} 
           onAdvance={handleSectionAdvance}
         />
       </div>
       <div data-section="4">
         <CallToAction 
-          isActive={isMobile || currentSection === 4}
+          isActive={currentSection === 4}
         />
       </div>
 
       {/* Navigation Elements */}
-      {!isMobile && (
-        <>
-          <NavigationProgress 
-            currentSection={currentSection}
-            totalSections={totalSections}
-            onSectionChange={handleSectionChange}
-          />
-          <ArrowKeysGuide 
-            currentSection={currentSection}
-            totalSections={totalSections}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
-          />
-        </>
-      )}
+      <NavigationProgress 
+        currentSection={currentSection}
+        totalSections={totalSections}
+        onSectionChange={handleSectionChange}
+      />
+      <ArrowKeysGuide 
+        currentSection={currentSection}
+        totalSections={totalSections}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+      />
     </>
   );
 }
