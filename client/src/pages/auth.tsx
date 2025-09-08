@@ -227,9 +227,9 @@ export default function Auth() {
         </div>
         
         {/* Main Title Section */}
-        <div className="bg-white border-b-3 border-black py-4 md:py-6">
+        <div className="bg-white border-b-3 border-black py-3 md:py-4">
           <div className="max-w-7xl mx-auto px-4 md:px-8 text-center">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter" data-testid="auth-logo">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter" data-testid="auth-logo">
               THORX.
             </h1>
           </div>
@@ -237,7 +237,7 @@ export default function Auth() {
       </nav>
 
       {/* Auth Section */}
-      <section className="cinematic-section active min-h-screen pt-32 md:pt-40 pb-8 overflow-y-auto">
+      <section className="cinematic-section active min-h-screen pt-44 md:pt-52 pb-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           {/* Technical Header */}
           <div className="text-center mb-4 md:mb-6">

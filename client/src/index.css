@@ -87,6 +87,7 @@
   .auth-page {
     overflow-y: auto;
     height: 100vh;
+    position: relative;
   }
   
   @media (max-width: 768px) {
@@ -94,6 +95,7 @@
       overflow-y: auto;
       height: auto;
       min-height: 100vh;
+      position: relative;
     }
   }
 }
