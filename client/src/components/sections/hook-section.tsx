@@ -22,16 +22,8 @@ export default function HookSection({ isActive, onAdvance }: HookSectionProps) {
           <TechnicalLabel text="REVENUE-001" />
         </div>
         
-        {/* Main Title */}
-        <h1 
-          className="text-8xl md:text-9xl font-black tracking-tighter mb-6 text-black"
-          data-testid="main-title"
-        >
-          THORX
-        </h1>
-        
         {/* Tagline */}
-        <p className="text-2xl md:text-3xl font-bold mb-12 text-secondary">
+        <p className="text-3xl md:text-4xl font-bold mb-12 text-secondary">
           Turn Attention into Currency
         </p>
         

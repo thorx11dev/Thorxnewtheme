@@ -42,23 +42,46 @@ export default function Home() {
       <div className="industrial-grid" />
 
       {/* Navigation Header */}
-      <nav className="fixed top-0 w-full z-50 bg-background border-b-2 border-black" data-testid="navigation-header">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo Section */}
-            <div className="flex items-center space-x-4">
-              <TechnicalLabel text="EARNING SYSTEM" />
-              <Barcode className="w-16 h-10" />
+      <nav className="fixed top-0 w-full z-50 bg-background border-b-3 border-black" data-testid="navigation-header">
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="flex items-center justify-between h-20">
+            {/* Left Section */}
+            <div className="flex items-center space-x-6">
+              <div className="bg-black text-white px-4 py-2 border-2 border-black">
+                <TechnicalLabel text="EARNING SYSTEM V01" className="text-white" />
+              </div>
+              <Barcode className="w-20 h-12" />
             </div>
             
-            {/* Main Logo */}
-            <div className="text-3xl font-black tracking-wider" data-testid="main-logo">THORX</div>
-            
-            {/* Status Section */}
-            <div className="flex items-center space-x-4">
-              <TechnicalLabel text="STATUS: ACTIVE" />
-              <div className="w-3 h-3 bg-primary rounded-full" data-testid="status-indicator"></div>
+            {/* Navigation Tabs */}
+            <div className="flex items-center space-x-1">
+              <div className="bg-muted border-2 border-black px-6 py-2 text-sm font-semibold">DASHBOARD</div>
+              <div className="bg-muted border-2 border-black px-6 py-2 text-sm font-semibold">CATALOG</div>
+              <div className="bg-muted border-2 border-black px-6 py-2 text-sm font-semibold">ABOUT</div>
+              <div className="bg-muted border-2 border-black px-6 py-2 text-sm font-semibold">CONTACT</div>
             </div>
+
+            {/* Right Section */}
+            <div className="flex items-center space-x-6">
+              <div className="bg-white border-2 border-black px-4 py-2">
+                <TechnicalLabel text="ID: 571" />
+                <TechnicalLabel text="v 2.47" />
+              </div>
+              <div className="bg-black text-white px-2 py-4 border-2 border-black">
+                <div className="w-6 h-1 bg-white mb-1"></div>
+                <div className="w-6 h-1 bg-white mb-1"></div>
+                <div className="w-6 h-1 bg-white"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Main Title Section */}
+        <div className="bg-white border-b-3 border-black py-8">
+          <div className="max-w-7xl mx-auto px-8 text-center">
+            <h1 className="text-8xl md:text-9xl font-black tracking-tighter" data-testid="main-logo">
+              THORX.
+            </h1>
           </div>
         </div>
       </nav>
