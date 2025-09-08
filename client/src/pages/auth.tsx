@@ -15,10 +15,49 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Delete, Eye, EyeOff } from "lucide-react";
 
+// Animated Placeholder Component
+function AnimatedPlaceholder({ examples }: { examples: string[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentText, setCurrentText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    const example = examples[currentIndex];
+    let timeout: NodeJS.Timeout;
+
+    if (isTyping) {
+      if (currentText.length < example.length) {
+        timeout = setTimeout(() => {
+          setCurrentText(example.slice(0, currentText.length + 1));
+        }, 100);
+      } else {
+        timeout = setTimeout(() => setIsTyping(false), 1000);
+      }
+    } else {
+      if (currentText.length > 0) {
+        timeout = setTimeout(() => {
+          setCurrentText(currentText.slice(0, -1));
+        }, 50);
+      } else {
+        setCurrentIndex((prev) => (prev + 1) % examples.length);
+        setIsTyping(true);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [currentText, currentIndex, examples, isTyping]);
+
+  return (
+    <span className="text-muted-foreground">
+      {currentText}<span className="animate-pulse">|</span>
+    </span>
+  );
+}
+
 const registerSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
-  username: z.string().min(3, "Username must be at least 3 characters").max(20, "Username must be less than 20 characters"),
+  identity: z.string().min(1, "Identity is required"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   email: z.string().email("Invalid email address"),
   password: z.string()
@@ -44,26 +83,22 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState("register");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
+  const [generatedIdentity, setGeneratedIdentity] = useState<string>('');
   const { toast } = useToast();
 
-  // Username generation function
-  const generateUsernames = (firstName: string, lastName: string): string[] => {
-    const adjectives = ['Digital', 'Cyber', 'Tech', 'Smart', 'Pro', 'Elite', 'Alpha', 'Prime', 'Core', 'Neo'];
-    const thorxTerms = ['Earner', 'Builder', 'Trader', 'Master', 'Expert', 'Genius', 'Force', 'Agent', 'Commander', 'Pioneer'];
-    const numbers = Math.floor(Math.random() * 999) + 1;
+  // Identity generation function
+  const generateThorxIdentity = (firstName: string, lastName: string): string => {
+    const thorxPrefixes = ['THORX', 'EARN', 'DIGI', 'CYBER', 'PRIME', 'ALPHA', 'CORE', 'ELITE'];
+    const thorxSuffixes = ['MASTER', 'FORCE', 'AGENT', 'BUILDER', 'TRADER', 'GENIUS', 'COMMANDER', 'PIONEER'];
+    const numbers = Math.floor(Math.random() * 9999) + 1000;
     
-    const suggestions = [];
     if (firstName && lastName) {
-      suggestions.push(
-        `${firstName}${lastName}${numbers}`,
-        `${firstName.charAt(0)}${lastName}${numbers}`,
-        `${adjectives[Math.floor(Math.random() * adjectives.length)]}${firstName}`,
-        `${firstName}${thorxTerms[Math.floor(Math.random() * thorxTerms.length)]}`,
-        `THORX${firstName}${numbers}`
-      );
+      const prefix = thorxPrefixes[Math.floor(Math.random() * thorxPrefixes.length)];
+      const suffix = thorxSuffixes[Math.floor(Math.random() * thorxSuffixes.length)];
+      const initial = firstName.charAt(0).toUpperCase() + lastName.charAt(0).toUpperCase();
+      return `${prefix}_${initial}_${suffix}_${numbers}`;
     }
-    return suggestions.slice(0, 3);
+    return '';
   };
 
   // Keyboard navigation
@@ -84,7 +119,7 @@ export default function Auth() {
     defaultValues: {
       firstName: "",
       lastName: "",
-      username: "",
+      identity: "",
       phone: "",
       email: "",
       password: "",
@@ -101,16 +136,17 @@ export default function Auth() {
     }
   });
 
-  // Watch first and last name for username suggestions
+  // Watch first and last name for identity generation
   const firstName = registerForm.watch('firstName');
   const lastName = registerForm.watch('lastName');
   
   useEffect(() => {
     if (firstName && lastName) {
-      const suggestions = generateUsernames(firstName, lastName);
-      setUsernameSuggestions(suggestions);
+      const identity = generateThorxIdentity(firstName, lastName);
+      setGeneratedIdentity(identity);
+      registerForm.setValue('identity', identity);
     }
-  }, [firstName, lastName]);
+  }, [firstName, lastName, registerForm]);
 
   const registerMutation = useMutation({
     mutationFn: (data: RegisterForm) => apiRequest("POST", "/api/register", data),
@@ -201,10 +237,10 @@ export default function Auth() {
       </nav>
 
       {/* Auth Section */}
-      <section className="cinematic-section active min-h-screen pt-40 md:pt-48 pb-12">
+      <section className="cinematic-section active min-h-screen pt-32 md:pt-40 pb-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           {/* Technical Header */}
-          <div className="text-center mb-6 md:mb-8">
+          <div className="text-center mb-4 md:mb-6">
             <div className="mb-2">
               <TechnicalLabel text="ACCESS CONTROL SYSTEM" />
             </div>
@@ -215,8 +251,8 @@ export default function Auth() {
           </div>
 
           {/* Auth Card */}
-          <div className="max-w-4xl mx-auto">
-            <div className="split-card bg-white border-3 border-black p-6 md:p-8 lg:p-12">
+          <div className="max-w-4xl mx-auto mb-8">
+            <div className="split-card bg-white border-3 border-black p-4 md:p-6 lg:p-8">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted border-2 border-black">
                   <TabsTrigger 
@@ -252,12 +288,18 @@ export default function Auth() {
                             <FormItem>
                               <FormLabel className="technical-label">FIRST NAME</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="John" 
-                                  {...field}
-                                  className="border-2 border-black text-lg py-3"
-                                  data-testid="input-register-firstname"
-                                />
+                                <div className="relative">
+                                  <Input 
+                                    {...field}
+                                    className="border-2 border-black text-lg py-3"
+                                    data-testid="input-register-firstname"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                      <AnimatedPlaceholder examples={['John', 'Ahmed', 'Ali', 'Hassan']} />
+                                    </div>
+                                  )}
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -271,12 +313,18 @@ export default function Auth() {
                             <FormItem>
                               <FormLabel className="technical-label">LAST NAME</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="Doe" 
-                                  {...field}
-                                  className="border-2 border-black text-lg py-3"
-                                  data-testid="input-register-lastname"
-                                />
+                                <div className="relative">
+                                  <Input 
+                                    {...field}
+                                    className="border-2 border-black text-lg py-3"
+                                    data-testid="input-register-lastname"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                      <AnimatedPlaceholder examples={['Khan', 'Shah', 'Ahmed', 'Malik']} />
+                                    </div>
+                                  )}
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -284,38 +332,32 @@ export default function Auth() {
                         />
                       </div>
 
-                      {/* Username Field with Suggestions */}
+                      {/* Identity Field - Auto Generated */}
                       <FormField
                         control={registerForm.control}
-                        name="username"
+                        name="identity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="technical-label">USERNAME/NICKNAME</FormLabel>
+                            <FormLabel className="technical-label">THORX IDENTITY</FormLabel>
                             <div className="space-y-2">
                               <FormControl>
-                                <Input 
-                                  placeholder="Choose your unique username" 
-                                  {...field}
-                                  className="border-2 border-black text-lg py-3"
-                                  data-testid="input-register-username"
-                                />
-                              </FormControl>
-                              {usernameSuggestions.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  <TechnicalLabel text="SUGGESTIONS:" className="text-xs" />
-                                  {usernameSuggestions.map((suggestion, index) => (
-                                    <button
-                                      key={index}
-                                      type="button"
-                                      onClick={() => registerForm.setValue('username', suggestion)}
-                                      className="bg-muted border border-black px-2 py-1 text-xs font-semibold hover:bg-primary hover:text-white transition-colors"
-                                      data-testid={`button-username-suggestion-${index}`}
-                                    >
-                                      {suggestion}
-                                    </button>
-                                  ))}
+                                <div className="relative">
+                                  <Input 
+                                    {...field}
+                                    readOnly
+                                    className="border-2 border-black text-lg py-3 bg-muted cursor-not-allowed"
+                                    data-testid="input-register-identity"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                      <AnimatedPlaceholder examples={['THORX_JD_MASTER_4521', 'ALPHA_AK_BUILDER_7832', 'CORE_HS_GENIUS_2941']} />
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                              </FormControl>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                <TechnicalLabel text="AUTO-GENERATED • UNIQUE • NON-EDITABLE" className="text-xs" />
+                              </div>
                             </div>
                             <FormMessage />
                           </FormItem>
@@ -331,12 +373,18 @@ export default function Auth() {
                             <FormItem>
                               <FormLabel className="technical-label">PHONE NUMBER</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="+92 300 1234567" 
-                                  {...field}
-                                  className="border-2 border-black text-lg py-3"
-                                  data-testid="input-register-phone"
-                                />
+                                <div className="relative">
+                                  <Input 
+                                    {...field}
+                                    className="border-2 border-black text-lg py-3"
+                                    data-testid="input-register-phone"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                      <AnimatedPlaceholder examples={['+92 300 1234567', '+92 321 9876543', '+92 333 5551234']} />
+                                    </div>
+                                  )}
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -350,12 +398,18 @@ export default function Auth() {
                             <FormItem>
                               <FormLabel className="technical-label">EMAIL ADDRESS</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="your.email@domain.com" 
-                                  {...field}
-                                  className="border-2 border-black text-lg py-3"
-                                  data-testid="input-register-email"
-                                />
+                                <div className="relative">
+                                  <Input 
+                                    {...field}
+                                    className="border-2 border-black text-lg py-3"
+                                    data-testid="input-register-email"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                      <AnimatedPlaceholder examples={['your.email@gmail.com', 'user@thorx.com', 'john.doe@outlook.com']} />
+                                    </div>
+                                  )}
+                                </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -375,15 +429,19 @@ export default function Auth() {
                                 <div className="relative">
                                   <Input 
                                     type={showPassword ? "text" : "password"}
-                                    placeholder="Min 8 chars, 1 upper, 1 lower, 1 number" 
                                     {...field}
                                     className="border-2 border-black text-lg py-3 pr-10"
                                     data-testid="input-register-password"
                                   />
+                                  {!field.value && (
+                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none pr-10">
+                                      <AnimatedPlaceholder examples={['ThorX123!', 'SecurePass9$', 'MyStrong8#']} />
+                                    </div>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10"
                                     data-testid="button-toggle-password"
                                   >
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -405,15 +463,19 @@ export default function Auth() {
                                 <div className="relative">
                                   <Input 
                                     type={showConfirmPassword ? "text" : "password"}
-                                    placeholder="Confirm your password" 
                                     {...field}
                                     className="border-2 border-black text-lg py-3 pr-10"
                                     data-testid="input-register-confirm-password"
                                   />
+                                  {!field.value && (
+                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none pr-10">
+                                      <AnimatedPlaceholder examples={['Repeat your password', 'Same as above', 'Confirm password']} />
+                                    </div>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10"
                                     data-testid="button-toggle-confirm-password"
                                   >
                                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -434,12 +496,18 @@ export default function Auth() {
                           <FormItem>
                             <FormLabel className="technical-label">REFERRAL CODE (OPTIONAL)</FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="THORX-XXXX" 
-                                {...field}
-                                className="border-2 border-black text-lg py-3"
-                                data-testid="input-register-referral"
-                              />
+                              <div className="relative">
+                                <Input 
+                                  {...field}
+                                  className="border-2 border-black text-lg py-3"
+                                  data-testid="input-register-referral"
+                                />
+                                {!field.value && (
+                                  <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                    <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} />
+                                  </div>
+                                )}
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -473,12 +541,18 @@ export default function Auth() {
                           <FormItem>
                             <FormLabel className="technical-label">EMAIL OR PHONE NUMBER</FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="your.email@domain.com or +92 300 1234567" 
-                                {...field}
-                                className="border-2 border-black text-lg py-3"
-                                data-testid="input-login-email-phone"
-                              />
+                              <div className="relative">
+                                <Input 
+                                  {...field}
+                                  className="border-2 border-black text-lg py-3"
+                                  data-testid="input-login-email-phone"
+                                />
+                                {!field.value && (
+                                  <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                    <AnimatedPlaceholder examples={['john@gmail.com', '+92 300 1234567', 'user@thorx.com']} />
+                                  </div>
+                                )}
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -495,15 +569,19 @@ export default function Auth() {
                               <div className="relative">
                                 <Input 
                                   type={showPassword ? "text" : "password"}
-                                  placeholder="Enter your password" 
                                   {...field}
                                   className="border-2 border-black text-lg py-3 pr-10"
                                   data-testid="input-login-password"
                                 />
+                                {!field.value && (
+                                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none pr-10">
+                                    <AnimatedPlaceholder examples={['Enter your password', 'Your secure password', 'Login password']} />
+                                  </div>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => setShowPassword(!showPassword)}
-                                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10"
                                   data-testid="button-toggle-login-password"
                                 >
                                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}

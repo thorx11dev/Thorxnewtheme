@@ -82,6 +82,20 @@
       height: auto;
     }
   }
+
+  /* Auth page specific overrides for proper scrolling */
+  .auth-page {
+    overflow-y: auto;
+    height: 100vh;
+  }
+  
+  @media (max-width: 768px) {
+    .auth-page {
+      overflow-y: auto;
+      height: auto;
+      min-height: 100vh;
+    }
+  }
 }
 
 @layer components {
