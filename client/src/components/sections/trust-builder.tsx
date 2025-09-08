@@ -53,18 +53,17 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio > 0.3 && !hasAnimated) {
-            setTimeout(() => {
-              animateCounters();
-              setHasAnimated(true);
-            }, 300);
-          } else if (!entry.isIntersecting && entry.intersectionRatio < 0.1) {
-            // Reset animation state when section leaves viewport
-            setHasAnimated(false);
+          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+            if (!hasAnimated) {
+              setTimeout(() => {
+                animateCounters();
+                setHasAnimated(true);
+              }, 300);
+            }
           }
         });
       },
-      { threshold: [0.1, 0.3] }
+      { threshold: [0.5] }
     );
 
     if (sectionRef.current) {
@@ -73,6 +72,13 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
 
     return () => observer.disconnect();
   }, [isMobile, hasAnimated, stats]);
+
+  // Reset animation on section change for mobile
+  useEffect(() => {
+    if (isMobile && !isActive) {
+      setHasAnimated(false);
+    }
+  }, [isMobile, isActive]);
 
   const animateCounters = () => {
     if (totalPaidRef.current) {
