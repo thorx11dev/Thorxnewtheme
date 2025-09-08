@@ -1,33 +1,27 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, integer, boolean, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, integer, boolean, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
-export const sessions = pgTable(
-  "sessions",
-  {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
-  },
-  (table) => [index("IDX_session_expire").on(table.expire)],
-);
+// Legacy registrations table (keeping for backward compatibility)
+export const registrations = pgTable("registrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  phone: text("phone").notNull(),
+  email: text("email").notNull().unique(),
+  referralCode: text("referral_code").notNull().unique(),
+});
 
-// User storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// Main users table with full authentication and profile data
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  // THORX specific fields
-  identity: text("identity"), // THORX identity number
-  phone: text("phone"),
-  referralCode: text("referral_code").unique(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  identity: text("identity").notNull(), // THORX identity number
+  phone: text("phone").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  referralCode: text("referral_code").notNull().unique(),
   referredBy: varchar("referred_by"),
   totalEarnings: decimal("total_earnings", { precision: 10, scale: 2 }).default("0.00"),
   availableBalance: decimal("available_balance", { precision: 10, scale: 2 }).default("0.00"),
@@ -38,14 +32,6 @@ export const users = pgTable("users", {
   index("users_email_idx").on(table.email),
   index("users_referral_code_idx").on(table.referralCode),
 ]);
-
-// Legacy registrations table (keeping for backward compatibility)
-export const registrations = pgTable("registrations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  phone: text("phone").notNull(),
-  email: text("email").notNull().unique(),
-  referralCode: text("referral_code").notNull().unique(),
-});
 
 // Earnings transactions table
 export const earnings = pgTable("earnings", {
@@ -165,14 +151,6 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
-export const upsertUserSchema = createInsertSchema(users).pick({
-  id: true,
-  email: true,
-  firstName: true,
-  lastName: true,
-  profileImageUrl: true,
-});
-
 export const insertEarningSchema = createInsertSchema(earnings).omit({
   id: true,
   createdAt: true,
@@ -199,7 +177,6 @@ export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
 export type Registration = typeof registrations.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 export type InsertEarning = z.infer<typeof insertEarningSchema>;
