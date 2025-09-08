@@ -198,7 +198,7 @@ export default function Work() {
             });
             
             // Add to completed ads
-            setCompletedAds(prev => new Set([...prev, selectedAd.id]));
+            setCompletedAds(prev => new Set(Array.from(prev).concat(selectedAd.id)));
             
             toast({
               title: "Ad Completed! 🎉",
@@ -664,7 +664,7 @@ export default function Work() {
 
                             <Button
                               onClick={() => startWatching(ad)}
-                              disabled={isCompleted || (selectedAd && !isCompleted)}
+                              disabled={Boolean(isCompleted || (selectedAd && !isCompleted))}
                               className={`w-full transition-all duration-200 transform hover:scale-105 ${
                                 isCompleted 
                                   ? "bg-green-600 text-white" 
