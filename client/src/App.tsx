@@ -3,15 +3,56 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
 import Auth from "@/pages/auth";
+import Dashboard from "@/pages/Dashboard";
+import Work from "@/pages/Work";
+import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 
 function Router() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-2xl font-black mb-2">THORX</div>
+          <div className="text-sm">LOADING...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/auth" component={Auth} />
+      {/* Root route - redirect based on auth status */}
+      <Route path="/">
+        {isAuthenticated ? <Dashboard /> : <Home />}
+      </Route>
+      
+      {/* Auth route - only for non-authenticated users */}
+      <Route path="/auth">
+        <PublicOnlyRoute>
+          <Auth />
+        </PublicOnlyRoute>
+      </Route>
+      
+      {/* Protected routes - only for authenticated users */}
+      <Route path="/dashboard">
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/work">
+        <ProtectedRoute>
+          <Work />
+        </ProtectedRoute>
+      </Route>
+      
+      {/* 404 page */}
       <Route component={NotFound} />
     </Switch>
   );
