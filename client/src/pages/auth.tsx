@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Delete, Eye, EyeOff } from "lucide-react";
@@ -71,7 +71,7 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  emailOrPhone: z.string().min(1, "Email or phone number is required"),
+  email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required")
 });
 
@@ -85,6 +85,7 @@ export default function Auth() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [generatedIdentity, setGeneratedIdentity] = useState<string>('');
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Identity generation function
   const generateThorxIdentity = (firstName: string, lastName: string): string => {
@@ -131,7 +132,7 @@ export default function Auth() {
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      emailOrPhone: "",
+      email: "",
       password: ""
     }
   });
@@ -151,12 +152,15 @@ export default function Auth() {
   const registerMutation = useMutation({
     mutationFn: (data: RegisterForm) => apiRequest("POST", "/api/register", data),
     onSuccess: () => {
+      // Invalidate auth queries to refresh user state
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+      
       toast({
         title: "Registration Successful",
         description: "Welcome to THORX! Your earning journey begins now.",
       });
-      // Navigate to dashboard or home
-      setLocation("/");
+      // Navigate to dashboard
+      setLocation("/dashboard");
     },
     onError: (error: any) => {
       toast({
@@ -170,11 +174,15 @@ export default function Auth() {
   const loginMutation = useMutation({
     mutationFn: (data: LoginForm) => apiRequest("POST", "/api/login", data),
     onSuccess: () => {
+      // Invalidate auth queries to refresh user state
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+      
       toast({
         title: "Login Successful",
         description: "Welcome back to THORX!",
       });
-      setLocation("/");
+      // Navigate to dashboard
+      setLocation("/dashboard");
     },
     onError: (error: any) => {
       toast({
@@ -536,20 +544,21 @@ export default function Auth() {
                     <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-6">
                       <FormField
                         control={loginForm.control}
-                        name="emailOrPhone"
+                        name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="technical-label">EMAIL OR PHONE NUMBER</FormLabel>
+                            <FormLabel className="technical-label">EMAIL ADDRESS</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Input 
                                   {...field}
+                                  type="email"
                                   className="border-2 border-black text-lg py-3"
-                                  data-testid="input-login-email-phone"
+                                  data-testid="input-login-email"
                                 />
                                 {!field.value && (
                                   <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                                    <AnimatedPlaceholder examples={['john@gmail.com', '+92 300 1234567', 'user@thorx.com']} />
+                                    <AnimatedPlaceholder examples={['john@gmail.com', 'user@thorx.com', 'earner@example.com']} />
                                   </div>
                                 )}
                               </div>
