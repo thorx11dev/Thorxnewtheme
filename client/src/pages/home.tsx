@@ -4,6 +4,7 @@ import EarningReveal from "@/components/sections/earning-reveal";
 import TrustBuilder from "@/components/sections/trust-builder";
 import CallToAction from "@/components/sections/call-to-action";
 import NavigationProgress from "@/components/ui/navigation-progress";
+import ArrowKeysGuide from "@/components/ui/arrow-keys-guide";
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 
@@ -69,6 +70,18 @@ export default function Home() {
     }
     setCurrentSection(section);
   };
+  
+  const handlePrevious = () => {
+    if (currentSection > 1) {
+      setCurrentSection(prev => prev - 1);
+    }
+  };
+  
+  const handleNext = () => {
+    if (currentSection < totalSections) {
+      setCurrentSection(prev => prev + 1);
+    }
+  };
 
   return (
     <>
@@ -133,13 +146,21 @@ export default function Home() {
         />
       </div>
 
-      {/* Navigation Progress */}
+      {/* Navigation Elements */}
       {!isMobile && (
-        <NavigationProgress 
-          currentSection={currentSection}
-          totalSections={totalSections}
-          onSectionChange={handleSectionChange}
-        />
+        <>
+          <NavigationProgress 
+            currentSection={currentSection}
+            totalSections={totalSections}
+            onSectionChange={handleSectionChange}
+          />
+          <ArrowKeysGuide 
+            currentSection={currentSection}
+            totalSections={totalSections}
+            onPrevious={handlePrevious}
+            onNext={handleNext}
+          />
+        </>
       )}
     </>
   );
