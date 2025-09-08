@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import HookSection from "@/components/sections/hook-section";
 import EarningReveal from "@/components/sections/earning-reveal";
 import TrustBuilder from "@/components/sections/trust-builder";
@@ -11,6 +12,7 @@ import Barcode from "@/components/ui/barcode";
 export default function Home() {
   const [currentSection, setCurrentSection] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
+  const [, setLocation] = useLocation();
   const totalSections = 4;
 
   useEffect(() => {
@@ -28,7 +30,11 @@ export default function Home() {
     if (isMobile) return; // Disable keyboard navigation on mobile
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === 'ArrowRight') {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        // Navigate to Auth page on Enter
+        setLocation("/auth");
+      } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         if (currentSection < totalSections) {
           setCurrentSection(prev => prev + 1);
@@ -46,18 +52,8 @@ export default function Home() {
   }, [currentSection, totalSections, isMobile]);
 
   const handleSectionAdvance = () => {
-    if (isMobile) {
-      // On mobile, smooth scroll to next section instead of changing state
-      const nextSectionElement = document.querySelector(`[data-section="${currentSection + 1}"]`);
-      if (nextSectionElement) {
-        nextSectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      return;
-    }
-    
-    if (currentSection < totalSections) {
-      setCurrentSection(prev => prev + 1);
-    }
+    // Navigate to Auth page for all action buttons
+    setLocation("/auth");
   };
   
   const handleSectionChange = (section: number) => {
@@ -92,11 +88,21 @@ export default function Home() {
       <nav className="fixed top-0 w-full z-50 bg-background border-b-3 border-black" data-testid="navigation-header">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Left Section */}
+            {/* Left Section - Transform to Enter button when not on first section */}
             <div className="flex items-center">
-              <div className="bg-black text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black">
-                <TechnicalLabel text="EARNING SYSTEM V01" className="text-white text-xs md:text-sm" />
-              </div>
+              {currentSection === 1 && !isMobile ? (
+                <div className="bg-black text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black">
+                  <TechnicalLabel text="EARNING SYSTEM V01" className="text-white text-xs md:text-sm" />
+                </div>
+              ) : (
+                <button
+                  onClick={() => setLocation("/auth")}
+                  className="bg-primary text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black hover:bg-black transition-all duration-300 transform hover:scale-105"
+                  data-testid="button-navbar-enter"
+                >
+                  <TechnicalLabel text="ENTER" className="text-white text-xs md:text-sm font-black" />
+                </button>
+              )}
             </div>
             
             {/* Right Section */}

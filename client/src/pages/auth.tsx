@@ -50,10 +50,7 @@ export default function Auth() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: (data: RegisterForm) => apiRequest("/api/register", {
-      method: "POST",
-      body: JSON.stringify(data)
-    }),
+    mutationFn: (data: RegisterForm) => apiRequest("POST", "/api/register", data),
     onSuccess: () => {
       toast({
         title: "Registration Successful",
@@ -72,10 +69,7 @@ export default function Auth() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: (data: LoginForm) => apiRequest("/api/login", {
-      method: "POST",
-      body: JSON.stringify(data)
-    }),
+    mutationFn: (data: LoginForm) => apiRequest("POST", "/api/login", data),
     onSuccess: () => {
       toast({
         title: "Login Successful",
