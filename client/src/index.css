@@ -217,9 +217,10 @@
   }
   
   .cinematic-section {
-    padding-top: 140px;
-    padding-bottom: 2rem;
-    align-items: flex-start;
+    padding-top: 120px;
+    padding-bottom: 3rem;
+    align-items: center;
+    justify-content: flex-start;
     position: relative;
     height: auto;
     min-height: 100vh;
@@ -227,6 +228,7 @@
     opacity: 1;
     transition: none;
     overflow-y: visible;
+    display: flex;
   }
   
   .cinematic-section.active {
@@ -238,6 +240,10 @@
     display: none;
   }
   
+  .arrow-keys-guide {
+    display: none;
+  }
+  
   .technical-label {
     font-size: 9px;
     letter-spacing: 1px;
@@ -245,5 +251,11 @@
   
   .counter-display {
     font-size: 2rem;
+  }
+  
+  /* First section specific mobile fixes */
+  .cinematic-section:first-of-type {
+    padding-top: 140px;
+    justify-content: center;
   }
 }
