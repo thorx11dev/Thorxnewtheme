@@ -53,7 +53,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
             if (!hasAnimated) {
               setTimeout(() => {
                 animateCounters();
@@ -63,7 +63,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
           }
         });
       },
-      { threshold: [0.5] }
+      { threshold: [0.3, 0.5] }
     );
 
     if (sectionRef.current) {

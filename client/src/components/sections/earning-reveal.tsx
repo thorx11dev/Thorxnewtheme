@@ -46,7 +46,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
             if (!hasAnimated) {
               setTimeout(() => {
                 animateCounters();
@@ -56,7 +56,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
           }
         });
       },
-      { threshold: [0.5] }
+      { threshold: [0.3, 0.5] }
     );
 
     if (sectionRef.current) {
@@ -116,7 +116,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
               {/* Stats */}
               <div className="space-y-4">
                 <div className="text-5xl font-black counter-display text-white">
-                  <span ref={adsCounterRef} data-testid="ads-counter">1628</span>
+                  <span ref={adsCounterRef} data-testid="ads-counter">0</span>
                 </div>
                 
                 {/* Progress bars */}
