@@ -265,6 +265,12 @@
     z-index: 1;
   }
   
+  /* First section mobile specific centering */
+  .cinematic-section[data-section="1"] {
+    align-items: center;
+    padding-top: 120px;
+  }
+  
   .cinematic-section.active {
     opacity: 1;
     transform: scale(1);
