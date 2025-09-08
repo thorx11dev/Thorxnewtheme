@@ -165,9 +165,36 @@
   .navigation-progress {
     position: fixed;
     bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 30px;
     z-index: 1000;
+  }
+  
+  .arrow-keys-guide {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .arrow-key {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #000;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+  }
+  
+  .arrow-key:hover {
+    background: hsl(16, 100%, 60%);
+    color: white;
   }
 
   .progress-dot {
