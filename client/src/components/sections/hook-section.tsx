@@ -12,7 +12,7 @@ export default function HookSection({ isActive, onAdvance }: HookSectionProps) {
       className={`cinematic-section ${isActive ? 'active' : ''}`}
       data-testid="hook-section"
     >
-      <div className="text-center w-full max-w-4xl mx-auto px-6 md:px-8 pt-2 md:pt-8">
+      <div className="text-center w-full max-w-4xl mx-auto px-6 md:px-8">
         {/* Technical Header */}
         <div className="mb-8 md:mb-8">
           <div className="mb-3">
