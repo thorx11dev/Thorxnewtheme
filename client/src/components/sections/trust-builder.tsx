@@ -1,0 +1,146 @@
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import TechnicalLabel from "@/components/ui/technical-label";
+import Barcode from "@/components/ui/barcode";
+import CounterDisplay from "@/components/ui/counter-display";
+
+interface TrustBuilderProps {
+  isActive: boolean;
+  onAdvance: () => void;
+}
+
+export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps) {
+  const totalPaidRef = useRef<HTMLSpanElement>(null);
+  const activeUsersRef = useRef<HTMLSpanElement>(null);
+  const securityScoreRef = useRef<HTMLSpanElement>(null);
+  const [activities, setActivities] = useState<Array<{id: string, text: string, time: string}>>([]);
+
+  const { data: stats } = useQuery({
+    queryKey: ['/api/stats'],
+    enabled: isActive,
+  });
+
+  useEffect(() => {
+    if (isActive && stats) {
+      setTimeout(() => {
+        if (totalPaidRef.current) {
+          CounterDisplay.animateCounter(totalPaidRef.current, stats.totalPaid, 'M');
+        }
+        if (activeUsersRef.current) {
+          CounterDisplay.animateCounter(activeUsersRef.current, stats.activeUsers, 'K+');
+        }
+        if (securityScoreRef.current) {
+          CounterDisplay.animateCounter(securityScoreRef.current, stats.securityScore, '%');
+        }
+      }, 500);
+    }
+  }, [isActive, stats]);
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    const activityTexts = [
+      "Ahmad K. earned ₨250",
+      "Fatima S. referred 3 members", 
+      "Hassan M. completed daily tasks",
+      "Ayesha R. earned ₨180",
+      "Ali Z. reached milestone"
+    ];
+
+    const interval = setInterval(() => {
+      const randomActivity = activityTexts[Math.floor(Math.random() * activityTexts.length)];
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+      
+      setActivities(prev => {
+        const newActivity = {
+          id: Date.now().toString(),
+          text: randomActivity,
+          time: time
+        };
+        return [newActivity, ...prev.slice(0, 2)]; // Keep only 3 activities
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isActive]);
+
+  return (
+    <section 
+      className={`cinematic-section ${isActive ? 'active' : ''}`}
+      data-testid="trust-builder-section"
+    >
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Technical Header */}
+        <div className="text-center mb-12">
+          <div className="mb-2">
+            <TechnicalLabel text="SYSTEM VERIFICATION" />
+          </div>
+          <h2 className="text-5xl md:text-6xl font-black tracking-tight text-black mb-4">
+            WHY THORX WORKS
+          </h2>
+          <Barcode className="w-48 h-10 mx-auto" />
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
+          {/* Total Payouts */}
+          <div className="split-card bg-black text-white p-8 text-center">
+            <TechnicalLabel text="TOTAL-PAYOUTS" className="text-white/70 mb-4" />
+            <div className="text-5xl font-black counter-display text-primary mb-4">
+              ₨<span ref={totalPaidRef} data-testid="text-total-paid">0</span>
+            </div>
+            <p className="text-lg">Distributed to members</p>
+            <Barcode className="w-full h-10 bg-white mt-6" />
+          </div>
+
+          {/* Active Members */}
+          <div className="split-card bg-primary text-white p-8 text-center">
+            <TechnicalLabel text="ACTIVE-USERS" className="text-white/70 mb-4" />
+            <div className="text-5xl font-black counter-display mb-4">
+              <span ref={activeUsersRef} data-testid="text-active-users">0</span>
+            </div>
+            <p className="text-lg">Earning daily</p>
+            <Barcode className="w-full h-10 bg-white mt-6" />
+          </div>
+
+          {/* Security Score */}
+          <div className="split-card bg-muted border-2 border-black p-8 text-center">
+            <TechnicalLabel text="SECURITY-RATING" className="mb-4" />
+            <div className="text-5xl font-black counter-display text-black mb-4">
+              <span ref={securityScoreRef} data-testid="text-security-score">0</span>
+            </div>
+            <p className="text-lg text-secondary">Verified safe</p>
+            <Barcode className="w-full h-10 bg-black mt-6" />
+          </div>
+        </div>
+
+        {/* Live Activity Feed */}
+        <div className="split-card bg-black text-white p-8 mb-12">
+          <TechnicalLabel text="LIVE-ACTIVITY-FEED" className="text-white/70 mb-6" />
+          <div className="space-y-4" data-testid="activity-feed">
+            {activities.map((activity) => (
+              <div 
+                key={activity.id}
+                className="flex justify-between items-center border-b border-white/20 pb-4"
+              >
+                <span>{activity.text}</span>
+                <span className="technical-label">{activity.time}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Continue Button */}
+        <div className="text-center">
+          <button 
+            onClick={onAdvance}
+            className="bg-primary text-white px-12 py-4 text-xl font-black tracking-wider hover:bg-black transition-colors pulse-glow"
+            data-testid="button-join-now"
+          >
+            JOIN NOW →
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
