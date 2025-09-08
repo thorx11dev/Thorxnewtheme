@@ -72,22 +72,22 @@ export default function CallToAction({ isActive }: CallToActionProps) {
       className={`cinematic-section ${isActive ? 'active' : ''}`}
       data-testid="call-to-action-section"
     >
-      <div className="max-w-4xl mx-auto px-4 text-center pt-8">
+      <div className="max-w-4xl mx-auto px-4 md:px-8 text-center pt-4 md:pt-8">
         {/* Technical Header */}
-        <div className="mb-12">
+        <div className="mb-8 md:mb-12">
           <div className="mb-2">
             <TechnicalLabel text="MEMBER REGISTRATION" />
           </div>
-          <h2 className="text-5xl md:text-6xl font-black tracking-tight text-black mb-4">
+          <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-black mb-4">
             START EARNING TODAY
           </h2>
-          <Barcode className="w-48 h-10 mx-auto" />
+          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
         </div>
 
         {/* Registration Form */}
-        <div className="split-card bg-black text-white p-12 mb-8">
+        <div className="split-card bg-black text-white p-6 md:p-12 mb-6 md:mb-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 md:space-y-8">
               {/* Phone Number Input */}
               <FormField
                 control={form.control}
@@ -101,11 +101,11 @@ export default function CallToAction({ isActive }: CallToActionProps) {
                       <Input 
                         {...field}
                         placeholder="+92 300 1234567"
-                        className="w-full p-4 bg-white text-black text-xl font-bold border-2 border-primary focus:outline-none focus:ring-4 focus:ring-primary/50"
+                        className="w-full p-3 md:p-4 bg-white text-black text-lg md:text-xl font-bold border-2 border-primary focus:outline-none focus:ring-4 focus:ring-primary/50"
                         data-testid="input-phone"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-red-400 text-sm" />
                   </FormItem>
                 )}
               />
@@ -124,32 +124,32 @@ export default function CallToAction({ isActive }: CallToActionProps) {
                         {...field}
                         type="email"
                         placeholder="your.email@domain.com"
-                        className="w-full p-4 bg-white text-black text-xl font-bold border-2 border-primary focus:outline-none focus:ring-4 focus:ring-primary/50"
+                        className="w-full p-3 md:p-4 bg-white text-black text-lg md:text-xl font-bold border-2 border-primary focus:outline-none focus:ring-4 focus:ring-primary/50"
                         data-testid="input-email"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-red-400 text-sm" />
                   </FormItem>
                 )}
               />
 
               {/* Referral Code Display */}
-              <div className="bg-primary p-6 text-center">
+              <div className="bg-primary p-4 md:p-6 text-center">
                 <TechnicalLabel text="YOUR-REFERRAL-CODE" className="text-white/70 mb-2" />
                 <div 
-                  className="text-3xl font-black tracking-wider"
+                  className="text-2xl md:text-3xl font-black tracking-wider"
                   data-testid="text-referral-code"
                 >
                   {referralCode}
                 </div>
-                <Barcode className="w-32 h-10 bg-white mx-auto mt-4" />
+                <Barcode className="w-24 md:w-32 h-8 md:h-10 bg-white mx-auto mt-4" />
               </div>
 
               {/* Submit Button */}
               <Button 
                 type="submit" 
                 disabled={registrationMutation.isPending}
-                className="w-full bg-primary text-white py-6 text-2xl font-black tracking-wider hover:bg-white hover:text-black transition-colors pulse-glow"
+                className="w-full bg-primary text-white py-4 md:py-6 text-lg md:text-2xl font-black tracking-wider hover:bg-white hover:text-black transition-colors pulse-glow"
                 data-testid="button-join-thorx"
               >
                 {registrationMutation.isPending ? "JOINING..." : "JOIN THORX →"}

@@ -69,22 +69,22 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
       className={`cinematic-section ${isActive ? 'active' : ''}`}
       data-testid="trust-builder-section"
     >
-      <div className="max-w-7xl mx-auto px-4 pt-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-4 md:pt-8">
         {/* Technical Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 md:mb-12">
           <div className="mb-2">
             <TechnicalLabel text="SYSTEM VERIFICATION" />
           </div>
-          <h2 className="text-5xl md:text-6xl font-black tracking-tight text-black mb-4">
+          <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-black mb-4">
             WHY THORX WORKS
           </h2>
-          <Barcode className="w-48 h-10 mx-auto" />
+          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
         </div>
 
         {/* Stats Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        <div className="grid md:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-12">
           {/* Total Payouts */}
-          <div className="split-card bg-black text-white p-8 text-center">
+          <div className="split-card bg-black text-white p-4 md:p-8 text-center">
             <TechnicalLabel text="TOTAL-PAYOUTS" className="text-white/70 mb-4" />
             <div className="text-5xl font-black counter-display text-primary mb-4">
               ₨<span ref={totalPaidRef} data-testid="text-total-paid">0</span>
@@ -94,7 +94,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
           </div>
 
           {/* Active Members */}
-          <div className="split-card bg-primary text-white p-8 text-center">
+          <div className="split-card bg-primary text-white p-4 md:p-8 text-center">
             <TechnicalLabel text="ACTIVE-USERS" className="text-white/70 mb-4" />
             <div className="text-5xl font-black counter-display mb-4">
               <span ref={activeUsersRef} data-testid="text-active-users">0</span>
@@ -104,7 +104,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
           </div>
 
           {/* Security Score */}
-          <div className="split-card bg-muted border-2 border-black p-8 text-center">
+          <div className="split-card bg-muted border-2 border-black p-4 md:p-8 text-center">
             <TechnicalLabel text="SECURITY-RATING" className="mb-4" />
             <div className="text-5xl font-black counter-display text-black mb-4">
               <span ref={securityScoreRef} data-testid="text-security-score">0</span>
@@ -115,9 +115,9 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
         </div>
 
         {/* Live Activity Feed */}
-        <div className="split-card bg-black text-white p-8 mb-12">
-          <TechnicalLabel text="LIVE-ACTIVITY-FEED" className="text-white/70 mb-6" />
-          <div className="space-y-4" data-testid="activity-feed">
+        <div className="split-card bg-black text-white p-4 md:p-8 mb-8 md:mb-12">
+          <TechnicalLabel text="LIVE-ACTIVITY-FEED" className="text-white/70 mb-4 md:mb-6" />
+          <div className="space-y-3 md:space-y-4" data-testid="activity-feed">
             {activities.map((activity) => (
               <div 
                 key={activity.id}
@@ -134,7 +134,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
         <div className="text-center">
           <button 
             onClick={onAdvance}
-            className="bg-primary text-white px-12 py-4 text-xl font-black tracking-wider hover:bg-black transition-colors pulse-glow"
+            className="bg-primary text-white px-8 md:px-12 py-3 md:py-4 text-lg md:text-xl font-black tracking-wider hover:bg-black transition-colors pulse-glow"
             data-testid="button-join-now"
           >
             JOIN NOW →
