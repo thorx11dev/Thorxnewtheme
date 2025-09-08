@@ -43,30 +43,31 @@ export default function Home() {
 
       {/* Navigation Header */}
       <nav className="fixed top-0 w-full z-50 bg-background border-b-3 border-black" data-testid="navigation-header">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="flex items-center justify-between h-20">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="flex items-center justify-between h-16 md:h-20">
             {/* Left Section */}
-            <div className="flex items-center space-x-6">
-              <div className="bg-black text-white px-4 py-2 border-2 border-black">
-                <TechnicalLabel text="EARNING SYSTEM V01" className="text-white" />
+            <div className="flex items-center">
+              <div className="bg-black text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black">
+                <TechnicalLabel text="EARNING SYSTEM V01" className="text-white text-xs md:text-sm" />
               </div>
             </div>
             
-
             {/* Right Section */}
-            <div className="flex items-center space-x-6">
-              <div className="bg-white border-2 border-black px-4 py-2">
-                <TechnicalLabel text="ID: 571" />
-                <TechnicalLabel text="v 2.47" />
+            <div className="flex items-center">
+              <div className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2">
+                <div className="text-xs md:text-sm">
+                  <TechnicalLabel text="ID: 571" />
+                  <TechnicalLabel text="v 2.47" />
+                </div>
               </div>
             </div>
           </div>
         </div>
         
         {/* Main Title Section */}
-        <div className="bg-white border-b-3 border-black py-6">
-          <div className="max-w-7xl mx-auto px-8 text-center">
-            <h1 className="text-6xl md:text-7xl font-black tracking-tighter" data-testid="main-logo">
+        <div className="bg-white border-b-3 border-black py-4 md:py-6">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 text-center">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter" data-testid="main-logo">
               THORX.
             </h1>
           </div>
