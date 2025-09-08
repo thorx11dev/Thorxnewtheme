@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import HookSection from "@/components/sections/hook-section";
 import EarningReveal from "@/components/sections/earning-reveal";
 import TrustBuilder from "@/components/sections/trust-builder";
-import CallToAction from "@/components/sections/call-to-action";
+import FAQSection from "@/components/sections/faq-section";
 import NavigationProgress from "@/components/ui/navigation-progress";
 import ArrowKeysGuide from "@/components/ui/arrow-keys-guide";
 import TechnicalLabel from "@/components/ui/technical-label";
@@ -138,7 +138,7 @@ export default function Home() {
         />
       </div>
       <div data-section="4">
-        <CallToAction 
+        <FAQSection 
           isActive={currentSection === 4}
         />
       </div>
