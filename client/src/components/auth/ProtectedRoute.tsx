@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ProtectedRouteProps {
@@ -12,15 +12,24 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const hasShownWarning = useRef(false);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to access this page.",
-        variant: "destructive",
-      });
-      setLocation("/auth");
+    if (!isLoading && !isAuthenticated && !hasShownWarning.current) {
+      // Only show warning if we're not in a loading state and haven't shown it before
+      const timeoutId = setTimeout(() => {
+        if (!isAuthenticated && !isLoading) {
+          hasShownWarning.current = true;
+          toast({
+            title: "Authentication Required",
+            description: "Please log in to access this page.",
+            variant: "destructive",
+          });
+          setLocation("/auth");
+        }
+      }, 100); // Small delay to avoid race conditions
+
+      return () => clearTimeout(timeoutId);
     }
   }, [isAuthenticated, isLoading, setLocation, toast]);
 
