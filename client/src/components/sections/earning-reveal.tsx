@@ -216,6 +216,9 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
           <div className="text-4xl md:text-6xl font-black counter-display text-black mb-4">
             ₨<span ref={dailyCounterRef} data-testid="daily-counter">0</span>
           </div>
+          <div className="bg-orange-500 text-white px-4 py-2 rounded-full inline-block mb-4">
+            <TechnicalLabel text="COMING VERY SOON" className="text-white text-xs" />
+          </div>
           <p className="text-base md:text-lg text-secondary px-2">Consistent engagement yields consistent returns. Login daily for bonus rewards.</p>
         </div>
 
