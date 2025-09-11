@@ -133,7 +133,7 @@
 
   .technical-label {
     font-family: 'Inter', sans-serif;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
@@ -318,9 +318,11 @@
     height: 16px;
   }
   
-  .technical-label {
-    font-size: 9px;
-    letter-spacing: 1px;
+  @media (max-width: 768px) {
+    .technical-label {
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
   }
   
   .counter-display {

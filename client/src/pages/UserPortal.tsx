@@ -470,7 +470,7 @@ export default function UserPortal() {
                     aria-current={currentSection === index ? 'page' : undefined}
                   >
                     <Icon className="w-4 h-4" />
-                    <TechnicalLabel text={section.name.toUpperCase()} className="text-xs" />
+                    <TechnicalLabel text={section.name.toUpperCase()} className="text-sm" />
                   </button>
                 );
               })}
@@ -556,7 +556,7 @@ export default function UserPortal() {
                 <Icon className="w-5 h-5 mb-1" />
                 <TechnicalLabel 
                   text={section.name.toUpperCase()} 
-                  className="text-xs leading-none text-center"
+                  className="text-sm leading-none text-center"
                 />
               </button>
             );
@@ -616,11 +616,11 @@ export default function UserPortal() {
           </div>
 
           {/* Available Balance */}
-          <div className="split-card bg-primary text-white border-2 border-black p-6 text-center">
-            <DollarSign className="w-12 h-12 mx-auto mb-4 text-white" />
-            <TechnicalLabel text="AVAILABLE BALANCE" className="text-white mb-2" />
-            <p className="text-3xl font-black text-white">{formatCurrency(user?.availableBalance || '0.00')}</p>
-            <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-white" />
+          <div className="split-card bg-primary text-black border-2 border-black p-6 text-center">
+            <DollarSign className="w-12 h-12 mx-auto mb-4 text-black" />
+            <TechnicalLabel text="AVAILABLE BALANCE" className="text-black mb-2" />
+            <p className="text-3xl font-black text-black">{formatCurrency(user?.availableBalance || '0.00')}</p>
+            <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-black" />
           </div>
 
           {/* Active Referrals */}
@@ -756,10 +756,10 @@ export default function UserPortal() {
             <TechnicalLabel text="ADS WATCHED" className="text-foreground" />
           </div>
 
-          <div className="split-card bg-primary text-white border-2 border-black p-6 text-center">
-            <Target className="w-12 h-12 mx-auto mb-4 text-white" />
-            <div className="text-2xl font-black text-white">{remainingAds}</div>
-            <TechnicalLabel text="REMAINING" className="text-white" />
+          <div className="split-card bg-primary text-black border-2 border-black p-6 text-center">
+            <Target className="w-12 h-12 mx-auto mb-4 text-black" />
+            <div className="text-2xl font-black text-black">{remainingAds}</div>
+            <TechnicalLabel text="REMAINING" className="text-black" />
           </div>
 
           <div className="split-card bg-muted border-2 border-black p-6 text-center">
@@ -824,8 +824,8 @@ export default function UserPortal() {
                   </div>
                   <Progress value={watchProgress} className="h-4 bg-gray-700" />
                   <div className="flex justify-between">
-                    <TechnicalLabel text={`ELAPSED: ${formatTime(Math.round((watchProgress / 100) * selectedAd.duration))}`} className="text-gray-400" />
-                    <TechnicalLabel text={`DURATION: ${formatTime(selectedAd.duration)}`} className="text-gray-400" />
+                    <TechnicalLabel text={`ELAPSED: ${formatTime(Math.round((watchProgress / 100) * selectedAd.duration))}`} className="text-muted-foreground" />
+                    <TechnicalLabel text={`DURATION: ${formatTime(selectedAd.duration)}`} className="text-muted-foreground" />
                   </div>
                 </div>
 
@@ -913,7 +913,7 @@ export default function UserPortal() {
                           <div className="text-2xl">{getAdTypeIcon(ad.type)}</div>
                           <div>
                             <h3 className="font-black text-white line-clamp-1">{ad.title}</h3>
-                            <TechnicalLabel text={ad.category} className="text-gray-400" />
+                            <TechnicalLabel text={ad.category} className="text-muted-foreground" />
                           </div>
                         </div>
                         <div className="text-right">
@@ -930,7 +930,7 @@ export default function UserPortal() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4 text-gray-400" />
-                            <TechnicalLabel text={formatTime(ad.duration)} className="text-gray-400" />
+                            <TechnicalLabel text={formatTime(ad.duration)} className="text-muted-foreground" />
                           </div>
                         </div>
                         <Button
@@ -974,7 +974,7 @@ export default function UserPortal() {
             <div className="space-y-4">
               <Clock className="w-16 h-16 mx-auto text-primary" />
               <TechnicalLabel text="DAILY LIMIT REACHED" className="text-primary text-2xl" />
-              <TechnicalLabel text="Come back tomorrow for more earning opportunities!" className="text-gray-300" />
+              <TechnicalLabel text="Come back tomorrow for more earning opportunities!" className="text-muted-foreground" />
             </div>
           </Card>
         )}
@@ -1003,7 +1003,7 @@ export default function UserPortal() {
 
         {/* Referral Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="split-card bg-primary text-white border-2 border-black p-6 text-center">
+          <div className="split-card bg-primary text-black border-2 border-black p-6 text-center">
             <Users className="w-12 h-12 mx-auto mb-4 text-white" />
             <div className="text-3xl font-black mb-2 text-white">{referralsData?.stats.count || 0}</div>
             <TechnicalLabel text="TOTAL REFERRALS" className="text-white" />
@@ -1065,15 +1065,15 @@ export default function UserPortal() {
                           <h3 className="text-xl font-black text-white">
                             {referral.referred.firstName} {referral.referred.lastName}
                           </h3>
-                          <TechnicalLabel text={referral.referred.email} className="text-gray-400" />
-                          <TechnicalLabel text={`Joined: ${formatDate(referral.referred.createdAt)}`} className="text-gray-500" />
+                          <TechnicalLabel text={referral.referred.email} className="text-muted-foreground" />
+                          <TechnicalLabel text={`Joined: ${formatDate(referral.referred.createdAt)}`} className="text-muted-foreground" />
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-black text-primary">
                           +{formatCurrency(referral.totalEarned)}
                         </div>
-                        <TechnicalLabel text={`TIER ${index + 1}`} className="text-gray-400" />
+                        <TechnicalLabel text={`TIER ${index + 1}`} className="text-muted-foreground" />
                         <div className={`inline-block px-3 py-1 text-xs font-semibold border mt-2 ${
                           referral.status === 'active' 
                             ? 'bg-green-900 text-green-400 border-green-600' 
@@ -1092,7 +1092,7 @@ export default function UserPortal() {
               <div className="space-y-4">
                 <HandHeart className="w-16 h-16 mx-auto text-primary" />
                 <TechnicalLabel text="NO REFERRALS YET" className="text-primary text-2xl" />
-                <TechnicalLabel text="Start sharing your referral code to build your network!" className="text-gray-300" />
+                <TechnicalLabel text="Start sharing your referral code to build your network!" className="text-muted-foreground" />
               </div>
             </Card>
           )}
@@ -1134,7 +1134,7 @@ export default function UserPortal() {
             <CardContent className="p-6 text-center">
               <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
               <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(user?.totalEarnings || '0.00')}</div>
-              <TechnicalLabel text="TOTAL EARNED" className="text-gray-300" />
+              <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground" />
             </CardContent>
           </Card>
 
@@ -1142,7 +1142,7 @@ export default function UserPortal() {
             <CardContent className="p-6 text-center">
               <Clock className="w-12 h-12 mx-auto mb-4 text-primary" />
               <div className="text-3xl font-black mb-2 text-primary">0</div>
-              <TechnicalLabel text="PENDING WITHDRAWALS" className="text-gray-300" />
+              <TechnicalLabel text="PENDING WITHDRAWALS" className="text-muted-foreground" />
             </CardContent>
           </Card>
         </div>
@@ -1191,7 +1191,7 @@ export default function UserPortal() {
                 REQUEST WITHDRAWAL
               </Button>
               <div className="mt-4">
-                <TechnicalLabel text="Minimum withdrawal: PKR 100.00" className="text-gray-400" />
+                <TechnicalLabel text="Minimum withdrawal: PKR 100.00" className="text-muted-foreground" />
               </div>
             </div>
           </CardContent>
@@ -1205,7 +1205,7 @@ export default function UserPortal() {
           <CardContent className="text-center p-12">
             <History className="w-16 h-16 mx-auto mb-4 text-primary" />
             <TechnicalLabel text="NO WITHDRAWALS YET" className="text-primary text-2xl" />
-            <TechnicalLabel text="Your withdrawal history will appear here" className="text-gray-300" />
+            <TechnicalLabel text="Your withdrawal history will appear here" className="text-muted-foreground" />
           </CardContent>
         </Card>
       </div>
@@ -1238,7 +1238,7 @@ export default function UserPortal() {
             <CardContent className="p-6 text-center">
               <Book className="w-16 h-16 mx-auto mb-4 text-primary" />
               <TechnicalLabel text="USER GUIDE" className="text-primary text-lg mb-2" />
-              <TechnicalLabel text="Learn how to maximize your earnings" className="text-gray-300" />
+              <TechnicalLabel text="Learn how to maximize your earnings" className="text-muted-foreground" />
             </CardContent>
           </Card>
 
@@ -1246,7 +1246,7 @@ export default function UserPortal() {
             <CardContent className="p-6 text-center">
               <HelpCircle className="w-16 h-16 mx-auto mb-4 text-primary" />
               <TechnicalLabel text="FAQ" className="text-primary text-lg mb-2" />
-              <TechnicalLabel text="Frequently asked questions" className="text-gray-300" />
+              <TechnicalLabel text="Frequently asked questions" className="text-muted-foreground" />
             </CardContent>
           </Card>
 
@@ -1254,7 +1254,7 @@ export default function UserPortal() {
             <CardContent className="p-6 text-center">
               <MessageCircle className="w-16 h-16 mx-auto mb-4 text-primary" />
               <TechnicalLabel text="LIVE CHAT" className="text-primary text-lg mb-2" />
-              <TechnicalLabel text="Chat with support team" className="text-gray-300" />
+              <TechnicalLabel text="Chat with support team" className="text-muted-foreground" />
             </CardContent>
           </Card>
         </div>
@@ -1348,7 +1348,7 @@ export default function UserPortal() {
             ].map((faq, index) => (
               <div key={index} className="border-b border-primary pb-4 last:border-b-0 last:pb-0">
                 <TechnicalLabel text={faq.question} className="text-primary text-lg mb-2" />
-                <TechnicalLabel text={faq.answer} className="text-gray-300" />
+                <TechnicalLabel text={faq.answer} className="text-muted-foreground" />
               </div>
             ))}
           </CardContent>
