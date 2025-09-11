@@ -608,7 +608,7 @@ export default function UserPortal() {
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           {/* Total Earnings */}
-          <div className="split-card bg-black text-white p-6 text-center">
+          <div className="split-card bg-black text-white border-2 border-black p-6 text-center">
             <Wallet className="w-12 h-12 mx-auto mb-4 text-white" />
             <TechnicalLabel text="TOTAL EARNINGS" className="text-white mb-2" />
             <p className="text-3xl font-black text-white">{formatCurrency(user?.totalEarnings || '0.00')}</p>
@@ -616,7 +616,7 @@ export default function UserPortal() {
           </div>
 
           {/* Available Balance */}
-          <div className="split-card bg-primary text-white p-6 text-center">
+          <div className="split-card bg-primary text-white border-2 border-black p-6 text-center">
             <DollarSign className="w-12 h-12 mx-auto mb-4 text-white" />
             <TechnicalLabel text="AVAILABLE BALANCE" className="text-white mb-2" />
             <p className="text-3xl font-black text-white">{formatCurrency(user?.availableBalance || '0.00')}</p>
@@ -756,7 +756,7 @@ export default function UserPortal() {
             <TechnicalLabel text="ADS WATCHED" className="text-foreground" />
           </div>
 
-          <div className="split-card bg-primary text-white p-6 text-center">
+          <div className="split-card bg-primary text-white border-2 border-black p-6 text-center">
             <Target className="w-12 h-12 mx-auto mb-4 text-white" />
             <div className="text-2xl font-black text-white">{remainingAds}</div>
             <TechnicalLabel text="REMAINING" className="text-white" />
@@ -768,7 +768,7 @@ export default function UserPortal() {
             <TechnicalLabel text="TODAY'S EARNINGS" className="text-foreground" />
           </div>
 
-          <div className="split-card bg-black text-white p-6 text-center">
+          <div className="split-card bg-black text-white border-2 border-black p-6 text-center">
             <Award className="w-12 h-12 mx-auto mb-4 text-white" />
             <div className="text-2xl font-black text-white">{Math.round((completedAds.size / dailyLimit) * 100)}%</div>
             <TechnicalLabel text="DAILY GOAL" className="text-white" />
@@ -796,7 +796,7 @@ export default function UserPortal() {
                   </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-8">
+              <CardContent className="p-6">
                 {/* Ad Display Area */}
                 <div className="bg-muted border-2 border-black p-12 mb-8 text-center min-h-[300px] flex items-center justify-center relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
@@ -1003,13 +1003,13 @@ export default function UserPortal() {
 
         {/* Referral Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="split-card bg-primary text-white p-6 text-center">
+          <div className="split-card bg-primary text-white border-2 border-black p-6 text-center">
             <Users className="w-12 h-12 mx-auto mb-4 text-white" />
             <div className="text-3xl font-black mb-2 text-white">{referralsData?.stats.count || 0}</div>
             <TechnicalLabel text="TOTAL REFERRALS" className="text-white" />
           </div>
 
-          <div className="split-card bg-black text-white p-6 text-center">
+          <div className="split-card bg-black text-white border-2 border-black p-6 text-center">
             <DollarSign className="w-12 h-12 mx-auto mb-4 text-white" />
             <div className="text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
             <TechnicalLabel text="REFERRAL EARNINGS" className="text-white" />
@@ -1235,7 +1235,7 @@ export default function UserPortal() {
         {/* Quick Help Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <Card className="border-2 border-primary bg-black text-white hover:bg-primary hover:text-black transition-all duration-300 cursor-pointer overflow-hidden">
-            <CardContent className="p-8 text-center">
+            <CardContent className="p-6 text-center">
               <Book className="w-16 h-16 mx-auto mb-4 text-primary" />
               <TechnicalLabel text="USER GUIDE" className="text-primary text-lg mb-2" />
               <TechnicalLabel text="Learn how to maximize your earnings" className="text-gray-300" />
@@ -1243,7 +1243,7 @@ export default function UserPortal() {
           </Card>
 
           <Card className="border-2 border-primary bg-black text-white hover:bg-primary hover:text-black transition-all duration-300 cursor-pointer overflow-hidden">
-            <CardContent className="p-8 text-center">
+            <CardContent className="p-6 text-center">
               <HelpCircle className="w-16 h-16 mx-auto mb-4 text-primary" />
               <TechnicalLabel text="FAQ" className="text-primary text-lg mb-2" />
               <TechnicalLabel text="Frequently asked questions" className="text-gray-300" />
@@ -1251,7 +1251,7 @@ export default function UserPortal() {
           </Card>
 
           <Card className="border-2 border-primary bg-black text-white hover:bg-primary hover:text-black transition-all duration-300 cursor-pointer overflow-hidden">
-            <CardContent className="p-8 text-center">
+            <CardContent className="p-6 text-center">
               <MessageCircle className="w-16 h-16 mx-auto mb-4 text-primary" />
               <TechnicalLabel text="LIVE CHAT" className="text-primary text-lg mb-2" />
               <TechnicalLabel text="Chat with support team" className="text-gray-300" />
