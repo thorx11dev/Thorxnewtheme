@@ -681,86 +681,65 @@ export default function UserPortal() {
   // Work Section
   function renderWorkSection() {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <Flame className="w-4 h-4" />
-            <TechnicalLabel text="WORK CENTER" className="text-primary" />
+          <div className="mb-2">
+            <TechnicalLabel text="WORK CENTER" className="text-foreground" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
+          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter">
             START <span className="text-primary">EARNING</span><br />
             WATCH & EARN REWARDS
           </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Watch advertisements, complete tasks, and earn real money daily
           </p>
-          <Barcode className="w-48 h-10 mx-auto opacity-60" />
+          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
         </div>
 
         {/* Progress Overview Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-          <Card className="border-2 border-primary bg-blue-600 text-white overflow-hidden">
-            <CardContent className="p-6 relative">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
-              <div className="relative">
-                <Eye className="w-8 h-8 mb-4" />
-                <div className="text-2xl font-black">{todayAdViews?.count || 0}</div>
-                <TechnicalLabel text="ADS WATCHED" className="text-blue-100" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="split-card bg-card border-2 border-black p-6 text-center">
+            <Eye className="w-12 h-12 mx-auto mb-4 text-foreground" />
+            <div className="text-2xl font-black text-foreground">{todayAdViews?.count || 0}</div>
+            <TechnicalLabel text="ADS WATCHED" className="text-foreground" />
+          </div>
 
-          <Card className="border-2 border-primary bg-primary text-black overflow-hidden">
-            <CardContent className="p-6 relative">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-black/20 rounded-full transform translate-x-6 -translate-y-6" />
-              <div className="relative">
-                <Target className="w-8 h-8 mb-4" />
-                <div className="text-2xl font-black">{remainingAds}</div>
-                <TechnicalLabel text="REMAINING" className="text-black" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="split-card bg-primary text-white p-6 text-center">
+            <Target className="w-12 h-12 mx-auto mb-4 text-white" />
+            <div className="text-2xl font-black text-white">{remainingAds}</div>
+            <TechnicalLabel text="REMAINING" className="text-white" />
+          </div>
 
-          <Card className="border-2 border-primary bg-green-600 text-white overflow-hidden">
-            <CardContent className="p-6 relative">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
-              <div className="relative">
-                <DollarSign className="w-8 h-8 mb-4" />
-                <div className="text-2xl font-black">{formatCurrency((completedAds.size * 2.5).toString())}</div>
-                <TechnicalLabel text="TODAY'S EARNINGS" className="text-green-100" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="split-card bg-muted border-2 border-black p-6 text-center">
+            <DollarSign className="w-12 h-12 mx-auto mb-4 text-foreground" />
+            <div className="text-2xl font-black text-foreground">{formatCurrency((completedAds.size * 2.5).toString())}</div>
+            <TechnicalLabel text="TODAY'S EARNINGS" className="text-foreground" />
+          </div>
 
-          <Card className="border-2 border-primary bg-purple-600 text-white overflow-hidden">
-            <CardContent className="p-6 relative">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
-              <div className="relative">
-                <Award className="w-8 h-8 mb-4" />
-                <div className="text-2xl font-black">{Math.round((completedAds.size / dailyLimit) * 100)}%</div>
-                <TechnicalLabel text="DAILY GOAL" className="text-purple-100" />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="split-card bg-black text-white p-6 text-center">
+            <Award className="w-12 h-12 mx-auto mb-4 text-white" />
+            <div className="text-2xl font-black text-white">{Math.round((completedAds.size / dailyLimit) * 100)}%</div>
+            <TechnicalLabel text="DAILY GOAL" className="text-white" />
+          </div>
         </div>
 
         {/* Ad Player Section */}
         {selectedAd && (
           <div className="mb-12">
-            <Card className="border-2 border-primary bg-black text-white overflow-hidden" data-testid="ad-player">
-              <CardHeader className="bg-primary/10 border-b border-primary">
+            <Card className="split-card bg-card border-2 border-black" data-testid="ad-player">
+              <CardHeader className="border-b-2 border-black">
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="text-3xl">{getAdTypeIcon(selectedAd.type)}</div>
+                    <div className="text-3xl text-foreground">{getAdTypeIcon(selectedAd.type)}</div>
                     <div>
                       <h3 className="text-xl font-black text-primary">{selectedAd.title}</h3>
-                      <TechnicalLabel text={`${selectedAd.category} • ${formatTime(selectedAd.duration)}`} className="text-gray-300" />
+                      <TechnicalLabel text={`${selectedAd.category} • ${formatTime(selectedAd.duration)}`} className="text-muted-foreground" />
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-black text-primary">{formatCurrency(selectedAd.reward)}</div>
-                    <div className={`inline-block px-3 py-1 border text-xs font-semibold ${getDifficultyColor(selectedAd.difficulty)}`}>
+                    <div className={`inline-block px-3 py-1 border-2 border-black text-xs font-semibold ${getDifficultyColor(selectedAd.difficulty)}`}>
                       {selectedAd.difficulty.toUpperCase()}
                     </div>
                   </div>
