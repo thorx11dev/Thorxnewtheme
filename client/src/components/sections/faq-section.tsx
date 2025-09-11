@@ -52,10 +52,10 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                 data-testid={`faq-item-${faq.id}`}
               >
                 {/* Folder Tab */}
-                <div className="absolute -top-4 left-8 w-20 h-8 bg-primary border-4 border-black border-b-0 rounded-t-lg z-10"></div>
+                <div className="absolute -top-4 left-8 w-20 h-8 bg-yellow-400 border-4 border-black border-b-0 rounded-t-lg z-10"></div>
                 
                 {/* Main Card */}
-                <div className="bg-primary border-4 border-black rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 group-hover:scale-[1.01]">
+                <div className="bg-yellow-400 border-4 border-black rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 group-hover:scale-[1.01]">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem 
                       value={faq.id}
@@ -105,10 +105,10 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                   data-testid={`faq-item-${faq.id}`}
                 >
                   {/* Mobile Folder Tab */}
-                  <div className="absolute -top-3 left-6 w-16 h-6 bg-primary border-3 border-black border-b-0 rounded-t-md z-10"></div>
+                  <div className="absolute -top-3 left-6 w-16 h-6 bg-yellow-400 border-3 border-black border-b-0 rounded-t-md z-10"></div>
                   
                   {/* Mobile Main Card */}
-                  <div className="bg-primary border-3 border-black rounded-lg overflow-hidden">
+                  <div className="bg-yellow-400 border-3 border-black rounded-lg overflow-hidden">
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem 
                         value={faq.id}
