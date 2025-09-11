@@ -13,7 +13,7 @@ export default function HookSection({ isActive, onAdvance }: HookSectionProps) {
       data-section="1"
       data-testid="hook-section"
     >
-      <div className="text-center w-full max-w-4xl mx-auto px-6 md:px-8">
+      <div className="text-center w-full max-w-4xl mx-auto px-6 md:px-8 pt-24 md:pt-32">
         {/* Technical Header */}
         <div className="mb-8 md:mb-8">
           <div className="mb-3">

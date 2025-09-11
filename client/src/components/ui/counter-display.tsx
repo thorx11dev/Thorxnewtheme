@@ -14,9 +14,9 @@ export default function CounterDisplay({ value, suffix = "" }: CounterDisplayPro
 // Static method for animation
 CounterDisplay.animateCounter = (element: HTMLElement, targetValue: number, suffix: string = '') => {
   let currentValue = 0;
-  const frames = 90; // More frames for slower, smoother animation
+  const frames = 60; // Fewer frames for faster animation
   const increment = targetValue / frames;
-  const duration = 3500; // 3.5 seconds for slower animation
+  const duration = 800; // Much faster - 0.8 seconds
   const frameRate = duration / frames; // Calculate frame rate
   
   const interval = setInterval(() => {
