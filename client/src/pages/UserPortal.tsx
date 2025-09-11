@@ -787,7 +787,7 @@ export default function UserPortal() {
           <div className="mb-2">
             <TechnicalLabel text="WORK CENTER" className="text-foreground" />
           </div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-3 tracking-tighter leading-tight">
+          <h1 className="work-hero-title text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-3 tracking-tighter leading-tight">
             START <span className="text-primary">EARNING</span><br />
             WATCH & EARN REWARDS
           </h1>
@@ -798,7 +798,7 @@ export default function UserPortal() {
         </div>
 
         {/* Progress Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-10">
+        <div className="grid-work-cards gap-4 md:gap-6 mb-10">
           <div className="group gradient-card p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default" data-testid="card-ads-watched">
             <div className="flex items-center justify-between mb-3">
               <Eye className="w-10 h-10 text-primary group-hover:text-primary/80 transition-colors" />
@@ -963,54 +963,55 @@ export default function UserPortal() {
 
         {/* Available Ads */}
         {remainingAds > 0 ? (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div className="text-center">
-              <TechnicalLabel text="AVAILABLE ADS" className="text-primary text-2xl" />
+              <TechnicalLabel text="AVAILABLE ADS" className="text-primary text-xl" />
+              <div className="text-sm text-muted-foreground mt-1">Choose an advertisement to start earning</div>
             </div>
             
             {/* Ads Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               {availableAds.map((ad) => {
                 const isCompleted = completedAds.has(ad.id);
                 const isCurrent = selectedAd?.id === ad.id;
 
                 return (
-                  <Card key={ad.id} className={`border-2 border-primary bg-black text-white hover:shadow-xl transition-all duration-300 overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
-                    <CardHeader>
+                  <Card key={ad.id} className={`group gradient-card work-card-hover overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
+                    <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="text-2xl">{getAdTypeIcon(ad.type)}</div>
+                          <div className="text-xl group-hover:scale-110 transition-transform">{getAdTypeIcon(ad.type)}</div>
                           <div>
-                            <h3 className="font-black text-white line-clamp-1">{ad.title}</h3>
-                            <TechnicalLabel text={ad.category} className="text-muted-foreground" />
+                            <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">{ad.title}</h3>
+                            <TechnicalLabel text={ad.category} className="text-muted-foreground text-xs" />
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-black text-primary">{formatCurrency(ad.reward)}</div>
-                          <div className={`inline-block px-2 py-1 text-xs font-semibold border ${getDifficultyColor(ad.difficulty)}`}>
-                            {ad.difficulty}
+                          <div className="text-lg font-black text-primary group-hover:text-primary/80 transition-colors">{formatCurrency(ad.reward)}</div>
+                          <div className={`inline-block px-2 py-1 text-xs font-semibold rounded ${getDifficultyColorDark(ad.difficulty)}`}>
+                            {ad.difficulty.toUpperCase()}
                           </div>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <div className="space-y-4">
-                        <TechnicalLabel text={ad.description} className="text-gray-300 text-sm" />
+                      <div className="space-y-3">
+                        <TechnicalLabel text={ad.description} className="text-muted-foreground text-sm leading-relaxed" />
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-gray-400" />
-                            <TechnicalLabel text={formatTime(ad.duration)} className="text-muted-foreground" />
+                            <Clock className="w-4 h-4 text-primary" />
+                            <TechnicalLabel text={formatTime(ad.duration)} className="text-muted-foreground text-xs" />
                           </div>
                         </div>
                         <Button
                           onClick={() => startWatching(ad)}
                           disabled={Boolean(isCompleted || (selectedAd && !isCompleted))}
-                          className={`w-full transition-all duration-200 ${
+                          className={`w-full transition-all duration-200 hover:scale-105 ${
                             isCompleted 
-                              ? 'bg-green-600 text-white cursor-not-allowed'
+                              ? 'bg-green-900/50 text-green-300 cursor-not-allowed border border-green-700'
                               : isCurrent
-                              ? 'bg-primary text-black'
-                              : 'bg-primary hover:bg-primary/90 text-black border-2 border-primary'
+                              ? 'bg-primary text-primary-foreground border border-primary/20'
+                              : 'bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/20'
                           }`}
                           data-testid={`button-watch-${ad.id}`}
                         >
@@ -1039,11 +1040,16 @@ export default function UserPortal() {
             </div>
           </div>
         ) : (
-          <Card className="border-2 border-primary bg-black text-white text-center p-12">
+          <Card className="gradient-card text-center p-8 md:p-12">
             <div className="space-y-4">
-              <Clock className="w-16 h-16 mx-auto text-primary" />
-              <TechnicalLabel text="DAILY LIMIT REACHED" className="text-primary text-2xl" />
-              <TechnicalLabel text="Come back tomorrow for more earning opportunities!" className="text-muted-foreground" />
+              <div className="w-20 h-20 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
+                <Clock className="w-10 h-10 text-primary" />
+              </div>
+              <TechnicalLabel text="DAILY LIMIT REACHED" className="text-primary text-xl" />
+              <TechnicalLabel text="Great work! You've completed all available ads today. Come back tomorrow for new earning opportunities!" className="text-muted-foreground max-w-md mx-auto leading-relaxed" />
+              <div className="text-sm text-muted-foreground mt-4">
+                <span className="font-semibold">Reset in:</span> {formatTime(86400 - (Date.now() % 86400) / 1000)}
+              </div>
             </div>
           </Card>
         )}
