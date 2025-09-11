@@ -452,19 +452,41 @@ export default function UserPortal() {
               </div>
             </div>
 
-            {/* Section Indicators */}
-            <div className="flex items-center space-x-2">
+            {/* Desktop Tab Navigation */}
+            <nav className="hidden md:flex items-center space-x-1" role="navigation" aria-label="Primary navigation">
+              {sections.map((section, index) => {
+                const Icon = section.icon;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => navigateToSection(index)}
+                    className={`flex items-center space-x-2 px-4 py-2 border-2 border-black transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      currentSection === index
+                        ? 'bg-primary text-black font-black'
+                        : 'bg-background text-foreground hover:bg-primary hover:text-black'
+                    }`}
+                    data-testid={`nav-tab-${section.id}`}
+                    aria-label={`Go to ${section.name}`}
+                    aria-current={currentSection === index ? 'page' : undefined}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <TechnicalLabel text={section.name.toUpperCase()} className="text-xs" />
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Mobile Section Indicator (simple dots for reference) */}
+            <div className="flex md:hidden items-center space-x-2" aria-hidden="true">
               {sections.map((section, index) => (
-                <button
+                <div
                   key={section.id}
-                  onClick={() => navigateToSection(index)}
-                  className={`w-3 h-3 border-2 border-black transition-all duration-300 ${
+                  className={`w-2 h-2 border border-black transition-all duration-300 ${
                     currentSection === index
                       ? 'bg-primary'
-                      : 'bg-transparent hover:bg-primary'
+                      : 'bg-transparent'
                   }`}
                   data-testid={`nav-indicator-${section.id}`}
-                  aria-label={`Go to ${section.name}`}
                 />
               ))}
             </div>
@@ -488,8 +510,8 @@ export default function UserPortal() {
         </div>
       </nav>
 
-      {/* Navigation Controls */}
-      <div className="fixed left-4 top-1/2 transform -translate-y-1/2 z-40">
+      {/* Desktop Navigation Controls */}
+      <div className="hidden md:block fixed left-4 top-1/2 transform -translate-y-1/2 z-40">
         <Button
           onClick={prevSection}
           variant="outline"
@@ -501,7 +523,7 @@ export default function UserPortal() {
         </Button>
       </div>
 
-      <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
+      <div className="hidden md:block fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
         <Button
           onClick={nextSection}
           variant="outline"
@@ -513,8 +535,37 @@ export default function UserPortal() {
         </Button>
       </div>
 
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t-2 border-black" role="navigation" aria-label="Mobile navigation">
+        <div className="flex" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          {sections.map((section, index) => {
+            const Icon = section.icon;
+            return (
+              <button
+                key={section.id}
+                onClick={() => navigateToSection(index)}
+                className={`flex-1 flex flex-col items-center justify-center py-3 px-2 min-h-[60px] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  currentSection === index
+                    ? 'bg-primary text-black'
+                    : 'bg-background text-foreground'
+                } border-r-2 border-black last:border-r-0`}
+                data-testid={`mobile-tab-${section.id}`}
+                aria-label={`Go to ${section.name}`}
+                aria-current={currentSection === index ? 'page' : undefined}
+              >
+                <Icon className="w-5 h-5 mb-1" />
+                <TechnicalLabel 
+                  text={section.name.toUpperCase()} 
+                  className="text-xs leading-none text-center"
+                />
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
       {/* Section Content */}
-      <div className="pt-20">
+      <div className="pt-20 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
         {sections.map((section, index) => (
           <section
             key={section.id}
