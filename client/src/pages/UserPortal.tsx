@@ -179,7 +179,7 @@ export default function UserPortal() {
   const [completedAds, setCompletedAds] = useState<Set<string>>(new Set());
 
   // Fetch user data
-  const { data: earningsData, isLoading: earningsLoading } = useQuery({
+  const { data: earningsData } = useQuery({
     queryKey: ["earnings"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/earnings?limit=10");
@@ -188,7 +188,7 @@ export default function UserPortal() {
     enabled: !!user,
   });
 
-  const { data: referralsData, isLoading: referralsLoading } = useQuery({
+  const { data: referralsData } = useQuery({
     queryKey: ["referrals"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/referrals");
@@ -200,7 +200,7 @@ export default function UserPortal() {
     enabled: !!user,
   });
 
-  const { data: todayAdViews, isLoading: adViewsLoading } = useQuery({
+  const { data: todayAdViews } = useQuery({
     queryKey: ["ad-views", "today"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/ad-views/today");
@@ -431,7 +431,7 @@ export default function UserPortal() {
   ];
 
   const dailyGoal = 50;
-  const currentProgress = Number.parseFloat(user?.totalEarnings ?? '0') || 0;
+  const currentProgress = parseFloat(user.totalEarnings);
   const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
   const dailyLimit = 50;
   const remainingAds = dailyLimit - (todayAdViews?.count || 0);
@@ -453,17 +453,18 @@ export default function UserPortal() {
             </div>
 
             {/* Section Indicators */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               {sections.map((section, index) => (
                 <button
                   key={section.id}
                   onClick={() => navigateToSection(index)}
-                  className={`nav-indicator ${
-                    currentSection === index ? 'active' : ''
+                  className={`w-3 h-3 border-2 border-black transition-all duration-300 ${
+                    currentSection === index
+                      ? 'bg-primary'
+                      : 'bg-transparent hover:bg-primary'
                   }`}
                   data-testid={`nav-indicator-${section.id}`}
                   aria-label={`Go to ${section.name}`}
-                  title={section.name}
                 />
               ))}
             </div>
@@ -479,7 +480,6 @@ export default function UserPortal() {
                 size="sm"
                 className="border-2 border-black text-foreground hover:bg-black hover:text-white"
                 data-testid="button-logout"
-                aria-label="Logout"
               >
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -496,7 +496,6 @@ export default function UserPortal() {
           size="lg"
           className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
           data-testid="button-prev-section"
-          aria-label="Previous section"
         >
           <ChevronLeft className="w-6 h-6" />
         </Button>
@@ -509,7 +508,6 @@ export default function UserPortal() {
           size="lg"
           className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
           data-testid="button-next-section"
-          aria-label="Next section"
         >
           <ChevronRight className="w-6 h-6" />
         </Button>
@@ -557,140 +555,80 @@ export default function UserPortal() {
         </div>
 
         {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           {/* Total Earnings */}
-          <div className="metric-card-dark split-card-enhanced p-8 text-center group">
-            <div className="relative">
-              <Wallet className="w-16 h-16 mx-auto mb-6 text-primary transition-transform group-hover:scale-110" />
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                <TrendingUp className="w-3 h-3 text-white" />
-              </div>
-            </div>
-            <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground mb-3 text-xs tracking-wider" />
-            <p className="text-4xl font-black text-primary mb-2 tracking-tight">{formatCurrency(user?.totalEarnings || '0.00')}</p>
-            <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-sm">
-              <ArrowUpRight className="w-3 h-3 text-primary" />
-              <TechnicalLabel text="+15.2% THIS WEEK" className="text-primary text-xs" />
-            </div>
+          <div className="split-card bg-black text-white p-6 text-center">
+            <Wallet className="w-12 h-12 mx-auto mb-4 text-white" />
+            <TechnicalLabel text="TOTAL EARNINGS" className="text-white mb-2" />
+            <p className="text-3xl font-black text-white">{formatCurrency(user?.totalEarnings || '0.00')}</p>
+            <TechnicalLabel text="+15.2% THIS WEEK" className="text-white" />
           </div>
 
           {/* Available Balance */}
-          <div className="metric-card-primary split-card-enhanced p-8 text-center group">
-            <div className="relative">
-              <DollarSign className="w-16 h-16 mx-auto mb-6 text-primary-foreground transition-transform group-hover:scale-110" />
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-black rounded-full flex items-center justify-center">
-                <CheckCircle2 className="w-3 h-3 text-white" />
-              </div>
-            </div>
-            <TechnicalLabel text="AVAILABLE BALANCE" className="text-primary-foreground/80 mb-3 text-xs tracking-wider" />
-            <p className="text-4xl font-black text-primary-foreground mb-2 tracking-tight">{formatCurrency(user?.availableBalance || '0.00')}</p>
-            <div className="inline-flex items-center gap-2 bg-black/20 px-3 py-1 rounded-sm">
-              <Wallet className="w-3 h-3 text-primary-foreground" />
-              <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-primary-foreground text-xs" />
-            </div>
+          <div className="split-card bg-primary text-white p-6 text-center">
+            <DollarSign className="w-12 h-12 mx-auto mb-4 text-white" />
+            <TechnicalLabel text="AVAILABLE BALANCE" className="text-white mb-2" />
+            <p className="text-3xl font-black text-white">{formatCurrency(user?.availableBalance || '0.00')}</p>
+            <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-white" />
           </div>
 
           {/* Active Referrals */}
-          <div className="metric-card split-card-enhanced p-8 text-center group">
-            <div className="relative">
-              <Users className="w-16 h-16 mx-auto mb-6 text-primary transition-transform group-hover:scale-110" />
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                <UserCheck className="w-3 h-3 text-white" />
-              </div>
-            </div>
-            <TechnicalLabel text="ACTIVE REFERRALS" className="text-muted-foreground mb-3 text-xs tracking-wider" />
-            <p className="text-4xl font-black text-foreground mb-2 tracking-tight">
-              {referralsLoading ? (
-                <div className="h-10 w-16 bg-muted animate-pulse rounded"></div>
-              ) : (
-                referralsData?.stats.count || 0
-              )}
-            </p>
-            <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-sm">
-              <Gift className="w-3 h-3 text-primary" />
-              <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-primary text-xs" />
-            </div>
+          <div className="split-card bg-muted border-2 border-black p-6 text-center">
+            <Users className="w-12 h-12 mx-auto mb-4 text-foreground" />
+            <TechnicalLabel text="ACTIVE REFERRALS" className="text-foreground mb-2" />
+            <p className="text-3xl font-black text-foreground">{referralsData?.stats.count || 0}</p>
+            <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-foreground" />
           </div>
 
           {/* Daily Progress */}
-          <div className="metric-card split-card-enhanced p-8 text-center group">
-            <div className="relative">
-              <Target className="w-16 h-16 mx-auto mb-6 text-primary transition-transform group-hover:scale-110" />
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                <Zap className="w-3 h-3 text-white" />
-              </div>
-            </div>
-            <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground mb-3 text-xs tracking-wider" />
-            <p className="text-4xl font-black text-primary mb-4 tracking-tight">{Math.round(progressPercentage)}%</p>
-            <div className="relative">
-              <Progress value={progressPercentage} className="h-4 mb-3 bg-muted border border-border" />
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10 rounded-sm"></div>
-            </div>
-            <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-muted-foreground text-xs" />
+          <div className="split-card bg-card border-2 border-black p-6 text-center">
+            <Target className="w-12 h-12 mx-auto mb-4 text-foreground" />
+            <TechnicalLabel text="DAILY GOAL" className="text-foreground mb-2" />
+            <p className="text-3xl font-black text-primary">{Math.round(progressPercentage)}%</p>
+            <Progress value={progressPercentage} className="h-3 my-4" />
+            <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-foreground" />
           </div>
         </div>
 
         {/* Charts Section */}
-        <div className="grid lg:grid-cols-2 gap-10 mb-16">
+        <div className="grid lg:grid-cols-2 gap-8">
           {/* Weekly Earnings Chart */}
-          <Card className="split-card-enhanced metric-card group">
-            <CardHeader className="border-b-3 border-border bg-muted/30 p-6">
+          <Card className="split-card bg-card border-2 border-black">
+            <CardHeader className="border-b-2 border-black">
               <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-primary rounded-sm">
-                    <BarChart3 className="w-6 h-6 text-primary-foreground" />
-                  </div>
-                  <div>
-                    <TechnicalLabel text="WEEKLY EARNINGS" className="text-foreground text-lg font-black" />
-                    <TechnicalLabel text="PERFORMANCE ANALYTICS" className="text-muted-foreground text-xs" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 bg-primary/10 px-3 py-2 rounded-sm">
-                  <Activity className="w-4 h-4 text-primary" />
-                  <TechnicalLabel text="TRENDING UP" className="text-primary text-xs" />
+                <TechnicalLabel text="WEEKLY EARNINGS" className="text-foreground" />
+                <div className="p-2 bg-black border border-black">
+                  <BarChart3 className="w-5 h-5 text-white" />
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-8">
-              <ResponsiveContainer width="100%" height={350}>
+            <CardContent className="p-6">
+              <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={earningsChartData}>
                   <defs>
                     <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12}
-                    fontWeight={600}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12}
-                    fontWeight={600}
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                  <XAxis dataKey="date" stroke="#333" />
+                  <YAxis stroke="#333" />
                   <Tooltip 
                     formatter={(value) => [`PKR ${value}`, 'Earnings']}
                     contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '3px solid hsl(var(--border))',
+                      backgroundColor: '#fff', 
+                      border: '2px solid #000',
                       borderRadius: '0',
-                      color: 'hsl(var(--card-foreground))',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                      fontWeight: 600
+                      color: '#000'
                     }}
                   />
                   <Area 
                     type="monotone" 
                     dataKey="earnings" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={4}
+                    stroke="#ff6b35" 
+                    strokeWidth={3}
                     fill="url(#earningsGradient)" 
-                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: 'hsl(var(--primary))', strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -698,52 +636,37 @@ export default function UserPortal() {
           </Card>
 
           {/* Earnings Breakdown */}
-          <Card className="split-card-enhanced metric-card group">
-            <CardHeader className="border-b-3 border-border bg-muted/30 p-6">
+          <Card className="split-card bg-card border-2 border-black">
+            <CardHeader className="border-b-2 border-black">
               <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-primary rounded-sm">
-                    <PieChart className="w-6 h-6 text-primary-foreground" />
-                  </div>
-                  <div>
-                    <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground text-lg font-black" />
-                    <TechnicalLabel text="REVENUE DISTRIBUTION" className="text-muted-foreground text-xs" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 bg-primary/10 px-3 py-2 rounded-sm">
-                  <Star className="w-4 h-4 text-primary" />
-                  <TechnicalLabel text="OPTIMIZED" className="text-primary text-xs" />
+                <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground" />
+                <div className="p-2 bg-black border border-black">
+                  <PieChart className="w-5 h-5 text-white" />
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-8">
-              <ResponsiveContainer width="100%" height={350}>
+            <CardContent className="p-6">
+              <ResponsiveContainer width="100%" height={300}>
                 <RechartsPieChart>
                   <Pie
                     data={earningTypesData}
                     cx="50%"
                     cy="50%"
-                    outerRadius={90}
-                    innerRadius={30}
+                    outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
                     label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                    fontSize={12}
-                    fontWeight={600}
                   >
                     {earningTypesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} stroke="hsl(var(--background))" strokeWidth={2} />
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip 
                     contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '3px solid hsl(var(--border))',
+                      backgroundColor: '#fff', 
+                      border: '2px solid #000',
                       borderRadius: '0',
-                      color: 'hsl(var(--card-foreground))',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                      fontWeight: 600
+                      color: '#000'
                     }}
                   />
                 </RechartsPieChart>
@@ -1055,7 +978,7 @@ export default function UserPortal() {
           </CardHeader>
           <CardContent className="text-center space-y-6">
             <div className="bg-primary text-black px-8 py-6 text-4xl font-black tracking-widest inline-block border-2 border-primary">
-              {user?.referralCode || "LOADING"}
+              {user.referralCode}
             </div>
             <div className="space-y-4">
               <Button
@@ -1151,7 +1074,7 @@ export default function UserPortal() {
           <Card className="border-2 border-primary bg-primary text-black overflow-hidden">
             <CardContent className="p-6 text-center">
               <Wallet className="w-12 h-12 mx-auto mb-4" />
-              <div className="text-3xl font-black mb-2">{formatCurrency(user?.availableBalance || '0.00')}</div>
+              <div className="text-3xl font-black mb-2">{formatCurrency(user.availableBalance)}</div>
               <TechnicalLabel text="AVAILABLE BALANCE" className="text-black" />
             </CardContent>
           </Card>
@@ -1159,7 +1082,7 @@ export default function UserPortal() {
           <Card className="border-2 border-primary bg-black text-white overflow-hidden">
             <CardContent className="p-6 text-center">
               <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(user?.totalEarnings || '0.00')}</div>
+              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(user.totalEarnings)}</div>
               <TechnicalLabel text="TOTAL EARNED" className="text-gray-300" />
             </CardContent>
           </Card>
@@ -1174,72 +1097,50 @@ export default function UserPortal() {
         </div>
 
         {/* Withdrawal Form */}
-        <Card className="split-card-enhanced metric-card-dark mb-16 group">
-          <CardHeader className="border-b-3 border-border bg-muted/20 p-6 text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="p-3 bg-primary rounded-sm">
-                <Download className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <TechnicalLabel text="WITHDRAW FUNDS" className="text-primary text-xl font-black" />
-            </div>
-            <TechnicalLabel text="SECURE & INSTANT PROCESSING" className="text-muted-foreground text-sm" />
+        <Card className="border-2 border-primary bg-black text-white mb-12 overflow-hidden">
+          <CardHeader className="text-center">
+            <TechnicalLabel text="WITHDRAW FUNDS" className="text-primary text-xl" />
           </CardHeader>
-          <CardContent className="p-8 space-y-8">
-            <div className="grid md:grid-cols-2 gap-8">
+          <CardContent className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-muted-foreground mb-3 text-sm tracking-wider" />
+                <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-white mb-2" />
                 <input 
                   type="number" 
                   placeholder="0.00"
-                  className="form-input-enhanced w-full"
-                  data-testid="input-withdrawal-amount"
+                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
                 />
-                <TechnicalLabel text="MIN: PKR 100.00" className="text-muted-foreground text-xs mt-2" />
               </div>
               <div>
-                <TechnicalLabel text="PAYMENT METHOD" className="text-muted-foreground mb-3 text-sm tracking-wider" />
-                <select className="form-input-enhanced w-full" data-testid="select-payment-method">
+                <TechnicalLabel text="PAYMENT METHOD" className="text-white mb-2" />
+                <select className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary">
                   <option value="">SELECT METHOD</option>
                   <option value="jazzcash">JazzCash</option>
                   <option value="easypaisa">EasyPaisa</option>
                   <option value="bank">Bank Transfer</option>
                 </select>
-                <TechnicalLabel text="INSTANT PROCESSING" className="text-primary text-xs mt-2" />
               </div>
             </div>
             
             <div>
-              <TechnicalLabel text="ACCOUNT DETAILS" className="text-muted-foreground mb-3 text-sm tracking-wider" />
+              <TechnicalLabel text="ACCOUNT DETAILS" className="text-white mb-2" />
               <input 
                 type="text" 
                 placeholder="Account number or phone number"
-                className="form-input-enhanced w-full"
-                data-testid="input-account-details"
+                className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
               />
-              <TechnicalLabel text="SECURE & ENCRYPTED" className="text-muted-foreground text-xs mt-2" />
             </div>
 
-            <div className="text-center pt-4">
+            <div className="text-center">
               <Button
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-16 py-6 text-xl font-black border-3 border-primary transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary"
                 data-testid="button-withdraw"
               >
-                <Download className="w-6 h-6 mr-3" />
+                <Download className="w-5 h-5 mr-3" />
                 REQUEST WITHDRAWAL
               </Button>
-              <div className="mt-6 grid grid-cols-3 gap-4 max-w-md mx-auto">
-                <div className="text-center">
-                  <Clock className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <TechnicalLabel text="INSTANT" className="text-primary text-xs" />
-                </div>
-                <div className="text-center">
-                  <CheckCircle2 className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <TechnicalLabel text="SECURE" className="text-primary text-xs" />
-                </div>
-                <div className="text-center">
-                  <Wallet className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <TechnicalLabel text="VERIFIED" className="text-primary text-xs" />
-                </div>
+              <div className="mt-4">
+                <TechnicalLabel text="Minimum withdrawal: PKR 100.00" className="text-gray-400" />
               </div>
             </div>
           </CardContent>
@@ -1344,28 +1245,26 @@ export default function UserPortal() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <TechnicalLabel text="SUBJECT" className="text-muted-foreground mb-3 text-sm tracking-wider" />
+                <TechnicalLabel text="SUBJECT" className="text-white mb-2" />
                 <input 
                   type="text" 
                   placeholder="Message subject"
-                  className="form-input-enhanced w-full"
-                  data-testid="input-help-subject"
+                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary"
                 />
               </div>
               <div>
-                <TechnicalLabel text="MESSAGE" className="text-muted-foreground mb-3 text-sm tracking-wider" />
+                <TechnicalLabel text="MESSAGE" className="text-white mb-2" />
                 <textarea 
-                  rows={5}
+                  rows={4}
                   placeholder="Your message"
-                  className="form-input-enhanced w-full resize-none"
-                  data-testid="textarea-help-message"
+                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary"
                 ></textarea>
               </div>
               <Button
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-4 text-lg font-black border-3 border-primary transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                className="w-full bg-primary hover:bg-primary/90 text-black py-3 text-lg font-black border-2 border-primary"
                 data-testid="button-send-message"
               >
-                <MessageCircle className="w-6 h-6 mr-3" />
+                <MessageCircle className="w-5 h-5 mr-3" />
                 SEND MESSAGE
               </Button>
             </CardContent>
