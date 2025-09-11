@@ -179,7 +179,7 @@ export default function UserPortal() {
   const [completedAds, setCompletedAds] = useState<Set<string>>(new Set());
 
   // Fetch user data
-  const { data: earningsData } = useQuery({
+  const { data: earningsData, isLoading: earningsLoading } = useQuery({
     queryKey: ["earnings"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/earnings?limit=10");
@@ -188,7 +188,7 @@ export default function UserPortal() {
     enabled: !!user,
   });
 
-  const { data: referralsData } = useQuery({
+  const { data: referralsData, isLoading: referralsLoading } = useQuery({
     queryKey: ["referrals"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/referrals");
@@ -200,7 +200,7 @@ export default function UserPortal() {
     enabled: !!user,
   });
 
-  const { data: todayAdViews } = useQuery({
+  const { data: todayAdViews, isLoading: adViewsLoading } = useQuery({
     queryKey: ["ad-views", "today"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/ad-views/today");
@@ -431,7 +431,7 @@ export default function UserPortal() {
   ];
 
   const dailyGoal = 50;
-  const currentProgress = parseFloat(user.totalEarnings);
+  const currentProgress = Number.parseFloat(user?.totalEarnings ?? '0') || 0;
   const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
   const dailyLimit = 50;
   const remainingAds = dailyLimit - (todayAdViews?.count || 0);
@@ -479,6 +479,7 @@ export default function UserPortal() {
                 size="sm"
                 className="border-2 border-black text-foreground hover:bg-black hover:text-white"
                 data-testid="button-logout"
+                aria-label="Logout"
               >
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -495,6 +496,7 @@ export default function UserPortal() {
           size="lg"
           className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
           data-testid="button-prev-section"
+          aria-label="Previous section"
         >
           <ChevronLeft className="w-6 h-6" />
         </Button>
@@ -507,6 +509,7 @@ export default function UserPortal() {
           size="lg"
           className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
           data-testid="button-next-section"
+          aria-label="Next section"
         >
           <ChevronRight className="w-6 h-6" />
         </Button>
@@ -596,7 +599,13 @@ export default function UserPortal() {
               </div>
             </div>
             <TechnicalLabel text="ACTIVE REFERRALS" className="text-muted-foreground mb-3 text-xs tracking-wider" />
-            <p className="text-4xl font-black text-foreground mb-2 tracking-tight">{referralsData?.stats.count || 0}</p>
+            <p className="text-4xl font-black text-foreground mb-2 tracking-tight">
+              {referralsLoading ? (
+                <div className="h-10 w-16 bg-muted animate-pulse rounded"></div>
+              ) : (
+                referralsData?.stats.count || 0
+              )}
+            </p>
             <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-sm">
               <Gift className="w-3 h-3 text-primary" />
               <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-primary text-xs" />
