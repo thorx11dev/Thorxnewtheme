@@ -538,121 +538,71 @@ export default function UserPortal() {
   // Dashboard Section
   function renderDashboardSection() {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <Star className="w-4 h-4" />
-            <TechnicalLabel text="EARNING DASHBOARD" className="text-primary" />
+          <div className="mb-2">
+            <TechnicalLabel text="EARNING DASHBOARD" className="text-foreground" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
+          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter">
             WELCOME BACK,<br />
-            <span className="text-primary">{user.firstName}</span>
+            <span className="text-primary">{user?.firstName || "USER"}</span>
           </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Track your earnings, manage referrals, and monitor your progress in real-time
           </p>
-          <Barcode className="w-48 h-10 mx-auto opacity-60" />
+          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
         </div>
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           {/* Total Earnings */}
-          <Card className="group hover:shadow-xl transition-all duration-300 border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 relative">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full transform translate-x-8 -translate-y-8" />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-primary/20 border border-primary">
-                    <Wallet className="w-5 h-5 text-primary" />
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <TechnicalLabel text="TOTAL EARNINGS" className="text-gray-300" />
-                  <p className="text-3xl font-black text-primary">{formatCurrency(user.totalEarnings)}</p>
-                  <TechnicalLabel text="+15.2% THIS WEEK" className="text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="split-card bg-black text-white p-6 text-center">
+            <Wallet className="w-12 h-12 mx-auto mb-4 text-white" />
+            <TechnicalLabel text="TOTAL EARNINGS" className="text-white mb-2" />
+            <p className="text-3xl font-black text-white">{formatCurrency(user?.totalEarnings || '0.00')}</p>
+            <TechnicalLabel text="+15.2% THIS WEEK" className="text-white" />
+          </div>
 
           {/* Available Balance */}
-          <Card className="group hover:shadow-xl transition-all duration-300 border-2 border-primary bg-primary text-black overflow-hidden">
-            <CardContent className="p-6 relative">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-black/20 rounded-full transform translate-x-8 -translate-y-8" />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-black/20 border border-black">
-                    <DollarSign className="w-5 h-5 text-black" />
-                  </div>
-                  <Activity className="w-4 h-4 text-black" />
-                </div>
-                <div className="space-y-1">
-                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-black" />
-                  <p className="text-3xl font-black text-black">{formatCurrency(user.availableBalance)}</p>
-                  <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-black" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="split-card bg-primary text-white p-6 text-center">
+            <DollarSign className="w-12 h-12 mx-auto mb-4 text-white" />
+            <TechnicalLabel text="AVAILABLE BALANCE" className="text-white mb-2" />
+            <p className="text-3xl font-black text-white">{formatCurrency(user?.availableBalance || '0.00')}</p>
+            <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-white" />
+          </div>
 
           {/* Active Referrals */}
-          <Card className="group hover:shadow-xl transition-all duration-300 border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 relative">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full transform translate-x-8 -translate-y-8" />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-primary/20 border border-primary">
-                    <Users className="w-5 h-5 text-primary" />
-                  </div>
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <TechnicalLabel text="ACTIVE REFERRALS" className="text-gray-300" />
-                  <p className="text-3xl font-black text-primary">{referralsData?.stats.count || 0}</p>
-                  <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="split-card bg-muted border-2 border-black p-6 text-center">
+            <Users className="w-12 h-12 mx-auto mb-4 text-foreground" />
+            <TechnicalLabel text="ACTIVE REFERRALS" className="text-foreground mb-2" />
+            <p className="text-3xl font-black text-foreground">{referralsData?.stats.count || 0}</p>
+            <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-foreground" />
+          </div>
 
           {/* Daily Progress */}
-          <Card className="group hover:shadow-xl transition-all duration-300 border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 relative">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full transform translate-x-8 -translate-y-8" />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2 bg-primary/20 border border-primary">
-                    <Target className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-black text-primary">{Math.round(progressPercentage)}%</span>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <TechnicalLabel text="DAILY GOAL" className="text-gray-300" />
-                  <Progress value={progressPercentage} className="h-2 bg-gray-700" />
-                  <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="split-card bg-card border-2 border-black p-6 text-center">
+            <Target className="w-12 h-12 mx-auto mb-4 text-foreground" />
+            <TechnicalLabel text="DAILY GOAL" className="text-foreground mb-2" />
+            <p className="text-3xl font-black text-primary">{Math.round(progressPercentage)}%</p>
+            <Progress value={progressPercentage} className="h-3 my-4" />
+            <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-foreground" />
+          </div>
         </div>
 
         {/* Charts Section */}
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Weekly Earnings Chart */}
-          <Card className="border-2 border-primary bg-black text-white">
-            <CardHeader>
+          <Card className="split-card bg-card border-2 border-black">
+            <CardHeader className="border-b-2 border-black">
               <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="WEEKLY EARNINGS" className="text-white text-xl" />
-                <div className="p-2 bg-primary/20 border border-primary">
-                  <BarChart3 className="w-5 h-5 text-primary" />
+                <TechnicalLabel text="WEEKLY EARNINGS" className="text-foreground" />
+                <div className="p-2 bg-black border border-black">
+                  <BarChart3 className="w-5 h-5 text-white" />
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={earningsChartData}>
                   <defs>
@@ -661,16 +611,16 @@ export default function UserPortal() {
                       <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="date" stroke="#999" />
-                  <YAxis stroke="#999" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                  <XAxis dataKey="date" stroke="#333" />
+                  <YAxis stroke="#333" />
                   <Tooltip 
                     formatter={(value) => [`PKR ${value}`, 'Earnings']}
                     contentStyle={{ 
-                      backgroundColor: '#000', 
-                      border: '2px solid #ff6b35',
+                      backgroundColor: '#fff', 
+                      border: '2px solid #000',
                       borderRadius: '0',
-                      color: '#fff'
+                      color: '#000'
                     }}
                   />
                   <Area 
@@ -686,16 +636,16 @@ export default function UserPortal() {
           </Card>
 
           {/* Earnings Breakdown */}
-          <Card className="border-2 border-primary bg-black text-white">
-            <CardHeader>
+          <Card className="split-card bg-card border-2 border-black">
+            <CardHeader className="border-b-2 border-black">
               <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-white text-xl" />
-                <div className="p-2 bg-primary/20 border border-primary">
-                  <PieChart className="w-5 h-5 text-primary" />
+                <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground" />
+                <div className="p-2 bg-black border border-black">
+                  <PieChart className="w-5 h-5 text-white" />
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <ResponsiveContainer width="100%" height={300}>
                 <RechartsPieChart>
                   <Pie
@@ -713,10 +663,10 @@ export default function UserPortal() {
                   </Pie>
                   <Tooltip 
                     contentStyle={{ 
-                      backgroundColor: '#000', 
-                      border: '2px solid #ff6b35',
+                      backgroundColor: '#fff', 
+                      border: '2px solid #000',
                       borderRadius: '0',
-                      color: '#fff'
+                      color: '#000'
                     }}
                   />
                 </RechartsPieChart>
