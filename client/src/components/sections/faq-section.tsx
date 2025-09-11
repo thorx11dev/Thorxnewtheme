@@ -9,18 +9,18 @@ interface FAQSectionProps {
 const faqData = [
   {
     id: "001",
-    question: "How do I start earning with THORX?",
-    answer: "Join and earn through video ads, referrals, and daily tasks."
+    question: "What is Thorx?",
+    answer: "Thorx is a revolutionary earning platform that allows you to make money through various activities like watching ads, completing tasks, and referring friends."
   },
   {
     id: "002", 
-    question: "What are the withdrawal methods?",
-    answer: "Bank transfers and mobile wallets. Minimum PKR 500."
+    question: "How can I get paid?",
+    answer: "You earn money by watching video ads, completing daily tasks, and building your referral network. Payments are processed through bank transfers and mobile wallets."
   },
   {
     id: "003",
-    question: "How does the referral system work?",
-    answer: "Get your THORX code and earn from your network's activity."
+    question: "Can I trust Thorx?",
+    answer: "Absolutely! Thorx has a proven track record with millions already paid out to users. Our secure platform ensures reliable payments and transparent earning opportunities."
   }
 ];
 
@@ -66,13 +66,7 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                           <div className="text-2xl lg:text-3xl font-black text-black pr-4 flex-1">
                             {faq.question}
                           </div>
-                          <div className="flex items-center gap-4">
-                            {/* Cursor Icon */}
-                            <div className="w-8 h-8 relative">
-                              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                                <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="black" stroke="black" strokeWidth="2"/>
-                              </svg>
-                            </div>
+                          <div className="flex items-center">
                             {/* Plus Icon */}
                             <div className="w-8 h-8 flex items-center justify-center text-black text-4xl font-black">
                               +
@@ -125,13 +119,7 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                             <div className="text-lg font-black text-black pr-3 leading-tight flex-1">
                               {faq.question}
                             </div>
-                            <div className="flex items-center gap-2">
-                              {/* Mobile Cursor Icon */}
-                              <div className="w-6 h-6 relative">
-                                <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                                  <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="black" stroke="black" strokeWidth="2"/>
-                                </svg>
-                              </div>
+                            <div className="flex items-center">
                               {/* Mobile Plus Icon */}
                               <div className="w-6 h-6 flex items-center justify-center text-black text-2xl font-black">
                                 +
