@@ -442,7 +442,7 @@ export default function UserPortal() {
       <div className="industrial-grid fixed inset-0 z-0" />
       
       {/* Navigation Header */}
-      <nav className="fixed top-0 w-full z-50 bg-background border-b-3 border-black" data-testid="portal-navigation">
+      <nav className="fixed top-0 w-full z-50 bg-background border-b-2 border-black" data-testid="portal-navigation">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
@@ -747,12 +747,12 @@ export default function UserPortal() {
               </CardHeader>
               <CardContent className="p-8">
                 {/* Ad Display Area */}
-                <div className="bg-gradient-to-br from-gray-800 via-gray-700 to-gray-600 border-2 border-primary p-12 mb-8 text-center min-h-[300px] flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/10 animate-pulse" />
+                <div className="bg-muted border-2 border-black p-12 mb-8 text-center min-h-[300px] flex items-center justify-center relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
                   <div className="space-y-6 relative z-10">
                     <div className="text-8xl animate-bounce">{getAdTypeIcon(selectedAd.type)}</div>
                     <h3 className="text-4xl font-black text-primary">{selectedAd.title}</h3>
-                    <TechnicalLabel text={selectedAd.description} className="text-gray-300 text-lg max-w-lg" />
+                    <TechnicalLabel text={selectedAd.description} className="text-muted-foreground text-lg max-w-lg" />
                     {isCompleted && (
                       <div className="flex items-center justify-center gap-3 text-primary animate-pulse">
                         <CheckCircle2 className="w-12 h-12" />
@@ -937,45 +937,38 @@ export default function UserPortal() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <UserCheck className="w-4 h-4" />
-            <TechnicalLabel text="REFERRAL SYSTEM" className="text-primary" />
+          <div className="mb-2">
+            <TechnicalLabel text="REFERRAL SYSTEM" className="text-foreground" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
+          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter">
             BUILD YOUR <span className="text-primary">NETWORK</span><br />
             EARN MORE TOGETHER
           </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Invite friends, earn together, and build a passive income stream through referrals
           </p>
-          <Barcode className="w-48 h-10 mx-auto opacity-60" />
+          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
         </div>
 
         {/* Referral Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card className="border-2 border-primary bg-primary text-black overflow-hidden">
-            <CardContent className="p-6 text-center">
-              <Users className="w-12 h-12 mx-auto mb-4" />
-              <div className="text-3xl font-black mb-2">{referralsData?.stats.count || 0}</div>
-              <TechnicalLabel text="TOTAL REFERRALS" className="text-black" />
-            </CardContent>
-          </Card>
+          <div className="split-card bg-primary text-white p-6 text-center">
+            <Users className="w-12 h-12 mx-auto mb-4 text-white" />
+            <div className="text-3xl font-black mb-2 text-white">{referralsData?.stats.count || 0}</div>
+            <TechnicalLabel text="TOTAL REFERRALS" className="text-white" />
+          </div>
 
-          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 text-center">
-              <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
-              <TechnicalLabel text="REFERRAL EARNINGS" className="text-gray-300" />
-            </CardContent>
-          </Card>
+          <div className="split-card bg-black text-white p-6 text-center">
+            <DollarSign className="w-12 h-12 mx-auto mb-4 text-white" />
+            <div className="text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
+            <TechnicalLabel text="REFERRAL EARNINGS" className="text-white" />
+          </div>
 
-          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 text-center">
-              <TrendingUp className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">25%</div>
-              <TechnicalLabel text="COMMISSION RATE" className="text-gray-300" />
-            </CardContent>
-          </Card>
+          <div className="split-card bg-muted border-2 border-black p-6 text-center">
+            <TrendingUp className="w-12 h-12 mx-auto mb-4 text-foreground" />
+            <div className="text-3xl font-black mb-2 text-foreground">25%</div>
+            <TechnicalLabel text="COMMISSION RATE" className="text-foreground" />
+          </div>
         </div>
 
         {/* Referral Code Card */}
@@ -1063,18 +1056,17 @@ export default function UserPortal() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <CreditCard className="w-4 h-4" />
-            <TechnicalLabel text="PAYOUT CENTER" className="text-primary" />
+          <div className="mb-2">
+            <TechnicalLabel text="PAYOUT CENTER" className="text-foreground" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
+          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter">
             WITHDRAW YOUR <span className="text-primary">EARNINGS</span><br />
             INSTANT PAYMENTS
           </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Fast, secure withdrawals to your preferred payment method
           </p>
-          <Barcode className="w-48 h-10 mx-auto opacity-60" />
+          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
         </div>
 
         {/* Balance Overview */}
