@@ -424,10 +424,10 @@ export default function UserPortal() {
   ];
 
   const earningTypesData = [
-    { name: 'Ad Views', value: 65, color: '#ff6b35' },
-    { name: 'Referrals', value: 25, color: '#000000' },
-    { name: 'Daily Tasks', value: 7, color: '#f7931e' },
-    { name: 'Bonuses', value: 3, color: '#004CFF' }
+    { name: 'Ad Views', value: 65, color: 'hsl(var(--primary))' },
+    { name: 'Referrals', value: 25, color: 'hsl(var(--secondary))' },
+    { name: 'Daily Tasks', value: 7, color: 'hsl(var(--chart-3))' },
+    { name: 'Bonuses', value: 3, color: 'hsl(var(--chart-4))' }
   ];
 
   const dailyGoal = 50;
@@ -658,26 +658,38 @@ export default function UserPortal() {
                 <AreaChart data={earningsChartData}>
                   <defs>
                     <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
-                  <XAxis dataKey="date" stroke="#333" />
-                  <YAxis stroke="#333" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground))" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="hsl(var(--foreground))" 
+                    fontSize={12}
+                    fontFamily="var(--font-sans)"
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--foreground))" 
+                    fontSize={12}
+                    fontFamily="var(--font-sans)"
+                    tickFormatter={(value) => `PKR ${value}`}
+                  />
                   <Tooltip 
                     formatter={(value) => [`PKR ${value}`, 'Earnings']}
+                    labelFormatter={(label) => `Day: ${label}`}
                     contentStyle={{ 
-                      backgroundColor: '#fff', 
-                      border: '2px solid #000',
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '2px solid hsl(var(--border))',
                       borderRadius: '0',
-                      color: '#000'
+                      color: 'hsl(var(--card-foreground))',
+                      fontFamily: 'var(--font-sans)'
                     }}
                   />
                   <Area 
                     type="monotone" 
                     dataKey="earnings" 
-                    stroke="#ff6b35" 
+                    stroke="hsl(var(--primary))" 
                     strokeWidth={3}
                     fill="url(#earningsGradient)" 
                   />
@@ -713,11 +725,13 @@ export default function UserPortal() {
                     ))}
                   </Pie>
                   <Tooltip 
+                    formatter={(value, name) => [`${value}%`, name]}
                     contentStyle={{ 
-                      backgroundColor: '#fff', 
-                      border: '2px solid #000',
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '2px solid hsl(var(--border))',
                       borderRadius: '0',
-                      color: '#000'
+                      color: 'hsl(var(--card-foreground))',
+                      fontFamily: 'var(--font-sans)'
                     }}
                   />
                 </RechartsPieChart>
