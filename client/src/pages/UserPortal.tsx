@@ -591,53 +591,70 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="mb-2">
-            <TechnicalLabel text="EARNING DASHBOARD" className="text-foreground" />
+        <div className="text-center mb-8">
+          <div className="mb-3">
+            <TechnicalLabel text="EARNING DASHBOARD" className="text-muted-foreground" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-4 tracking-tighter leading-tight">
             WELCOME BACK,<br />
             <span className="text-primary">{user?.firstName || "USER"}</span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-xl mx-auto leading-relaxed">
             Track your earnings, manage referrals, and monitor your progress in real-time
           </p>
-          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
+          <Barcode className="w-20 md:w-24 h-4 md:h-5 mx-auto opacity-60" />
         </div>
 
         {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
           {/* Total Earnings */}
-          <div className="split-card bg-black text-white border-2 border-black p-6 text-center">
-            <Wallet className="w-12 h-12 mx-auto mb-4 text-white" />
-            <TechnicalLabel text="TOTAL EARNINGS" className="text-white mb-2" />
-            <p className="text-3xl font-black text-white">{formatCurrency(user?.totalEarnings || '0.00')}</p>
-            <TechnicalLabel text="+15.2% THIS WEEK" className="text-white" />
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10">
+            <div className="flex items-start justify-between mb-3">
+              <Wallet className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors">{formatCurrency(user?.totalEarnings || '0.00')}</p>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-3 h-3 text-green-500" />
+              <TechnicalLabel text="+15.2% THIS WEEK" className="text-green-500 text-xs" />
+            </div>
           </div>
 
           {/* Available Balance */}
-          <div className="split-card bg-primary text-black border-2 border-black p-6 text-center">
-            <DollarSign className="w-12 h-12 mx-auto mb-4 text-black" />
-            <TechnicalLabel text="AVAILABLE BALANCE" className="text-black mb-2" />
-            <p className="text-3xl font-black text-black">{formatCurrency(user?.availableBalance || '0.00')}</p>
-            <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-black" />
+          <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/20">
+            <div className="flex items-start justify-between mb-3">
+              <DollarSign className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors">{formatCurrency(user?.availableBalance || '0.00')}</p>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-3 h-3 text-primary" />
+              <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-primary/70 text-xs" />
+            </div>
           </div>
 
           {/* Active Referrals */}
-          <div className="split-card bg-muted border-2 border-black p-6 text-center">
-            <Users className="w-12 h-12 mx-auto mb-4 text-foreground" />
-            <TechnicalLabel text="ACTIVE REFERRALS" className="text-foreground mb-2" />
-            <p className="text-3xl font-black text-foreground">{referralsData?.stats.count || 0}</p>
-            <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-foreground" />
+          <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10">
+            <div className="flex items-start justify-between mb-3">
+              <Users className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
+              <TechnicalLabel text="ACTIVE REFERRALS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors">{referralsData?.stats.count || 0}</p>
+            <div className="flex items-center gap-2">
+              <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
+              <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-muted-foreground text-xs" />
+            </div>
           </div>
 
           {/* Daily Progress */}
-          <div className="split-card bg-card border-2 border-black p-6 text-center">
-            <Target className="w-12 h-12 mx-auto mb-4 text-foreground" />
-            <TechnicalLabel text="DAILY GOAL" className="text-foreground mb-2" />
-            <p className="text-3xl font-black text-primary">{Math.round(progressPercentage)}%</p>
-            <Progress value={progressPercentage} className="h-3 my-4" />
-            <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-foreground" />
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10">
+            <div className="flex items-start justify-between mb-3">
+              <Target className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors">{Math.round(progressPercentage)}%</p>
+            <Progress value={progressPercentage} className="h-2 mb-3 bg-muted border border-muted-foreground/20" />
+            <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-muted-foreground text-xs" />
           </div>
         </div>
 
