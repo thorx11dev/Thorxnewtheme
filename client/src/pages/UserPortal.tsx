@@ -453,18 +453,17 @@ export default function UserPortal() {
             </div>
 
             {/* Section Indicators */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               {sections.map((section, index) => (
                 <button
                   key={section.id}
                   onClick={() => navigateToSection(index)}
-                  className={`w-3 h-3 border-2 border-black transition-all duration-300 ${
-                    currentSection === index
-                      ? 'bg-primary'
-                      : 'bg-transparent hover:bg-primary'
+                  className={`nav-indicator ${
+                    currentSection === index ? 'active' : ''
                   }`}
                   data-testid={`nav-indicator-${section.id}`}
                   aria-label={`Go to ${section.name}`}
+                  title={section.name}
                 />
               ))}
             </div>
@@ -555,80 +554,134 @@ export default function UserPortal() {
         </div>
 
         {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
           {/* Total Earnings */}
-          <div className="split-card bg-black text-white p-6 text-center">
-            <Wallet className="w-12 h-12 mx-auto mb-4 text-white" />
-            <TechnicalLabel text="TOTAL EARNINGS" className="text-white mb-2" />
-            <p className="text-3xl font-black text-white">{formatCurrency(user?.totalEarnings || '0.00')}</p>
-            <TechnicalLabel text="+15.2% THIS WEEK" className="text-white" />
+          <div className="metric-card-dark split-card-enhanced p-8 text-center group">
+            <div className="relative">
+              <Wallet className="w-16 h-16 mx-auto mb-6 text-primary transition-transform group-hover:scale-110" />
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                <TrendingUp className="w-3 h-3 text-white" />
+              </div>
+            </div>
+            <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground mb-3 text-xs tracking-wider" />
+            <p className="text-4xl font-black text-primary mb-2 tracking-tight">{formatCurrency(user?.totalEarnings || '0.00')}</p>
+            <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-sm">
+              <ArrowUpRight className="w-3 h-3 text-primary" />
+              <TechnicalLabel text="+15.2% THIS WEEK" className="text-primary text-xs" />
+            </div>
           </div>
 
           {/* Available Balance */}
-          <div className="split-card bg-primary text-white p-6 text-center">
-            <DollarSign className="w-12 h-12 mx-auto mb-4 text-white" />
-            <TechnicalLabel text="AVAILABLE BALANCE" className="text-white mb-2" />
-            <p className="text-3xl font-black text-white">{formatCurrency(user?.availableBalance || '0.00')}</p>
-            <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-white" />
+          <div className="metric-card-primary split-card-enhanced p-8 text-center group">
+            <div className="relative">
+              <DollarSign className="w-16 h-16 mx-auto mb-6 text-primary-foreground transition-transform group-hover:scale-110" />
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-black rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-3 h-3 text-white" />
+              </div>
+            </div>
+            <TechnicalLabel text="AVAILABLE BALANCE" className="text-primary-foreground/80 mb-3 text-xs tracking-wider" />
+            <p className="text-4xl font-black text-primary-foreground mb-2 tracking-tight">{formatCurrency(user?.availableBalance || '0.00')}</p>
+            <div className="inline-flex items-center gap-2 bg-black/20 px-3 py-1 rounded-sm">
+              <Wallet className="w-3 h-3 text-primary-foreground" />
+              <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-primary-foreground text-xs" />
+            </div>
           </div>
 
           {/* Active Referrals */}
-          <div className="split-card bg-muted border-2 border-black p-6 text-center">
-            <Users className="w-12 h-12 mx-auto mb-4 text-foreground" />
-            <TechnicalLabel text="ACTIVE REFERRALS" className="text-foreground mb-2" />
-            <p className="text-3xl font-black text-foreground">{referralsData?.stats.count || 0}</p>
-            <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-foreground" />
+          <div className="metric-card split-card-enhanced p-8 text-center group">
+            <div className="relative">
+              <Users className="w-16 h-16 mx-auto mb-6 text-primary transition-transform group-hover:scale-110" />
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                <UserCheck className="w-3 h-3 text-white" />
+              </div>
+            </div>
+            <TechnicalLabel text="ACTIVE REFERRALS" className="text-muted-foreground mb-3 text-xs tracking-wider" />
+            <p className="text-4xl font-black text-foreground mb-2 tracking-tight">{referralsData?.stats.count || 0}</p>
+            <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-sm">
+              <Gift className="w-3 h-3 text-primary" />
+              <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-primary text-xs" />
+            </div>
           </div>
 
           {/* Daily Progress */}
-          <div className="split-card bg-card border-2 border-black p-6 text-center">
-            <Target className="w-12 h-12 mx-auto mb-4 text-foreground" />
-            <TechnicalLabel text="DAILY GOAL" className="text-foreground mb-2" />
-            <p className="text-3xl font-black text-primary">{Math.round(progressPercentage)}%</p>
-            <Progress value={progressPercentage} className="h-3 my-4" />
-            <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-foreground" />
+          <div className="metric-card split-card-enhanced p-8 text-center group">
+            <div className="relative">
+              <Target className="w-16 h-16 mx-auto mb-6 text-primary transition-transform group-hover:scale-110" />
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                <Zap className="w-3 h-3 text-white" />
+              </div>
+            </div>
+            <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground mb-3 text-xs tracking-wider" />
+            <p className="text-4xl font-black text-primary mb-4 tracking-tight">{Math.round(progressPercentage)}%</p>
+            <div className="relative">
+              <Progress value={progressPercentage} className="h-4 mb-3 bg-muted border border-border" />
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10 rounded-sm"></div>
+            </div>
+            <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-muted-foreground text-xs" />
           </div>
         </div>
 
         {/* Charts Section */}
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-2 gap-10 mb-16">
           {/* Weekly Earnings Chart */}
-          <Card className="split-card bg-card border-2 border-black">
-            <CardHeader className="border-b-2 border-black">
+          <Card className="split-card-enhanced metric-card group">
+            <CardHeader className="border-b-3 border-border bg-muted/30 p-6">
               <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="WEEKLY EARNINGS" className="text-foreground" />
-                <div className="p-2 bg-black border border-black">
-                  <BarChart3 className="w-5 h-5 text-white" />
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-primary rounded-sm">
+                    <BarChart3 className="w-6 h-6 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <TechnicalLabel text="WEEKLY EARNINGS" className="text-foreground text-lg font-black" />
+                    <TechnicalLabel text="PERFORMANCE ANALYTICS" className="text-muted-foreground text-xs" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-primary/10 px-3 py-2 rounded-sm">
+                  <Activity className="w-4 h-4 text-primary" />
+                  <TechnicalLabel text="TRENDING UP" className="text-primary text-xs" />
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <ResponsiveContainer width="100%" height={300}>
+            <CardContent className="p-8">
+              <ResponsiveContainer width="100%" height={350}>
                 <AreaChart data={earningsChartData}>
                   <defs>
                     <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
-                  <XAxis dataKey="date" stroke="#333" />
-                  <YAxis stroke="#333" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12}
+                    fontWeight={600}
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12}
+                    fontWeight={600}
+                  />
                   <Tooltip 
                     formatter={(value) => [`PKR ${value}`, 'Earnings']}
                     contentStyle={{ 
-                      backgroundColor: '#fff', 
-                      border: '2px solid #000',
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '3px solid hsl(var(--border))',
                       borderRadius: '0',
-                      color: '#000'
+                      color: 'hsl(var(--card-foreground))',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                      fontWeight: 600
                     }}
                   />
                   <Area 
                     type="monotone" 
                     dataKey="earnings" 
-                    stroke="#ff6b35" 
-                    strokeWidth={3}
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={4}
                     fill="url(#earningsGradient)" 
+                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, fill: 'hsl(var(--primary))', strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -636,37 +689,52 @@ export default function UserPortal() {
           </Card>
 
           {/* Earnings Breakdown */}
-          <Card className="split-card bg-card border-2 border-black">
-            <CardHeader className="border-b-2 border-black">
+          <Card className="split-card-enhanced metric-card group">
+            <CardHeader className="border-b-3 border-border bg-muted/30 p-6">
               <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground" />
-                <div className="p-2 bg-black border border-black">
-                  <PieChart className="w-5 h-5 text-white" />
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-primary rounded-sm">
+                    <PieChart className="w-6 h-6 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground text-lg font-black" />
+                    <TechnicalLabel text="REVENUE DISTRIBUTION" className="text-muted-foreground text-xs" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-primary/10 px-3 py-2 rounded-sm">
+                  <Star className="w-4 h-4 text-primary" />
+                  <TechnicalLabel text="OPTIMIZED" className="text-primary text-xs" />
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <ResponsiveContainer width="100%" height={300}>
+            <CardContent className="p-8">
+              <ResponsiveContainer width="100%" height={350}>
                 <RechartsPieChart>
                   <Pie
                     data={earningTypesData}
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
+                    outerRadius={90}
+                    innerRadius={30}
                     fill="#8884d8"
                     dataKey="value"
                     label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                    fontSize={12}
+                    fontWeight={600}
                   >
                     {earningTypesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell key={`cell-${index}`} fill={entry.color} stroke="hsl(var(--background))" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip 
                     contentStyle={{ 
-                      backgroundColor: '#fff', 
-                      border: '2px solid #000',
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '3px solid hsl(var(--border))',
                       borderRadius: '0',
-                      color: '#000'
+                      color: 'hsl(var(--card-foreground))',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                      fontWeight: 600
                     }}
                   />
                 </RechartsPieChart>
