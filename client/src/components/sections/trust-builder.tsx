@@ -46,24 +46,25 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
     }
   }, [isActive, stats, isMobile, hasAnimated]);
 
-  // Mobile animation (based on intersection observer)
+  // Mobile animation - Simplified and reliable
   useEffect(() => {
     if (!isMobile || !stats) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
-            if (!hasAnimated) {
-              setTimeout(() => {
-                animateCounters();
-                setHasAnimated(true);
-              }, 300);
-            }
+          if (entry.isIntersecting && !hasAnimated) {
+            setTimeout(() => {
+              animateCounters();
+              setHasAnimated(true);
+            }, 300);
           }
         });
       },
-      { threshold: [0.3, 0.5] }
+      { 
+        threshold: 0.1, 
+        rootMargin: '100px 0px -50px 0px' 
+      }
     );
 
     if (sectionRef.current) {
@@ -72,6 +73,17 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
 
     return () => observer.disconnect();
   }, [isMobile, hasAnimated, stats]);
+
+  // Mobile animation - Backup trigger on isActive change  
+  useEffect(() => {
+    if (isMobile && isActive && stats && !hasAnimated) {
+      const timer = setTimeout(() => {
+        animateCounters();
+        setHasAnimated(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isActive, isMobile, hasAnimated, stats]);
 
   // Reset animation on section change for mobile
   useEffect(() => {
@@ -189,7 +201,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
         </div>
 
         {/* Continue Button */}
-        <div className="text-center">
+        <div className="text-center mt-8 md:mt-0">
           <button 
             onClick={onAdvance}
             className="bg-primary text-white px-8 md:px-12 py-3 md:py-4 text-lg md:text-xl font-black tracking-wider hover:bg-black transition-colors pulse-glow"

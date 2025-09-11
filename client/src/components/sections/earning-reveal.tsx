@@ -39,24 +39,25 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
     }
   }, [isActive, isMobile, hasAnimated]);
 
-  // Mobile animation (based on intersection observer)
+  // Mobile animation - Simplified and reliable
   useEffect(() => {
     if (!isMobile) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio > 0.1) {
-            if (!hasAnimated) {
-              setTimeout(() => {
-                animateCounters();
-                setHasAnimated(true);
-              }, 300);
-            }
+          if (entry.isIntersecting && !hasAnimated) {
+            setTimeout(() => {
+              animateCounters();
+              setHasAnimated(true);
+            }, 300);
           }
         });
       },
-      { threshold: [0.1, 0.3, 0.5], rootMargin: '50px' }
+      { 
+        threshold: 0.1, 
+        rootMargin: '100px 0px -50px 0px' 
+      }
     );
 
     if (sectionRef.current) {
@@ -66,13 +67,14 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
     return () => observer.disconnect();
   }, [isMobile, hasAnimated]);
 
-  // Mobile animation - Also trigger on isActive change for mobile
+  // Mobile animation - Backup trigger on isActive change
   useEffect(() => {
     if (isMobile && isActive && !hasAnimated) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         animateCounters();
         setHasAnimated(true);
-      }, 800);
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [isActive, isMobile, hasAnimated]);
 
