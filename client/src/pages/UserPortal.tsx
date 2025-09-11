@@ -369,8 +369,9 @@ export default function UserPortal() {
     });
   };
 
-  const formatCurrency = (amount: string) => {
-    return `PKR ${parseFloat(amount).toFixed(2)}`;
+  const formatCurrency = (amount: string | number) => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return `PKR ${numAmount.toFixed(2)}`;
   };
 
   const copyReferralCode = () => {
