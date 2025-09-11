@@ -437,18 +437,18 @@ export default function UserPortal() {
   const remainingAds = dailyLimit - (todayAdViews?.count || 0);
 
   return (
-    <div className="portal-container">
+    <div className="min-h-screen bg-background relative">
       {/* Industrial Grid Overlay */}
-      <div className="industrial-grid fixed inset-0 opacity-[0.02] z-0" />
+      <div className="industrial-grid fixed inset-0 z-0" />
       
       {/* Navigation Header */}
-      <nav className="fixed top-0 w-full z-50 bg-black border-b-2 border-primary" data-testid="portal-navigation">
+      <nav className="fixed top-0 w-full z-50 bg-background border-b-3 border-black" data-testid="portal-navigation">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
             <div className="flex items-center">
-              <div className="bg-primary text-black px-4 py-2 border-2 border-primary">
-                <TechnicalLabel text="THORX" className="text-black text-lg font-black" />
+              <div className="bg-black text-white px-4 py-2 border-2 border-black">
+                <TechnicalLabel text="THORX" className="text-white text-lg font-black" />
               </div>
             </div>
 
@@ -458,10 +458,10 @@ export default function UserPortal() {
                 <button
                   key={section.id}
                   onClick={() => navigateToSection(index)}
-                  className={`w-3 h-3 border-2 transition-all duration-300 ${
+                  className={`w-3 h-3 border-2 border-black transition-all duration-300 ${
                     currentSection === index
-                      ? 'bg-primary border-primary'
-                      : 'bg-transparent border-white hover:border-primary'
+                      ? 'bg-primary'
+                      : 'bg-transparent hover:bg-primary'
                   }`}
                   data-testid={`nav-indicator-${section.id}`}
                   aria-label={`Go to ${section.name}`}
@@ -471,14 +471,14 @@ export default function UserPortal() {
 
             {/* User Controls */}
             <div className="flex items-center space-x-4">
-              <div className="hidden md:flex items-center text-white">
-                <span className="text-sm">{user.firstName}</span>
+              <div className="hidden md:flex items-center text-foreground">
+                <TechnicalLabel text={user?.firstName || "USER"} className="text-foreground" />
               </div>
               <Button
                 onClick={logout}
                 variant="outline"
                 size="sm"
-                className="border-primary text-primary hover:bg-primary hover:text-black"
+                className="border-2 border-black text-foreground hover:bg-black hover:text-white"
                 data-testid="button-logout"
               >
                 <LogOut className="w-4 h-4" />
@@ -494,7 +494,7 @@ export default function UserPortal() {
           onClick={prevSection}
           variant="outline"
           size="lg"
-          className="bg-black/80 border-primary text-primary hover:bg-primary hover:text-black backdrop-blur"
+          className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
           data-testid="button-prev-section"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -506,7 +506,7 @@ export default function UserPortal() {
           onClick={nextSection}
           variant="outline"
           size="lg"
-          className="bg-black/80 border-primary text-primary hover:bg-primary hover:text-black backdrop-blur"
+          className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
           data-testid="button-next-section"
         >
           <ChevronRight className="w-6 h-6" />
