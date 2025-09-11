@@ -7,6 +7,7 @@ import FAQSection from "@/components/sections/faq-section";
 import NavigationProgress from "@/components/ui/navigation-progress";
 import ArrowKeysGuide from "@/components/ui/arrow-keys-guide";
 import TechnicalLabel from "@/components/ui/technical-label";
+import DigitalClock from "@/components/ui/digital-clock";
 import Barcode from "@/components/ui/barcode";
 
 export default function Home() {
@@ -98,12 +99,16 @@ export default function Home() {
             
             {/* Right Section */}
             <div className="flex items-center">
-              <div className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2">
-                <div className="text-xs md:text-sm">
-                  <TechnicalLabel text="ID: 571" />
-                  <TechnicalLabel text="v 2.47" />
+              {currentSection >= 3 ? (
+                <DigitalClock />
+              ) : (
+                <div className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2">
+                  <div className="text-xs md:text-sm">
+                    <TechnicalLabel text="ID: 571" />
+                    <TechnicalLabel text="v 2.47" />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

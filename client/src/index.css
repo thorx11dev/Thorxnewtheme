@@ -68,6 +68,7 @@
 @layer base {
   * {
     @apply border-border;
+    cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" fill="%23000"/><circle cx="12" cy="12" r="2" fill="%23fff"/></svg>') 12 12, auto;
   }
 
   body {
