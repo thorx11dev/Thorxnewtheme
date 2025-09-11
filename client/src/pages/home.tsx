@@ -13,6 +13,7 @@ import Barcode from "@/components/ui/barcode";
 export default function Home() {
   const [currentSection, setCurrentSection] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
+  const [hasTransformedToClock, setHasTransformedToClock] = useState(false);
   const [, setLocation] = useLocation();
   const totalSections = 4;
 
@@ -26,6 +27,13 @@ export default function Home() {
     
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
+
+  // Trigger clock transformation once when reaching section 3
+  useEffect(() => {
+    if (currentSection >= 3 && !hasTransformedToClock) {
+      setHasTransformedToClock(true);
+    }
+  }, [currentSection, hasTransformedToClock]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -99,10 +107,16 @@ export default function Home() {
             
             {/* Right Section */}
             <div className="flex items-center">
-              {currentSection >= 3 ? (
-                <DigitalClock />
+              {hasTransformedToClock ? (
+                <div className="transform transition-all duration-500 ease-in-out">
+                  <DigitalClock />
+                </div>
               ) : (
-                <div className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2">
+                <div 
+                  className={`bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2 transition-all duration-300 ${
+                    currentSection >= 3 ? 'blur-sm opacity-70' : ''
+                  }`}
+                >
                   <div className="text-xs md:text-sm">
                     <TechnicalLabel text="ID: 571" />
                     <TechnicalLabel text="v 2.47" />

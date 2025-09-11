@@ -27,44 +27,58 @@ const faqData = [
 export default function FAQSection({ isActive }: FAQSectionProps) {
   return (
     <section 
-      className={`cinematic-section ${isActive ? 'active' : ''}`}
+      className={`cinematic-section ${isActive ? 'active' : ''} bg-gradient-to-br from-yellow-100 to-yellow-200`}
       data-testid="faq-section"
     >
-      <div className="max-w-6xl mx-auto px-4 md:px-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8">
         {/* Desktop Layout */}
-        <div className="hidden md:flex items-start gap-12 lg:gap-16">
+        <div className="hidden md:flex items-center justify-between gap-16 min-h-[80vh]">
           {/* Left Side - Title */}
-          <div className="flex-shrink-0 w-80">
-            <h2 className="text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight text-gray-500 leading-tight">
+          <div className="flex-shrink-0 w-96">
+            <h2 className="text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight text-gray-600 leading-tight">
               Frequently<br />Asked<br />Questions.
             </h2>
           </div>
           
           {/* Right Side - FAQ Cards */}
-          <div className="flex-1 space-y-4 max-w-2xl">
+          <div className="flex-1 space-y-3 max-w-3xl">
             {faqData.map((faq) => (
               <div
                 key={faq.id}
-                className="faq-folder relative"
+                className="faq-folder relative group"
                 data-testid={`faq-item-${faq.id}`}
               >
                 {/* Folder Tab */}
-                <div className="absolute -top-3 left-6 w-16 h-6 bg-gradient-to-r from-orange-400 to-orange-500 border-2 border-black border-b-0 rounded-t-lg"></div>
+                <div className="absolute -top-4 left-8 w-20 h-8 bg-primary border-4 border-black border-b-0 rounded-t-lg z-10"></div>
                 
                 {/* Main Card */}
-                <div className="bg-gradient-to-r from-orange-400 to-orange-500 border-2 border-black rounded-lg overflow-hidden">
+                <div className="bg-primary border-4 border-black rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 group-hover:scale-[1.01]">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem 
                       value={faq.id}
                       className="border-none"
                     >
-                      <AccordionTrigger className="text-left hover:no-underline px-6 py-6 [&>svg]:h-8 [&>svg]:w-8 [&>svg]:stroke-[3px] [&>svg]:text-black">
-                        <div className="text-xl lg:text-2xl font-black text-black pr-4">
-                          {faq.question}
+                      <AccordionTrigger className="text-left hover:no-underline px-8 py-6 [&>svg]:hidden">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="text-2xl lg:text-3xl font-black text-black pr-4 flex-1">
+                            {faq.question}
+                          </div>
+                          <div className="flex items-center gap-4">
+                            {/* Cursor Icon */}
+                            <div className="w-8 h-8 relative">
+                              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                                <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="black" stroke="black" strokeWidth="2"/>
+                              </svg>
+                            </div>
+                            {/* Plus Icon */}
+                            <div className="w-8 h-8 flex items-center justify-center text-black text-4xl font-black">
+                              +
+                            </div>
+                          </div>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="px-6 pb-6">
-                        <div className="text-black/80 text-lg font-medium leading-relaxed">
+                      <AccordionContent className="px-8 pb-6">
+                        <div className="text-black text-xl font-medium leading-relaxed">
                           {faq.answer}
                         </div>
                       </AccordionContent>
@@ -77,10 +91,10 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
         </div>
 
         {/* Mobile Layout */}
-        <div className="md:hidden">
+        <div className="md:hidden py-12">
           {/* Mobile Title */}
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-black tracking-tight text-gray-500 leading-tight">
+            <h2 className="text-4xl font-black tracking-tight text-gray-600 leading-tight">
               Frequently<br />Asked<br />Questions.
             </h2>
           </div>
@@ -94,22 +108,36 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                 data-testid={`faq-item-${faq.id}`}
               >
                 {/* Mobile Folder Tab */}
-                <div className="absolute -top-2 left-4 w-12 h-5 bg-gradient-to-r from-orange-400 to-orange-500 border-2 border-black border-b-0 rounded-t-md"></div>
+                <div className="absolute -top-3 left-6 w-16 h-6 bg-primary border-3 border-black border-b-0 rounded-t-md z-10"></div>
                 
                 {/* Mobile Main Card */}
-                <div className="bg-gradient-to-r from-orange-400 to-orange-500 border-2 border-black rounded-lg overflow-hidden">
+                <div className="bg-primary border-3 border-black rounded-lg overflow-hidden">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem 
                       value={faq.id}
                       className="border-none"
                     >
-                      <AccordionTrigger className="text-left hover:no-underline px-4 py-5 [&>svg]:h-6 [&>svg]:w-6 [&>svg]:stroke-[3px] [&>svg]:text-black">
-                        <div className="text-lg font-black text-black pr-3 leading-tight">
-                          {faq.question}
+                      <AccordionTrigger className="text-left hover:no-underline px-6 py-5 [&>svg]:hidden">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="text-lg font-black text-black pr-3 leading-tight flex-1">
+                            {faq.question}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {/* Mobile Cursor Icon */}
+                            <div className="w-6 h-6 relative">
+                              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
+                                <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="black" stroke="black" strokeWidth="2"/>
+                              </svg>
+                            </div>
+                            {/* Mobile Plus Icon */}
+                            <div className="w-6 h-6 flex items-center justify-center text-black text-2xl font-black">
+                              +
+                            </div>
+                          </div>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-5">
-                        <div className="text-black/80 text-base font-medium leading-relaxed">
+                      <AccordionContent className="px-6 pb-5">
+                        <div className="text-black text-base font-medium leading-relaxed">
                           {faq.answer}
                         </div>
                       </AccordionContent>
