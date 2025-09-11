@@ -680,44 +680,50 @@ export default function UserPortal() {
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 md:p-6">
+            <CardContent className="p-2 md:p-4">
               <ResponsiveContainer width="100%" height={280} minHeight={250}>
-                <AreaChart data={earningsChartData}>
+                <AreaChart data={earningsChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                   <defs>
                     <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.3} />
+                  <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.2} />
                   <XAxis 
                     dataKey="date" 
                     stroke="hsl(var(--muted-foreground))" 
-                    fontSize={11}
+                    fontSize={10}
                     fontFamily="var(--font-sans)"
                     tickLine={false}
                     axisLine={false}
+                    hide={window.innerWidth < 768}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis 
                     stroke="hsl(var(--muted-foreground))" 
-                    fontSize={11}
+                    fontSize={10}
                     fontFamily="var(--font-sans)"
-                    tickFormatter={(value) => `PKR ${value}`}
+                    tickFormatter={(value) => window.innerWidth < 768 ? `${value}` : `PKR ${value}`}
                     tickLine={false}
                     axisLine={false}
+                    hide={window.innerWidth < 768}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip 
                     formatter={(value) => [`PKR ${value}`, 'Earnings']}
                     labelFormatter={(label) => `Day: ${label}`}
                     contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--primary))',
+                      backgroundColor: 'hsl(var(--background))', 
+                      border: '2px solid hsl(var(--primary))',
                       borderRadius: '4px',
-                      color: 'hsl(var(--foreground))',
+                      color: 'hsl(var(--primary))',
                       fontFamily: 'var(--font-sans)',
                       fontSize: '12px',
-                      boxShadow: '0 4px 12px hsl(var(--primary)/0.15)'
+                      fontWeight: 'bold',
+                      boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
                     }}
+                    labelStyle={{ color: 'hsl(var(--primary))' }}
                   />
                   <Area 
                     type="monotone" 
@@ -741,17 +747,19 @@ export default function UserPortal() {
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 md:p-6">
+            <CardContent className="p-2 md:p-4">
               <ResponsiveContainer width="100%" height={280} minHeight={250}>
-                <RechartsPieChart>
+                <RechartsPieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                   <Pie
                     data={earningTypesData}
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
+                    outerRadius={window.innerWidth < 768 ? 70 : 80}
                     fill="#8884d8"
                     dataKey="value"
-                    label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }: { name: string; percent: number }) => 
+                      window.innerWidth < 768 ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(0)}%`
+                    }
                   >
                     {earningTypesData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -760,14 +768,16 @@ export default function UserPortal() {
                   <Tooltip 
                     formatter={(value, name) => [`${value}%`, name]}
                     contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--primary))',
+                      backgroundColor: 'hsl(var(--background))', 
+                      border: '2px solid hsl(var(--primary))',
                       borderRadius: '4px',
-                      color: 'hsl(var(--foreground))',
+                      color: 'hsl(var(--primary))',
                       fontFamily: 'var(--font-sans)',
                       fontSize: '12px',
-                      boxShadow: '0 4px 12px hsl(var(--primary)/0.15)'
+                      fontWeight: 'bold',
+                      boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
                     }}
+                    labelStyle={{ color: 'hsl(var(--primary))' }}
                   />
                 </RechartsPieChart>
               </ResponsiveContainer>
@@ -787,7 +797,7 @@ export default function UserPortal() {
           <div className="mb-2">
             <TechnicalLabel text="WORK CENTER" className="text-foreground" />
           </div>
-          <h1 className="work-hero-title text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-3 tracking-tighter leading-tight">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-3 tracking-tighter leading-tight">
             START <span className="text-primary">EARNING</span><br />
             WATCH & EARN REWARDS
           </h1>
@@ -798,7 +808,7 @@ export default function UserPortal() {
         </div>
 
         {/* Progress Overview Cards */}
-        <div className="grid-work-cards gap-4 md:gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-10">
           <div className="group gradient-card p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default" data-testid="card-ads-watched">
             <div className="flex items-center justify-between mb-3">
               <Eye className="w-10 h-10 text-primary group-hover:text-primary/80 transition-colors" />
@@ -963,55 +973,54 @@ export default function UserPortal() {
 
         {/* Available Ads */}
         {remainingAds > 0 ? (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="text-center">
-              <TechnicalLabel text="AVAILABLE ADS" className="text-primary text-xl" />
-              <div className="text-sm text-muted-foreground mt-1">Choose an advertisement to start earning</div>
+              <TechnicalLabel text="AVAILABLE ADS" className="text-primary text-2xl" />
             </div>
             
             {/* Ads Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {availableAds.map((ad) => {
                 const isCompleted = completedAds.has(ad.id);
                 const isCurrent = selectedAd?.id === ad.id;
 
                 return (
-                  <Card key={ad.id} className={`group gradient-card work-card-hover overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
-                    <CardHeader className="pb-3">
+                  <Card key={ad.id} className={`border-2 border-primary bg-black text-white hover:shadow-xl transition-all duration-300 overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
+                    <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="text-xl group-hover:scale-110 transition-transform">{getAdTypeIcon(ad.type)}</div>
+                          <div className="text-2xl">{getAdTypeIcon(ad.type)}</div>
                           <div>
-                            <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">{ad.title}</h3>
-                            <TechnicalLabel text={ad.category} className="text-muted-foreground text-xs" />
+                            <h3 className="font-black text-white line-clamp-1">{ad.title}</h3>
+                            <TechnicalLabel text={ad.category} className="text-muted-foreground" />
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-black text-primary group-hover:text-primary/80 transition-colors">{formatCurrency(ad.reward)}</div>
-                          <div className={`inline-block px-2 py-1 text-xs font-semibold rounded ${getDifficultyColorDark(ad.difficulty)}`}>
-                            {ad.difficulty.toUpperCase()}
+                          <div className="text-lg font-black text-primary">{formatCurrency(ad.reward)}</div>
+                          <div className={`inline-block px-2 py-1 text-xs font-semibold border ${getDifficultyColor(ad.difficulty)}`}>
+                            {ad.difficulty}
                           </div>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <div className="space-y-3">
-                        <TechnicalLabel text={ad.description} className="text-muted-foreground text-sm leading-relaxed" />
+                      <div className="space-y-4">
+                        <TechnicalLabel text={ad.description} className="text-gray-300 text-sm" />
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-primary" />
-                            <TechnicalLabel text={formatTime(ad.duration)} className="text-muted-foreground text-xs" />
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            <TechnicalLabel text={formatTime(ad.duration)} className="text-muted-foreground" />
                           </div>
                         </div>
                         <Button
                           onClick={() => startWatching(ad)}
                           disabled={Boolean(isCompleted || (selectedAd && !isCompleted))}
-                          className={`w-full transition-all duration-200 hover:scale-105 ${
+                          className={`w-full transition-all duration-200 ${
                             isCompleted 
-                              ? 'bg-green-900/50 text-green-300 cursor-not-allowed border border-green-700'
+                              ? 'bg-green-600 text-white cursor-not-allowed'
                               : isCurrent
-                              ? 'bg-primary text-primary-foreground border border-primary/20'
-                              : 'bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/20'
+                              ? 'bg-primary text-black'
+                              : 'bg-primary hover:bg-primary/90 text-black border-2 border-primary'
                           }`}
                           data-testid={`button-watch-${ad.id}`}
                         >
@@ -1040,16 +1049,11 @@ export default function UserPortal() {
             </div>
           </div>
         ) : (
-          <Card className="gradient-card text-center p-8 md:p-12">
+          <Card className="border-2 border-primary bg-black text-white text-center p-12">
             <div className="space-y-4">
-              <div className="w-20 h-20 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
-                <Clock className="w-10 h-10 text-primary" />
-              </div>
-              <TechnicalLabel text="DAILY LIMIT REACHED" className="text-primary text-xl" />
-              <TechnicalLabel text="Great work! You've completed all available ads today. Come back tomorrow for new earning opportunities!" className="text-muted-foreground max-w-md mx-auto leading-relaxed" />
-              <div className="text-sm text-muted-foreground mt-4">
-                <span className="font-semibold">Reset in:</span> {formatTime(86400 - (Date.now() % 86400) / 1000)}
-              </div>
+              <Clock className="w-16 h-16 mx-auto text-primary" />
+              <TechnicalLabel text="DAILY LIMIT REACHED" className="text-primary text-2xl" />
+              <TechnicalLabel text="Come back tomorrow for more earning opportunities!" className="text-muted-foreground" />
             </div>
           </Card>
         )}
