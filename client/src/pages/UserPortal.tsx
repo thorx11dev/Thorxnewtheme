@@ -1165,50 +1165,72 @@ export default function UserPortal() {
         </div>
 
         {/* Withdrawal Form */}
-        <Card className="border-2 border-primary bg-black text-white mb-12 overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="WITHDRAW FUNDS" className="text-primary text-xl" />
+        <Card className="split-card-enhanced metric-card-dark mb-16 group">
+          <CardHeader className="border-b-3 border-border bg-muted/20 p-6 text-center">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="p-3 bg-primary rounded-sm">
+                <Download className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <TechnicalLabel text="WITHDRAW FUNDS" className="text-primary text-xl font-black" />
+            </div>
+            <TechnicalLabel text="SECURE & INSTANT PROCESSING" className="text-muted-foreground text-sm" />
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
+          <CardContent className="p-8 space-y-8">
+            <div className="grid md:grid-cols-2 gap-8">
               <div>
-                <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-white mb-2" />
+                <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-muted-foreground mb-3 text-sm tracking-wider" />
                 <input 
                   type="number" 
                   placeholder="0.00"
-                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                  className="form-input-enhanced w-full"
+                  data-testid="input-withdrawal-amount"
                 />
+                <TechnicalLabel text="MIN: PKR 100.00" className="text-muted-foreground text-xs mt-2" />
               </div>
               <div>
-                <TechnicalLabel text="PAYMENT METHOD" className="text-white mb-2" />
-                <select className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary">
+                <TechnicalLabel text="PAYMENT METHOD" className="text-muted-foreground mb-3 text-sm tracking-wider" />
+                <select className="form-input-enhanced w-full" data-testid="select-payment-method">
                   <option value="">SELECT METHOD</option>
                   <option value="jazzcash">JazzCash</option>
                   <option value="easypaisa">EasyPaisa</option>
                   <option value="bank">Bank Transfer</option>
                 </select>
+                <TechnicalLabel text="INSTANT PROCESSING" className="text-primary text-xs mt-2" />
               </div>
             </div>
             
             <div>
-              <TechnicalLabel text="ACCOUNT DETAILS" className="text-white mb-2" />
+              <TechnicalLabel text="ACCOUNT DETAILS" className="text-muted-foreground mb-3 text-sm tracking-wider" />
               <input 
                 type="text" 
                 placeholder="Account number or phone number"
-                className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                className="form-input-enhanced w-full"
+                data-testid="input-account-details"
               />
+              <TechnicalLabel text="SECURE & ENCRYPTED" className="text-muted-foreground text-xs mt-2" />
             </div>
 
-            <div className="text-center">
+            <div className="text-center pt-4">
               <Button
-                className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-16 py-6 text-xl font-black border-3 border-primary transition-all duration-300 hover:scale-105 hover:shadow-lg"
                 data-testid="button-withdraw"
               >
-                <Download className="w-5 h-5 mr-3" />
+                <Download className="w-6 h-6 mr-3" />
                 REQUEST WITHDRAWAL
               </Button>
-              <div className="mt-4">
-                <TechnicalLabel text="Minimum withdrawal: PKR 100.00" className="text-gray-400" />
+              <div className="mt-6 grid grid-cols-3 gap-4 max-w-md mx-auto">
+                <div className="text-center">
+                  <Clock className="w-6 h-6 mx-auto mb-2 text-primary" />
+                  <TechnicalLabel text="INSTANT" className="text-primary text-xs" />
+                </div>
+                <div className="text-center">
+                  <CheckCircle2 className="w-6 h-6 mx-auto mb-2 text-primary" />
+                  <TechnicalLabel text="SECURE" className="text-primary text-xs" />
+                </div>
+                <div className="text-center">
+                  <Wallet className="w-6 h-6 mx-auto mb-2 text-primary" />
+                  <TechnicalLabel text="VERIFIED" className="text-primary text-xs" />
+                </div>
               </div>
             </div>
           </CardContent>
@@ -1313,26 +1335,28 @@ export default function UserPortal() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <TechnicalLabel text="SUBJECT" className="text-white mb-2" />
+                <TechnicalLabel text="SUBJECT" className="text-muted-foreground mb-3 text-sm tracking-wider" />
                 <input 
                   type="text" 
                   placeholder="Message subject"
-                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary"
+                  className="form-input-enhanced w-full"
+                  data-testid="input-help-subject"
                 />
               </div>
               <div>
-                <TechnicalLabel text="MESSAGE" className="text-white mb-2" />
+                <TechnicalLabel text="MESSAGE" className="text-muted-foreground mb-3 text-sm tracking-wider" />
                 <textarea 
-                  rows={4}
+                  rows={5}
                   placeholder="Your message"
-                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary"
+                  className="form-input-enhanced w-full resize-none"
+                  data-testid="textarea-help-message"
                 ></textarea>
               </div>
               <Button
-                className="w-full bg-primary hover:bg-primary/90 text-black py-3 text-lg font-black border-2 border-primary"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-4 text-lg font-black border-3 border-primary transition-all duration-300 hover:scale-105 hover:shadow-lg"
                 data-testid="button-send-message"
               >
-                <MessageCircle className="w-5 h-5 mr-3" />
+                <MessageCircle className="w-6 h-6 mr-3" />
                 SEND MESSAGE
               </Button>
             </CardContent>
