@@ -1,0 +1,1387 @@
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import TechnicalLabel from "@/components/ui/technical-label";
+import Barcode from "@/components/ui/barcode";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLocation } from "wouter";
+import { 
+  LogOut, 
+  TrendingUp, 
+  Users, 
+  DollarSign, 
+  Calendar, 
+  Clock, 
+  ChevronRight,
+  ChevronLeft,
+  Eye,
+  Target,
+  Award,
+  ArrowUpRight,
+  BarChart3,
+  PieChart,
+  Zap,
+  Copy,
+  CheckCircle2,
+  Wallet,
+  Activity,
+  Star,
+  Gift,
+  Play,
+  Pause,
+  Timer,
+  PlayCircle,
+  PauseCircle,
+  StopCircle,
+  Filter,
+  Flame,
+  HelpCircle,
+  MessageCircle,
+  Book,
+  Phone,
+  Mail,
+  CreditCard,
+  History,
+  Download,
+  Home,
+  Briefcase,
+  UserCheck,
+  HandHeart,
+  LifeBuoy
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
+
+// Interfaces
+interface Earning {
+  id: string;
+  type: string;
+  amount: string;
+  description: string;
+  status: string;
+  createdAt: string;
+}
+
+interface ReferralUser {
+  id: string;
+  referrerId: string;
+  referredId: string;
+  status: string;
+  totalEarned: string;
+  createdAt: string;
+  referred: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    createdAt: string;
+  };
+}
+
+interface AdItem {
+  id: string;
+  title: string;
+  type: "video" | "banner" | "interactive";
+  duration: number;
+  reward: string;
+  description: string;
+  difficulty: "easy" | "medium" | "hard";
+  category: string;
+  thumbnail?: string;
+}
+
+// Sample data
+const availableAds: AdItem[] = [
+  {
+    id: "ad_001",
+    title: "CRYPTO TRADING PLATFORM",
+    type: "video",
+    duration: 30,
+    reward: "2.50",
+    description: "Watch this crypto trading platform advertisement",
+    difficulty: "easy",
+    category: "Finance",
+  },
+  {
+    id: "ad_002", 
+    title: "MOBILE GAME DOWNLOAD",
+    type: "video",
+    duration: 15,
+    reward: "1.25",
+    description: "Download and try this exciting mobile game",
+    difficulty: "easy",
+    category: "Gaming",
+  },
+  {
+    id: "ad_003",
+    title: "E-COMMERCE DEAL",
+    type: "interactive",
+    duration: 45,
+    reward: "3.75",
+    description: "Interactive advertisement for latest e-commerce deals",
+    difficulty: "medium",
+    category: "Shopping",
+  },
+  {
+    id: "ad_004",
+    title: "FITNESS APP PROMOTION",
+    type: "video",
+    duration: 20,
+    reward: "1.75",
+    description: "Learn about this revolutionary fitness application",
+    difficulty: "easy",
+    category: "Health",
+  },
+];
+
+const sections = [
+  { id: "dashboard", name: "Dashboard", icon: Home },
+  { id: "work", name: "Work", icon: Briefcase },
+  { id: "referrals", name: "Referrals", icon: UserCheck },
+  { id: "payout", name: "Payout", icon: CreditCard },
+  { id: "help", name: "Help", icon: LifeBuoy },
+];
+
+export default function UserPortal() {
+  const { user, logout } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Current section state
+  const [currentSection, setCurrentSection] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // Work section states
+  const [selectedAd, setSelectedAd] = useState<AdItem | null>(null);
+  const [isWatching, setIsWatching] = useState(false);
+  const [watchProgress, setWatchProgress] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [completedAds, setCompletedAds] = useState<Set<string>>(new Set());
+
+  // Fetch user data
+  const { data: earningsData } = useQuery({
+    queryKey: ["earnings"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/earnings?limit=10");
+      return await response.json() as { earnings: Earning[]; total: string };
+    },
+    enabled: !!user,
+  });
+
+  const { data: referralsData } = useQuery({
+    queryKey: ["referrals"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/referrals");
+      return await response.json() as { 
+        referrals: ReferralUser[]; 
+        stats: { count: number; totalEarned: string } 
+      };
+    },
+    enabled: !!user,
+  });
+
+  const { data: todayAdViews } = useQuery({
+    queryKey: ["ad-views", "today"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/ad-views/today");
+      return await response.json() as { count: number };
+    },
+    enabled: !!user,
+  });
+
+  // Record ad view mutation
+  const recordAdViewMutation = useMutation({
+    mutationFn: async (data: {
+      adId: string;
+      adType: string;
+      duration: number;
+      completed: boolean;
+      earnedAmount: string;
+    }) => {
+      const response = await apiRequest("POST", "/api/ad-view", data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ad-views"] });
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+    },
+  });
+
+  // Navigation handlers
+  const navigateToSection = useCallback((index: number) => {
+    if (index >= 0 && index < sections.length && index !== currentSection) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentSection(index);
+        setIsTransitioning(false);
+      }, 150);
+    }
+  }, [currentSection]);
+
+  const nextSection = useCallback(() => {
+    navigateToSection((currentSection + 1) % sections.length);
+  }, [currentSection, navigateToSection]);
+
+  const prevSection = useCallback(() => {
+    navigateToSection((currentSection - 1 + sections.length) % sections.length);
+  }, [currentSection, navigateToSection]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case "ArrowLeft":
+          e.preventDefault();
+          prevSection();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          nextSection();
+          break;
+        case "Escape":
+          e.preventDefault();
+          setLocation("/");
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nextSection, prevSection, setLocation]);
+
+  // Touch/swipe support
+  useEffect(() => {
+    let startX = 0;
+    let endX = 0;
+    let startY = 0;
+    let endY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      endX = e.touches[0].clientX;
+      endY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = () => {
+      const deltaX = startX - endX;
+      const deltaY = Math.abs(startY - endY);
+      
+      // Only trigger if horizontal swipe is longer than vertical
+      if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 50) {
+        if (deltaX > 0) {
+          nextSection();
+        } else {
+          prevSection();
+        }
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart);
+    window.addEventListener("touchmove", handleTouchMove);
+    window.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [nextSection, prevSection]);
+
+  // Ad watching timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isWatching && selectedAd && watchProgress < 100) {
+      interval = setInterval(() => {
+        setWatchProgress(prev => {
+          const newProgress = prev + (100 / selectedAd.duration);
+          if (newProgress >= 100) {
+            setIsWatching(false);
+            setIsCompleted(true);
+            
+            recordAdViewMutation.mutate({
+              adId: selectedAd.id,
+              adType: selectedAd.type,
+              duration: selectedAd.duration,
+              completed: true,
+              earnedAmount: selectedAd.reward,
+            });
+            
+            setCompletedAds(prev => new Set(Array.from(prev).concat(selectedAd.id)));
+            
+            toast({
+              title: "Ad Completed! 🎉",
+              description: `You earned ${formatCurrency(selectedAd.reward)}`,
+              variant: "default",
+            });
+            
+            return 100;
+          }
+          return newProgress;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isWatching, selectedAd, watchProgress, recordAdViewMutation, toast]);
+
+  if (!user) {
+    return null; // ProtectedRoute will handle redirect
+  }
+
+  // Utility functions
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatCurrency = (amount: string) => {
+    return `PKR ${parseFloat(amount).toFixed(2)}`;
+  };
+
+  const copyReferralCode = () => {
+    navigator.clipboard.writeText(user.referralCode);
+    toast({
+      title: "Copied!",
+      description: "Referral code copied to clipboard",
+    });
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getAdTypeIcon = (type: string) => {
+    switch (type) {
+      case 'video': return '🎥';
+      case 'banner': return '📰';
+      case 'interactive': return '🎮';
+      default: return '📺';
+    }
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-green-100 text-green-700 border-green-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'hard': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  const startWatching = (ad: AdItem) => {
+    setSelectedAd(ad);
+    setWatchProgress(0);
+    setIsCompleted(false);
+    setIsWatching(true);
+  };
+
+  // Enhanced mock data for charts
+  const earningsChartData = [
+    { date: 'Mon', earnings: 5.25, ads: 8, tasks: 2 },
+    { date: 'Tue', earnings: 3.75, ads: 6, tasks: 1 },
+    { date: 'Wed', earnings: 8.50, ads: 12, tasks: 3 },
+    { date: 'Thu', earnings: 6.25, ads: 10, tasks: 2 },
+    { date: 'Fri', earnings: 12.75, ads: 18, tasks: 4 },
+    { date: 'Sat', earnings: 15.50, ads: 22, tasks: 5 },
+    { date: 'Sun', earnings: 9.25, ads: 14, tasks: 3 }
+  ];
+
+  const earningTypesData = [
+    { name: 'Ad Views', value: 65, color: '#ff6b35' },
+    { name: 'Referrals', value: 25, color: '#000000' },
+    { name: 'Daily Tasks', value: 7, color: '#f7931e' },
+    { name: 'Bonuses', value: 3, color: '#004CFF' }
+  ];
+
+  const dailyGoal = 50;
+  const currentProgress = parseFloat(user.totalEarnings);
+  const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
+  const dailyLimit = 50;
+  const remainingAds = dailyLimit - (todayAdViews?.count || 0);
+
+  return (
+    <div className="portal-container">
+      {/* Industrial Grid Overlay */}
+      <div className="industrial-grid fixed inset-0 opacity-[0.02] z-0" />
+      
+      {/* Navigation Header */}
+      <nav className="fixed top-0 w-full z-50 bg-black border-b-2 border-primary" data-testid="portal-navigation">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="flex items-center justify-between h-16 md:h-20">
+            {/* Logo */}
+            <div className="flex items-center">
+              <div className="bg-primary text-black px-4 py-2 border-2 border-primary">
+                <TechnicalLabel text="THORX" className="text-black text-lg font-black" />
+              </div>
+            </div>
+
+            {/* Section Indicators */}
+            <div className="flex items-center space-x-2">
+              {sections.map((section, index) => (
+                <button
+                  key={section.id}
+                  onClick={() => navigateToSection(index)}
+                  className={`w-3 h-3 border-2 transition-all duration-300 ${
+                    currentSection === index
+                      ? 'bg-primary border-primary'
+                      : 'bg-transparent border-white hover:border-primary'
+                  }`}
+                  data-testid={`nav-indicator-${section.id}`}
+                  aria-label={`Go to ${section.name}`}
+                />
+              ))}
+            </div>
+
+            {/* User Controls */}
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center text-white">
+                <span className="text-sm">{user.firstName}</span>
+              </div>
+              <Button
+                onClick={logout}
+                variant="outline"
+                size="sm"
+                className="border-primary text-primary hover:bg-primary hover:text-black"
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Navigation Controls */}
+      <div className="fixed left-4 top-1/2 transform -translate-y-1/2 z-40">
+        <Button
+          onClick={prevSection}
+          variant="outline"
+          size="lg"
+          className="bg-black/80 border-primary text-primary hover:bg-primary hover:text-black backdrop-blur"
+          data-testid="button-prev-section"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </Button>
+      </div>
+
+      <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
+        <Button
+          onClick={nextSection}
+          variant="outline"
+          size="lg"
+          className="bg-black/80 border-primary text-primary hover:bg-primary hover:text-black backdrop-blur"
+          data-testid="button-next-section"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </Button>
+      </div>
+
+      {/* Section Content */}
+      <div className="pt-20">
+        {sections.map((section, index) => (
+          <section
+            key={section.id}
+            className={`cinematic-section ${currentSection === index ? 'active' : ''} ${
+              isTransitioning ? 'transitioning' : ''
+            }`}
+            data-testid={`section-${section.id}`}
+          >
+            {/* Section Content */}
+            {index === 0 && renderDashboardSection()}
+            {index === 1 && renderWorkSection()}
+            {index === 2 && renderReferralsSection()}
+            {index === 3 && renderPayoutSection()}
+            {index === 4 && renderHelpSection()}
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Dashboard Section
+  function renderDashboardSection() {
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
+            <Star className="w-4 h-4" />
+            <TechnicalLabel text="EARNING DASHBOARD" className="text-primary" />
+          </div>
+          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
+            WELCOME BACK,<br />
+            <span className="text-primary">{user.firstName}</span>
+          </h1>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            Track your earnings, manage referrals, and monitor your progress in real-time
+          </p>
+          <Barcode className="w-48 h-10 mx-auto opacity-60" />
+        </div>
+
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          {/* Total Earnings */}
+          <Card className="group hover:shadow-xl transition-all duration-300 border-2 border-primary bg-black text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full transform translate-x-8 -translate-y-8" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-primary/20 border border-primary">
+                    <Wallet className="w-5 h-5 text-primary" />
+                  </div>
+                  <ArrowUpRight className="w-4 h-4 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <TechnicalLabel text="TOTAL EARNINGS" className="text-gray-300" />
+                  <p className="text-3xl font-black text-primary">{formatCurrency(user.totalEarnings)}</p>
+                  <TechnicalLabel text="+15.2% THIS WEEK" className="text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Available Balance */}
+          <Card className="group hover:shadow-xl transition-all duration-300 border-2 border-primary bg-primary text-black overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-black/20 rounded-full transform translate-x-8 -translate-y-8" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-black/20 border border-black">
+                    <DollarSign className="w-5 h-5 text-black" />
+                  </div>
+                  <Activity className="w-4 h-4 text-black" />
+                </div>
+                <div className="space-y-1">
+                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-black" />
+                  <p className="text-3xl font-black text-black">{formatCurrency(user.availableBalance)}</p>
+                  <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-black" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Active Referrals */}
+          <Card className="group hover:shadow-xl transition-all duration-300 border-2 border-primary bg-black text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full transform translate-x-8 -translate-y-8" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-primary/20 border border-primary">
+                    <Users className="w-5 h-5 text-primary" />
+                  </div>
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <TechnicalLabel text="ACTIVE REFERRALS" className="text-gray-300" />
+                  <p className="text-3xl font-black text-primary">{referralsData?.stats.count || 0}</p>
+                  <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Daily Progress */}
+          <Card className="group hover:shadow-xl transition-all duration-300 border-2 border-primary bg-black text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full transform translate-x-8 -translate-y-8" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 bg-primary/20 border border-primary">
+                    <Target className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="text-right">
+                    <span className="text-2xl font-black text-primary">{Math.round(progressPercentage)}%</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <TechnicalLabel text="DAILY GOAL" className="text-gray-300" />
+                  <Progress value={progressPercentage} className="h-2 bg-gray-700" />
+                  <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Weekly Earnings Chart */}
+          <Card className="border-2 border-primary bg-black text-white">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <TechnicalLabel text="WEEKLY EARNINGS" className="text-white text-xl" />
+                <div className="p-2 bg-primary/20 border border-primary">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={earningsChartData}>
+                  <defs>
+                    <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="date" stroke="#999" />
+                  <YAxis stroke="#999" />
+                  <Tooltip 
+                    formatter={(value) => [`PKR ${value}`, 'Earnings']}
+                    contentStyle={{ 
+                      backgroundColor: '#000', 
+                      border: '2px solid #ff6b35',
+                      borderRadius: '0',
+                      color: '#fff'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="earnings" 
+                    stroke="#ff6b35" 
+                    strokeWidth={3}
+                    fill="url(#earningsGradient)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Earnings Breakdown */}
+          <Card className="border-2 border-primary bg-black text-white">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-white text-xl" />
+                <div className="p-2 bg-primary/20 border border-primary">
+                  <PieChart className="w-5 h-5 text-primary" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={earningTypesData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {earningTypesData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#000', 
+                      border: '2px solid #ff6b35',
+                      borderRadius: '0',
+                      color: '#fff'
+                    }}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Work Section
+  function renderWorkSection() {
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
+            <Flame className="w-4 h-4" />
+            <TechnicalLabel text="WORK CENTER" className="text-primary" />
+          </div>
+          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
+            START <span className="text-primary">EARNING</span><br />
+            WATCH & EARN REWARDS
+          </h1>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            Watch advertisements, complete tasks, and earn real money daily
+          </p>
+          <Barcode className="w-48 h-10 mx-auto opacity-60" />
+        </div>
+
+        {/* Progress Overview Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+          <Card className="border-2 border-primary bg-blue-600 text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
+              <div className="relative">
+                <Eye className="w-8 h-8 mb-4" />
+                <div className="text-2xl font-black">{todayAdViews?.count || 0}</div>
+                <TechnicalLabel text="ADS WATCHED" className="text-blue-100" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-primary text-black overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-black/20 rounded-full transform translate-x-6 -translate-y-6" />
+              <div className="relative">
+                <Target className="w-8 h-8 mb-4" />
+                <div className="text-2xl font-black">{remainingAds}</div>
+                <TechnicalLabel text="REMAINING" className="text-black" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-green-600 text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
+              <div className="relative">
+                <DollarSign className="w-8 h-8 mb-4" />
+                <div className="text-2xl font-black">{formatCurrency((completedAds.size * 2.5).toString())}</div>
+                <TechnicalLabel text="TODAY'S EARNINGS" className="text-green-100" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-purple-600 text-white overflow-hidden">
+            <CardContent className="p-6 relative">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full transform translate-x-6 -translate-y-6" />
+              <div className="relative">
+                <Award className="w-8 h-8 mb-4" />
+                <div className="text-2xl font-black">{Math.round((completedAds.size / dailyLimit) * 100)}%</div>
+                <TechnicalLabel text="DAILY GOAL" className="text-purple-100" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Ad Player Section */}
+        {selectedAd && (
+          <div className="mb-12">
+            <Card className="border-2 border-primary bg-black text-white overflow-hidden" data-testid="ad-player">
+              <CardHeader className="bg-primary/10 border-b border-primary">
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">{getAdTypeIcon(selectedAd.type)}</div>
+                    <div>
+                      <h3 className="text-xl font-black text-primary">{selectedAd.title}</h3>
+                      <TechnicalLabel text={`${selectedAd.category} • ${formatTime(selectedAd.duration)}`} className="text-gray-300" />
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-primary">{formatCurrency(selectedAd.reward)}</div>
+                    <div className={`inline-block px-3 py-1 border text-xs font-semibold ${getDifficultyColor(selectedAd.difficulty)}`}>
+                      {selectedAd.difficulty.toUpperCase()}
+                    </div>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8">
+                {/* Ad Display Area */}
+                <div className="bg-gradient-to-br from-gray-800 via-gray-700 to-gray-600 border-2 border-primary p-12 mb-8 text-center min-h-[300px] flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/10 animate-pulse" />
+                  <div className="space-y-6 relative z-10">
+                    <div className="text-8xl animate-bounce">{getAdTypeIcon(selectedAd.type)}</div>
+                    <h3 className="text-4xl font-black text-primary">{selectedAd.title}</h3>
+                    <TechnicalLabel text={selectedAd.description} className="text-gray-300 text-lg max-w-lg" />
+                    {isCompleted && (
+                      <div className="flex items-center justify-center gap-3 text-primary animate-pulse">
+                        <CheckCircle2 className="w-12 h-12" />
+                        <span className="text-3xl font-black">COMPLETED!</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Progress Section */}
+                <div className="space-y-6 mb-8">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Timer className="w-5 h-5 text-primary" />
+                      <TechnicalLabel text="PROGRESS" className="text-white text-lg" />
+                    </div>
+                    <span className="text-2xl font-black text-primary">{Math.round(watchProgress)}%</span>
+                  </div>
+                  <Progress value={watchProgress} className="h-4 bg-gray-700" />
+                  <div className="flex justify-between">
+                    <TechnicalLabel text={`ELAPSED: ${formatTime(Math.round((watchProgress / 100) * selectedAd.duration))}`} className="text-gray-400" />
+                    <TechnicalLabel text={`DURATION: ${formatTime(selectedAd.duration)}`} className="text-gray-400" />
+                  </div>
+                </div>
+
+                {/* Enhanced Controls */}
+                <div className="flex items-center justify-center gap-6">
+                  {!isCompleted ? (
+                    <>
+                      {!isWatching ? (
+                        <Button
+                          onClick={() => setIsWatching(true)}
+                          size="lg"
+                          className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-black border-2 border-primary"
+                          data-testid="button-play-ad"
+                        >
+                          <PlayCircle className="w-6 h-6 mr-3" />
+                          {watchProgress > 0 ? "RESUME" : "START WATCHING"}
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => setIsWatching(false)}
+                          size="lg"
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-8 py-4 text-lg font-black border-2 border-yellow-600"
+                          data-testid="button-pause-ad"
+                        >
+                          <PauseCircle className="w-6 h-6 mr-3" />
+                          PAUSE
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => {
+                          setIsWatching(false);
+                          setSelectedAd(null);
+                          setWatchProgress(0);
+                          setIsCompleted(false);
+                        }}
+                        variant="outline"
+                        size="lg"
+                        className="border-2 border-white text-white hover:bg-white hover:text-black px-8 py-4 text-lg font-black"
+                        data-testid="button-stop-ad"
+                      >
+                        <StopCircle className="w-6 h-6 mr-3" />
+                        STOP
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        setIsWatching(false);
+                        setSelectedAd(null);
+                        setWatchProgress(0);
+                        setIsCompleted(false);
+                      }}
+                      size="lg"
+                      className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary"
+                      data-testid="button-close-ad"
+                    >
+                      <CheckCircle2 className="w-6 h-6 mr-3" />
+                      CONTINUE EARNING
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Available Ads */}
+        {remainingAds > 0 ? (
+          <div className="space-y-8">
+            <div className="text-center">
+              <TechnicalLabel text="AVAILABLE ADS" className="text-primary text-2xl" />
+            </div>
+            
+            {/* Ads Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {availableAds.map((ad) => {
+                const isCompleted = completedAds.has(ad.id);
+                const isCurrent = selectedAd?.id === ad.id;
+
+                return (
+                  <Card key={ad.id} className={`border-2 border-primary bg-black text-white hover:shadow-xl transition-all duration-300 overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl">{getAdTypeIcon(ad.type)}</div>
+                          <div>
+                            <h3 className="font-black text-white line-clamp-1">{ad.title}</h3>
+                            <TechnicalLabel text={ad.category} className="text-gray-400" />
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-black text-primary">{formatCurrency(ad.reward)}</div>
+                          <div className={`inline-block px-2 py-1 text-xs font-semibold border ${getDifficultyColor(ad.difficulty)}`}>
+                            {ad.difficulty}
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-4">
+                        <TechnicalLabel text={ad.description} className="text-gray-300 text-sm" />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            <TechnicalLabel text={formatTime(ad.duration)} className="text-gray-400" />
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => startWatching(ad)}
+                          disabled={Boolean(isCompleted || (selectedAd && !isCompleted))}
+                          className={`w-full transition-all duration-200 ${
+                            isCompleted 
+                              ? 'bg-green-600 text-white cursor-not-allowed'
+                              : isCurrent
+                              ? 'bg-primary text-black'
+                              : 'bg-primary hover:bg-primary/90 text-black border-2 border-primary'
+                          }`}
+                          data-testid={`button-watch-${ad.id}`}
+                        >
+                          {isCompleted ? (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 mr-2" />
+                              COMPLETED
+                            </>
+                          ) : isCurrent ? (
+                            <>
+                              <PlayCircle className="w-4 h-4 mr-2" />
+                              CURRENTLY WATCHING
+                            </>
+                          ) : (
+                            <>
+                              <PlayCircle className="w-4 h-4 mr-2" />
+                              WATCH NOW
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <Card className="border-2 border-primary bg-black text-white text-center p-12">
+            <div className="space-y-4">
+              <Clock className="w-16 h-16 mx-auto text-primary" />
+              <TechnicalLabel text="DAILY LIMIT REACHED" className="text-primary text-2xl" />
+              <TechnicalLabel text="Come back tomorrow for more earning opportunities!" className="text-gray-300" />
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // Referrals Section
+  function renderReferralsSection() {
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
+            <UserCheck className="w-4 h-4" />
+            <TechnicalLabel text="REFERRAL SYSTEM" className="text-primary" />
+          </div>
+          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
+            BUILD YOUR <span className="text-primary">NETWORK</span><br />
+            EARN MORE TOGETHER
+          </h1>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            Invite friends, earn together, and build a passive income stream through referrals
+          </p>
+          <Barcode className="w-48 h-10 mx-auto opacity-60" />
+        </div>
+
+        {/* Referral Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <Card className="border-2 border-primary bg-primary text-black overflow-hidden">
+            <CardContent className="p-6 text-center">
+              <Users className="w-12 h-12 mx-auto mb-4" />
+              <div className="text-3xl font-black mb-2">{referralsData?.stats.count || 0}</div>
+              <TechnicalLabel text="TOTAL REFERRALS" className="text-black" />
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
+            <CardContent className="p-6 text-center">
+              <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
+              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
+              <TechnicalLabel text="REFERRAL EARNINGS" className="text-gray-300" />
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
+            <CardContent className="p-6 text-center">
+              <TrendingUp className="w-12 h-12 mx-auto mb-4 text-primary" />
+              <div className="text-3xl font-black mb-2 text-primary">25%</div>
+              <TechnicalLabel text="COMMISSION RATE" className="text-gray-300" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Referral Code Card */}
+        <Card className="border-2 border-primary bg-black text-white mb-12 overflow-hidden">
+          <CardHeader className="text-center">
+            <TechnicalLabel text="YOUR REFERRAL CODE" className="text-primary text-xl" />
+          </CardHeader>
+          <CardContent className="text-center space-y-6">
+            <div className="bg-primary text-black px-8 py-6 text-4xl font-black tracking-widest inline-block border-2 border-primary">
+              {user.referralCode}
+            </div>
+            <div className="space-y-4">
+              <Button
+                onClick={copyReferralCode}
+                className="bg-primary hover:bg-primary/90 text-black px-8 py-3 text-lg font-black border-2 border-primary"
+                data-testid="button-copy-referral"
+              >
+                <Copy className="w-5 h-5 mr-3" />
+                COPY CODE
+              </Button>
+              <TechnicalLabel text="Share this code with friends to earn 25% of their earnings forever!" className="text-gray-300 max-w-lg mx-auto" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Referrals List */}
+        <div className="space-y-8">
+          <div className="text-center">
+            <TechnicalLabel text="YOUR REFERRALS" className="text-primary text-2xl" />
+          </div>
+          
+          {referralsData?.referrals && referralsData.referrals.length > 0 ? (
+            <div className="grid gap-6">
+              {referralsData.referrals.map((referral, index) => (
+                <Card key={referral.id} className="border-2 border-primary bg-black text-white overflow-hidden" data-testid={`referral-${referral.id}`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/60 text-black font-black text-2xl flex items-center justify-center border-2 border-primary">
+                          {referral.referred.firstName[0]}{referral.referred.lastName[0]}
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-black text-white">
+                            {referral.referred.firstName} {referral.referred.lastName}
+                          </h3>
+                          <TechnicalLabel text={referral.referred.email} className="text-gray-400" />
+                          <TechnicalLabel text={`Joined: ${formatDate(referral.referred.createdAt)}`} className="text-gray-500" />
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-black text-primary">
+                          +{formatCurrency(referral.totalEarned)}
+                        </div>
+                        <TechnicalLabel text={`TIER ${index + 1}`} className="text-gray-400" />
+                        <div className={`inline-block px-3 py-1 text-xs font-semibold border mt-2 ${
+                          referral.status === 'active' 
+                            ? 'bg-green-900 text-green-400 border-green-600' 
+                            : 'bg-gray-900 text-gray-400 border-gray-600'
+                        }`}>
+                          {referral.status.toUpperCase()}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="border-2 border-primary bg-black text-white text-center p-12">
+              <div className="space-y-4">
+                <HandHeart className="w-16 h-16 mx-auto text-primary" />
+                <TechnicalLabel text="NO REFERRALS YET" className="text-primary text-2xl" />
+                <TechnicalLabel text="Start sharing your referral code to build your network!" className="text-gray-300" />
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Payout Section
+  function renderPayoutSection() {
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
+            <CreditCard className="w-4 h-4" />
+            <TechnicalLabel text="PAYOUT CENTER" className="text-primary" />
+          </div>
+          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
+            WITHDRAW YOUR <span className="text-primary">EARNINGS</span><br />
+            INSTANT PAYMENTS
+          </h1>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            Fast, secure withdrawals to your preferred payment method
+          </p>
+          <Barcode className="w-48 h-10 mx-auto opacity-60" />
+        </div>
+
+        {/* Balance Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <Card className="border-2 border-primary bg-primary text-black overflow-hidden">
+            <CardContent className="p-6 text-center">
+              <Wallet className="w-12 h-12 mx-auto mb-4" />
+              <div className="text-3xl font-black mb-2">{formatCurrency(user.availableBalance)}</div>
+              <TechnicalLabel text="AVAILABLE BALANCE" className="text-black" />
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
+            <CardContent className="p-6 text-center">
+              <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
+              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(user.totalEarnings)}</div>
+              <TechnicalLabel text="TOTAL EARNED" className="text-gray-300" />
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
+            <CardContent className="p-6 text-center">
+              <Clock className="w-12 h-12 mx-auto mb-4 text-primary" />
+              <div className="text-3xl font-black mb-2 text-primary">0</div>
+              <TechnicalLabel text="PENDING WITHDRAWALS" className="text-gray-300" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Withdrawal Form */}
+        <Card className="border-2 border-primary bg-black text-white mb-12 overflow-hidden">
+          <CardHeader className="text-center">
+            <TechnicalLabel text="WITHDRAW FUNDS" className="text-primary text-xl" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-white mb-2" />
+                <input 
+                  type="number" 
+                  placeholder="0.00"
+                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <TechnicalLabel text="PAYMENT METHOD" className="text-white mb-2" />
+                <select className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary">
+                  <option value="">SELECT METHOD</option>
+                  <option value="jazzcash">JazzCash</option>
+                  <option value="easypaisa">EasyPaisa</option>
+                  <option value="bank">Bank Transfer</option>
+                </select>
+              </div>
+            </div>
+            
+            <div>
+              <TechnicalLabel text="ACCOUNT DETAILS" className="text-white mb-2" />
+              <input 
+                type="text" 
+                placeholder="Account number or phone number"
+                className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+              />
+            </div>
+
+            <div className="text-center">
+              <Button
+                className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary"
+                data-testid="button-withdraw"
+              >
+                <Download className="w-5 h-5 mr-3" />
+                REQUEST WITHDRAWAL
+              </Button>
+              <div className="mt-4">
+                <TechnicalLabel text="Minimum withdrawal: PKR 100.00" className="text-gray-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Payment History */}
+        <Card className="border-2 border-primary bg-black text-white overflow-hidden">
+          <CardHeader className="text-center">
+            <TechnicalLabel text="PAYMENT HISTORY" className="text-primary text-xl" />
+          </CardHeader>
+          <CardContent className="text-center p-12">
+            <History className="w-16 h-16 mx-auto mb-4 text-primary" />
+            <TechnicalLabel text="NO WITHDRAWALS YET" className="text-primary text-2xl" />
+            <TechnicalLabel text="Your withdrawal history will appear here" className="text-gray-300" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Help Section
+  function renderHelpSection() {
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
+            <LifeBuoy className="w-4 h-4" />
+            <TechnicalLabel text="HELP CENTER" className="text-primary" />
+          </div>
+          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
+            GET <span className="text-primary">SUPPORT</span><br />
+            24/7 ASSISTANCE
+          </h1>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            Find answers, get help, and connect with our support team
+          </p>
+          <Barcode className="w-48 h-10 mx-auto opacity-60" />
+        </div>
+
+        {/* Quick Help Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <Card className="border-2 border-primary bg-black text-white hover:bg-primary hover:text-black transition-all duration-300 cursor-pointer overflow-hidden">
+            <CardContent className="p-8 text-center">
+              <Book className="w-16 h-16 mx-auto mb-4 text-primary" />
+              <TechnicalLabel text="USER GUIDE" className="text-primary text-lg mb-2" />
+              <TechnicalLabel text="Learn how to maximize your earnings" className="text-gray-300" />
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-black text-white hover:bg-primary hover:text-black transition-all duration-300 cursor-pointer overflow-hidden">
+            <CardContent className="p-8 text-center">
+              <HelpCircle className="w-16 h-16 mx-auto mb-4 text-primary" />
+              <TechnicalLabel text="FAQ" className="text-primary text-lg mb-2" />
+              <TechnicalLabel text="Frequently asked questions" className="text-gray-300" />
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-black text-white hover:bg-primary hover:text-black transition-all duration-300 cursor-pointer overflow-hidden">
+            <CardContent className="p-8 text-center">
+              <MessageCircle className="w-16 h-16 mx-auto mb-4 text-primary" />
+              <TechnicalLabel text="LIVE CHAT" className="text-primary text-lg mb-2" />
+              <TechnicalLabel text="Chat with support team" className="text-gray-300" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Contact Information */}
+        <div className="grid md:grid-cols-2 gap-8 mb-12">
+          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
+            <CardHeader>
+              <TechnicalLabel text="CONTACT INFORMATION" className="text-primary text-xl text-center" />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center gap-4">
+                <Mail className="w-8 h-8 text-primary" />
+                <div>
+                  <TechnicalLabel text="EMAIL" className="text-primary" />
+                  <TechnicalLabel text="support@thorx.com" className="text-white" />
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <Phone className="w-8 h-8 text-primary" />
+                <div>
+                  <TechnicalLabel text="PHONE" className="text-primary" />
+                  <TechnicalLabel text="+92 300 1234567" className="text-white" />
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <Clock className="w-8 h-8 text-primary" />
+                <div>
+                  <TechnicalLabel text="SUPPORT HOURS" className="text-primary" />
+                  <TechnicalLabel text="24/7 AVAILABLE" className="text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
+            <CardHeader>
+              <TechnicalLabel text="SEND MESSAGE" className="text-primary text-xl text-center" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <TechnicalLabel text="SUBJECT" className="text-white mb-2" />
+                <input 
+                  type="text" 
+                  placeholder="Message subject"
+                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <TechnicalLabel text="MESSAGE" className="text-white mb-2" />
+                <textarea 
+                  rows={4}
+                  placeholder="Your message"
+                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary"
+                ></textarea>
+              </div>
+              <Button
+                className="w-full bg-primary hover:bg-primary/90 text-black py-3 text-lg font-black border-2 border-primary"
+                data-testid="button-send-message"
+              >
+                <MessageCircle className="w-5 h-5 mr-3" />
+                SEND MESSAGE
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* FAQ Section */}
+        <Card className="border-2 border-primary bg-black text-white overflow-hidden">
+          <CardHeader className="text-center">
+            <TechnicalLabel text="FREQUENTLY ASKED QUESTIONS" className="text-primary text-xl" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {[
+              {
+                question: "HOW DO I EARN MONEY?",
+                answer: "Watch ads, complete tasks, and refer friends to earn real money daily."
+              },
+              {
+                question: "WHAT IS THE MINIMUM WITHDRAWAL?",
+                answer: "The minimum withdrawal amount is PKR 100.00."
+              },
+              {
+                question: "HOW LONG DO WITHDRAWALS TAKE?",
+                answer: "Withdrawals are processed within 24 hours on business days."
+              },
+              {
+                question: "HOW MUCH CAN I EARN FROM REFERRALS?",
+                answer: "You earn 25% commission from all your referrals' earnings forever."
+              }
+            ].map((faq, index) => (
+              <div key={index} className="border-b border-primary pb-4 last:border-b-0 last:pb-0">
+                <TechnicalLabel text={faq.question} className="text-primary text-lg mb-2" />
+                <TechnicalLabel text={faq.answer} className="text-gray-300" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+}
