@@ -978,7 +978,7 @@ export default function UserPortal() {
           </CardHeader>
           <CardContent className="text-center space-y-6">
             <div className="bg-primary text-black px-8 py-6 text-4xl font-black tracking-widest inline-block border-2 border-primary">
-              {user.referralCode}
+              {user?.referralCode}
             </div>
             <div className="space-y-4">
               <Button
@@ -1074,7 +1074,7 @@ export default function UserPortal() {
           <Card className="border-2 border-primary bg-primary text-black overflow-hidden">
             <CardContent className="p-6 text-center">
               <Wallet className="w-12 h-12 mx-auto mb-4" />
-              <div className="text-3xl font-black mb-2">{formatCurrency(user.availableBalance)}</div>
+              <div className="text-3xl font-black mb-2">{formatCurrency(user?.availableBalance || '0.00')}</div>
               <TechnicalLabel text="AVAILABLE BALANCE" className="text-black" />
             </CardContent>
           </Card>
@@ -1082,7 +1082,7 @@ export default function UserPortal() {
           <Card className="border-2 border-primary bg-black text-white overflow-hidden">
             <CardContent className="p-6 text-center">
               <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(user.totalEarnings)}</div>
+              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(user?.totalEarnings || '0.00')}</div>
               <TechnicalLabel text="TOTAL EARNED" className="text-gray-300" />
             </CardContent>
           </Card>
