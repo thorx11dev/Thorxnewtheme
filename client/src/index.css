@@ -240,6 +240,20 @@
   .progress-dot.active {
     background: hsl(16, 100%, 60%);
   }
+
+  /* User Portal Styles */
+  .portal-container {
+    position: relative;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #000 0%, #1a1a1a 100%);
+    color: white;
+    overflow: hidden;
+  }
+  
+  .portal-container .cinematic-section {
+    background: linear-gradient(135deg, #000 0%, #0a0a0a 100%);
+    color: white;
+  }
 }
 
 @media (max-width: 768px) {

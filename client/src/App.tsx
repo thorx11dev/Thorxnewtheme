@@ -6,8 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
 import Auth from "@/pages/auth";
-import Dashboard from "@/pages/Dashboard";
-import Work from "@/pages/Work";
+import UserPortal from "@/pages/UserPortal";
 import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 
@@ -29,7 +28,7 @@ function Router() {
     <Switch>
       {/* Root route - redirect based on auth status */}
       <Route path="/">
-        {isAuthenticated ? <Dashboard /> : <Home />}
+        {isAuthenticated ? <UserPortal /> : <Home />}
       </Route>
       
       {/* Auth route - only for non-authenticated users */}
@@ -40,15 +39,22 @@ function Router() {
       </Route>
       
       {/* Protected routes - only for authenticated users */}
+      <Route path="/portal">
+        <ProtectedRoute>
+          <UserPortal />
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Legacy routes - redirect to portal */}
       <Route path="/dashboard">
         <ProtectedRoute>
-          <Dashboard />
+          <UserPortal />
         </ProtectedRoute>
       </Route>
       
       <Route path="/work">
         <ProtectedRoute>
-          <Work />
+          <UserPortal />
         </ProtectedRoute>
       </Route>
       
