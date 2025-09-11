@@ -85,12 +85,12 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
     }
   }, [isActive, isMobile, hasAnimated, stats]);
 
-  // Reset animation on section change for mobile
+  // Reset animation on section change for both mobile and desktop
   useEffect(() => {
-    if (isMobile && !isActive) {
+    if (!isActive) {
       setHasAnimated(false);
     }
-  }, [isMobile, isActive]);
+  }, [isActive]);
 
   const animateCounters = () => {
     if (totalPaidRef.current) {

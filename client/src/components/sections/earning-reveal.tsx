@@ -78,12 +78,12 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
     }
   }, [isActive, isMobile, hasAnimated]);
 
-  // Reset animation on section change for mobile
+  // Reset animation on section change for both mobile and desktop
   useEffect(() => {
-    if (isMobile && !isActive) {
+    if (!isActive) {
       setHasAnimated(false);
     }
-  }, [isMobile, isActive]);
+  }, [isActive]);
 
   const animateCounters = () => {
     if (adsCounterRef.current) {
