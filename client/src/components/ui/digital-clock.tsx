@@ -9,29 +9,44 @@ export default function DigitalClock({ className = "" }: DigitalClockProps) {
   const [timeSpent, setTimeSpent] = useState(0);
 
   useEffect(() => {
-    // Get start time from localStorage or set current time
-    const startTime = localStorage.getItem('thorx-start-time');
+    // Get start time from sessionStorage for current session only
+    const startTime = sessionStorage.getItem('thorx-start-time');
     const sessionStart = startTime ? parseInt(startTime) : Date.now();
     
     if (!startTime) {
-      localStorage.setItem('thorx-start-time', sessionStart.toString());
+      sessionStorage.setItem('thorx-start-time', sessionStart.toString());
     }
 
-    const interval = setInterval(() => {
+    // Initial update
+    const updateTime = () => {
       const currentTime = Date.now();
       const elapsed = Math.floor((currentTime - sessionStart) / 1000);
       setTimeSpent(elapsed);
-    }, 1000);
+    };
 
-    return () => clearInterval(interval);
+    updateTime(); // Initial call
+    
+    // Use requestAnimationFrame for better performance and accuracy
+    let rafId: number;
+    const tick = () => {
+      updateTime();
+      rafId = requestAnimationFrame(tick);
+    };
+    
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+    };
   }, []);
 
   const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
+    const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
