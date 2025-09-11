@@ -105,10 +105,10 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                 data-testid={`faq-item-${faq.id}`}
               >
                 {/* Mobile Folder Tab */}
-                <div className="absolute -top-3 left-6 w-16 h-6 bg-yellow-400 border-3 border-black border-b-0 rounded-t-md z-10"></div>
+                <div className="absolute -top-3 left-6 w-16 h-6 bg-yellow-400 border-[3px] border-black border-b-0 rounded-t-md z-10"></div>
                 
                 {/* Mobile Main Card */}
-                <div className="bg-yellow-400 border-3 border-black rounded-lg overflow-hidden">
+                <div className="bg-yellow-400 border-[3px] border-black rounded-lg overflow-hidden">
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem 
                       value={faq.id}
