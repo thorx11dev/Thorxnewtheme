@@ -406,6 +406,15 @@ export default function UserPortal() {
     }
   };
 
+  const getDifficultyColorDark = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-green-900/50 text-green-300 border-green-700';
+      case 'medium': return 'bg-yellow-900/50 text-yellow-300 border-yellow-700';
+      case 'hard': return 'bg-red-900/50 text-red-300 border-red-700';
+      default: return 'bg-muted text-muted-foreground border-muted-foreground';
+    }
+  };
+
   const startWatching = (ad: AdItem) => {
     setSelectedAd(ad);
     setWatchProgress(0);
@@ -774,63 +783,83 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <div className="mb-2">
             <TechnicalLabel text="WORK CENTER" className="text-foreground" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-3 tracking-tighter leading-tight">
             START <span className="text-primary">EARNING</span><br />
             WATCH & EARN REWARDS
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
             Watch advertisements, complete tasks, and earn real money daily
           </p>
-          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
+          <Barcode className="w-24 md:w-32 h-6 md:h-8 mx-auto opacity-60" />
         </div>
 
         {/* Progress Overview Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-          <div className="split-card bg-card border-2 border-black p-6 text-center">
-            <Eye className="w-12 h-12 mx-auto mb-4 text-foreground" />
-            <div className="text-2xl font-black text-foreground">{todayAdViews?.count || 0}</div>
-            <TechnicalLabel text="ADS WATCHED" className="text-foreground" />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-10">
+          <div className="group gradient-card p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default" data-testid="card-ads-watched">
+            <div className="flex items-center justify-between mb-3">
+              <Eye className="w-10 h-10 text-primary group-hover:text-primary/80 transition-colors" />
+              <div className="text-3xl font-black text-foreground group-hover:text-primary transition-colors">
+                {todayAdViews?.count || 0}
+              </div>
+            </div>
+            <TechnicalLabel text="ADS WATCHED" className="text-muted-foreground group-hover:text-foreground transition-colors" />
+            <div className="text-xs text-muted-foreground mt-1">Today's activity</div>
           </div>
 
-          <div className="split-card bg-primary text-black border-2 border-black p-6 text-center">
-            <Target className="w-12 h-12 mx-auto mb-4 text-black" />
-            <div className="text-2xl font-black text-black">{remainingAds}</div>
-            <TechnicalLabel text="REMAINING" className="text-black" />
+          <div className="group gradient-card-primary p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default" data-testid="card-remaining-ads">
+            <div className="flex items-center justify-between mb-3">
+              <Target className="w-10 h-10 text-primary-foreground group-hover:text-primary-foreground/80 transition-colors" />
+              <div className="text-3xl font-black text-primary-foreground group-hover:text-primary-foreground/90 transition-colors">
+                {remainingAds}
+              </div>
+            </div>
+            <TechnicalLabel text="REMAINING ADS" className="text-primary-foreground/80 group-hover:text-primary-foreground transition-colors" />
+            <div className="text-xs text-primary-foreground/60 mt-1">Daily quota left</div>
           </div>
 
-          <div className="split-card bg-muted border-2 border-black p-6 text-center">
-            <DollarSign className="w-12 h-12 mx-auto mb-4 text-foreground" />
-            <div className="text-2xl font-black text-foreground">{formatCurrency((completedAds.size * 2.5).toString())}</div>
-            <TechnicalLabel text="TODAY'S EARNINGS" className="text-foreground" />
+          <div className="group gradient-card-accent p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default" data-testid="card-today-earnings">
+            <div className="flex items-center justify-between mb-3">
+              <DollarSign className="w-10 h-10 text-accent-foreground group-hover:text-accent-foreground/80 transition-colors" />
+              <div className="text-3xl font-black text-accent-foreground group-hover:text-accent-foreground/90 transition-colors">
+                {formatCurrency((completedAds.size * 2.5))}
+              </div>
+            </div>
+            <TechnicalLabel text="TODAY'S EARNINGS" className="text-accent-foreground/80 group-hover:text-accent-foreground transition-colors" />
+            <div className="text-xs text-accent-foreground/60 mt-1">Current session</div>
           </div>
 
-          <div className="split-card bg-black text-white border-2 border-black p-6 text-center">
-            <Award className="w-12 h-12 mx-auto mb-4 text-white" />
-            <div className="text-2xl font-black text-white">{Math.round((completedAds.size / dailyLimit) * 100)}%</div>
-            <TechnicalLabel text="DAILY GOAL" className="text-white" />
+          <div className="group gradient-card-secondary p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default" data-testid="card-daily-goal">
+            <div className="flex items-center justify-between mb-3">
+              <Award className="w-10 h-10 text-secondary-foreground group-hover:text-secondary-foreground/80 transition-colors" />
+              <div className="text-3xl font-black text-secondary-foreground group-hover:text-secondary-foreground/90 transition-colors">
+                {Math.round((completedAds.size / dailyLimit) * 100)}%
+              </div>
+            </div>
+            <TechnicalLabel text="DAILY GOAL" className="text-secondary-foreground/80 group-hover:text-secondary-foreground transition-colors" />
+            <div className="text-xs text-secondary-foreground/60 mt-1">Progress to limit</div>
           </div>
         </div>
 
         {/* Ad Player Section */}
         {selectedAd && (
-          <div className="mb-12">
-            <Card className="split-card bg-card border-2 border-black" data-testid="ad-player">
-              <CardHeader className="border-b-2 border-black">
+          <div className="mb-10">
+            <Card className="gradient-card border border-muted-foreground/20 backdrop-blur-sm" data-testid="ad-player">
+              <CardHeader className="border-b border-muted-foreground/20">
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="text-3xl text-foreground">{getAdTypeIcon(selectedAd.type)}</div>
+                    <div className="text-2xl text-primary">{getAdTypeIcon(selectedAd.type)}</div>
                     <div>
-                      <h3 className="text-xl font-black text-primary">{selectedAd.title}</h3>
+                      <h3 className="text-lg font-black text-primary">{selectedAd.title}</h3>
                       <TechnicalLabel text={`${selectedAd.category} • ${formatTime(selectedAd.duration)}`} className="text-muted-foreground" />
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-black text-primary">{formatCurrency(selectedAd.reward)}</div>
-                    <div className={`inline-block px-3 py-1 border-2 border-black text-xs font-semibold ${getDifficultyColor(selectedAd.difficulty)}`}>
+                    <div className="text-xl font-black text-primary">{formatCurrency(selectedAd.reward)}</div>
+                    <div className={`inline-block px-2 py-1 rounded border text-xs font-semibold ${getDifficultyColorDark(selectedAd.difficulty)}`}>
                       {selectedAd.difficulty.toUpperCase()}
                     </div>
                   </div>
@@ -838,31 +867,31 @@ export default function UserPortal() {
               </CardHeader>
               <CardContent className="p-6">
                 {/* Ad Display Area */}
-                <div className="bg-muted border-2 border-black p-12 mb-8 text-center min-h-[300px] flex items-center justify-center relative">
+                <div className="bg-muted/50 border border-muted-foreground/20 rounded p-8 mb-6 text-center min-h-[240px] flex items-center justify-center relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
-                  <div className="space-y-6 relative z-10">
-                    <div className="text-8xl animate-bounce">{getAdTypeIcon(selectedAd.type)}</div>
-                    <h3 className="text-4xl font-black text-primary">{selectedAd.title}</h3>
-                    <TechnicalLabel text={selectedAd.description} className="text-muted-foreground text-lg max-w-lg" />
+                  <div className="space-y-4 relative z-10">
+                    <div className="text-5xl">{getAdTypeIcon(selectedAd.type)}</div>
+                    <h3 className="text-2xl font-black text-primary leading-tight">{selectedAd.title}</h3>
+                    <TechnicalLabel text={selectedAd.description} className="text-muted-foreground max-w-md mx-auto" />
                     {isCompleted && (
-                      <div className="flex items-center justify-center gap-3 text-primary animate-pulse">
-                        <CheckCircle2 className="w-12 h-12" />
-                        <span className="text-3xl font-black">COMPLETED!</span>
+                      <div className="flex items-center justify-center gap-3 text-primary">
+                        <CheckCircle2 className="w-8 h-8" />
+                        <span className="text-xl font-black">COMPLETED!</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Progress Section */}
-                <div className="space-y-6 mb-8">
+                <div className="space-y-4 mb-6">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <Timer className="w-5 h-5 text-primary" />
-                      <TechnicalLabel text="PROGRESS" className="text-white text-lg" />
+                      <Timer className="w-4 h-4 text-primary" />
+                      <TechnicalLabel text="PROGRESS" className="text-foreground" />
                     </div>
-                    <span className="text-2xl font-black text-primary">{Math.round(watchProgress)}%</span>
+                    <span className="text-xl font-black text-primary">{Math.round(watchProgress)}%</span>
                   </div>
-                  <Progress value={watchProgress} className="h-4 bg-gray-700" />
+                  <Progress value={watchProgress} className="progress-enhanced h-3" />
                   <div className="flex justify-between">
                     <TechnicalLabel text={`ELAPSED: ${formatTime(Math.round((watchProgress / 100) * selectedAd.duration))}`} className="text-muted-foreground" />
                     <TechnicalLabel text={`DURATION: ${formatTime(selectedAd.duration)}`} className="text-muted-foreground" />
@@ -877,20 +906,20 @@ export default function UserPortal() {
                         <Button
                           onClick={() => setIsWatching(true)}
                           size="lg"
-                          className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-black border-2 border-primary"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 font-bold border border-primary/20 transition-all duration-200 hover:scale-105"
                           data-testid="button-play-ad"
                         >
-                          <PlayCircle className="w-6 h-6 mr-3" />
+                          <PlayCircle className="w-5 h-5 mr-2" />
                           {watchProgress > 0 ? "RESUME" : "START WATCHING"}
                         </Button>
                       ) : (
                         <Button
                           onClick={() => setIsWatching(false)}
                           size="lg"
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-8 py-4 text-lg font-black border-2 border-yellow-600"
+                          className="bg-secondary hover:bg-secondary/90 text-secondary-foreground px-6 py-3 font-bold border border-secondary/20 transition-all duration-200 hover:scale-105"
                           data-testid="button-pause-ad"
                         >
-                          <PauseCircle className="w-6 h-6 mr-3" />
+                          <PauseCircle className="w-5 h-5 mr-2" />
                           PAUSE
                         </Button>
                       )}
@@ -903,10 +932,10 @@ export default function UserPortal() {
                         }}
                         variant="outline"
                         size="lg"
-                        className="border-2 border-white text-white hover:bg-white hover:text-black px-8 py-4 text-lg font-black"
+                        className="border border-muted-foreground/40 text-muted-foreground hover:bg-muted hover:text-foreground px-6 py-3 font-bold transition-all duration-200 hover:scale-105"
                         data-testid="button-stop-ad"
                       >
-                        <StopCircle className="w-6 h-6 mr-3" />
+                        <StopCircle className="w-5 h-5 mr-2" />
                         STOP
                       </Button>
                     </>
@@ -919,10 +948,10 @@ export default function UserPortal() {
                         setIsCompleted(false);
                       }}
                       size="lg"
-                      className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 font-bold border border-primary/20 transition-all duration-200 hover:scale-105"
                       data-testid="button-close-ad"
                     >
-                      <CheckCircle2 className="w-6 h-6 mr-3" />
+                      <CheckCircle2 className="w-5 h-5 mr-2" />
                       CONTINUE EARNING
                     </Button>
                   )}
