@@ -91,6 +91,8 @@
   .auth-page {
     min-height: 100vh;
     position: relative;
+    width: 100%;
+    overflow-x: hidden;
   }
 }
 
@@ -167,11 +169,13 @@
       left: 0 !important;
       right: 0 !important;
       bottom: 0 !important;
-      width: 100% !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
       height: 100vh !important;
       height: 100dvh !important;
       height: 100svh !important;
-      padding: 10rem 1rem 2rem 1rem !important;
+      padding: 8rem 1rem 2rem 1rem !important;
+      margin: 0 !important;
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
@@ -186,6 +190,7 @@
       -webkit-overflow-scrolling: touch !important;
       pointer-events: none !important;
       z-index: 1 !important;
+      box-sizing: border-box !important;
     }
   }
 
@@ -324,7 +329,22 @@
 @media (max-width: 768px) {
   .split-card {
     flex-direction: column;
-    margin: 0 1rem;
+    margin: 0 auto;
+    width: calc(100% - 2rem);
+    max-width: 100%;
+  }
+  
+  .auth-page .cinematic-section {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  .auth-page .max-w-7xl,
+  .auth-page .max-w-4xl {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   /* Mobile navigation aids - keep visible but smaller */
