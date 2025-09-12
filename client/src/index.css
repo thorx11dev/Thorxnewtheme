@@ -140,29 +140,27 @@
     z-index: 1;
   }
   
+  /* Mobile-first approach - completely rewrite mobile layout */
   @media (max-width: 768px) {
     .cinematic-section {
-      position: relative !important;
-      top: auto !important;
-      left: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      width: 100% !important;
-      min-height: 100vh !important;
-      height: auto !important;
-      padding-top: 140px !important;
-      padding-bottom: 2rem !important;
-      padding-left: 1rem !important;
-      padding-right: 1rem !important;
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: flex-start !important;
-      opacity: 0 !important;
-      transform: translateY(20px) !important;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-      overflow-y: visible !important;
-      z-index: 1 !important;
+      position: relative;
+      top: auto;
+      left: auto;
+      right: auto;
+      bottom: auto;
+      width: 100%;
+      min-height: 100vh;
+      height: auto;
+      padding: 6rem 1rem 2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      opacity: 1;
+      transform: none;
+      transition: none;
+      overflow: visible;
+      z-index: auto;
     }
   }
 
@@ -176,8 +174,9 @@
   
   @media (max-width: 768px) {
     .cinematic-section[data-section="1"] {
-      justify-content: center !important;
-      padding-top: 120px !important;
+      justify-content: center;
+      padding: 8rem 1rem 2rem 1rem;
+      min-height: 100vh;
     }
   }
 
@@ -189,9 +188,9 @@
   
   @media (max-width: 768px) {
     .cinematic-section.active {
-      opacity: 1 !important;
-      transform: translateY(0) !important;
-      z-index: 10 !important;
+      opacity: 1;
+      transform: none;
+      z-index: auto;
     }
   }
 
@@ -272,7 +271,12 @@
     min-height: 100vh;
     background: linear-gradient(135deg, #000 0%, #1a1a1a 100%);
     color: white;
-    overflow: hidden;
+  }
+  
+  @media (max-width: 768px) {
+    .portal-container {
+      overflow: visible;
+    }
   }
   
   .portal-container .cinematic-section {
@@ -287,21 +291,13 @@
     margin: 0 1rem;
   }
   
+  /* Hide navigation aids on mobile to prevent interference */
   .navigation-progress {
-    bottom: 20px;
-    right: 20px;
+    display: none;
   }
   
   .arrow-keys-guide {
-    bottom: 20px;
-    left: 20px;
-  }
-  
-  .arrow-key {
-    width: 40px;
-    height: 40px;
-    border: 2px solid #000;
-    background: rgba(255, 255, 255, 0.9);
+    display: none;
   }
   
   .progress-dot {
@@ -312,6 +308,17 @@
   .technical-label {
     font-size: 11px;
     letter-spacing: 1px;
+  }
+  
+  /* Ensure body has proper mobile scrolling */
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  
+  /* Prevent any unexpected overflow on mobile */
+  html {
+    overflow-x: hidden;
   }
 }
 
