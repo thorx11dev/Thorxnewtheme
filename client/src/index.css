@@ -74,6 +74,18 @@
     @apply font-sans antialiased bg-background text-foreground;
     min-height: 100vh;
   }
+  
+  /* Cinematic mode body lock */
+  body.cinematic-mode {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior-y: none;
+  }
+  
+  html {
+    height: 100%;
+    overscroll-behavior-y: none;
+  }
 
   /* Auth page specific overrides for proper scrolling */
   .auth-page {
@@ -128,6 +140,8 @@
     bottom: 0;
     width: 100%;
     height: 100vh;
+    height: 100dvh;
+    height: 100svh;
     padding-top: 240px;
     padding-bottom: 40px;
     display: flex;
@@ -137,30 +151,39 @@
     transform: scale(0.9);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    pointer-events: none;
     z-index: 1;
   }
   
-  /* Mobile-first approach - completely rewrite mobile layout */
+  /* Mobile cinematic sections - preserve navigation with fixed scrolling */
   @media (max-width: 768px) {
     .cinematic-section {
-      position: relative;
-      top: auto;
-      left: auto;
-      right: auto;
-      bottom: auto;
-      width: 100%;
-      min-height: 100vh;
-      height: auto;
-      padding: 6rem 1rem 2rem 1rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      opacity: 1;
-      transform: none;
-      transition: none;
-      overflow: visible;
-      z-index: auto;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      height: 100vh !important;
+      height: 100dvh !important;
+      height: 100svh !important;
+      padding: 6rem 1rem 2rem 1rem !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      opacity: 0 !important;
+      transform: translateY(30px) translateZ(0) !important;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      overscroll-behavior: contain !important;
+      touch-action: pan-y !important;
+      -webkit-overflow-scrolling: touch !important;
+      pointer-events: none !important;
+      z-index: 1 !important;
     }
   }
 
@@ -174,23 +197,24 @@
   
   @media (max-width: 768px) {
     .cinematic-section[data-section="1"] {
-      justify-content: center;
-      padding: 8rem 1rem 2rem 1rem;
-      min-height: 100vh;
+      justify-content: center !important;
+      padding: 4rem 1rem 2rem 1rem !important;
     }
   }
 
   .cinematic-section.active {
     opacity: 1;
     transform: scale(1);
+    pointer-events: auto;
     z-index: 10;
   }
   
   @media (max-width: 768px) {
     .cinematic-section.active {
-      opacity: 1;
-      transform: none;
-      z-index: auto;
+      opacity: 1 !important;
+      transform: translateY(0) translateZ(0) !important;
+      pointer-events: auto !important;
+      z-index: 10 !important;
     }
   }
 
@@ -291,13 +315,17 @@
     margin: 0 1rem;
   }
   
-  /* Hide navigation aids on mobile to prevent interference */
+  /* Mobile navigation aids - keep visible but smaller */
   .navigation-progress {
-    display: none;
+    bottom: 20px;
+    right: 20px;
+    transform: scale(0.8);
   }
   
   .arrow-keys-guide {
-    display: none;
+    bottom: 20px;
+    left: 20px;
+    transform: scale(0.8);
   }
   
   .progress-dot {
@@ -308,12 +336,6 @@
   .technical-label {
     font-size: 11px;
     letter-spacing: 1px;
-  }
-  
-  /* Ensure body has proper mobile scrolling */
-  body {
-    overflow-x: hidden;
-    overflow-y: auto;
   }
   
   /* Prevent any unexpected overflow on mobile */

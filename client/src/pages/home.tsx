@@ -28,6 +28,15 @@ export default function Home() {
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
+  // Add cinematic-mode class to body when component mounts
+  useEffect(() => {
+    document.body.classList.add('cinematic-mode');
+    
+    return () => {
+      document.body.classList.remove('cinematic-mode');
+    };
+  }, []);
+
   // Trigger clock transformation once when reaching section 3
   useEffect(() => {
     if (currentSection >= 3 && !hasTransformedToClock) {
