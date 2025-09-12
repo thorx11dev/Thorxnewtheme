@@ -27,7 +27,7 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
           });
           setLocation("/auth");
         }
-      }, 100); // Small delay to avoid race conditions
+      }, 200); // Slightly longer delay to ensure auth state is stable
 
       return () => clearTimeout(timeoutId);
     }

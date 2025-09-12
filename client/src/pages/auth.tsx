@@ -159,8 +159,8 @@ export default function Auth() {
         title: "Registration Successful",
         description: "Welcome to THORX! Your earning journey begins now.",
       });
-      // Navigate to dashboard
-      setLocation("/dashboard");
+      // Navigate to root - will redirect to portal for authenticated users
+      setLocation("/");
     },
     onError: (error: any) => {
       toast({
@@ -181,8 +181,8 @@ export default function Auth() {
         title: "Login Successful",
         description: "Welcome back to THORX!",
       });
-      // Navigate to dashboard
-      setLocation("/dashboard");
+      // Navigate to root - will redirect to portal for authenticated users
+      setLocation("/");
     },
     onError: (error: any) => {
       toast({

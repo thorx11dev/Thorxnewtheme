@@ -33,7 +33,7 @@ function Router() {
       
       {/* Auth route - only for non-authenticated users */}
       <Route path="/auth">
-        <PublicOnlyRoute>
+        <PublicOnlyRoute redirectTo="/">
           <Auth />
         </PublicOnlyRoute>
       </Route>
@@ -45,7 +45,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      {/* Legacy routes - redirect to portal */}
+      {/* Legacy routes - redirect to root for authenticated users */}
       <Route path="/dashboard">
         <ProtectedRoute>
           <UserPortal />
