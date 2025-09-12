@@ -251,50 +251,50 @@ export default function Auth() {
       </nav>
 
       {/* Auth Section */}
-      <section className="cinematic-section active min-h-screen pb-8 overflow-y-auto">
+      <section className="cinematic-section active min-h-screen pb-8 overflow-y-auto pt-32 md:pt-40">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           {/* Technical Header */}
           <div className="text-center mb-4 md:mb-6">
             <div className="mb-2">
               <TechnicalLabel text="ACCESS CONTROL SYSTEM" />
             </div>
-            <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-black mb-4">
+            <h2 className="text-2xl md:text-5xl lg:text-6xl font-black tracking-tight text-black mb-4">
               ENTER THE SYSTEM
             </h2>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
           </div>
 
           {/* Auth Card */}
-          <div className="max-w-4xl mx-auto mb-8">
-            <div className="split-card bg-white border-3 border-black p-4 md:p-6 lg:p-8">
+          <div className="max-w-4xl mx-auto mb-8 px-2 md:px-0">
+            <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-8">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted border-2 border-black">
+                <TabsList className="grid w-full grid-cols-2 mb-6 md:mb-8 bg-muted border-2 border-black">
                   <TabsTrigger 
                     value="register" 
-                    className="data-[state=active]:bg-black data-[state=active]:text-white font-black"
+                    className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base"
                     data-testid="tab-register"
                   >
                     REGISTER
                   </TabsTrigger>
                   <TabsTrigger 
                     value="login" 
-                    className="data-[state=active]:bg-black data-[state=active]:text-white font-black"
+                    className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base"
                     data-testid="tab-login"
                   >
                     LOGIN
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="register" className="space-y-4">
-                  <div className="text-center mb-6">
+                <TabsContent value="register" className="space-y-3 md:space-y-4">
+                  <div className="text-center mb-4 md:mb-6">
                     <TechnicalLabel text="NEW USER REGISTRATION" className="mb-2" />
-                    <h3 className="text-2xl md:text-3xl font-black text-black">JOIN THE EARNING NETWORK</h3>
+                    <h3 className="text-xl md:text-3xl font-black text-black">JOIN THE EARNING NETWORK</h3>
                   </div>
 
                   <Form {...registerForm}>
-                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-3 md:space-y-4">
                       {/* Name Fields */}
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid md:grid-cols-2 gap-3 md:gap-4">
                         <FormField
                           control={registerForm.control}
                           name="firstName"
@@ -305,7 +305,7 @@ export default function Auth() {
                                 <div className="relative">
                                   <Input 
                                     {...field}
-                                    className="border-2 border-black text-lg py-3"
+                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
                                     data-testid="input-register-firstname"
                                   />
                                   {!field.value && (
@@ -330,7 +330,7 @@ export default function Auth() {
                                 <div className="relative">
                                   <Input 
                                     {...field}
-                                    className="border-2 border-black text-lg py-3"
+                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
                                     data-testid="input-register-lastname"
                                   />
                                   {!field.value && (
@@ -359,7 +359,7 @@ export default function Auth() {
                                   <Input 
                                     {...field}
                                     readOnly
-                                    className="border-2 border-black text-lg py-3 bg-muted cursor-not-allowed"
+                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3 bg-muted cursor-not-allowed"
                                     data-testid="input-register-identity"
                                   />
                                   {!field.value && (
@@ -379,7 +379,7 @@ export default function Auth() {
                       />
 
                       {/* Contact Information */}
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid md:grid-cols-2 gap-3 md:gap-4">
                         <FormField
                           control={registerForm.control}
                           name="phone"
@@ -390,7 +390,7 @@ export default function Auth() {
                                 <div className="relative">
                                   <Input 
                                     {...field}
-                                    className="border-2 border-black text-lg py-3"
+                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
                                     data-testid="input-register-phone"
                                   />
                                   {!field.value && (
@@ -415,7 +415,7 @@ export default function Auth() {
                                 <div className="relative">
                                   <Input 
                                     {...field}
-                                    className="border-2 border-black text-lg py-3"
+                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
                                     data-testid="input-register-email"
                                   />
                                   {!field.value && (
@@ -432,7 +432,7 @@ export default function Auth() {
                       </div>
 
                       {/* Password Fields */}
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid md:grid-cols-2 gap-3 md:gap-4">
                         <FormField
                           control={registerForm.control}
                           name="password"
@@ -444,7 +444,7 @@ export default function Auth() {
                                   <Input 
                                     type={showPassword ? "text" : "password"}
                                     {...field}
-                                    className="border-2 border-black text-lg py-3 pr-10"
+                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3 pr-10"
                                     data-testid="input-register-password"
                                   />
                                   {!field.value && (
@@ -478,7 +478,7 @@ export default function Auth() {
                                   <Input 
                                     type={showConfirmPassword ? "text" : "password"}
                                     {...field}
-                                    className="border-2 border-black text-lg py-3 pr-10"
+                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3 pr-10"
                                     data-testid="input-register-confirm-password"
                                   />
                                   {!field.value && (
@@ -513,7 +513,7 @@ export default function Auth() {
                               <div className="relative">
                                 <Input 
                                   {...field}
-                                  className="border-2 border-black text-lg py-3"
+                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3"
                                   data-testid="input-register-referral"
                                 />
                                 {!field.value && (
@@ -531,7 +531,7 @@ export default function Auth() {
                       <Button 
                         type="submit" 
                         disabled={registerMutation.isPending}
-                        className="w-full bg-black text-white text-xl font-black py-4 hover:bg-primary transition-colors border-2 border-black"
+                        className="w-full bg-black text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-primary transition-colors border-2 border-black"
                         data-testid="button-register-submit"
                       >
                         {registerMutation.isPending ? "PROCESSING..." : "REGISTER NOW →"}
@@ -540,14 +540,14 @@ export default function Auth() {
                   </Form>
                 </TabsContent>
 
-                <TabsContent value="login" className="space-y-6">
-                  <div className="text-center mb-6">
+                <TabsContent value="login" className="space-y-4 md:space-y-6">
+                  <div className="text-center mb-4 md:mb-6">
                     <TechnicalLabel text="USER LOGIN" className="mb-2" />
-                    <h3 className="text-2xl md:text-3xl font-black text-black">WELCOME BACK</h3>
+                    <h3 className="text-xl md:text-3xl font-black text-black">WELCOME BACK</h3>
                   </div>
 
                   <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-6">
+                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4 md:space-y-6">
                       <FormField
                         control={loginForm.control}
                         name="email"
@@ -559,7 +559,7 @@ export default function Auth() {
                                 <Input 
                                   {...field}
                                   type="email"
-                                  className="border-2 border-black text-lg py-3"
+                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3"
                                   data-testid="input-login-email"
                                 />
                                 {!field.value && (
@@ -585,7 +585,7 @@ export default function Auth() {
                                 <Input 
                                   type={showPassword ? "text" : "password"}
                                   {...field}
-                                  className="border-2 border-black text-lg py-3 pr-10"
+                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3 pr-10"
                                   data-testid="input-login-password"
                                 />
                                 {!field.value && (
@@ -628,7 +628,7 @@ export default function Auth() {
                       <Button 
                         type="submit" 
                         disabled={loginMutation.isPending}
-                        className="w-full bg-primary text-white text-xl font-black py-4 hover:bg-black transition-colors border-2 border-black"
+                        className="w-full bg-primary text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-black transition-colors border-2 border-black"
                         data-testid="button-login-submit"
                       >
                         {loginMutation.isPending ? "VERIFYING..." : "LOGIN →"}
@@ -639,13 +639,13 @@ export default function Auth() {
               </Tabs>
 
               {/* Security Badge */}
-              <div className="mt-8 pt-6 border-t-2 border-black">
-                <div className="flex items-center justify-center space-x-4">
-                  <div className="bg-black text-white px-3 py-1">
+              <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t-2 border-black">
+                <div className="flex items-center justify-center space-x-2 md:space-x-4">
+                  <div className="bg-black text-white px-2 md:px-3 py-1">
                     <TechnicalLabel text="256-BIT ENCRYPTION" className="text-white text-xs" />
                   </div>
-                  <Barcode className="w-16 h-4" />
-                  <div className="bg-primary text-white px-3 py-1">
+                  <Barcode className="w-12 md:w-16 h-3 md:h-4" />
+                  <div className="bg-primary text-white px-2 md:px-3 py-1">
                     <TechnicalLabel text="SECURE SYSTEM" className="text-white text-xs" />
                   </div>
                 </div>
