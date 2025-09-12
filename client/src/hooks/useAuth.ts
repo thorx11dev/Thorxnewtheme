@@ -22,20 +22,18 @@ export function useAuth() {
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/user");
-        if (!response.ok) {
-          return null;
-        }
         return await response.json();
       } catch (error: any) {
-        // Always return null for failed auth instead of throwing
-        return null;
+        if (error.status === 401) {
+          return null;
+        }
+        throw error;
       }
     },
     retry: false,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 30 * 1000, // 30 seconds - shorter to pick up auth changes faster
     refetchOnMount: true,
-    refetchOnWindowFocus: false, // Reduce unnecessary refetches
-    refetchInterval: false,
+    refetchOnWindowFocus: true,
   });
 
   const queryClient = useQueryClient();
@@ -53,8 +51,8 @@ export function useAuth() {
   };
 
   return {
-    user: user || null,
-    isAuthenticated: !!user && user !== null,
+    user,
+    isAuthenticated: !!user,
     isLoading,
     error,
     logout,

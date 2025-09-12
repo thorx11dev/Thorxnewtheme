@@ -252,7 +252,7 @@ export default function Auth() {
 
       {/* Auth Section */}
       <section className="cinematic-section active min-h-screen pb-8 overflow-y-auto">
-        <div className="w-full max-w-7xl mx-auto px-4 md:px-8 flex flex-col items-center justify-center">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
           {/* Technical Header */}
           <div className="text-center mb-4 md:mb-6">
             <div className="mb-2">
@@ -265,8 +265,8 @@ export default function Auth() {
           </div>
 
           {/* Auth Card */}
-          <div className="w-full max-w-4xl mx-auto mb-8 px-0">
-            <div className="split-card bg-white border-3 border-black p-4 md:p-6 lg:p-8 mx-auto">
+          <div className="max-w-4xl mx-auto mb-8">
+            <div className="split-card bg-white border-3 border-black p-4 md:p-6 lg:p-8">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted border-2 border-black">
                   <TabsTrigger 

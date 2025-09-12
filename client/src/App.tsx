@@ -13,23 +13,22 @@ import NotFound from "@/pages/not-found";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Always render the Switch to maintain consistent hook order
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-2xl font-black mb-2">THORX</div>
+          <div className="text-sm">LOADING...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
       {/* Root route - redirect based on auth status */}
       <Route path="/">
-        {isLoading ? (
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-              <div className="text-2xl font-black mb-2">THORX</div>
-              <div className="text-sm">LOADING...</div>
-            </div>
-          </div>
-        ) : isAuthenticated ? (
-          <UserPortal />
-        ) : (
-          <Home />
-        )}
+        {isAuthenticated ? <UserPortal /> : <Home />}
       </Route>
       
       {/* Auth route - only for non-authenticated users */}
