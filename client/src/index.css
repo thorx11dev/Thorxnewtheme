@@ -74,14 +74,14 @@
     @apply font-sans antialiased bg-background text-foreground;
     min-height: 100vh;
   }
-  
+
   /* Cinematic mode body lock */
   body.cinematic-mode {
     height: 100%;
     overflow: hidden;
     overscroll-behavior-y: none;
   }
-  
+
   html {
     height: 100%;
     overscroll-behavior-y: none;
@@ -158,7 +158,7 @@
     pointer-events: none;
     z-index: 1;
   }
-  
+
   /* Mobile cinematic sections - preserve navigation with fixed scrolling */
   @media (max-width: 768px) {
     .cinematic-section {
@@ -196,7 +196,7 @@
     padding-top: 0;
     display: flex;
   }
-  
+
   @media (max-width: 768px) {
     .cinematic-section[data-section="1"] {
       justify-content: center !important;
@@ -210,7 +210,7 @@
     pointer-events: auto;
     z-index: 10;
   }
-  
+
   @media (max-width: 768px) {
     .cinematic-section.active {
       opacity: 1 !important;
@@ -225,7 +225,7 @@
     box-shadow: none;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   .split-card:hover {
     transform: translateY(-2px);
   }
@@ -236,12 +236,22 @@
   }
 
   .pulse-glow {
-    animation: pulseGlow 2s infinite;
+    animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 53, 0.3); }
-    50% { box-shadow: 0 0 40px rgba(255, 107, 53, 0.6); }
+  @keyframes zoom-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-zoom-in {
+    animation: zoom-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   .navigation-progress {
@@ -250,7 +260,7 @@
     right: 30px;
     z-index: 1000;
   }
-  
+
   .arrow-keys-guide {
     position: fixed;
     bottom: 30px;
@@ -260,7 +270,7 @@
     align-items: center;
     gap: 12px;
   }
-  
+
   .arrow-key {
     width: 32px;
     height: 32px;
@@ -273,7 +283,7 @@
     font-weight: bold;
     transition: all 0.2s ease;
   }
-  
+
   .arrow-key:hover {
     background: hsl(16, 100%, 60%);
     color: white;
@@ -298,13 +308,13 @@
     background: linear-gradient(135deg, #000 0%, #1a1a1a 100%);
     color: white;
   }
-  
+
   @media (max-width: 768px) {
     .portal-container {
       overflow: visible;
     }
   }
-  
+
   .portal-container .cinematic-section {
     background: linear-gradient(135deg, #000 0%, #0a0a0a 100%);
     color: white;
@@ -316,30 +326,30 @@
     flex-direction: column;
     margin: 0 1rem;
   }
-  
+
   /* Mobile navigation aids - keep visible but smaller */
   .navigation-progress {
     bottom: 20px;
     right: 20px;
     transform: scale(0.8);
   }
-  
+
   .arrow-keys-guide {
     bottom: 20px;
     left: 20px;
     transform: scale(0.8);
   }
-  
+
   .progress-dot {
     width: 16px;
     height: 16px;
   }
-  
+
   .technical-label {
     font-size: 11px;
     letter-spacing: 1px;
   }
-  
+
   /* Prevent any unexpected overflow on mobile */
   html {
     overflow-x: hidden;
@@ -371,21 +381,21 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
-  
+
   /* Work Section Enhanced Animations */
   .work-card-hover {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   .work-card-hover:hover {
     transform: translateY(-2px) scale(1.02);
     box-shadow: 0 8px 24px hsl(var(--primary) / 0.15);
   }
-  
+
   .work-icon-bounce {
     animation: gentle-bounce 2s ease-in-out infinite;
   }
-  
+
   @keyframes gentle-bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-3px); }
@@ -401,52 +411,52 @@
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   @media (min-width: 768px) {
     .grid-work-cards {
       grid-template-columns: repeat(2, 1fr);
       gap: 1.5rem;
     }
   }
-  
+
   @media (min-width: 1280px) {
     .grid-work-cards {
       grid-template-columns: repeat(4, 1fr);
       gap: 1.5rem;
     }
   }
-  
+
   @media (max-width: 768px) {
-    
+
     .work-hero-title {
       font-size: 1.5rem;
       line-height: 1.3;
     }
-    
+
     .ad-card {
       padding: 1rem;
     }
-    
+
     .ad-display-area {
       min-height: 180px;
       padding: 2rem 1rem;
     }
   }
-  
+
   /* Work Section Enhanced Animations */
   .work-card-hover {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   .work-card-hover:hover {
     transform: translateY(-2px) scale(1.02);
     box-shadow: 0 8px 24px hsl(var(--primary) / 0.15);
   }
-  
+
   .work-icon-bounce {
     animation: gentle-bounce 2s ease-in-out infinite;
   }
-  
+
   @keyframes gentle-bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-3px); }

@@ -2,12 +2,13 @@ import { useState } from "react";
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ChevronDown } from "lucide-react"; // Assuming ChevronDown is available in lucide-react
 
 interface FAQSectionProps {
   isActive: boolean;
 }
 
-const faqData = [
+const allFaqData = [
   {
     id: "001",
     protocol: "PLATFORM-INIT",
@@ -25,11 +26,89 @@ const faqData = [
     protocol: "SECURITY-VER",
     question: "Can I trust Thorx?",
     answer: "Security verification complete. Platform metrics: 99.7% uptime, ~2.4M+ processed payments, enterprise-grade security practices. Multi-layer encryption, real-time fraud detection, transparent audit trails ensure maximum user protection."
+  },
+  // Adding 12 more questions as requested
+  {
+    id: "004",
+    protocol: "NETWORK-GROWTH",
+    question: "How does the network expansion work?",
+    answer: "Network expansion is driven by user referrals. Each successful referral contributes to network growth and unlocks bonus rewards. The system tracks referrals through unique invite codes."
+  },
+  {
+    id: "005",
+    protocol: "MONETIZATION-MODELS",
+    question: "What are the monetization models?",
+    answer: "Monetization includes video engagement (ad revenue), task completion (fixed rewards), and network growth (referral bonuses). Each model is designed for sustainable earning."
+  },
+  {
+    id: "006",
+    protocol: "REAL-TIME-PROCESSING",
+    question: "Is the processing real-time?",
+    answer: "Yes, Thorx utilizes a real-time processing engine for all activities, ensuring immediate updates on earnings and network status."
+  },
+  {
+    id: "007",
+    protocol: "ENTERPRISE-SECURITY",
+    question: "What security measures are in place?",
+    answer: "We employ enterprise-grade security, including multi-layer encryption, real-time fraud detection, and transparent audit trails to protect user data and transactions."
+  },
+  {
+    id: "008",
+    protocol: "VIDEO-ENGAGEMENT",
+    question: "How much can I earn from video engagement?",
+    answer: "Earnings from video engagement range from $0.05 to $0.50 per engagement, depending on ad type and user interaction."
+  },
+  {
+    id: "009",
+    protocol: "TASK-COMPLETION",
+    question: "What kind of tasks are available?",
+    answer: "Tasks vary and can include surveys, data entry, content review, and more. Rewards typically range from $1.00 to $5.00 per task."
+  },
+  {
+    id: "010",
+    protocol: "REFERRAL-BONUSES",
+    question: "What are the referral bonuses?",
+    answer: "Referral bonuses start at $2.00 and can go up to $10.00 per successful referral, encouraging network growth."
+  },
+  {
+    id: "011",
+    protocol: "PAYOUT-CHANNELS",
+    question: "What are the available payout channels?",
+    answer: "Payouts can be received via bank transfer, mobile wallet, or cryptocurrency."
+  },
+  {
+    id: "012",
+    protocol: "PLATFORM-METRICS",
+    question: "What are the platform's uptime metrics?",
+    answer: "The platform boasts a 99.7% uptime, ensuring consistent availability for all users."
+  },
+  {
+    id: "013",
+    protocol: "FRAUD-DETECTION",
+    question: "How is fraud detected?",
+    answer: "Real-time fraud detection mechanisms are integrated to identify and prevent suspicious activities, safeguarding the platform and its users."
+  },
+  {
+    id: "014",
+    protocol: "AUDIT-TRAILS",
+    question: "Are there transparent audit trails?",
+    answer: "Yes, transparent audit trails are maintained for all transactions and activities, providing accountability and security."
+  },
+  {
+    id: "015",
+    protocol: "USER-PROTECTION",
+    question: "How is user data protected?",
+    answer: "User data is protected through multi-layer encryption and strict security protocols, ensuring privacy and safety."
   }
 ];
 
+const INITIAL_FAQ_COUNT = 3;
+
 export default function FAQSection({ isActive }: FAQSectionProps) {
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
+  const [displayedFaqCount, setDisplayedFaqCount] = useState(INITIAL_FAQ_COUNT);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const handleValueChange = (value: string) => {
     setOpenItems(prev => ({
@@ -37,6 +116,18 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
       [value]: !prev[value]
     }));
   };
+
+  const handleLoadMore = () => {
+    setIsAnimating(true);
+    setDisplayedFaqCount(allFaqData.length);
+    setShowAll(true);
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, 500); // Animation duration
+  };
+
+  const displayedFaqs = allFaqData.slice(0, displayedFaqCount);
+
   return (
     <section 
       className={`cinematic-section ${isActive ? 'active' : ''}`}
@@ -45,7 +136,7 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
       <div className="max-w-7xl mx-auto px-4 md:px-8 relative">
         {/* Industrial Grid Overlay */}
         <div className="industrial-grid"></div>
-        
+
         {/* Desktop Layout */}
         <div className="hidden md:flex items-start justify-between gap-16 min-h-[70vh] pt-16">
           {/* Left Side - Industrial Title */}
@@ -61,13 +152,13 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
               <Barcode className="w-32 h-8 opacity-60" />
             </div>
           </div>
-          
+
           {/* Right Side - Protocol Cards */}
           <div className="flex-1 space-y-6 max-w-3xl">
-            {faqData.map((faq) => (
+            {displayedFaqs.map((faq) => (
               <div
                 key={faq.id}
-                className="split-card bg-background relative group"
+                className={`split-card bg-background relative group transition-all duration-500 ${isAnimating && displayedFaqCount === allFaqData.length ? 'animate-zoom-in' : ''}`}
                 data-testid={`faq-item-${faq.id}`}
               >
                 {/* Protocol Header */}
@@ -82,7 +173,7 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Protocol Content */}
                 <div className="bg-background">
                   <Accordion type="single" collapsible className="w-full" onValueChange={handleValueChange}>
@@ -121,6 +212,28 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                 </div>
               </div>
             ))}
+
+            {/* Load More Button - Desktop */}
+            {!showAll && (
+              <div className="flex justify-center pt-8">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={isAnimating}
+                  className="group flex items-center gap-4 px-8 py-4 bg-primary text-primary-foreground border-2 border-black hover:bg-background hover:text-primary transition-all duration-300 disabled:opacity-50"
+                  data-testid="load-more-desktop"
+                >
+                  <TechnicalLabel text="LOAD MORE PROTOCOLS" className="text-current font-bold" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-current rounded-full pulse-glow"></div>
+                    <ChevronDown 
+                      className={`w-6 h-6 transition-transform duration-300 ${
+                        isAnimating ? 'animate-spin' : 'group-hover:translate-y-1'
+                      }`} 
+                    />
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -136,13 +249,13 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
             </h2>
             <Barcode className="w-24 h-6 mx-auto opacity-60" />
           </div>
-          
+
           {/* Mobile Protocol Cards */}
           <div className="space-y-4">
-            {faqData.map((faq) => (
+            {displayedFaqs.map((faq) => (
               <div
                 key={faq.id}
-                className="split-card bg-background relative"
+                className={`split-card bg-background relative transition-all duration-500 ${isAnimating && displayedFaqCount === allFaqData.length ? 'animate-zoom-in' : ''}`}
                 data-testid={`faq-item-${faq.id}`}
               >
                 {/* Mobile Protocol Header */}
@@ -154,7 +267,7 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Mobile Content */}
                 <div className="bg-background">
                   <Accordion type="single" collapsible className="w-full" onValueChange={handleValueChange}>
@@ -191,6 +304,28 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                 </div>
               </div>
             ))}
+
+            {/* Load More Button - Mobile */}
+            {!showAll && (
+              <div className="flex justify-center pt-6">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={isAnimating}
+                  className="group flex items-center gap-3 px-6 py-3 bg-primary text-primary-foreground border-2 border-black hover:bg-background hover:text-primary transition-all duration-300 disabled:opacity-50"
+                  data-testid="load-more-mobile"
+                >
+                  <TechnicalLabel text="LOAD MORE" className="text-current font-bold text-sm" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-current rounded-full pulse-glow"></div>
+                    <ChevronDown 
+                      className={`w-5 h-5 transition-transform duration-300 ${
+                        isAnimating ? 'animate-spin' : 'group-hover:translate-y-1'
+                      }`} 
+                    />
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
