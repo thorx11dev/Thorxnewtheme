@@ -92,6 +92,20 @@
     min-height: 100vh;
     position: relative;
   }
+
+  /* Mobile auth page specific adjustments */
+  @media (max-width: 767px) {
+    .auth-page .cinematic-section {
+      padding-top: 12rem !important;
+      padding-bottom: 3rem !important;
+    }
+    
+    .auth-page nav {
+      position: fixed !important;
+      top: 0 !important;
+      z-index: 60 !important;
+    }
+  }
 }
 
 @layer components {

@@ -92,7 +92,7 @@ export default function Auth() {
     const thorxPrefixes = ['THORX', 'EARN', 'DIGI', 'CYBER', 'PRIME', 'ALPHA', 'CORE', 'ELITE'];
     const thorxSuffixes = ['MASTER', 'FORCE', 'AGENT', 'BUILDER', 'TRADER', 'GENIUS', 'COMMANDER', 'PIONEER'];
     const numbers = Math.floor(Math.random() * 9999) + 1000;
-    
+
     if (firstName && lastName) {
       const prefix = thorxPrefixes[Math.floor(Math.random() * thorxPrefixes.length)];
       const suffix = thorxSuffixes[Math.floor(Math.random() * thorxSuffixes.length)];
@@ -140,7 +140,7 @@ export default function Auth() {
   // Watch first and last name for identity generation
   const firstName = registerForm.watch('firstName');
   const lastName = registerForm.watch('lastName');
-  
+
   useEffect(() => {
     if (firstName && lastName) {
       const identity = generateThorxIdentity(firstName, lastName);
@@ -154,12 +154,12 @@ export default function Auth() {
     onSuccess: () => {
       // Invalidate auth queries to refresh user state
       queryClient.invalidateQueries({ queryKey: ["auth"] });
-      
+
       toast({
         title: "Registration Successful",
         description: "Welcome to THORX! Your earning journey begins now.",
       });
-      
+
       // Add delay to ensure session is established before navigation
       setTimeout(() => {
         setLocation("/");
@@ -179,12 +179,12 @@ export default function Auth() {
     onSuccess: () => {
       // Invalidate auth queries to refresh user state
       queryClient.invalidateQueries({ queryKey: ["auth"] });
-      
+
       toast({
         title: "Login Successful",
         description: "Welcome back to THORX!",
       });
-      
+
       // Add delay to ensure session is established before navigation
       setTimeout(() => {
         setLocation("/");
@@ -227,7 +227,7 @@ export default function Auth() {
                 <TechnicalLabel text="BACKSPACE" className="text-white text-xs md:text-sm" />
               </button>
             </div>
-            
+
             {/* Right Section */}
             <div className="flex items-center">
               <div className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2">
@@ -239,7 +239,7 @@ export default function Auth() {
             </div>
           </div>
         </div>
-        
+
         {/* Main Title Section */}
         <div className="bg-white border-b-3 border-black py-3 md:py-4">
           <div className="max-w-7xl mx-auto px-4 md:px-8 text-center">
@@ -251,7 +251,7 @@ export default function Auth() {
       </nav>
 
       {/* Auth Section */}
-      <section className="cinematic-section active min-h-screen pb-8 overflow-y-auto">
+      <section className="cinematic-section active min-h-screen pb-8 overflow-y-auto pt-40 sm:pt-44 md:pt-36">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           {/* Technical Header */}
           <div className="text-center mb-4 md:mb-6">
