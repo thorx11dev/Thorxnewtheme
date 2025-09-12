@@ -96,14 +96,25 @@
   /* Mobile auth page specific adjustments */
   @media (max-width: 767px) {
     .auth-page .cinematic-section {
-      padding-top: 12rem !important;
+      padding-top: 14rem !important;
       padding-bottom: 3rem !important;
+      min-height: 100vh !important;
     }
     
     .auth-page nav {
       position: fixed !important;
       top: 0 !important;
       z-index: 60 !important;
+    }
+
+    /* Ensure auth card has proper spacing on mobile */
+    .auth-page .split-card {
+      margin-bottom: 2rem !important;
+    }
+
+    /* Fix mobile form spacing */
+    .auth-page .technical-label {
+      margin-bottom: 0.5rem !important;
     }
   }
 }
@@ -185,7 +196,7 @@
       height: 100vh !important;
       height: 100dvh !important;
       height: 100svh !important;
-      padding: 10rem 1rem 2rem 1rem !important;
+      padding: 12rem 1rem 2rem 1rem !important;
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;

@@ -251,7 +251,7 @@ export default function Auth() {
       </nav>
 
       {/* Auth Section */}
-      <section className="cinematic-section active min-h-screen pb-8 overflow-y-auto pt-40 sm:pt-44 md:pt-36">
+      <section className="cinematic-section active min-h-screen pb-8 overflow-y-auto pt-48 sm:pt-52 md:pt-36">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           {/* Technical Header */}
           <div className="text-center mb-4 md:mb-6">
