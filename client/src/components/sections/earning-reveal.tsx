@@ -31,7 +31,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
       setTimeout(() => {
         animateCounters();
         setHasAnimated(true);
-      }, 500);
+      }, 600);
     }
     // Reset animation state when section becomes inactive
     if (!isMobile && !isActive) {
@@ -50,7 +50,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
             setTimeout(() => {
               animateCounters();
               setHasAnimated(true);
-            }, 300);
+            }, 600);
           }
         });
       },
@@ -73,7 +73,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
       const timer = setTimeout(() => {
         animateCounters();
         setHasAnimated(true);
-      }, 500);
+      }, 600);
       return () => clearTimeout(timer);
     }
   }, [isActive, isMobile, hasAnimated]);

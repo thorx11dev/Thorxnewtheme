@@ -38,7 +38,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
       setTimeout(() => {
         animateCounters();
         setHasAnimated(true);
-      }, 500);
+      }, 600);
     }
     // Reset animation state when section becomes inactive
     if (!isMobile && !isActive) {
@@ -57,7 +57,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
             setTimeout(() => {
               animateCounters();
               setHasAnimated(true);
-            }, 300);
+            }, 600);
           }
         });
       },
@@ -80,7 +80,7 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
       const timer = setTimeout(() => {
         animateCounters();
         setHasAnimated(true);
-      }, 500);
+      }, 600);
       return () => clearTimeout(timer);
     }
   }, [isActive, isMobile, hasAnimated, stats]);
