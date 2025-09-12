@@ -68,37 +68,17 @@
 @layer base {
   * {
     @apply border-border;
-    cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" fill="%23000"/><circle cx="12" cy="12" r="2" fill="%23fff"/></svg>') 12 12, auto;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    overflow-x: hidden;
-    overflow-y: auto;
     min-height: 100vh;
-  }
-  
-  @media (max-width: 768px) {
-    body {
-      overflow: auto;
-      height: auto;
-    }
   }
 
   /* Auth page specific overrides for proper scrolling */
   .auth-page {
-    overflow-y: auto;
-    height: 100vh;
+    min-height: 100vh;
     position: relative;
-  }
-  
-  @media (max-width: 768px) {
-    .auth-page {
-      overflow-y: auto;
-      height: auto;
-      min-height: 100vh;
-      position: relative;
-    }
   }
 }
 
@@ -109,7 +89,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    opacity: 0.03;
+    opacity: 0.1;
     background-image: 
       linear-gradient(hsl(var(--muted-foreground)) 0.5px, transparent 0.5px),
       linear-gradient(90deg, hsl(var(--muted-foreground)) 0.5px, transparent 0.5px);
