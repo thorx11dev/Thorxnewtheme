@@ -30,34 +30,34 @@ function Router() {
       <Route path="/">
         {isAuthenticated ? <UserPortal /> : <Home />}
       </Route>
-      
+
       {/* Auth route - only for non-authenticated users */}
       <Route path="/auth">
         <PublicOnlyRoute redirectTo="/">
           <Auth />
         </PublicOnlyRoute>
       </Route>
-      
+
       {/* Protected routes - only for authenticated users */}
       <Route path="/portal">
         <ProtectedRoute>
           <UserPortal />
         </ProtectedRoute>
       </Route>
-      
+
       {/* Legacy routes - redirect to root for authenticated users */}
       <Route path="/dashboard">
         <ProtectedRoute>
           <UserPortal />
         </ProtectedRoute>
       </Route>
-      
+
       <Route path="/work">
         <ProtectedRoute>
           <UserPortal />
         </ProtectedRoute>
       </Route>
-      
+
       {/* 404 page */}
       <Route component={NotFound} />
     </Switch>

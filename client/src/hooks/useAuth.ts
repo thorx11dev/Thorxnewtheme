@@ -31,9 +31,10 @@ export function useAuth() {
       }
     },
     retry: false,
-    staleTime: 30 * 1000, // 30 seconds - shorter to pick up auth changes faster
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   const queryClient = useQueryClient();

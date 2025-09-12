@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import HookSection from "@/components/sections/hook-section";
 import EarningReveal from "@/components/sections/earning-reveal";
 import TrustBuilder from "@/components/sections/trust-builder";
