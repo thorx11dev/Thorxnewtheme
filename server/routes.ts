@@ -22,9 +22,9 @@ declare module "express-session" {
 // Authentication middleware
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (!req.session.userId) {
-    return res.status(401).json({ 
+    return res.status(401).json({
       message: "Authentication required",
-      error: "UNAUTHORIZED" 
+      error: "UNAUTHORIZED"
     });
   }
   next();
@@ -52,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session management
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
-  
+
   app.use(session({
     store: new pgStore({
       conString: process.env.DATABASE_URL,
@@ -73,11 +73,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/register", async (req, res) => {
     try {
       const validatedData = registerSchema.parse(req.body);
-      
+
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(validatedData.email);
       if (existingUser) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Email already registered",
           error: "DUPLICATE_EMAIL"
         });
@@ -105,8 +105,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const user = await storage.createUser(userData);
-      
-      // Create session and save it explicitly
+
+      // Set session and save it explicitly
       req.session.userId = user.id;
       req.session.user = {
         id: user.id,
@@ -137,13 +137,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Registration error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Invalid registration data",
           errors: error.errors
         });
       }
-      
-      res.status(500).json({ 
+
+      res.status(500).json({
         message: "Registration failed",
         error: "INTERNAL_ERROR"
       });
@@ -153,17 +153,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User login endpoint
   app.post("/api/login", async (req, res) => {
     try {
-      const validatedData = loginSchema.parse(req.body);
-      
-      const user = await storage.validateUserPassword(validatedData.email, validatedData.password);
+      const { email, password } = loginSchema.parse(req.body);
+
+      // Find user by email
+      const user = await storage.validateUserPassword(email, password);
+
       if (!user) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           message: "Invalid email or password",
           error: "INVALID_CREDENTIALS"
         });
       }
 
-      // Create session and save it explicitly
+      // Set session and save it explicitly
       req.session.userId = user.id;
       req.session.user = {
         id: user.id,
@@ -172,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: user.lastName,
       };
 
-      // Explicitly save the session before responding
+      // Force session save and wait for it to complete
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
           if (err) reject(err);
@@ -196,13 +198,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Login error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Invalid login data",
           errors: error.errors
         });
       }
-      
-      res.status(500).json({ 
+
+      res.status(500).json({
         message: "Login failed",
         error: "INTERNAL_ERROR"
       });
@@ -214,12 +216,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.session.destroy((err) => {
       if (err) {
         console.error("Logout error:", err);
-        return res.status(500).json({ 
+        return res.status(500).json({
           message: "Logout failed",
           error: "INTERNAL_ERROR"
         });
       }
-      
+
       res.clearCookie("connect.sid");
       res.json({
         success: true,
@@ -233,7 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUserById(req.session.userId!);
       if (!user) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           message: "User not found",
           error: "USER_NOT_FOUND"
         });
@@ -254,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Get user error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to fetch user data",
         error: "INTERNAL_ERROR"
       });
@@ -266,14 +268,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const earnings = await storage.getUserEarnings(req.session.userId!, limit);
-      
+
       res.json({
         earnings,
         total: await storage.getUserTotalEarnings(req.session.userId!)
       });
     } catch (error) {
       console.error("Get earnings error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to fetch earnings",
         error: "INTERNAL_ERROR"
       });
@@ -285,14 +287,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const referrals = await storage.getUserReferrals(req.session.userId!);
       const stats = await storage.getReferralStats(req.session.userId!);
-      
+
       res.json({
         referrals,
         stats
       });
     } catch (error) {
       console.error("Get referrals error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to fetch referrals",
         error: "INTERNAL_ERROR"
       });
@@ -312,7 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const adView = await storage.createAdView(adViewData);
-      
+
       res.status(201).json({
         success: true,
         adView,
@@ -320,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Create ad view error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to record ad view",
         error: "INTERNAL_ERROR"
       });
@@ -334,7 +336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ count });
     } catch (error) {
       console.error("Get today ad views error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to fetch ad views",
         error: "INTERNAL_ERROR"
       });
@@ -345,18 +347,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/legacy-register", async (req, res) => {
     try {
       const validatedData = insertRegistrationSchema.parse(req.body);
-      
+
       // Check if email already exists
       const existingRegistration = await storage.getRegistrationByEmail(validatedData.email);
       if (existingRegistration) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Email already registered",
           error: "DUPLICATE_EMAIL"
         });
       }
 
       const registration = await storage.createRegistration(validatedData);
-      
+
       res.status(201).json({
         success: true,
         referralCode: registration.referralCode,
@@ -364,13 +366,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Invalid registration data",
           errors: error.errors
         });
       }
-      
-      res.status(500).json({ 
+
+      res.status(500).json({
         message: "Registration failed",
         error: "INTERNAL_ERROR"
       });

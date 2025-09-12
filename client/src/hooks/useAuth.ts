@@ -17,68 +17,52 @@ export interface User {
 }
 
 export function useAuth() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  // Get current user query
   const { data: user, isLoading, error } = useQuery({
-    queryKey: ["auth", "user"],
+    queryKey: ["auth"],
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/user");
-        return await response.json() as User;
+        return await response.json();
       } catch (error: any) {
-        // If user is not authenticated, return null instead of throwing
-        if (error.message?.includes("401")) {
+        if (error.status === 401) {
           return null;
         }
         throw error;
       }
     },
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds - shorter to pick up auth changes faster
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
-  // Logout mutation
-  const logoutMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/logout"),
-    onSuccess: () => {
-      queryClient.clear(); // Clear all cached data
-      toast({
-        title: "Logged Out",
-        description: "You have been successfully logged out.",
-      });
-    },
-    onError: (error: any) => {
+  const queryClient = useQueryClient();
+
+  const logout = async () => {
+    try {
+      await apiRequest("POST", "/api/logout");
+    } catch (error) {
       console.error("Logout error:", error);
-      // Even if logout fails on server, clear local state
+    } finally {
+      // Clear all queries and redirect
       queryClient.clear();
-    },
-  });
-
-  const logout = () => {
-    logoutMutation.mutate();
-  };
-
-  const refetchUser = () => {
-    queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      window.location.href = "/";
+    }
   };
 
   return {
     user,
+    isAuthenticated: !!user,
     isLoading,
-    isAuthenticated: !!user && !error,
-    isLoggedOut: !user && !isLoading && !error,
+    error,
     logout,
-    refetchUser,
-    isLoggingOut: logoutMutation.isPending,
   };
 }
 
 // Hook for protected routes
 export function useRequireAuth() {
   const auth = useAuth();
-  
+
   return {
     ...auth,
     // Helper to check if we should show loading or redirect
