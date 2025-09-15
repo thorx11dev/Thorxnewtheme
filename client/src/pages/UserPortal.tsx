@@ -611,7 +611,7 @@ export default function UserPortal() {
       </nav>
 
       {/* Section Content */}
-      <div className="pt-20 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pt-24 md:pb-8">
+      <div className="pt-20 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
         {sections.map((section, index) => (
           <section
             key={section.id}
@@ -641,7 +641,7 @@ export default function UserPortal() {
           <div className="mb-3">
             <TechnicalLabel text="EARNING DASHBOARD" className="text-muted-foreground" />
           </div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-4 tracking-tighter leading-tight">
             WELCOME BACK,<br />
             <span className="text-primary">{displayUser?.firstName || "GUEST"}</span>
           </h1>
@@ -774,7 +774,7 @@ export default function UserPortal() {
           </Card>
 
           {/* Earnings Breakdown */}
-          <Card className="group split-card bg-gradient-to-br from-card to-card/90 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+          <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
             <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground group-hover:text-primary/90 transition-colors" />
@@ -847,7 +847,7 @@ export default function UserPortal() {
         trend: { direction: "up" as const, percentage: "+12%" }
       },
       {
-        id: "remaining-ads",
+        id: "remaining-ads", 
         title: "REMAINING ADS",
         value: remainingAds,
         subtitle: "Daily quota left",
@@ -856,7 +856,7 @@ export default function UserPortal() {
       },
       {
         id: "today-earnings",
-        title: "TODAY'S EARNINGS",
+        title: "TODAY'S EARNINGS", 
         value: formatCurrency((completedAds.size * 2.5)),
         subtitle: "Current session",
         icon: DollarSign,
@@ -878,7 +878,7 @@ export default function UserPortal() {
     const currentVideoTab = {
       id: activeWorkTab,
       title: WORK_TABS.find(tab => tab.id === activeWorkTab)?.title || "ADS",
-      icon: activeWorkTab === "ads" ? "📺" :
+      icon: activeWorkTab === "ads" ? "📺" : 
             activeWorkTab === "surveys" ? "📊" :
             activeWorkTab === "referrals" ? "👥" : "✅",
       color: "primary",
@@ -891,14 +891,14 @@ export default function UserPortal() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Enhanced Header */}
         <div className="text-center mb-8">
-          <div className="mb-3">
-            <TechnicalLabel text="WORK CENTER" className="text-muted-foreground" />
+          <div className="mb-2">
+            <TechnicalLabel text="WORK CENTER" className="text-white" />
           </div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white mb-3 tracking-tighter leading-tight">
             START <span className="text-primary">EARNING</span><br />
             WATCH & EARN REWARDS
           </h1>
-          <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base md:text-lg text-gray-300 mb-6 max-w-2xl mx-auto leading-relaxed">
             Watch advertisements, complete tasks, and earn real money daily
           </p>
           <Barcode className="w-24 md:w-32 h-6 md:h-8 mx-auto opacity-60" />
@@ -908,7 +908,7 @@ export default function UserPortal() {
         <MetricsCards metrics={metricsData} className="mb-10" />
 
         {/* Industrial Tab System */}
-        <IndustrialTabs
+        <IndustrialTabs 
           tabs={WORK_TABS}
           activeTab={activeWorkTab}
           onTabChange={setActiveWorkTab}
@@ -940,13 +940,13 @@ export default function UserPortal() {
                 const isCurrent = selectedAd?.id === ad.id;
 
                 return (
-                  <Card key={ad.id} className={`border-2 border-primary bg-card hover:shadow-xl transition-all duration-300 overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
+                  <Card key={ad.id} className={`border-2 border-primary bg-black text-white hover:shadow-xl transition-all duration-300 overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <div className="text-2xl">{getAdTypeIcon(ad.type)}</div>
                           <div>
-                            <h3 className="font-black text-foreground line-clamp-1">{ad.title}</h3>
+                            <h3 className="font-black text-white line-clamp-1">{ad.title}</h3>
                             <TechnicalLabel text={ad.category} className="text-muted-foreground" />
                           </div>
                         </div>
@@ -960,10 +960,10 @@ export default function UserPortal() {
                     </CardHeader>
                     <CardContent className="pt-0">
                       <div className="space-y-4">
-                        <TechnicalLabel text={ad.description} className="text-muted-foreground text-sm" />
+                        <TechnicalLabel text={ad.description} className="text-gray-300 text-sm" />
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <Clock className="w-4 h-4 text-gray-400" />
                             <TechnicalLabel text={formatTime(ad.duration)} className="text-muted-foreground" />
                           </div>
                         </div>
@@ -1004,7 +1004,7 @@ export default function UserPortal() {
             </div>
           </div>
         ) : (
-          <Card className="border-2 border-primary bg-card text-center p-12">
+          <Card className="border-2 border-primary bg-black text-white text-center p-12">
             <div className="space-y-4">
               <Clock className="w-16 h-16 mx-auto text-primary" />
               <TechnicalLabel text="DAILY LIMIT REACHED" className="text-primary text-2xl" />
