@@ -9,28 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const hasShownWarning = useRef(false);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated && !hasShownWarning.current) {
-      // Show informational message and redirect to auth for optional login
-      const timeoutId = setTimeout(() => {
-        if (!isAuthenticated && !isLoading) {
-          hasShownWarning.current = true;
-          toast({
-            title: "Welcome to THORX",
-            description: "You can login for a personalized experience or continue as guest.",
-          });
-          setLocation("/auth");
-        }
-      }, 200);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isAuthenticated, isLoading, setLocation, toast]);
+  const { isLoading } = useAuth();
 
   // Show loading spinner while checking authentication
   if (isLoading) {

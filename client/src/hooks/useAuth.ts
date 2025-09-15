@@ -24,7 +24,7 @@ export function useAuth() {
         credentials: "include",
       });
       
-      // Handle 401 without throwing an error
+      // Handle 401 without throwing an error - user is simply not logged in
       if (response.status === 401) {
         return null;
       }
@@ -36,12 +36,12 @@ export function useAuth() {
       return await response.json();
     },
     retry: false,
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 10 * 60 * 1000, // Cache for 10 minutes
-    refetchOnMount: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
     refetchInterval: false,
-    refetchOnReconnect: false,
+    refetchOnReconnect: true,
   });
 
   const queryClient = useQueryClient();

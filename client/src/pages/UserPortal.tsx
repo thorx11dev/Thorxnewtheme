@@ -461,7 +461,7 @@ export default function UserPortal() {
       const response = await apiRequest("GET", "/api/earnings?limit=10");
       return await response.json() as { earnings: Earning[]; total: string };
     },
-    enabled: !!user,
+    enabled: !!displayUser,
   });
 
   const { data: referralsData } = useQuery({
@@ -473,7 +473,7 @@ export default function UserPortal() {
         stats: { count: number; totalEarned: string } 
       };
     },
-    enabled: !!user,
+    enabled: !!displayUser,
   });
 
   const { data: todayAdViews } = useQuery({
@@ -482,7 +482,7 @@ export default function UserPortal() {
       const response = await apiRequest("GET", "/api/ad-views/today");
       return await response.json() as { count: number };
     },
-    enabled: !!user,
+    enabled: !!displayUser,
   });
 
   // Record ad view mutation
@@ -631,8 +631,8 @@ export default function UserPortal() {
     };
   }, [isWatching, selectedAd, watchProgress, recordAdViewMutation, toast]);
 
-  // Allow anonymous access - user might be null initially
-  if (!user && isLoading) {
+  // Show loading while user data is being fetched
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -642,6 +642,21 @@ export default function UserPortal() {
       </div>
     );
   }
+
+  // If no user data and not loading, show default guest user
+  const displayUser = user || {
+    id: "guest",
+    firstName: "Guest",
+    lastName: "User",
+    email: "guest@thorx.com",
+    identity: "GUEST_USER",
+    phone: "+92 300 0000000",
+    referralCode: "GUEST-CODE",
+    totalEarnings: "0.00",
+    availableBalance: "0.00",
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  };
 
   // Utility functions
   const formatDate = (dateString: string) => {
@@ -659,7 +674,7 @@ export default function UserPortal() {
   };
 
   const copyReferralCode = () => {
-    navigator.clipboard.writeText(user.referralCode);
+    navigator.clipboard.writeText(displayUser?.referralCode || 'GUEST-CODE');
     toast({
       title: "Copied!",
       description: "Referral code copied to clipboard",
@@ -725,7 +740,7 @@ export default function UserPortal() {
   ];
 
   const dailyGoal = 50;
-  const currentProgress = parseFloat(user.totalEarnings);
+  const currentProgress = parseFloat(displayUser?.totalEarnings || '0.00');
   const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
   const dailyLimit = 50;
   const remainingAds = dailyLimit - (todayAdViews?.count || 0);
@@ -788,7 +803,7 @@ export default function UserPortal() {
             {/* User Controls */}
             <div className="flex items-center space-x-4">
               <div className="hidden md:flex items-center text-foreground">
-                <TechnicalLabel text={user?.firstName || "USER"} className="text-foreground" />
+                <TechnicalLabel text={displayUser?.firstName || "USER"} className="text-foreground" />
               </div>
               <Button
                 onClick={logout}
@@ -891,7 +906,7 @@ export default function UserPortal() {
           </div>
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-4 tracking-tighter leading-tight">
             WELCOME BACK,<br />
-            <span className="text-primary">{user?.firstName || "GUEST"}</span>
+            <span className="text-primary">{displayUser?.firstName || "GUEST"}</span>
           </h1>
           <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-xl mx-auto leading-relaxed">
             Track your earnings, manage referrals, and monitor your progress in real-time
@@ -907,7 +922,7 @@ export default function UserPortal() {
               <Wallet className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
               <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-total-earnings">{formatCurrency(user?.totalEarnings || '0.00')}</p>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-total-earnings">{formatCurrency(displayUser?.totalEarnings || '0.00')}</p>
             <div className="flex items-center gap-2">
               <TrendingUp className="w-3 h-3 text-green-500" />
               <TechnicalLabel text="+15.2% THIS WEEK" className="text-green-500 text-xs" />
@@ -920,7 +935,7 @@ export default function UserPortal() {
               <DollarSign className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
               <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-xs" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-available-balance">{formatCurrency(user?.availableBalance || '0.00')}</p>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-available-balance">{formatCurrency(displayUser?.availableBalance || '0.00')}</p>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-3 h-3 text-primary" />
               <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-primary/70 text-xs" />
@@ -1324,7 +1339,7 @@ export default function UserPortal() {
           </CardHeader>
           <CardContent className="text-center space-y-6">
             <div className="bg-primary text-black px-8 py-6 text-4xl font-black tracking-widest inline-block border-2 border-primary">
-              {user?.referralCode}
+              {displayUser?.referralCode}
             </div>
             <div className="space-y-4">
               <Button
@@ -1420,7 +1435,7 @@ export default function UserPortal() {
           <Card className="border-2 border-primary bg-primary text-black overflow-hidden">
             <CardContent className="p-6 text-center">
               <Wallet className="w-12 h-12 mx-auto mb-4" />
-              <div className="text-3xl font-black mb-2">{formatCurrency(user?.availableBalance || '0.00')}</div>
+              <div className="text-3xl font-black mb-2">{formatCurrency(displayUser?.availableBalance || '0.00')}</div>
               <TechnicalLabel text="AVAILABLE BALANCE" className="text-black" />
             </CardContent>
           </Card>
@@ -1428,7 +1443,7 @@ export default function UserPortal() {
           <Card className="border-2 border-primary bg-black text-white overflow-hidden">
             <CardContent className="p-6 text-center">
               <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(user?.totalEarnings || '0.00')}</div>
+              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(displayUser?.totalEarnings || '0.00')}</div>
               <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground" />
             </CardContent>
           </Card>

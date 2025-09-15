@@ -16,6 +16,19 @@ declare module "express-session" {
       firstName: string;
       lastName: string;
     };
+    anonymousUserData?: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      identity: string;
+      phone: string;
+      referralCode: string;
+      totalEarnings: string;
+      availableBalance: string;
+      isActive: boolean;
+      createdAt: string;
+    };
   }
 }
 
@@ -154,8 +167,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/anonymous-login", async (req, res) => {
     try {
       // Create anonymous user session with default values
+      const anonymousUserId = `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const anonymousUser = {
-        id: `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: anonymousUserId,
         email: "guest@thorx.com",
         firstName: "Guest",
         lastName: "User",
@@ -168,20 +182,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: new Date().toISOString(),
       };
 
-      // Set session and save it explicitly
-      req.session.userId = anonymousUser.id;
+      // Set session data
+      req.session.userId = anonymousUserId;
       req.session.user = {
-        id: anonymousUser.id,
+        id: anonymousUserId,
         email: anonymousUser.email,
         firstName: anonymousUser.firstName,
         lastName: anonymousUser.lastName,
       };
 
+      // Store anonymous user data in session for retrieval
+      req.session.anonymousUserData = anonymousUser;
+
       // Force session save and wait for it to complete
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
+          if (err) {
+            console.error("Session save error:", err);
+            reject(err);
+          } else {
+            console.log("Anonymous session saved successfully for user:", anonymousUserId);
+            resolve();
+          }
         });
       });
 
@@ -285,7 +307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if it's an anonymous user
       if (req.session.userId!.startsWith('anonymous_')) {
         // Return the anonymous user data from session
-        const anonymousUser = {
+        const anonymousUser = req.session.anonymousUserData || {
           id: req.session.userId!,
           firstName: req.session.user!.firstName,
           lastName: req.session.user!.lastName,
