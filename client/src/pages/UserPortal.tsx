@@ -166,7 +166,7 @@ const sections = [
 ];
 
 export default function UserPortal() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -631,8 +631,16 @@ export default function UserPortal() {
     };
   }, [isWatching, selectedAd, watchProgress, recordAdViewMutation, toast]);
 
-  if (!user) {
-    return null; // ProtectedRoute will handle redirect
+  // Allow anonymous access - user might be null initially
+  if (!user && isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   // Utility functions
@@ -883,7 +891,7 @@ export default function UserPortal() {
           </div>
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-4 tracking-tighter leading-tight">
             WELCOME BACK,<br />
-            <span className="text-primary">{user?.firstName || "USER"}</span>
+            <span className="text-primary">{user?.firstName || "GUEST"}</span>
           </h1>
           <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-xl mx-auto leading-relaxed">
             Track your earnings, manage referrals, and monitor your progress in real-time

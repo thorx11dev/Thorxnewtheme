@@ -150,6 +150,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Anonymous login endpoint (no authentication required)
+  app.post("/api/anonymous-login", async (req, res) => {
+    try {
+      // Create anonymous user session with default values
+      const anonymousUser = {
+        id: `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        email: "guest@thorx.com",
+        firstName: "Guest",
+        lastName: "User",
+        identity: `GUEST_USER_${Math.floor(Math.random() * 9999) + 1000}`,
+        phone: "+92 300 0000000",
+        referralCode: `GUEST-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+        totalEarnings: "0.00",
+        availableBalance: "0.00",
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Set session and save it explicitly
+      req.session.userId = anonymousUser.id;
+      req.session.user = {
+        id: anonymousUser.id,
+        email: anonymousUser.email,
+        firstName: anonymousUser.firstName,
+        lastName: anonymousUser.lastName,
+      };
+
+      // Force session save and wait for it to complete
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      res.json({
+        success: true,
+        user: anonymousUser,
+        message: "Anonymous login successful"
+      });
+    } catch (error) {
+      console.error("Anonymous login error:", error);
+      res.status(500).json({
+        message: "Anonymous login failed",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
   // User login endpoint
   app.post("/api/login", async (req, res) => {
     try {
@@ -233,6 +282,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user endpoint
   app.get("/api/user", requireAuth, async (req, res) => {
     try {
+      // Check if it's an anonymous user
+      if (req.session.userId!.startsWith('anonymous_')) {
+        // Return the anonymous user data from session
+        const anonymousUser = {
+          id: req.session.userId!,
+          firstName: req.session.user!.firstName,
+          lastName: req.session.user!.lastName,
+          email: req.session.user!.email,
+          identity: `GUEST_USER_${Math.floor(Math.random() * 9999) + 1000}`,
+          phone: "+92 300 0000000",
+          referralCode: `GUEST-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+          totalEarnings: "0.00",
+          availableBalance: "0.00",
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        };
+        
+        return res.json(anonymousUser);
+      }
+
       const user = await storage.getUserById(req.session.userId!);
       if (!user) {
         return res.status(404).json({
@@ -266,6 +335,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user earnings endpoint
   app.get("/api/earnings", requireAuth, async (req, res) => {
     try {
+      // Check if it's an anonymous user
+      if (req.session.userId!.startsWith('anonymous_')) {
+        return res.json({
+          earnings: [],
+          total: "0.00"
+        });
+      }
+
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const earnings = await storage.getUserEarnings(req.session.userId!, limit);
 
@@ -285,6 +362,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user referrals endpoint
   app.get("/api/referrals", requireAuth, async (req, res) => {
     try {
+      // Check if it's an anonymous user
+      if (req.session.userId!.startsWith('anonymous_')) {
+        return res.json({
+          referrals: [],
+          stats: { count: 0, totalEarned: "0.00" }
+        });
+      }
+
       const referrals = await storage.getUserReferrals(req.session.userId!);
       const stats = await storage.getReferralStats(req.session.userId!);
 
@@ -332,6 +417,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get today's ad views count
   app.get("/api/ad-views/today", requireAuth, async (req, res) => {
     try {
+      // Check if it's an anonymous user
+      if (req.session.userId!.startsWith('anonymous_')) {
+        return res.json({ count: 0 });
+      }
+
       const count = await storage.getTodayAdViews(req.session.userId!);
       res.json({ count });
     } catch (error) {

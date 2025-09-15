@@ -16,18 +16,17 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !hasShownWarning.current) {
-      // Only show warning if we're not in a loading state and haven't shown it before
+      // Show informational message and redirect to auth for optional login
       const timeoutId = setTimeout(() => {
         if (!isAuthenticated && !isLoading) {
           hasShownWarning.current = true;
           toast({
-            title: "Authentication Required",
-            description: "Please log in to access this page.",
-            variant: "destructive",
+            title: "Welcome to THORX",
+            description: "You can login for a personalized experience or continue as guest.",
           });
           setLocation("/auth");
         }
-      }, 200); // Slightly longer delay to ensure auth state is stable
+      }, 200);
 
       return () => clearTimeout(timeoutId);
     }
@@ -40,18 +39,14 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-muted-foreground">Checking authentication...</p>
+            <p className="text-muted-foreground">Loading...</p>
           </div>
         </div>
       )
     );
   }
 
-  // If not authenticated, don't render children (will redirect in useEffect)
-  if (!isAuthenticated) {
-    return null;
-  }
-
+  // Always render children - no authentication required
   return <>{children}</>;
 }
 

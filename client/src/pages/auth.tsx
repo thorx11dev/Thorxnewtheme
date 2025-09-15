@@ -207,6 +207,36 @@ export default function Auth() {
     loginMutation.mutate(data);
   };
 
+  // Anonymous login mutation
+  const anonymousLoginMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/anonymous-login", {}),
+    onSuccess: () => {
+      // Invalidate auth queries to refresh user state
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+      
+      toast({
+        title: "Welcome to THORX!",
+        description: "You can now explore the earning dashboard.",
+      });
+      
+      // Add delay to ensure session is established before navigation
+      setTimeout(() => {
+        setLocation("/");
+      }, 500);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Access Failed",
+        description: error.message || "Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleAnonymousLogin = () => {
+    anonymousLoginMutation.mutate();
+  };
+
   return (
     <div className="auth-page">
       {/* Industrial Grid Overlay */}
@@ -538,6 +568,22 @@ export default function Auth() {
                       </Button>
                     </form>
                   </Form>
+
+                  {/* Anonymous Access Option */}
+                  <div className="mt-6 pt-6 border-t-2 border-black">
+                    <div className="text-center space-y-4">
+                      <TechnicalLabel text="OR ACCESS WITHOUT REGISTRATION" className="text-muted-foreground" />
+                      <Button
+                        onClick={handleAnonymousLogin}
+                        disabled={anonymousLoginMutation.isPending}
+                        variant="outline"
+                        className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-lg font-black py-3"
+                        data-testid="button-anonymous-register"
+                      >
+                        {anonymousLoginMutation.isPending ? "ACCESSING..." : "EXPLORE AS GUEST →"}
+                      </Button>
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="login" className="space-y-4 md:space-y-6">
@@ -635,6 +681,22 @@ export default function Auth() {
                       </Button>
                     </form>
                   </Form>
+
+                  {/* Anonymous Access Option */}
+                  <div className="mt-6 pt-6 border-t-2 border-black">
+                    <div className="text-center space-y-4">
+                      <TechnicalLabel text="OR ACCESS WITHOUT LOGIN" className="text-muted-foreground" />
+                      <Button
+                        onClick={handleAnonymousLogin}
+                        disabled={anonymousLoginMutation.isPending}
+                        variant="outline"
+                        className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-lg font-black py-3"
+                        data-testid="button-anonymous-login"
+                      >
+                        {anonymousLoginMutation.isPending ? "ACCESSING..." : "EXPLORE AS GUEST →"}
+                      </Button>
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
 
