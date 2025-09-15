@@ -611,7 +611,7 @@ export default function UserPortal() {
       </nav>
 
       {/* Section Content */}
-      <div className="pt-24 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pt-28 md:pb-8">
+      <div className="pt-20 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pt-24 md:pb-8">
         {sections.map((section, index) => (
           <section
             key={section.id}
