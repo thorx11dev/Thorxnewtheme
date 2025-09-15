@@ -318,13 +318,13 @@
   .portal-container .cinematic-section {
     background: linear-gradient(135deg, #000 0%, #0a0a0a 100%);
     color: white;
-    padding-top: 2rem !important;
+    padding-top: 6rem !important;
     min-height: calc(100vh - 200px);
   }
 
   /* Ensure portal sections don't overlap with navigation */
   .portal-container .cinematic-section.active {
-    padding-top: 2rem !important;
+    padding-top: 6rem !important;
     overflow-y: auto;
     max-height: calc(100vh - 180px);
   }
@@ -332,6 +332,7 @@
   @media (max-width: 768px) {
     .portal-container .cinematic-section.active {
       max-height: calc(100vh - 220px);
+      padding-top: 8rem !important;
     }
   }
 }
