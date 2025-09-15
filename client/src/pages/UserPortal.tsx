@@ -10,13 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
-import { 
-  LogOut, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  Calendar, 
-  Clock, 
+import {
+  LogOut,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Calendar,
+  Clock,
   ChevronRight,
   ChevronLeft,
   Eye,
@@ -126,7 +126,7 @@ const availableAds: AdItem[] = [
     category: "Finance",
   },
   {
-    id: "ad_002", 
+    id: "ad_002",
     title: "MOBILE GAME DOWNLOAD",
     type: "video",
     duration: 15,
@@ -207,7 +207,7 @@ export default function UserPortal() {
       description: "High-value premium advertisements"
     },
     {
-      id: "gaming", 
+      id: "gaming",
       title: "GAMING",
       icon: "🎮",
       color: "secondary",
@@ -220,7 +220,7 @@ export default function UserPortal() {
       title: "CRYPTO",
       icon: "₿",
       color: "accent",
-      videoUrl: "#crypto-video", 
+      videoUrl: "#crypto-video",
       reward: "4.25",
       description: "Cryptocurrency and blockchain apps"
     },
@@ -267,19 +267,19 @@ export default function UserPortal() {
             const newTime = prev + 1;
             const progress = (newTime / duration) * 100;
             setAdProgress(progress);
-            
+
             // Allow skip after 5 seconds
             if (newTime >= 5) {
               setCanSkip(true);
               setShowSkip(true);
             }
-            
+
             // Auto-complete at end
             if (newTime >= duration) {
               setIsPlaying(false);
               return duration;
             }
-            
+
             return newTime;
           });
         }, 1000);
@@ -347,7 +347,7 @@ export default function UserPortal() {
         <CardContent className="p-0">
           {/* Video Player Area */}
           <div className={`relative bg-gray-900 ${isFullscreen ? 'h-screen' : 'h-64 md:h-96 lg:h-[500px]'} flex items-center justify-center overflow-hidden`}>
-            
+
             {/* Video Content Simulation */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-black to-primary/20" />
             <div className="relative z-10 text-center">
@@ -406,7 +406,7 @@ export default function UserPortal() {
                   <span className="text-white/60 text-sm">•</span>
                   <span className="text-white/60 text-sm">{Math.round(adProgress)}% Complete</span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   {/* Desktop Controls */}
                   <div className="hidden md:flex items-center gap-2">
@@ -425,7 +425,7 @@ export default function UserPortal() {
                       {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                     </button>
                   </div>
-                  
+
                   {/* Mobile Controls */}
                   <div className="md:hidden flex items-center gap-2">
                     <button
@@ -461,19 +461,19 @@ export default function UserPortal() {
       const response = await apiRequest("GET", "/api/earnings?limit=10");
       return await response.json() as { earnings: Earning[]; total: string };
     },
-    enabled: !!displayUser,
+    enabled: !!user,
   });
 
   const { data: referralsData } = useQuery({
     queryKey: ["referrals"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/referrals");
-      return await response.json() as { 
-        referrals: ReferralUser[]; 
-        stats: { count: number; totalEarned: string } 
+      return await response.json() as {
+        referrals: ReferralUser[];
+        stats: { count: number; totalEarned: string }
       };
     },
-    enabled: !!displayUser,
+    enabled: !!user,
   });
 
   const { data: todayAdViews } = useQuery({
@@ -482,7 +482,7 @@ export default function UserPortal() {
       const response = await apiRequest("GET", "/api/ad-views/today");
       return await response.json() as { count: number };
     },
-    enabled: !!displayUser,
+    enabled: !!user,
   });
 
   // Record ad view mutation
@@ -569,7 +569,7 @@ export default function UserPortal() {
     const handleTouchEnd = () => {
       const deltaX = startX - endX;
       const deltaY = Math.abs(startY - endY);
-      
+
       // Only trigger if horizontal swipe is longer than vertical
       if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 50) {
         if (deltaX > 0) {
@@ -594,7 +594,7 @@ export default function UserPortal() {
   // Ad watching timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (isWatching && selectedAd && watchProgress < 100) {
       interval = setInterval(() => {
         setWatchProgress(prev => {
@@ -602,7 +602,7 @@ export default function UserPortal() {
           if (newProgress >= 100) {
             setIsWatching(false);
             setIsCompleted(true);
-            
+
             recordAdViewMutation.mutate({
               adId: selectedAd.id,
               adType: selectedAd.type,
@@ -610,15 +610,15 @@ export default function UserPortal() {
               completed: true,
               earnedAmount: selectedAd.reward,
             });
-            
+
             setCompletedAds(prev => new Set(Array.from(prev).concat(selectedAd.id)));
-            
+
             toast({
               title: "Ad Completed! 🎉",
               description: `You earned ${formatCurrency(selectedAd.reward)}`,
               variant: "default",
             });
-            
+
             return 100;
           }
           return newProgress;
@@ -630,18 +630,6 @@ export default function UserPortal() {
       if (interval) clearInterval(interval);
     };
   }, [isWatching, selectedAd, watchProgress, recordAdViewMutation, toast]);
-
-  // Show loading while user data is being fetched
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   // If no user data and not loading, show default guest user
   const displayUser = user || {
@@ -749,7 +737,7 @@ export default function UserPortal() {
     <div className="min-h-screen bg-background relative">
       {/* Industrial Grid Overlay */}
       <div className="industrial-grid fixed inset-0 z-0" />
-      
+
       {/* Navigation Header */}
       <nav className="fixed top-0 w-full z-50 bg-background border-b-2 border-black" data-testid="portal-navigation">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
@@ -863,8 +851,8 @@ export default function UserPortal() {
                 aria-current={currentSection === index ? 'page' : undefined}
               >
                 <Icon className="w-5 h-5 mb-1" />
-                <TechnicalLabel 
-                  text={section.name.toUpperCase()} 
+                <TechnicalLabel
+                  text={section.name.toUpperCase()}
                   className="text-sm leading-none text-center"
                 />
               </button>
@@ -989,9 +977,9 @@ export default function UserPortal() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.2} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))" 
+                  <XAxis
+                    dataKey="date"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={10}
                     fontFamily="var(--font-sans)"
                     tickLine={false}
@@ -999,8 +987,8 @@ export default function UserPortal() {
                     hide={window.innerWidth < 768}
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))" 
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={10}
                     fontFamily="var(--font-sans)"
                     tickFormatter={(value) => window.innerWidth < 768 ? `${value}` : `PKR ${value}`}
@@ -1009,11 +997,11 @@ export default function UserPortal() {
                     hide={window.innerWidth < 768}
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value) => [`PKR ${value}`, 'Earnings']}
                     labelFormatter={(label) => `Day: ${label}`}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--background))', 
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
                       border: '2px solid hsl(var(--primary))',
                       borderRadius: '4px',
                       color: 'hsl(var(--primary))',
@@ -1024,12 +1012,12 @@ export default function UserPortal() {
                     }}
                     labelStyle={{ color: 'hsl(var(--primary))' }}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="earnings" 
-                    stroke="hsl(var(--primary))" 
+                  <Area
+                    type="monotone"
+                    dataKey="earnings"
+                    stroke="hsl(var(--primary))"
                     strokeWidth={3}
-                    fill="url(#earningsGradient)" 
+                    fill="url(#earningsGradient)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -1056,7 +1044,7 @@ export default function UserPortal() {
                     outerRadius={window.innerWidth < 768 ? 70 : 80}
                     fill="#8884d8"
                     dataKey="value"
-                    label={({ name, percent }: { name: string; percent: number }) => 
+                    label={({ name, percent }: { name: string; percent: number }) =>
                       window.innerWidth < 768 ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(0)}%`
                     }
                   >
@@ -1064,10 +1052,10 @@ export default function UserPortal() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value, name) => [`${value}%`, name]}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--background))', 
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
                       border: '2px solid hsl(var(--primary))',
                       borderRadius: '4px',
                       color: 'hsl(var(--primary))',
@@ -1208,7 +1196,7 @@ export default function UserPortal() {
             <div className="text-center">
               <TechnicalLabel text="AVAILABLE ADS" className="text-primary text-2xl" />
             </div>
-            
+
             {/* Ads Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {availableAds.map((ad) => {
@@ -1247,7 +1235,7 @@ export default function UserPortal() {
                           onClick={() => startWatching(ad)}
                           disabled={Boolean(isCompleted || (selectedAd && !isCompleted))}
                           className={`w-full transition-all duration-200 ${
-                            isCompleted 
+                            isCompleted
                               ? 'bg-green-600 text-white cursor-not-allowed'
                               : isCurrent
                               ? 'bg-primary text-black'
@@ -1360,7 +1348,7 @@ export default function UserPortal() {
           <div className="text-center">
             <TechnicalLabel text="YOUR REFERRALS" className="text-primary text-2xl" />
           </div>
-          
+
           {referralsData?.referrals && referralsData.referrals.length > 0 ? (
             <div className="grid gap-6">
               {referralsData.referrals.map((referral, index) => (
@@ -1385,8 +1373,8 @@ export default function UserPortal() {
                         </div>
                         <TechnicalLabel text={`TIER ${index + 1}`} className="text-muted-foreground" />
                         <div className={`inline-block px-3 py-1 text-xs font-semibold border mt-2 ${
-                          referral.status === 'active' 
-                            ? 'bg-green-900 text-green-400 border-green-600' 
+                          referral.status === 'active'
+                            ? 'bg-green-900 text-green-400 border-green-600'
                             : 'bg-gray-900 text-gray-400 border-gray-600'
                         }`}>
                           {referral.status.toUpperCase()}
@@ -1466,8 +1454,8 @@ export default function UserPortal() {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-white mb-2" />
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   placeholder="0.00"
                   className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
                 />
@@ -1482,11 +1470,11 @@ export default function UserPortal() {
                 </select>
               </div>
             </div>
-            
+
             <div>
               <TechnicalLabel text="ACCOUNT DETAILS" className="text-white mb-2" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="Account number or phone number"
                 className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
               />
@@ -1607,15 +1595,15 @@ export default function UserPortal() {
             <CardContent className="space-y-4">
               <div>
                 <TechnicalLabel text="SUBJECT" className="text-white mb-2" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Message subject"
                   className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary"
                 />
               </div>
               <div>
                 <TechnicalLabel text="MESSAGE" className="text-white mb-2" />
-                <textarea 
+                <textarea
                   rows={4}
                   placeholder="Your message"
                   className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary"
