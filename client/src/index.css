@@ -320,6 +320,7 @@
     color: white;
     padding-top: 6rem !important;
     min-height: calc(100vh - 200px);
+    z-index: 1;
   }
 
   /* Ensure portal sections don't overlap with navigation */
@@ -327,12 +328,14 @@
     padding-top: 6rem !important;
     overflow-y: auto;
     max-height: calc(100vh - 180px);
+    z-index: 1;
   }
 
   @media (max-width: 768px) {
     .portal-container .cinematic-section.active {
       max-height: calc(100vh - 220px);
       padding-top: 7rem !important;
+      z-index: 1;
     }
   }
 }
