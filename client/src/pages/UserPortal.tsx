@@ -774,7 +774,7 @@ export default function UserPortal() {
           </Card>
 
           {/* Earnings Breakdown */}
-          <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+          <Card className="group split-card bg-gradient-to-br from-card to-card/90 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
             <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground group-hover:text-primary/90 transition-colors" />
@@ -847,7 +847,7 @@ export default function UserPortal() {
         trend: { direction: "up" as const, percentage: "+12%" }
       },
       {
-        id: "remaining-ads", 
+        id: "remaining-ads",
         title: "REMAINING ADS",
         value: remainingAds,
         subtitle: "Daily quota left",
@@ -856,7 +856,7 @@ export default function UserPortal() {
       },
       {
         id: "today-earnings",
-        title: "TODAY'S EARNINGS", 
+        title: "TODAY'S EARNINGS",
         value: formatCurrency((completedAds.size * 2.5)),
         subtitle: "Current session",
         icon: DollarSign,
@@ -878,7 +878,7 @@ export default function UserPortal() {
     const currentVideoTab = {
       id: activeWorkTab,
       title: WORK_TABS.find(tab => tab.id === activeWorkTab)?.title || "ADS",
-      icon: activeWorkTab === "ads" ? "📺" : 
+      icon: activeWorkTab === "ads" ? "📺" :
             activeWorkTab === "surveys" ? "📊" :
             activeWorkTab === "referrals" ? "👥" : "✅",
       color: "primary",
@@ -908,7 +908,7 @@ export default function UserPortal() {
         <MetricsCards metrics={metricsData} className="mb-10" />
 
         {/* Industrial Tab System */}
-        <IndustrialTabs 
+        <IndustrialTabs
           tabs={WORK_TABS}
           activeTab={activeWorkTab}
           onTabChange={setActiveWorkTab}
