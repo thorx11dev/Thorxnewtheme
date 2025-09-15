@@ -891,14 +891,14 @@ export default function UserPortal() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Enhanced Header */}
         <div className="text-center mb-8">
-          <div className="mb-2">
-            <TechnicalLabel text="WORK CENTER" className="text-white" />
+          <div className="mb-3">
+            <TechnicalLabel text="WORK CENTER" className="text-muted-foreground" />
           </div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white mb-3 tracking-tighter leading-tight">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-4 tracking-tighter leading-tight">
             START <span className="text-primary">EARNING</span><br />
             WATCH & EARN REWARDS
           </h1>
-          <p className="text-base md:text-lg text-gray-300 mb-6 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
             Watch advertisements, complete tasks, and earn real money daily
           </p>
           <Barcode className="w-24 md:w-32 h-6 md:h-8 mx-auto opacity-60" />
@@ -940,13 +940,13 @@ export default function UserPortal() {
                 const isCurrent = selectedAd?.id === ad.id;
 
                 return (
-                  <Card key={ad.id} className={`border-2 border-primary bg-black text-white hover:shadow-xl transition-all duration-300 overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
+                  <Card key={ad.id} className={`border-2 border-primary bg-card hover:shadow-xl transition-all duration-300 overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <div className="text-2xl">{getAdTypeIcon(ad.type)}</div>
                           <div>
-                            <h3 className="font-black text-white line-clamp-1">{ad.title}</h3>
+                            <h3 className="font-black text-foreground line-clamp-1">{ad.title}</h3>
                             <TechnicalLabel text={ad.category} className="text-muted-foreground" />
                           </div>
                         </div>
@@ -960,10 +960,10 @@ export default function UserPortal() {
                     </CardHeader>
                     <CardContent className="pt-0">
                       <div className="space-y-4">
-                        <TechnicalLabel text={ad.description} className="text-gray-300 text-sm" />
+                        <TechnicalLabel text={ad.description} className="text-muted-foreground text-sm" />
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-gray-400" />
+                            <Clock className="w-4 h-4 text-muted-foreground" />
                             <TechnicalLabel text={formatTime(ad.duration)} className="text-muted-foreground" />
                           </div>
                         </div>
@@ -1004,7 +1004,7 @@ export default function UserPortal() {
             </div>
           </div>
         ) : (
-          <Card className="border-2 border-primary bg-black text-white text-center p-12">
+          <Card className="border-2 border-primary bg-card text-center p-12">
             <div className="space-y-4">
               <Clock className="w-16 h-16 mx-auto text-primary" />
               <TechnicalLabel text="DAILY LIMIT REACHED" className="text-primary text-2xl" />
