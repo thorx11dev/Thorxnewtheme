@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import EnhancedVideoPlayer from "@/components/ui/enhanced-video-player";
+import IndustrialTabs, { WORK_TABS } from "@/components/ui/industrial-tabs";
+import MetricsCards from "@/components/ui/metrics-cards";
 import { useLocation } from "wouter";
 import {
   LogOut,
@@ -181,276 +184,22 @@ export default function UserPortal() {
   const [watchProgress, setWatchProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
 
-  // New tab and video player states
-  const [activeTab, setActiveTab] = useState<string>("premium");
-  const [videoStates, setVideoStates] = useState<{
-    [tabId: string]: {
-      isPlaying: boolean;
-      isFullscreen: boolean;
-      isMinimized: boolean;
-      currentTime: number;
-      duration: number;
-      volume: number;
-      showSkip: boolean;
-    }
-  }>({});
+  // Enhanced work section states
+  const [activeWorkTab, setActiveWorkTab] = useState<string>("ads");
+  const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Tab configuration
-  const tabs = [
-    {
-      id: "premium",
-      title: "PREMIUM ADS",
-      icon: "🎯",
-      color: "primary",
-      videoUrl: "#premium-video",
-      reward: "5.00",
-      description: "High-value premium advertisements"
-    },
-    {
-      id: "gaming",
-      title: "GAMING",
-      icon: "🎮",
-      color: "secondary",
-      videoUrl: "#gaming-video",
-      reward: "3.50",
-      description: "Mobile games and gaming platforms"
-    },
-    {
-      id: "crypto",
-      title: "CRYPTO",
-      icon: "₿",
-      color: "accent",
-      videoUrl: "#crypto-video",
-      reward: "4.25",
-      description: "Cryptocurrency and blockchain apps"
-    },
-    {
-      id: "lifestyle",
-      title: "LIFESTYLE",
-      icon: "✨",
-      color: "muted",
-      videoUrl: "#lifestyle-video",
-      reward: "2.75",
-      description: "Fashion, fitness, and lifestyle brands"
-    }
-  ];
-
-  // Video Player Component
-  interface VideoPlayerProps {
-    tab: {
-      id: string;
-      title: string;
-      icon: string;
-      color: string;
-      videoUrl: string;
-      reward: string;
-      description: string;
+  // Mobile detection
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
     };
-  }
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
-  function VideoPlayer({ tab }: VideoPlayerProps) {
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [isMinimized, setIsMinimized] = useState(false);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(30);
-    const [volume, setVolume] = useState(80);
-    const [showSkip, setShowSkip] = useState(false);
-    const [adProgress, setAdProgress] = useState(0);
-    const [canSkip, setCanSkip] = useState(false);
-
-    useEffect(() => {
-      let interval: NodeJS.Timeout | null = null;
-      if (isPlaying && !isMinimized) {
-        interval = setInterval(() => {
-          setCurrentTime(prev => {
-            const newTime = prev + 1;
-            const progress = (newTime / duration) * 100;
-            setAdProgress(progress);
-
-            // Allow skip after 5 seconds
-            if (newTime >= 5) {
-              setCanSkip(true);
-              setShowSkip(true);
-            }
-
-            // Auto-complete at end
-            if (newTime >= duration) {
-              setIsPlaying(false);
-              return duration;
-            }
-
-            return newTime;
-          });
-        }, 1000);
-      }
-      return () => {
-        if (interval) clearInterval(interval);
-      };
-    }, [isPlaying, isMinimized, duration]);
-
-    const handlePlay = () => {
-      setIsPlaying(true);
-    };
-
-    const handlePause = () => {
-      setIsPlaying(false);
-    };
-
-    const handleSkip = () => {
-      if (canSkip) {
-        setCurrentTime(duration);
-        setAdProgress(100);
-        setIsPlaying(false);
-      }
-    };
-
-    const handleMinimize = () => {
-      setIsMinimized(!isMinimized);
-      if (!isMinimized) {
-        setIsPlaying(false);
-      }
-    };
-
-    const handleFullscreen = () => {
-      setIsFullscreen(!isFullscreen);
-    };
-
-    const formatVideoTime = (seconds: number) => {
-      const mins = Math.floor(seconds / 60);
-      const secs = seconds % 60;
-      return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    if (isMinimized) {
-      return (
-        <div className="fixed bottom-4 right-4 z-50 bg-black border-2 border-primary rounded-lg p-2 w-48 h-32" data-testid={`minimized-player-${tab.id}`}>
-          <div className="flex items-center justify-between mb-2">
-            <TechnicalLabel text={tab.title} className="text-white text-xs" />
-            <button
-              onClick={handleMinimize}
-              className="text-white hover:text-primary transition-colors"
-              data-testid="button-restore"
-            >
-              <Maximize2 className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="bg-gray-800 rounded flex items-center justify-center h-20">
-            <span className="text-2xl">{tab.icon}</span>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <Card className={`bg-black border-2 border-primary ${isFullscreen ? 'fixed inset-0 z-50' : ''}`} data-testid={`video-player-${tab.id}`}>
-        <CardContent className="p-0">
-          {/* Video Player Area */}
-          <div className={`relative bg-gray-900 ${isFullscreen ? 'h-screen' : 'h-64 md:h-96 lg:h-[500px]'} flex items-center justify-center overflow-hidden`}>
-
-            {/* Video Content Simulation */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-black to-primary/20" />
-            <div className="relative z-10 text-center">
-              <div className="text-6xl md:text-8xl mb-4">{tab.icon}</div>
-              <TechnicalLabel text={tab.title} className="text-white text-xl md:text-2xl" />
-              <p className="text-white/60 mt-2">{tab.description}</p>
-            </div>
-
-            {/* Desktop/Mobile Player Controls */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              {!isPlaying ? (
-                <button
-                  onClick={handlePlay}
-                  className="bg-primary hover:bg-primary/90 rounded-full p-4 md:p-6 transition-all duration-200 hover:scale-110"
-                  data-testid="button-play"
-                >
-                  <PlayCircle className="w-8 h-8 md:w-12 md:h-12 text-white" />
-                </button>
-              ) : (
-                <button
-                  onClick={handlePause}
-                  className="bg-black/50 hover:bg-black/70 rounded-full p-4 md:p-6 transition-all duration-200 hover:scale-110"
-                  data-testid="button-pause"
-                >
-                  <PauseCircle className="w-8 h-8 md:w-12 md:h-12 text-white" />
-                </button>
-              )}
-            </div>
-
-            {/* Skip Button */}
-            {showSkip && canSkip && (
-              <button
-                onClick={handleSkip}
-                className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white px-3 py-1 rounded border border-primary transition-all duration-200 hover:scale-105"
-                data-testid="button-skip"
-              >
-                <TechnicalLabel text="SKIP AD" className="text-white" />
-              </button>
-            )}
-
-            {/* Player Controls Bar */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-              {/* Progress Bar */}
-              <div className="mb-4">
-                <Progress value={adProgress} className="h-2 bg-gray-600" />
-                <div className="flex justify-between text-xs text-white/60 mt-1">
-                  <span>{formatVideoTime(currentTime)}</span>
-                  <span>{formatVideoTime(duration)}</span>
-                </div>
-              </div>
-
-              {/* Control Buttons */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <TechnicalLabel text={`EARN ${formatCurrency(tab.reward)}`} className="text-primary" />
-                  <span className="text-white/60 text-sm">•</span>
-                  <span className="text-white/60 text-sm">{Math.round(adProgress)}% Complete</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Desktop Controls */}
-                  <div className="hidden md:flex items-center gap-2">
-                    <button
-                      onClick={handleMinimize}
-                      className="text-white hover:text-primary transition-colors p-1"
-                      data-testid="button-minimize"
-                    >
-                      <Minimize2 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={handleFullscreen}
-                      className="text-white hover:text-primary transition-colors p-1"
-                      data-testid="button-fullscreen"
-                    >
-                      {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-                    </button>
-                  </div>
-
-                  {/* Mobile Controls */}
-                  <div className="md:hidden flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentTime(Math.max(0, currentTime - 10))}
-                      className="text-white hover:text-primary transition-colors p-1"
-                      data-testid="button-rewind"
-                    >
-                      <RotateCcw className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => setCurrentTime(Math.min(duration, currentTime + 10))}
-                      className="text-white hover:text-primary transition-colors p-1"
-                      data-testid="button-forward"
-                    >
-                      <RotateCw className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Enhanced work section configuration complete
 
   const [completedAds, setCompletedAds] = useState<Set<string>>(new Set());
 
@@ -1075,11 +824,72 @@ export default function UserPortal() {
     );
   }
 
-  // Work Section
+  // Enhanced Work Section
   function renderWorkSection() {
+    // Handle video completion
+    const handleVideoComplete = (tabId: string, earnings: string) => {
+      setCompletedVideos(prev => new Set(Array.from(prev).concat(tabId)));
+      toast({
+        title: "Ad Completed!",
+        description: `You earned $${earnings}`,
+      });
+    };
+
+    // Prepare metrics data
+    const metricsData = [
+      {
+        id: "ads-watched",
+        title: "ADS WATCHED",
+        value: todayAdViews?.count || 0,
+        subtitle: "Today's activity",
+        icon: Eye,
+        variant: "orange" as const,
+        trend: { direction: "up" as const, percentage: "+12%" }
+      },
+      {
+        id: "remaining-ads", 
+        title: "REMAINING ADS",
+        value: remainingAds,
+        subtitle: "Daily quota left",
+        icon: Target,
+        variant: "black" as const
+      },
+      {
+        id: "today-earnings",
+        title: "TODAY'S EARNINGS", 
+        value: formatCurrency((completedAds.size * 2.5)),
+        subtitle: "Current session",
+        icon: DollarSign,
+        variant: "white" as const,
+        trend: { direction: "up" as const, percentage: "+$2.50" }
+      },
+      {
+        id: "daily-goal",
+        title: "DAILY GOAL",
+        value: `${Math.round((completedAds.size / dailyLimit) * 100)}%`,
+        subtitle: "Progress to limit",
+        icon: Award,
+        variant: "orange" as const,
+        trend: { direction: "up" as const, percentage: "+15%" }
+      }
+    ];
+
+    // Get current video tab data for player
+    const currentVideoTab = {
+      id: activeWorkTab,
+      title: WORK_TABS.find(tab => tab.id === activeWorkTab)?.title || "ADS",
+      icon: activeWorkTab === "ads" ? "📺" : 
+            activeWorkTab === "surveys" ? "📊" :
+            activeWorkTab === "referrals" ? "👥" : "✅",
+      color: "primary",
+      videoUrl: `#${activeWorkTab}-video`,
+      reward: "2.50",
+      description: WORK_TABS.find(tab => tab.id === activeWorkTab)?.description || "Watch and earn"
+    };
+
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
-        {/* Styled Header */}
+        {/* Enhanced Header */}
         <div className="text-center mb-8">
           <div className="mb-2">
             <TechnicalLabel text="WORK CENTER" className="text-white" />
@@ -1094,100 +904,26 @@ export default function UserPortal() {
           <Barcode className="w-24 md:w-32 h-6 md:h-8 mx-auto opacity-60" />
         </div>
 
-        {/* Key Metrics Cards - Thorx Colors */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-10">
-          {/* Orange Card */}
-          <div className="group bg-primary p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default border-2 border-primary" data-testid="card-ads-watched">
-            <div className="flex items-center justify-between mb-3">
-              <Eye className="w-10 h-10 text-white group-hover:text-white/80 transition-colors" />
-              <div className="text-3xl font-black text-white group-hover:text-white/90 transition-colors">
-                {todayAdViews?.count || 0}
-              </div>
-            </div>
-            <TechnicalLabel text="ADS WATCHED" className="text-white/80 group-hover:text-white transition-colors" />
-            <div className="text-xs text-white/60 mt-1">Today's activity</div>
-          </div>
+        {/* Enhanced Metrics Cards */}
+        <MetricsCards metrics={metricsData} className="mb-10" />
 
-          {/* Black Card */}
-          <div className="group bg-black p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default border-2 border-primary" data-testid="card-remaining-ads">
-            <div className="flex items-center justify-between mb-3">
-              <Target className="w-10 h-10 text-primary group-hover:text-primary/80 transition-colors" />
-              <div className="text-3xl font-black text-primary group-hover:text-primary/90 transition-colors">
-                {remainingAds}
-              </div>
-            </div>
-            <TechnicalLabel text="REMAINING ADS" className="text-white/80 group-hover:text-white transition-colors" />
-            <div className="text-xs text-white/60 mt-1">Daily quota left</div>
-          </div>
+        {/* Industrial Tab System */}
+        <IndustrialTabs 
+          tabs={WORK_TABS}
+          activeTab={activeWorkTab}
+          onTabChange={setActiveWorkTab}
+          className="mb-8"
+        />
 
-          {/* White Card */}
-          <div className="group bg-white p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default border-2 border-primary" data-testid="card-today-earnings">
-            <div className="flex items-center justify-between mb-3">
-              <DollarSign className="w-10 h-10 text-black group-hover:text-black/80 transition-colors" />
-              <div className="text-3xl font-black text-black group-hover:text-black/90 transition-colors">
-                {formatCurrency((completedAds.size * 2.5))}
-              </div>
-            </div>
-            <TechnicalLabel text="TODAY'S EARNINGS" className="text-black/80 group-hover:text-black transition-colors" />
-            <div className="text-xs text-black/60 mt-1">Current session</div>
-          </div>
-
-          {/* Orange Card */}
-          <div className="group bg-primary p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default border-2 border-primary" data-testid="card-daily-goal">
-            <div className="flex items-center justify-between mb-3">
-              <Award className="w-10 h-10 text-white group-hover:text-white/80 transition-colors" />
-              <div className="text-3xl font-black text-white group-hover:text-white/90 transition-colors">
-                {Math.round((completedAds.size / dailyLimit) * 100)}%
-              </div>
-            </div>
-            <TechnicalLabel text="DAILY GOAL" className="text-white/80 group-hover:text-white transition-colors" />
-            <div className="text-xs text-white/60 mt-1">Progress to limit</div>
-          </div>
-        </div>
-
-        {/* Four Horizontal Tabs with Video Players */}
-        <div className="space-y-6">
-          {/* Tab Navigation */}
-          <div className="flex flex-col md:flex-row gap-2 md:gap-4 mb-6">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 p-4 md:p-6 rounded border-2 transition-all duration-300 hover:scale-[1.02] ${
-                    isActive
-                      ? 'bg-primary border-primary text-white'
-                      : 'bg-black border-primary text-white hover:bg-primary/10'
-                  }`}
-                  data-testid={`tab-${tab.id}`}
-                >
-                  <div className="text-center">
-                    <div className="text-2xl md:text-3xl mb-2">{tab.icon}</div>
-                    <TechnicalLabel text={tab.title} className={isActive ? "text-white" : "text-white/80"} />
-                    <div className="text-xs md:text-sm text-white/60 mt-1">{tab.description}</div>
-                    <div className="text-lg font-black text-white mt-2">{formatCurrency(tab.reward)}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Video Player Section */}
-          <div className="relative">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <div
-                  key={tab.id}
-                  className={`${isActive ? 'block' : 'hidden'}`}
-                  data-testid={`video-content-${tab.id}`}
-                >
-                  <VideoPlayer tab={tab} />
-                </div>
-              );
-            })}
-          </div>
+        {/* Enhanced Video Player */}
+        <div className="relative">
+          <EnhancedVideoPlayer
+            tab={currentVideoTab}
+            isActive={true}
+            onComplete={handleVideoComplete}
+            autoplay={false}
+            isMobile={isMobile}
+          />
         </div>
 
         {/* Available Ads */}
