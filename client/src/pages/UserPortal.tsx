@@ -1094,93 +1094,136 @@ export default function UserPortal() {
           <Barcode className="w-24 md:w-32 h-6 md:h-8 mx-auto opacity-60" />
         </div>
 
-        {/* Key Metrics Cards - Thorx Colors */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-10">
-          {/* Orange Card */}
-          <div className="group bg-primary p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default border-2 border-primary" data-testid="card-ads-watched">
-            <div className="flex items-center justify-between mb-3">
-              <Eye className="w-10 h-10 text-white group-hover:text-white/80 transition-colors" />
-              <div className="text-3xl font-black text-white group-hover:text-white/90 transition-colors">
-                {todayAdViews?.count || 0}
+        {/* Enhanced Key Metrics Cards - Thorx Industrial Theme */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mb-12">
+          {/* Orange Card - Enhanced */}
+          <div className="group relative bg-primary p-6 md:p-8 text-left hover:scale-[1.05] transition-all duration-500 cursor-default border-2 border-primary shadow-2xl hover:shadow-primary/30 rounded-lg overflow-hidden" data-testid="card-ads-watched">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70 opacity-90" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <Eye className="w-12 h-12 text-white group-hover:scale-110 transition-transform duration-300" />
+                <div className="text-4xl md:text-5xl font-black text-white group-hover:text-white/90 transition-colors counter-display">
+                  {todayAdViews?.count || 0}
+                </div>
               </div>
+              <TechnicalLabel text="ADS WATCHED" className="text-white group-hover:text-white/90 transition-colors text-sm" />
+              <div className="text-xs text-white/70 mt-2 font-medium">Today's activity</div>
+              <div className="absolute top-2 right-2 w-2 h-2 bg-white/30 rounded-full animate-pulse" />
             </div>
-            <TechnicalLabel text="ADS WATCHED" className="text-white/80 group-hover:text-white transition-colors" />
-            <div className="text-xs text-white/60 mt-1">Today's activity</div>
           </div>
 
-          {/* Black Card */}
-          <div className="group bg-black p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default border-2 border-primary" data-testid="card-remaining-ads">
-            <div className="flex items-center justify-between mb-3">
-              <Target className="w-10 h-10 text-primary group-hover:text-primary/80 transition-colors" />
-              <div className="text-3xl font-black text-primary group-hover:text-primary/90 transition-colors">
-                {remainingAds}
+          {/* Black Card - Enhanced */}
+          <div className="group relative bg-black p-6 md:p-8 text-left hover:scale-[1.05] transition-all duration-500 cursor-default border-2 border-primary shadow-2xl hover:shadow-primary/30 rounded-lg overflow-hidden" data-testid="card-remaining-ads">
+            <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black opacity-95" />
+            <div className="absolute inset-0 bg-primary/5" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <Target className="w-12 h-12 text-primary group-hover:scale-110 transition-transform duration-300 work-icon-bounce" />
+                <div className="text-4xl md:text-5xl font-black text-primary group-hover:text-primary/90 transition-colors counter-display">
+                  {remainingAds}
+                </div>
               </div>
+              <TechnicalLabel text="REMAINING ADS" className="text-white group-hover:text-white/90 transition-colors text-sm" />
+              <div className="text-xs text-primary/70 mt-2 font-medium">Daily quota left</div>
+              <div className="absolute top-2 right-2 w-2 h-2 bg-primary/50 rounded-full animate-pulse" />
             </div>
-            <TechnicalLabel text="REMAINING ADS" className="text-white/80 group-hover:text-white transition-colors" />
-            <div className="text-xs text-white/60 mt-1">Daily quota left</div>
           </div>
 
-          {/* White Card */}
-          <div className="group bg-white p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default border-2 border-primary" data-testid="card-today-earnings">
-            <div className="flex items-center justify-between mb-3">
-              <DollarSign className="w-10 h-10 text-black group-hover:text-black/80 transition-colors" />
-              <div className="text-3xl font-black text-black group-hover:text-black/90 transition-colors">
-                {formatCurrency((completedAds.size * 2.5))}
+          {/* White Card - Enhanced */}
+          <div className="group relative bg-white p-6 md:p-8 text-left hover:scale-[1.05] transition-all duration-500 cursor-default border-2 border-primary shadow-2xl hover:shadow-primary/30 rounded-lg overflow-hidden" data-testid="card-today-earnings">
+            <div className="absolute inset-0 bg-gradient-to-br from-white via-gray-50 to-white opacity-95" />
+            <div className="absolute inset-0 bg-primary/5" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <DollarSign className="w-12 h-12 text-black group-hover:scale-110 transition-transform duration-300" />
+                <div className="text-4xl md:text-5xl font-black text-black group-hover:text-black/90 transition-colors counter-display">
+                  {formatCurrency((completedAds.size * 2.5))}
+                </div>
               </div>
+              <TechnicalLabel text="TODAY'S EARNINGS" className="text-black group-hover:text-black/90 transition-colors text-sm" />
+              <div className="text-xs text-black/60 mt-2 font-medium">Current session</div>
+              <div className="absolute top-2 right-2 w-2 h-2 bg-black/20 rounded-full animate-pulse" />
             </div>
-            <TechnicalLabel text="TODAY'S EARNINGS" className="text-black/80 group-hover:text-black transition-colors" />
-            <div className="text-xs text-black/60 mt-1">Current session</div>
           </div>
 
-          {/* Orange Card */}
-          <div className="group bg-primary p-6 text-left hover:scale-[1.02] transition-all duration-300 cursor-default border-2 border-primary" data-testid="card-daily-goal">
-            <div className="flex items-center justify-between mb-3">
-              <Award className="w-10 h-10 text-white group-hover:text-white/80 transition-colors" />
-              <div className="text-3xl font-black text-white group-hover:text-white/90 transition-colors">
-                {Math.round((completedAds.size / dailyLimit) * 100)}%
+          {/* Orange Card - Enhanced */}
+          <div className="group relative bg-primary p-6 md:p-8 text-left hover:scale-[1.05] transition-all duration-500 cursor-default border-2 border-primary shadow-2xl hover:shadow-primary/30 rounded-lg overflow-hidden" data-testid="card-daily-goal">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70 opacity-90" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <Award className="w-12 h-12 text-white group-hover:scale-110 transition-transform duration-300 work-icon-bounce" />
+                <div className="text-4xl md:text-5xl font-black text-white group-hover:text-white/90 transition-colors counter-display">
+                  {Math.round((completedAds.size / dailyLimit) * 100)}%
+                </div>
               </div>
+              <TechnicalLabel text="DAILY GOAL" className="text-white group-hover:text-white/90 transition-colors text-sm" />
+              <div className="text-xs text-white/70 mt-2 font-medium">Progress to limit</div>
+              <div className="absolute top-2 right-2 w-2 h-2 bg-white/30 rounded-full animate-pulse" />
             </div>
-            <TechnicalLabel text="DAILY GOAL" className="text-white/80 group-hover:text-white transition-colors" />
-            <div className="text-xs text-white/60 mt-1">Progress to limit</div>
           </div>
         </div>
 
-        {/* Four Horizontal Tabs with Video Players */}
-        <div className="space-y-6">
-          {/* Tab Navigation */}
-          <div className="flex flex-col md:flex-row gap-2 md:gap-4 mb-6">
+        {/* Enhanced Four Horizontal Tabs - Auth Style */}
+        <div className="space-y-8">
+          {/* Enhanced Tab Navigation */}
+          <div className="flex flex-col md:flex-row gap-3 md:gap-6 mb-8 p-2 bg-black/30 rounded-xl border-2 border-primary/20 backdrop-blur-sm">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 p-4 md:p-6 rounded border-2 transition-all duration-300 hover:scale-[1.02] ${
+                  className={`group flex-1 p-6 md:p-8 rounded-lg border-2 transition-all duration-500 hover:scale-[1.03] relative overflow-hidden ${
                     isActive
-                      ? 'bg-primary border-primary text-white'
-                      : 'bg-black border-primary text-white hover:bg-primary/10'
+                      ? 'bg-primary border-primary text-white shadow-2xl shadow-primary/25 transform scale-[1.02]'
+                      : 'bg-black/50 border-primary/30 text-white hover:bg-primary/10 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10'
                   }`}
                   data-testid={`tab-${tab.id}`}
                 >
-                  <div className="text-center">
-                    <div className="text-2xl md:text-3xl mb-2">{tab.icon}</div>
-                    <TechnicalLabel text={tab.title} className={isActive ? "text-white" : "text-white/80"} />
-                    <div className="text-xs md:text-sm text-white/60 mt-1">{tab.description}</div>
-                    <div className="text-lg font-black text-white mt-2">{formatCurrency(tab.reward)}</div>
+                  {/* Active tab background effect */}
+                  {isActive && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70 opacity-90" />
+                  )}
+                  
+                  <div className="relative z-10 text-center">
+                    <div className={`text-3xl md:text-4xl mb-3 transition-transform duration-300 group-hover:scale-110 ${
+                      isActive ? 'animate-pulse' : ''
+                    }`}>{tab.icon}</div>
+                    <TechnicalLabel 
+                      text={tab.title} 
+                      className={`transition-colors duration-300 text-sm md:text-base ${
+                        isActive ? "text-white font-bold" : "text-white/80 group-hover:text-white"
+                      }`} 
+                    />
+                    <div className={`text-xs md:text-sm mt-2 transition-colors duration-300 ${
+                      isActive ? "text-white/90" : "text-white/60 group-hover:text-white/80"
+                    }`}>{tab.description}</div>
+                    <div className={`text-xl md:text-2xl font-black mt-3 transition-all duration-300 ${
+                      isActive ? "text-white drop-shadow-lg" : "text-primary group-hover:text-white"
+                    }`}>{formatCurrency(tab.reward)}</div>
+                    
+                    {/* Active indicator */}
+                    {isActive && (
+                      <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-full animate-ping" />
+                    )}
                   </div>
                 </button>
               );
             })}
           </div>
 
-          {/* Video Player Section */}
+          {/* Enhanced Video Player Section */}
           <div className="relative">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <div
                   key={tab.id}
-                  className={`${isActive ? 'block' : 'hidden'}`}
+                  className={`transition-all duration-500 ${
+                    isActive 
+                      ? 'block opacity-100 transform translate-y-0' 
+                      : 'hidden opacity-0 transform translate-y-4'
+                  }`}
                   data-testid={`video-content-${tab.id}`}
                 >
                   <VideoPlayer tab={tab} />
