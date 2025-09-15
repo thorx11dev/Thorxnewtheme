@@ -641,7 +641,7 @@ export default function UserPortal() {
           <div className="mb-3">
             <TechnicalLabel text="EARNING DASHBOARD" className="text-muted-foreground" />
           </div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
             WELCOME BACK,<br />
             <span className="text-primary">{displayUser?.firstName || "GUEST"}</span>
           </h1>
