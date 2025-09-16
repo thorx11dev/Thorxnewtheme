@@ -11,11 +11,20 @@ import {
   type InsertReferral,
   type DailyTask,
   type InsertDailyTask,
+  type TeamEmail,
+  type InsertTeamEmail,
+  type TeamKey,
+  type InsertTeamKey,
+  type UserCredential,
+  type InsertUserCredential,
   users,
   earnings,
   adViews,
   referrals,
-  dailyTasks
+  dailyTasks,
+  teamEmails,
+  teamKeys,
+  userCredentials
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -54,6 +63,31 @@ export interface IStorage {
   createDailyTask(task: InsertDailyTask): Promise<DailyTask>;
   getUserTodayTasks(userId: string): Promise<DailyTask[]>;
   markTaskComplete(taskId: string, earnedAmount: string): Promise<void>;
+  
+  // Team functionality methods
+  // Team emails for inbox functionality
+  createTeamEmail(teamEmail: InsertTeamEmail): Promise<TeamEmail>;
+  getTeamEmails(type?: 'inbound' | 'outbound', limit?: number): Promise<TeamEmail[]>;
+  getTeamEmailsByUser(userId: string, limit?: number): Promise<TeamEmail[]>;
+  
+  // Team keys for managing team member access
+  createTeamKey(teamKey: InsertTeamKey): Promise<TeamKey>;
+  getTeamKeysByUser(userId: string): Promise<TeamKey[]>;
+  updateTeamKey(keyId: string, updates: Partial<InsertTeamKey>): Promise<TeamKey | undefined>;
+  getTeamMembers(): Promise<Array<User & { teamKey: TeamKey | null }>>;
+  
+  // User credentials storage for team data management
+  createUserCredential(credential: InsertUserCredential): Promise<UserCredential>;
+  getUserCredentials(userId: string): Promise<UserCredential[]>;
+  getAllUserCredentials(): Promise<Array<UserCredential & { user: User }>>;
+  updateUserCredential(credentialId: string, updates: Partial<InsertUserCredential>): Promise<UserCredential | undefined>;
+  deleteUserCredential(credentialId: string): Promise<void>;
+  
+  // Team-specific user methods
+  getUsersByRole(role: 'user' | 'team'): Promise<User[]>;
+  getTotalUsersCount(): Promise<number>;
+  getActiveUsersCount(): Promise<number>;
+  getTotalEarningsSum(): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -288,6 +322,170 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Team functionality methods
+  // Team emails for inbox functionality
+  async createTeamEmail(insertTeamEmail: InsertTeamEmail): Promise<TeamEmail> {
+    const [teamEmail] = await db.insert(teamEmails).values(insertTeamEmail).returning();
+    return teamEmail;
+  }
+
+  async getTeamEmails(type?: 'inbound' | 'outbound', limit = 50): Promise<TeamEmail[]> {
+    if (type) {
+      return await db.select().from(teamEmails)
+        .where(eq(teamEmails.type, type))
+        .orderBy(desc(teamEmails.createdAt))
+        .limit(limit);
+    }
+    return await db.select().from(teamEmails)
+      .orderBy(desc(teamEmails.createdAt))
+      .limit(limit);
+  }
+
+  async getTeamEmailsByUser(userId: string, limit = 50): Promise<TeamEmail[]> {
+    return await db
+      .select()
+      .from(teamEmails)
+      .where(eq(teamEmails.fromUserId, userId))
+      .orderBy(desc(teamEmails.createdAt))
+      .limit(limit);
+  }
+
+  // Team keys for managing team member access
+  async createTeamKey(insertTeamKey: InsertTeamKey): Promise<TeamKey> {
+    const [teamKey] = await db.insert(teamKeys).values(insertTeamKey).returning();
+    return teamKey;
+  }
+
+  async getTeamKeysByUser(userId: string): Promise<TeamKey[]> {
+    return await db
+      .select()
+      .from(teamKeys)
+      .where(eq(teamKeys.userId, userId))
+      .orderBy(desc(teamKeys.createdAt));
+  }
+
+  async updateTeamKey(keyId: string, updates: Partial<InsertTeamKey>): Promise<TeamKey | undefined> {
+    const [updatedKey] = await db
+      .update(teamKeys)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(teamKeys.id, keyId))
+      .returning();
+    return updatedKey;
+  }
+
+  async getTeamMembers(): Promise<Array<User & { teamKey: TeamKey | null }>> {
+    return await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        identity: users.identity,
+        phone: users.phone,
+        email: users.email,
+        passwordHash: users.passwordHash,
+        referralCode: users.referralCode,
+        referredBy: users.referredBy,
+        role: users.role,
+        totalEarnings: users.totalEarnings,
+        availableBalance: users.availableBalance,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        teamKey: teamKeys,
+      })
+      .from(users)
+      .leftJoin(teamKeys, eq(users.id, teamKeys.userId))
+      .where(eq(users.role, 'team'))
+      .orderBy(desc(users.createdAt));
+  }
+
+  // User credentials storage for team data management
+  async createUserCredential(insertCredential: InsertUserCredential): Promise<UserCredential> {
+    const [credential] = await db.insert(userCredentials).values(insertCredential).returning();
+    return credential;
+  }
+
+  async getUserCredentials(userId: string): Promise<UserCredential[]> {
+    return await db
+      .select()
+      .from(userCredentials)
+      .where(eq(userCredentials.userId, userId))
+      .orderBy(desc(userCredentials.createdAt));
+  }
+
+  async getAllUserCredentials(): Promise<Array<UserCredential & { user: User }>> {
+    return await db
+      .select({
+        id: userCredentials.id,
+        userId: userCredentials.userId,
+        platform: userCredentials.platform,
+        username: userCredentials.username,
+        email: userCredentials.email,
+        encryptedPassword: userCredentials.encryptedPassword,
+        notes: userCredentials.notes,
+        isActive: userCredentials.isActive,
+        lastUpdated: userCredentials.lastUpdated,
+        createdAt: userCredentials.createdAt,
+        user: users,
+      })
+      .from(userCredentials)
+      .innerJoin(users, eq(userCredentials.userId, users.id))
+      .where(eq(userCredentials.isActive, true))
+      .orderBy(desc(userCredentials.createdAt));
+  }
+
+  async updateUserCredential(credentialId: string, updates: Partial<InsertUserCredential>): Promise<UserCredential | undefined> {
+    const [updatedCredential] = await db
+      .update(userCredentials)
+      .set({ ...updates, lastUpdated: new Date() })
+      .where(eq(userCredentials.id, credentialId))
+      .returning();
+    return updatedCredential;
+  }
+
+  async deleteUserCredential(credentialId: string): Promise<void> {
+    await db
+      .update(userCredentials)
+      .set({ isActive: false, lastUpdated: new Date() })
+      .where(eq(userCredentials.id, credentialId));
+  }
+
+  // Team-specific user methods
+  async getUsersByRole(role: 'user' | 'team'): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.role, role))
+      .orderBy(desc(users.createdAt));
+  }
+
+  async getTotalUsersCount(): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(users)
+      .where(eq(users.role, 'user'));
+    
+    return result?.count || 0;
+  }
+
+  async getActiveUsersCount(): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(users)
+      .where(and(eq(users.role, 'user'), eq(users.isActive, true)));
+    
+    return result?.count || 0;
+  }
+
+  async getTotalEarningsSum(): Promise<string> {
+    const [result] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${users.totalEarnings}), '0.00')` })
+      .from(users)
+      .where(eq(users.role, 'user'));
+    
+    return result?.total || "0.00";
+  }
+
   private generateReferralCode(): string {
     const prefix = "THORX";
     const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -340,6 +538,24 @@ export class MemStorage implements IStorage {
   async createDailyTask(task: InsertDailyTask): Promise<DailyTask> { throw new Error("Not implemented in MemStorage"); }
   async getUserTodayTasks(userId: string): Promise<DailyTask[]> { throw new Error("Not implemented in MemStorage"); }
   async markTaskComplete(taskId: string, earnedAmount: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+  
+  // Team functionality stub implementations
+  async createTeamEmail(teamEmail: InsertTeamEmail): Promise<TeamEmail> { throw new Error("Not implemented in MemStorage"); }
+  async getTeamEmails(type?: 'inbound' | 'outbound', limit?: number): Promise<TeamEmail[]> { throw new Error("Not implemented in MemStorage"); }
+  async getTeamEmailsByUser(userId: string, limit?: number): Promise<TeamEmail[]> { throw new Error("Not implemented in MemStorage"); }
+  async createTeamKey(teamKey: InsertTeamKey): Promise<TeamKey> { throw new Error("Not implemented in MemStorage"); }
+  async getTeamKeysByUser(userId: string): Promise<TeamKey[]> { throw new Error("Not implemented in MemStorage"); }
+  async updateTeamKey(keyId: string, updates: Partial<InsertTeamKey>): Promise<TeamKey | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async getTeamMembers(): Promise<Array<User & { teamKey: TeamKey | null }>> { throw new Error("Not implemented in MemStorage"); }
+  async createUserCredential(credential: InsertUserCredential): Promise<UserCredential> { throw new Error("Not implemented in MemStorage"); }
+  async getUserCredentials(userId: string): Promise<UserCredential[]> { throw new Error("Not implemented in MemStorage"); }
+  async getAllUserCredentials(): Promise<Array<UserCredential & { user: User }>> { throw new Error("Not implemented in MemStorage"); }
+  async updateUserCredential(credentialId: string, updates: Partial<InsertUserCredential>): Promise<UserCredential | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async deleteUserCredential(credentialId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+  async getUsersByRole(role: 'user' | 'team'): Promise<User[]> { throw new Error("Not implemented in MemStorage"); }
+  async getTotalUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
+  async getActiveUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
+  async getTotalEarningsSum(): Promise<string> { throw new Error("Not implemented in MemStorage"); }
 
   private generateReferralCode(): string {
     const prefix = "THORX";

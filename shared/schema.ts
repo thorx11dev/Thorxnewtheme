@@ -23,6 +23,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   referralCode: text("referral_code").notNull().unique(),
   referredBy: varchar("referred_by"),
+  role: text("role").default("user"), // 'user' or 'team'
   totalEarnings: decimal("total_earnings", { precision: 10, scale: 2 }).default("0.00"),
   availableBalance: decimal("available_balance", { precision: 10, scale: 2 }).default("0.00"),
   isActive: boolean("is_active").default(true),
@@ -31,6 +32,7 @@ export const users = pgTable("users", {
 }, (table) => [
   index("users_email_idx").on(table.email),
   index("users_referral_code_idx").on(table.referralCode),
+  index("users_role_idx").on(table.role),
 ]);
 
 // Earnings transactions table
@@ -89,6 +91,57 @@ export const dailyTasks = pgTable("daily_tasks", {
   index("daily_tasks_date_idx").on(table.date),
 ]);
 
+// Team emails for inbox functionality
+export const teamEmails = pgTable("team_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fromUserId: varchar("from_user_id").references(() => users.id), // sender (null if external)
+  toEmail: text("to_email").notNull(),
+  fromEmail: text("from_email").notNull(),
+  subject: text("subject").notNull(),
+  content: text("content").notNull(),
+  status: text("status").default("sent"), // 'draft', 'sent', 'failed'
+  type: text("type").default("outbound"), // 'inbound', 'outbound'
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("team_emails_from_user_id_idx").on(table.fromUserId),
+  index("team_emails_to_email_idx").on(table.toEmail),
+  index("team_emails_created_at_idx").on(table.createdAt),
+]);
+
+// Team keys for managing team member access
+export const teamKeys = pgTable("team_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  keyName: text("key_name").notNull(),
+  accessLevel: text("access_level").default("member"), // 'founder', 'admin', 'member'
+  permissions: text("permissions").array(), // array of permission strings
+  isActive: boolean("is_active").default(true),
+  lastUsed: timestamp("last_used"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("team_keys_user_id_idx").on(table.userId),
+  index("team_keys_access_level_idx").on(table.accessLevel),
+]);
+
+// User credentials storage for team data management
+export const userCredentials = pgTable("user_credentials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  platform: text("platform").notNull(), // 'email', 'social', 'website', etc.
+  username: text("username"),
+  email: text("email"),
+  encryptedPassword: text("encrypted_password"), // encrypted, not plain text
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("user_credentials_user_id_idx").on(table.userId),
+  index("user_credentials_platform_idx").on(table.platform),
+  index("user_credentials_email_idx").on(table.email),
+]);
+
 // Define relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   earnings: many(earnings),
@@ -96,6 +149,9 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   referralsMade: many(referrals, { relationName: "referrer" }),
   referralsReceived: many(referrals, { relationName: "referred" }),
   dailyTasks: many(dailyTasks),
+  teamEmailsSent: many(teamEmails),
+  teamKeys: many(teamKeys),
+  userCredentials: many(userCredentials),
   referrer: one(users, {
     fields: [users.referredBy],
     references: [users.id],
@@ -136,6 +192,27 @@ export const dailyTasksRelations = relations(dailyTasks, ({ one }) => ({
   }),
 }));
 
+export const teamEmailsRelations = relations(teamEmails, ({ one }) => ({
+  fromUser: one(users, {
+    fields: [teamEmails.fromUserId],
+    references: [users.id],
+  }),
+}));
+
+export const teamKeysRelations = relations(teamKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [teamKeys.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userCredentialsRelations = relations(userCredentials, ({ one }) => ({
+  user: one(users, {
+    fields: [userCredentials.userId],
+    references: [users.id],
+  }),
+}));
+
 // Zod schemas for validation
 export const insertRegistrationSchema = createInsertSchema(registrations).pick({
   phone: true,
@@ -172,6 +249,24 @@ export const insertDailyTaskSchema = createInsertSchema(dailyTasks).omit({
   date: true,
 });
 
+export const insertTeamEmailSchema = createInsertSchema(teamEmails).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertTeamKeySchema = createInsertSchema(teamKeys).omit({
+  id: true,
+  lastUsed: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserCredentialSchema = createInsertSchema(userCredentials).omit({
+  id: true,
+  lastUpdated: true,
+  createdAt: true,
+});
+
 // Type exports
 export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
 export type Registration = typeof registrations.$inferSelect;
@@ -190,3 +285,12 @@ export type Referral = typeof referrals.$inferSelect;
 
 export type InsertDailyTask = z.infer<typeof insertDailyTaskSchema>;
 export type DailyTask = typeof dailyTasks.$inferSelect;
+
+export type InsertTeamEmail = z.infer<typeof insertTeamEmailSchema>;
+export type TeamEmail = typeof teamEmails.$inferSelect;
+
+export type InsertTeamKey = z.infer<typeof insertTeamKeySchema>;
+export type TeamKey = typeof teamKeys.$inferSelect;
+
+export type InsertUserCredential = z.infer<typeof insertUserCredentialSchema>;
+export type UserCredential = typeof userCredentials.$inferSelect;
