@@ -148,7 +148,15 @@ export default function TeamPortal() {
           <Card className="border-2 border-primary bg-black text-white overflow-hidden">
             <CardContent className="p-6 text-center">
               <Users className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">1,247</div>
+              {metricsLoading ? (
+                <div className="text-3xl font-black mb-2 text-primary animate-pulse">---</div>
+              ) : metricsError ? (
+                <div className="text-3xl font-black mb-2 text-red-500">ERR</div>
+              ) : (
+                <div className="text-3xl font-black mb-2 text-primary" data-testid="metric-total-users">
+                  {teamMetrics?.totalUsers?.toLocaleString() || '0'}
+                </div>
+              )}
               <TechnicalLabel text="TOTAL USERS" className="text-muted-foreground" />
             </CardContent>
           </Card>
@@ -156,7 +164,15 @@ export default function TeamPortal() {
           <Card className="border-2 border-primary bg-black text-white overflow-hidden">
             <CardContent className="p-6 text-center">
               <UserCheck className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">892</div>
+              {metricsLoading ? (
+                <div className="text-3xl font-black mb-2 text-primary animate-pulse">---</div>
+              ) : metricsError ? (
+                <div className="text-3xl font-black mb-2 text-red-500">ERR</div>
+              ) : (
+                <div className="text-3xl font-black mb-2 text-primary" data-testid="metric-active-users">
+                  {teamMetrics?.activeUsers?.toLocaleString() || '0'}
+                </div>
+              )}
               <TechnicalLabel text="ACTIVE USERS" className="text-muted-foreground" />
             </CardContent>
           </Card>
@@ -164,7 +180,15 @@ export default function TeamPortal() {
           <Card className="border-2 border-primary bg-black text-white overflow-hidden">
             <CardContent className="p-6 text-center">
               <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">₨45,321</div>
+              {metricsLoading ? (
+                <div className="text-3xl font-black mb-2 text-primary animate-pulse">---</div>
+              ) : metricsError ? (
+                <div className="text-3xl font-black mb-2 text-red-500">ERR</div>
+              ) : (
+                <div className="text-3xl font-black mb-2 text-primary" data-testid="metric-total-earnings">
+                  ₨{parseFloat(teamMetrics?.totalEarnings || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              )}
               <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground" />
             </CardContent>
           </Card>
