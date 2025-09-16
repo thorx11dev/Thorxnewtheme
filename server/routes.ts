@@ -15,6 +15,7 @@ declare module "express-session" {
       email: string;
       firstName: string;
       lastName: string;
+      role?: string;
     };
     anonymousUserData?: {
       id: string;
@@ -126,6 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        role: user.role || 'user',
       };
 
       // Explicitly save the session before responding
@@ -243,6 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        role: user.role || 'user',
       };
 
       // Force session save and wait for it to complete
@@ -344,6 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         availableBalance: user.availableBalance,
         isActive: user.isActive,
         createdAt: user.createdAt,
+        role: user.role || 'user',
       });
     } catch (error) {
       console.error("Get user error:", error);

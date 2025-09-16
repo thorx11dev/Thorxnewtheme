@@ -7,11 +7,12 @@ import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
 import Auth from "@/pages/auth";
 import UserPortal from "@/pages/UserPortal";
-import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
+import TeamPortal from "@/pages/TeamPortal";
+import { ProtectedRoute, PublicOnlyRoute, TeamProtectedRoute } from "@/components/auth/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -24,11 +25,23 @@ function Router() {
     );
   }
 
+  // Helper function to determine which portal to show based on user role
+  const getPortalComponent = () => {
+    if (!isAuthenticated) return <Home />;
+    
+    // Redirect to appropriate portal based on user role
+    if (user?.role === 'team') {
+      return <TeamPortal />;
+    } else {
+      return <UserPortal />;
+    }
+  };
+
   return (
     <Switch>
-      {/* Root route - redirect based on auth status */}
+      {/* Root route - redirect based on auth status and role */}
       <Route path="/">
-        {isAuthenticated ? <UserPortal /> : <Home />}
+        {getPortalComponent()}
       </Route>
 
       {/* Auth route - only for non-authenticated users */}
@@ -43,6 +56,13 @@ function Router() {
         <ProtectedRoute>
           <UserPortal />
         </ProtectedRoute>
+      </Route>
+
+      {/* Team Portal route - for team members */}
+      <Route path="/team-portal">
+        <TeamProtectedRoute>
+          <TeamPortal />
+        </TeamProtectedRoute>
       </Route>
 
       {/* Legacy routes - redirect to root for authenticated users */}

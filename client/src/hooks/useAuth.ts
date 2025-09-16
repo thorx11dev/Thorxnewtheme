@@ -14,6 +14,7 @@ export interface User {
   availableBalance: string;
   isActive: boolean;
   createdAt: string;
+  role?: string;
 }
 
 export function useAuth() {
