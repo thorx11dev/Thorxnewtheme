@@ -84,6 +84,12 @@ export default function TeamPortal() {
     }, 300);
   };
 
+  // Team metrics query
+  const { data: teamMetrics, isLoading: metricsLoading, error: metricsError } = useQuery({
+    queryKey: ['/api/team/metrics'],
+    enabled: !!user && user.role === 'team',
+  });
+
   // Logout handler
   const handleLogout = async () => {
     try {
