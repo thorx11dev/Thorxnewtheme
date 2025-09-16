@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import { Button } from "@/components/ui/button";
@@ -30,6 +33,15 @@ import {
   Search,
   Settings
 } from "lucide-react";
+
+// Email form schema
+const emailFormSchema = z.object({
+  recipient: z.string().email("Please enter a valid email address"),
+  subject: z.string().min(1, "Subject is required"),
+  message: z.string().min(1, "Message is required")
+});
+
+type EmailFormData = z.infer<typeof emailFormSchema>;
 
 // Team Portal Sections
 const teamSections = [
@@ -89,6 +101,56 @@ export default function TeamPortal() {
     queryKey: ['/api/team/metrics'],
     enabled: !!user && user.role === 'team',
   });
+
+  // Team emails query (received messages)
+  const { data: emailsData, isLoading: emailsLoading, error: emailsError } = useQuery({
+    queryKey: ['/api/team/emails'],
+    enabled: !!user && user.role === 'team',
+  });
+
+  // Email form
+  const emailForm = useForm<EmailFormData>({
+    resolver: zodResolver(emailFormSchema),
+    defaultValues: {
+      recipient: "",
+      subject: "",
+      message: ""
+    }
+  });
+
+  // Send email mutation
+  const sendEmailMutation = useMutation({
+    mutationFn: async (data: EmailFormData) => {
+      return await apiRequest('/api/team/emails', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email Sent",
+        description: "Your email has been sent successfully.",
+      });
+      emailForm.reset();
+      // Invalidate emails query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['/api/team/emails'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Send Email",
+        description: error?.message || "There was an error sending your email.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Handle email form submission
+  const handleSendEmail = (data: EmailFormData) => {
+    sendEmailMutation.mutate(data);
+  };
 
   // Logout handler
   const handleLogout = async () => {
@@ -235,46 +297,92 @@ export default function TeamPortal() {
             <TechnicalLabel text="SEND EMAIL" className="text-primary text-xl" />
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <TechnicalLabel text="RECIPIENT" className="text-white mb-2" />
-                <input
-                  type="email"
-                  placeholder="user@email.com"
-                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                  data-testid="input-email-recipient"
-                />
+            <form onSubmit={emailForm.handleSubmit(handleSendEmail)} className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <TechnicalLabel text="RECIPIENT" className="text-white mb-2" />
+                  <input
+                    type="email"
+                    placeholder="user@email.com"
+                    className={`w-full bg-black border-2 text-white px-4 py-3 text-lg focus:outline-none ${
+                      emailForm.formState.errors.recipient
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-primary focus:border-primary'
+                    }`}
+                    data-testid="input-email-recipient"
+                    {...emailForm.register("recipient")}
+                  />
+                  {emailForm.formState.errors.recipient && (
+                    <TechnicalLabel 
+                      text={emailForm.formState.errors.recipient.message || ""}
+                      className="text-red-500 text-sm mt-1"
+                    />
+                  )}
+                </div>
+                <div>
+                  <TechnicalLabel text="SUBJECT" className="text-white mb-2" />
+                  <input
+                    type="text"
+                    placeholder="Email subject"
+                    className={`w-full bg-black border-2 text-white px-4 py-3 text-lg focus:outline-none ${
+                      emailForm.formState.errors.subject
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-primary focus:border-primary'
+                    }`}
+                    data-testid="input-email-subject"
+                    {...emailForm.register("subject")}
+                  />
+                  {emailForm.formState.errors.subject && (
+                    <TechnicalLabel 
+                      text={emailForm.formState.errors.subject.message || ""}
+                      className="text-red-500 text-sm mt-1"
+                    />
+                  )}
+                </div>
               </div>
+
               <div>
-                <TechnicalLabel text="SUBJECT" className="text-white mb-2" />
-                <input
-                  type="text"
-                  placeholder="Email subject"
-                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                  data-testid="input-email-subject"
-                />
+                <TechnicalLabel text="MESSAGE" className="text-white mb-2" />
+                <textarea
+                  rows={6}
+                  placeholder="Enter your message..."
+                  className={`w-full bg-black border-2 text-white px-4 py-3 text-lg focus:outline-none ${
+                    emailForm.formState.errors.message
+                      ? 'border-red-500 focus:border-red-500'
+                      : 'border-primary focus:border-primary'
+                  }`}
+                  data-testid="textarea-email-message"
+                  {...emailForm.register("message")}
+                ></textarea>
+                {emailForm.formState.errors.message && (
+                  <TechnicalLabel 
+                    text={emailForm.formState.errors.message.message || ""}
+                    className="text-red-500 text-sm mt-1"
+                  />
+                )}
               </div>
-            </div>
 
-            <div>
-              <TechnicalLabel text="MESSAGE" className="text-white mb-2" />
-              <textarea
-                rows={6}
-                placeholder="Enter your message..."
-                className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                data-testid="textarea-email-message"
-              ></textarea>
-            </div>
-
-            <div className="text-center">
-              <Button
-                className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary"
-                data-testid="button-send-email"
-              >
-                <Send className="w-5 h-5 mr-3" />
-                SEND EMAIL
-              </Button>
-            </div>
+              <div className="text-center">
+                <Button
+                  type="submit"
+                  disabled={sendEmailMutation.isPending}
+                  className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary disabled:opacity-50"
+                  data-testid="button-send-email"
+                >
+                  {sendEmailMutation.isPending ? (
+                    <>
+                      <div className="w-5 h-5 mr-3 animate-spin border-2 border-black border-t-transparent rounded-full"></div>
+                      SENDING...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5 mr-3" />
+                      SEND EMAIL
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
 
@@ -283,10 +391,74 @@ export default function TeamPortal() {
           <CardHeader className="text-center">
             <TechnicalLabel text="RECEIVED MESSAGES" className="text-primary text-xl" />
           </CardHeader>
-          <CardContent className="text-center p-12">
-            <Mail className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <TechnicalLabel text="NO MESSAGES" className="text-primary text-2xl" />
-            <TechnicalLabel text="Received messages will appear here" className="text-muted-foreground" />
+          <CardContent className="p-6">
+            {emailsLoading ? (
+              <div className="text-center p-12">
+                <div className="w-16 h-16 mx-auto mb-4 animate-spin border-4 border-primary border-t-transparent rounded-full"></div>
+                <TechnicalLabel text="LOADING MESSAGES..." className="text-primary text-xl" />
+              </div>
+            ) : emailsError ? (
+              <div className="text-center p-12">
+                <Mail className="w-16 h-16 mx-auto mb-4 text-red-500" />
+                <TechnicalLabel text="ERROR LOADING MESSAGES" className="text-red-500 text-xl" />
+                <TechnicalLabel text="Please try refreshing the page" className="text-muted-foreground" />
+              </div>
+            ) : !emailsData?.emails || emailsData.emails.length === 0 ? (
+              <div className="text-center p-12">
+                <Mail className="w-16 h-16 mx-auto mb-4 text-primary" />
+                <TechnicalLabel text="NO MESSAGES" className="text-primary text-2xl" />
+                <TechnicalLabel text="Received messages will appear here" className="text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-4" data-testid="email-messages-list">
+                {emailsData.emails.map((email: any, index: number) => (
+                  <div 
+                    key={email.id || index} 
+                    className="border border-primary/30 bg-black/50 p-4 rounded"
+                    data-testid={`email-message-${index}`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TechnicalLabel 
+                            text={`FROM: ${email.type === 'inbound' ? email.senderId || 'EXTERNAL' : 'TEAM'}`} 
+                            className="text-primary text-sm" 
+                          />
+                          <span className={`px-2 py-1 text-xs border ${
+                            email.type === 'inbound' 
+                              ? 'border-green-500 text-green-500' 
+                              : 'border-blue-500 text-blue-500'
+                          }`}>
+                            {email.type?.toUpperCase() || 'UNKNOWN'}
+                          </span>
+                        </div>
+                        <TechnicalLabel 
+                          text={`TO: ${email.recipient || 'N/A'}`} 
+                          className="text-gray-300 text-sm" 
+                        />
+                      </div>
+                      <TechnicalLabel 
+                        text={email.createdAt ? new Date(email.createdAt).toLocaleDateString() : 'N/A'} 
+                        className="text-gray-400 text-xs" 
+                      />
+                    </div>
+                    <div className="mb-2">
+                      <TechnicalLabel 
+                        text={`SUBJECT: ${email.subject || 'No Subject'}`} 
+                        className="text-white font-semibold" 
+                      />
+                    </div>
+                    <div className="text-gray-300 text-sm">
+                      {email.message ? (
+                        email.message.length > 200 
+                          ? `${email.message.substring(0, 200)}...` 
+                          : email.message
+                      ) : 'No message content'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

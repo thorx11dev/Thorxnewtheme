@@ -535,6 +535,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team email endpoints
+  const teamEmailSchema = z.object({
+    recipient: z.string().email("Invalid email address"),
+    subject: z.string().min(1, "Subject is required"),
+    message: z.string().min(1, "Message is required")
+  });
+
+  // Send team email
+  app.post("/api/team/emails", requireAuth, async (req, res) => {
+    try {
+      // Check if user has team role
+      if (req.session.user?.role !== 'team') {
+        return res.status(403).json({
+          message: "Access denied. Team role required.",
+          error: "FORBIDDEN"
+        });
+      }
+
+      const { recipient, subject, message } = teamEmailSchema.parse(req.body);
+
+      const emailData = {
+        senderId: req.session.userId!,
+        recipient,
+        subject,
+        message,
+        type: 'outbound' as const
+      };
+
+      const email = await storage.createTeamEmail(emailData);
+
+      res.status(201).json({
+        success: true,
+        email,
+        message: "Email sent successfully"
+      });
+    } catch (error) {
+      console.error("Send team email error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid email data",
+          errors: error.errors
+        });
+      }
+
+      res.status(500).json({
+        message: "Failed to send email",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Get team emails (received messages)
+  app.get("/api/team/emails", requireAuth, async (req, res) => {
+    try {
+      // Check if user has team role
+      if (req.session.user?.role !== 'team') {
+        return res.status(403).json({
+          message: "Access denied. Team role required.",
+          error: "FORBIDDEN"
+        });
+      }
+
+      const type = req.query.type as 'inbound' | 'outbound' | undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+
+      const emails = await storage.getTeamEmails(type, limit);
+
+      res.json({
+        emails,
+        total: emails.length
+      });
+    } catch (error) {
+      console.error("Get team emails error:", error);
+      res.status(500).json({
+        message: "Failed to fetch team emails",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
