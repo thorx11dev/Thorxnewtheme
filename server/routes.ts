@@ -989,7 +989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create founder team key
       const teamKeyData = {
         userId: founder.id,
-        memberName: `${firstName} ${lastName}`,
+        keyName: `${firstName} ${lastName}`,
         accessLevel: 'founder' as const,
         permissions: ['all'],
         isActive: true
