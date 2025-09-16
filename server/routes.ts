@@ -945,6 +945,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bootstrap founder endpoint (only works when no team members exist)
+  app.post("/api/bootstrap-founder", async (req, res) => {
+    try {
+      const { email, password, firstName, lastName } = req.body;
+
+      if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({
+          message: "Email, password, first name, and last name are required"
+        });
+      }
+
+      // Check if any team members already exist
+      const existingTeamMembers = await storage.getTeamMembers();
+      if (existingTeamMembers && existingTeamMembers.length > 0) {
+        return res.status(403).json({
+          message: "Founder already exists. Use normal registration."
+        });
+      }
+
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({
+          message: "Email already registered"
+        });
+      }
+
+      // Create founder user
+      const founderData = {
+        firstName,
+        lastName,
+        identity: `FOUNDER_${Date.now()}`,
+        phone: "+1 555 0000000",
+        email,
+        passwordHash: password,
+        referralCode: `FOUNDER-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+        role: 'team'
+      };
+
+      const founder = await storage.createUser(founderData);
+
+      // Create founder team key
+      const teamKeyData = {
+        userId: founder.id,
+        memberName: `${firstName} ${lastName}`,
+        accessLevel: 'founder' as const,
+        permissions: ['all'],
+        isActive: true
+      };
+
+      await storage.createTeamKey(teamKeyData);
+
+      // Set session
+      req.session.userId = founder.id;
+      req.session.user = {
+        id: founder.id,
+        email: founder.email,
+        firstName: founder.firstName,
+        lastName: founder.lastName,
+        role: founder.role || 'team'
+      };
+
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      res.json({
+        message: "Founder account created successfully",
+        user: {
+          id: founder.id,
+          email: founder.email,
+          firstName: founder.firstName,
+          lastName: founder.lastName,
+          role: founder.role
+        }
+      });
+    } catch (error) {
+      console.error("Bootstrap founder error:", error);
+      res.status(500).json({
+        message: "Failed to create founder account"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
