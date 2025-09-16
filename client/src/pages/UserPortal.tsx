@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -435,19 +436,19 @@ export default function UserPortal() {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-700 border-green-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'hard': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'easy': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      case 'medium': return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'hard': return 'bg-rose-100 text-rose-800 border-rose-300';
+      default: return 'bg-slate-100 text-slate-800 border-slate-300';
     }
   };
 
   const getDifficultyColorDark = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'bg-green-900/50 text-green-300 border-green-700';
-      case 'medium': return 'bg-yellow-900/50 text-yellow-300 border-yellow-700';
-      case 'hard': return 'bg-red-900/50 text-red-300 border-red-700';
-      default: return 'bg-muted text-muted-foreground border-muted-foreground';
+      case 'easy': return 'bg-emerald-900/30 text-emerald-300 border-emerald-600';
+      case 'medium': return 'bg-amber-900/30 text-amber-300 border-amber-600';
+      case 'hard': return 'bg-rose-900/30 text-rose-300 border-rose-600';
+      default: return 'bg-slate-800 text-slate-300 border-slate-600';
     }
   };
 
@@ -891,14 +892,15 @@ export default function UserPortal() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Enhanced Header */}
         <div className="text-center mb-8">
-          <div className="mb-2">
-            <TechnicalLabel text="WORK CENTER" className="text-white" />
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
+            <Briefcase className="w-4 h-4" />
+            <TechnicalLabel text="WORK CENTER" className="text-primary" />
           </div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white mb-3 tracking-tighter leading-tight">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
             START <span className="text-primary">EARNING</span><br />
             WATCH & EARN REWARDS
           </h1>
-          <p className="text-base md:text-lg text-gray-300 mb-6 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
             Watch advertisements, complete tasks, and earn real money daily
           </p>
           <Barcode className="w-24 md:w-32 h-6 md:h-8 mx-auto opacity-60" />
@@ -907,64 +909,126 @@ export default function UserPortal() {
         {/* Enhanced Metrics Cards */}
         <MetricsCards metrics={metricsData} className="mb-10" />
 
-        {/* Industrial Tab System */}
-        <IndustrialTabs 
-          tabs={WORK_TABS}
-          activeTab={activeWorkTab}
-          onTabChange={setActiveWorkTab}
-          className="mb-8"
-        />
+        {/* Modern Tab System */}
+        <div className="mb-8">
+          <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 bg-card border-2 border-muted-foreground/20 h-auto p-2">
+              {WORK_TABS.map((tab) => {
+                const IconComponent = tab.icon;
+                return (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    className="flex flex-col items-center gap-2 p-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300 hover:bg-primary/10"
+                  >
+                    <IconComponent className="w-6 h-6" />
+                    <div className="text-center">
+                      <TechnicalLabel text={tab.title} className="text-xs font-bold" />
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {tab.count} available
+                      </div>
+                    </div>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
 
-        {/* Enhanced Video Player */}
-        <div className="relative">
-          <EnhancedVideoPlayer
-            tab={currentVideoTab}
-            isActive={true}
-            onComplete={handleVideoComplete}
-            autoplay={false}
-            isMobile={isMobile}
-          />
+            {WORK_TABS.map((tab) => (
+              <TabsContent key={tab.id} value={tab.id} className="mt-6">
+                <div className="space-y-6">
+                  {/* Tab Description */}
+                  <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
+                          <tab.icon className="w-8 h-8 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-foreground mb-2">{tab.title} CENTER</h3>
+                          <p className="text-muted-foreground mb-2">{tab.description}</p>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="text-primary font-semibold">Earn: {tab.earnings}</span>
+                            <span className="text-muted-foreground">Available: {tab.count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Enhanced Video Player for active tab */}
+                  {tab.id === activeWorkTab && (
+                    <EnhancedVideoPlayer
+                      tab={currentVideoTab}
+                      isActive={true}
+                      onComplete={handleVideoComplete}
+                      autoplay={false}
+                      isMobile={isMobile}
+                    />
+                  )}
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
         </div>
 
         {/* Available Ads */}
         {remainingAds > 0 ? (
           <div className="space-y-8">
             <div className="text-center">
-              <TechnicalLabel text="AVAILABLE ADS" className="text-primary text-2xl" />
+              <h2 className="text-2xl font-bold text-foreground mb-2">Available Opportunities</h2>
+              <p className="text-muted-foreground">Choose from our curated selection of earning opportunities</p>
             </div>
 
-            {/* Ads Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Enhanced Ads Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {availableAds.map((ad) => {
                 const isCompleted = completedAds.has(ad.id);
                 const isCurrent = selectedAd?.id === ad.id;
 
                 return (
-                  <Card key={ad.id} className={`border-2 border-primary bg-black text-white hover:shadow-xl transition-all duration-300 overflow-hidden ${isCurrent ? 'ring-2 ring-primary' : ''}`} data-testid={`ad-card-${ad.id}`}>
-                    <CardHeader>
+                  <Card 
+                    key={ad.id} 
+                    className={`border-2 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 overflow-hidden ${
+                      isCompleted 
+                        ? 'border-emerald-300 bg-emerald-50/50' 
+                        : isCurrent 
+                        ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
+                        : 'border-muted-foreground/20 hover:border-primary/40 hover:bg-card/80'
+                    }`} 
+                    data-testid={`ad-card-${ad.id}`}
+                  >
+                    <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="text-2xl">{getAdTypeIcon(ad.type)}</div>
-                          <div>
-                            <h3 className="font-black text-white line-clamp-1">{ad.title}</h3>
-                            <TechnicalLabel text={ad.category} className="text-muted-foreground" />
+                          <div className="w-12 h-12 bg-primary/10 border border-primary/20 flex items-center justify-center text-2xl">
+                            {getAdTypeIcon(ad.type)}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-foreground line-clamp-2 text-sm">{ad.title}</h3>
+                            <TechnicalLabel text={ad.category} className="text-xs text-muted-foreground mt-1" />
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-black text-primary">{formatCurrency(ad.reward)}</div>
-                          <div className={`inline-block px-2 py-1 text-xs font-semibold border ${getDifficultyColor(ad.difficulty)}`}>
-                            {ad.difficulty}
+                          <div className={`inline-block px-2 py-1 text-xs font-semibold border rounded ${getDifficultyColor(ad.difficulty)}`}>
+                            {ad.difficulty.toUpperCase()}
                           </div>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
                       <div className="space-y-4">
-                        <TechnicalLabel text={ad.description} className="text-gray-300 text-sm" />
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {ad.description}
+                        </p>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-gray-400" />
-                            <TechnicalLabel text={formatTime(ad.duration)} className="text-muted-foreground" />
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">{formatTime(ad.duration)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 text-amber-400 fill-current" />
+                            <span className="text-xs text-muted-foreground">4.8</span>
                           </div>
                         </div>
                         <Button
@@ -972,10 +1036,10 @@ export default function UserPortal() {
                           disabled={Boolean(isCompleted || (selectedAd && !isCompleted))}
                           className={`w-full transition-all duration-200 ${
                             isCompleted
-                              ? 'bg-green-600 text-white cursor-not-allowed'
+                              ? 'bg-emerald-600 text-white hover:bg-emerald-600 cursor-default'
                               : isCurrent
-                              ? 'bg-primary text-black'
-                              : 'bg-primary hover:bg-primary/90 text-black border-2 border-primary'
+                              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                              : 'bg-primary hover:bg-primary/90 text-primary-foreground'
                           }`}
                           data-testid={`button-watch-${ad.id}`}
                         >
@@ -987,12 +1051,12 @@ export default function UserPortal() {
                           ) : isCurrent ? (
                             <>
                               <PlayCircle className="w-4 h-4 mr-2" />
-                              CURRENTLY WATCHING
+                              WATCHING NOW
                             </>
                           ) : (
                             <>
                               <PlayCircle className="w-4 h-4 mr-2" />
-                              WATCH NOW
+                              WATCH & EARN
                             </>
                           )}
                         </Button>
@@ -1004,12 +1068,31 @@ export default function UserPortal() {
             </div>
           </div>
         ) : (
-          <Card className="border-2 border-primary bg-black text-white text-center p-12">
-            <div className="space-y-4">
-              <Clock className="w-16 h-16 mx-auto text-primary" />
-              <TechnicalLabel text="DAILY LIMIT REACHED" className="text-primary text-2xl" />
-              <TechnicalLabel text="Come back tomorrow for more earning opportunities!" className="text-muted-foreground" />
-            </div>
+          <Card className="border-2 border-primary/20 bg-gradient-to-br from-card to-card/80">
+            <CardContent className="text-center p-12">
+              <div className="space-y-4">
+                <div className="w-20 h-20 mx-auto bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
+                  <Clock className="w-10 h-10 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-primary mb-2">Daily Limit Reached</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    You've completed all available opportunities for today. Come back tomorrow for more earning chances!
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-4 mt-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-black text-primary">{todayAdViews?.count || 0}</div>
+                    <TechnicalLabel text="ADS WATCHED" className="text-muted-foreground" />
+                  </div>
+                  <div className="w-px h-12 bg-muted-foreground/20"></div>
+                  <div className="text-center">
+                    <div className="text-2xl font-black text-primary">{formatCurrency((completedAds.size * 2.5))}</div>
+                    <TechnicalLabel text="TODAY'S EARNINGS" className="text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
           </Card>
         )}
       </div>
