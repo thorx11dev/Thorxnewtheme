@@ -641,6 +641,310 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team member management endpoints
+  const teamMemberSchema = z.object({
+    memberName: z.string().min(1, "Member name is required"),
+    email: z.string().email("Valid email is required"),
+    accessLevel: z.enum(["founder", "admin", "member"], {
+      errorMap: () => ({ message: "Access level must be founder, admin, or member" })
+    }),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    permissions: z.array(z.string()).optional()
+  });
+
+  const teamMemberUpdateSchema = z.object({
+    memberName: z.string().min(1, "Member name is required").optional(),
+    accessLevel: z.enum(["founder", "admin", "member"], {
+      errorMap: () => ({ message: "Access level must be founder, admin, or member" })
+    }).optional(),
+    permissions: z.array(z.string()).optional(),
+    isActive: z.boolean().optional()
+  });
+
+  // Add team member
+  app.post("/api/team/members", requireAuth, async (req, res) => {
+    try {
+      // Check if user has team role AND admin access level
+      if (req.session.user?.role !== 'team') {
+        return res.status(403).json({
+          message: "Access denied. Team role required.",
+          error: "FORBIDDEN"
+        });
+      }
+
+      // Get current user's team key to check admin permissions
+      const currentUserTeamKeys = await storage.getTeamKeysByUser(req.session.userId!);
+      const hasAdminAccess = currentUserTeamKeys.some(key => 
+        key.accessLevel === 'founder' || key.accessLevel === 'admin'
+      );
+
+      if (!hasAdminAccess) {
+        return res.status(403).json({
+          message: "Access denied. Admin privileges required to manage team members.",
+          error: "INSUFFICIENT_PRIVILEGES"
+        });
+      }
+
+      const { memberName, email, accessLevel, password, permissions } = teamMemberSchema.parse(req.body);
+
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({
+          message: "Email already registered",
+          error: "DUPLICATE_EMAIL"
+        });
+      }
+
+      // Create team member user
+      const teamMemberData = {
+        firstName: memberName.split(' ')[0] || memberName,
+        lastName: memberName.split(' ').slice(1).join(' ') || 'Member',
+        identity: `TEAM_${Date.now()}`,
+        phone: "+92 300 0000000", // Default team member phone
+        email: email,
+        passwordHash: password, // Will be hashed in storage layer
+        referralCode: `TEAM-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+        role: 'team'
+      };
+
+      const newTeamUser = await storage.createUser(teamMemberData);
+
+      // Create team key for the new member
+      const teamKeyData = {
+        userId: newTeamUser.id,
+        keyName: memberName,
+        accessLevel: accessLevel,
+        permissions: permissions || [],
+        isActive: true
+      };
+
+      const teamKey = await storage.createTeamKey(teamKeyData);
+
+      // Return safe data only (no passwords or sensitive info)
+      res.status(201).json({
+        success: true,
+        member: {
+          id: newTeamUser.id,
+          name: memberName,
+          email: newTeamUser.email,
+          accessLevel: teamKey.accessLevel,
+          permissions: teamKey.permissions,
+          isActive: teamKey.isActive,
+          createdAt: teamKey.createdAt
+        },
+        message: "Team member added successfully"
+      });
+    } catch (error) {
+      console.error("Add team member error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid team member data",
+          errors: error.errors
+        });
+      }
+
+      res.status(500).json({
+        message: "Failed to add team member",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Update team member
+  app.patch("/api/team/members/:id", requireAuth, async (req, res) => {
+    try {
+      // Check if user has team role AND admin access level
+      if (req.session.user?.role !== 'team') {
+        return res.status(403).json({
+          message: "Access denied. Team role required.",
+          error: "FORBIDDEN"
+        });
+      }
+
+      // Get current user's team key to check admin permissions
+      const currentUserTeamKeys = await storage.getTeamKeysByUser(req.session.userId!);
+      const hasAdminAccess = currentUserTeamKeys.some(key => 
+        key.accessLevel === 'founder' || key.accessLevel === 'admin'
+      );
+
+      if (!hasAdminAccess) {
+        return res.status(403).json({
+          message: "Access denied. Admin privileges required to manage team members.",
+          error: "INSUFFICIENT_PRIVILEGES"
+        });
+      }
+
+      const memberId = req.params.id;
+      const updates = teamMemberUpdateSchema.parse(req.body);
+
+      // Get the team member's team key
+      const teamKeys = await storage.getTeamKeysByUser(memberId);
+      const teamKey = teamKeys[0];
+      
+      if (!teamKey) {
+        return res.status(404).json({
+          message: "Team member not found",
+          error: "NOT_FOUND"
+        });
+      }
+
+      // Update the team key with new values
+      const teamKeyUpdates: Partial<typeof teamKey> = {};
+      if (updates.memberName) teamKeyUpdates.keyName = updates.memberName;
+      if (updates.accessLevel) teamKeyUpdates.accessLevel = updates.accessLevel;
+      if (updates.permissions) teamKeyUpdates.permissions = updates.permissions;
+      if (updates.isActive !== undefined) teamKeyUpdates.isActive = updates.isActive;
+
+      const updatedTeamKey = await storage.updateTeamKey(teamKey.id, teamKeyUpdates);
+
+      if (!updatedTeamKey) {
+        return res.status(500).json({
+          message: "Failed to update team member",
+          error: "UPDATE_FAILED"
+        });
+      }
+
+      // Get updated user info
+      const updatedUser = await storage.getUserById(memberId);
+      if (!updatedUser) {
+        return res.status(404).json({
+          message: "Team member user not found",
+          error: "USER_NOT_FOUND"
+        });
+      }
+
+      res.json({
+        success: true,
+        member: {
+          id: updatedUser.id,
+          name: updatedTeamKey.keyName,
+          email: updatedUser.email,
+          accessLevel: updatedTeamKey.accessLevel,
+          permissions: updatedTeamKey.permissions,
+          isActive: updatedTeamKey.isActive,
+          updatedAt: updatedTeamKey.updatedAt
+        },
+        message: "Team member updated successfully"
+      });
+    } catch (error) {
+      console.error("Update team member error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid update data",
+          errors: error.errors
+        });
+      }
+
+      res.status(500).json({
+        message: "Failed to update team member",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Delete team member
+  app.delete("/api/team/members/:id", requireAuth, async (req, res) => {
+    try {
+      // Check if user has team role AND admin access level
+      if (req.session.user?.role !== 'team') {
+        return res.status(403).json({
+          message: "Access denied. Team role required.",
+          error: "FORBIDDEN"
+        });
+      }
+
+      // Get current user's team key to check admin permissions
+      const currentUserTeamKeys = await storage.getTeamKeysByUser(req.session.userId!);
+      const hasAdminAccess = currentUserTeamKeys.some(key => 
+        key.accessLevel === 'founder' || key.accessLevel === 'admin'
+      );
+
+      if (!hasAdminAccess) {
+        return res.status(403).json({
+          message: "Access denied. Admin privileges required to manage team members.",
+          error: "INSUFFICIENT_PRIVILEGES"
+        });
+      }
+
+      const memberId = req.params.id;
+
+      // Prevent self-deletion
+      if (memberId === req.session.userId) {
+        return res.status(400).json({
+          message: "Cannot delete your own account",
+          error: "SELF_DELETE_FORBIDDEN"
+        });
+      }
+
+      // Get the team member's team key to deactivate it
+      const teamKeys = await storage.getTeamKeysByUser(memberId);
+      const teamKey = teamKeys[0];
+      
+      if (!teamKey) {
+        return res.status(404).json({
+          message: "Team member not found",
+          error: "NOT_FOUND"
+        });
+      }
+
+      // Instead of actually deleting, deactivate the team key for data integrity
+      await storage.updateTeamKey(teamKey.id, { isActive: false });
+
+      res.json({
+        success: true,
+        message: "Team member access revoked successfully"
+      });
+    } catch (error) {
+      console.error("Delete team member error:", error);
+      res.status(500).json({
+        message: "Failed to remove team member",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Get team members
+  app.get("/api/team/members", requireAuth, async (req, res) => {
+    try {
+      // Check if user has team role
+      if (req.session.user?.role !== 'team') {
+        return res.status(403).json({
+          message: "Access denied. Team role required.",
+          error: "FORBIDDEN"
+        });
+      }
+
+      const members = await storage.getTeamMembers();
+
+      // Transform the data to return safe information only
+      const safeMembers = members
+        .filter(member => member.teamKey) // Only include members with team keys
+        .map(member => ({
+          id: member.id,
+          name: member.teamKey!.keyName,
+          email: member.email,
+          accessLevel: member.teamKey!.accessLevel,
+          permissions: member.teamKey!.permissions,
+          isActive: member.teamKey!.isActive,
+          lastUsed: member.teamKey!.lastUsed,
+          createdAt: member.teamKey!.createdAt,
+          updatedAt: member.teamKey!.updatedAt
+        }));
+
+      res.json({
+        members: safeMembers,
+        total: safeMembers.length
+      });
+    } catch (error) {
+      console.error("Get team members error:", error);
+      res.status(500).json({
+        message: "Failed to fetch team members",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

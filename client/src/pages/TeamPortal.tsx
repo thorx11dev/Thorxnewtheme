@@ -10,6 +10,10 @@ import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import {
   LogOut,
@@ -42,6 +46,31 @@ const emailFormSchema = z.object({
 });
 
 type EmailFormData = z.infer<typeof emailFormSchema>;
+
+// Team member form schema - aligned with backend
+const teamMemberFormSchema = z.object({
+  memberName: z.string().min(1, "Member name is required"),
+  email: z.string().email("Valid email is required"),
+  accessLevel: z.enum(["founder", "admin", "member"], {
+    errorMap: () => ({ message: "Please select an access level" })
+  }),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  permissions: z.array(z.string()).optional()
+});
+
+type TeamMemberFormData = z.infer<typeof teamMemberFormSchema>;
+
+// Team member update schema  
+const teamMemberUpdateSchema = z.object({
+  memberName: z.string().min(1, "Member name is required").optional(),
+  accessLevel: z.enum(["founder", "admin", "member"], {
+    errorMap: () => ({ message: "Please select an access level" })
+  }).optional(),
+  permissions: z.array(z.string()).optional(),
+  isActive: z.boolean().optional()
+});
+
+type TeamMemberUpdateData = z.infer<typeof teamMemberUpdateSchema>;
 
 // Team Portal Sections
 const teamSections = [
@@ -116,6 +145,153 @@ export default function TeamPortal() {
 
   // Search state for credentials
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Team members query
+  const { data: teamMembersData, isLoading: membersLoading, error: membersError } = useQuery({
+    queryKey: ['/api/team/members'],
+    enabled: !!user && user.role === 'team',
+  });
+
+  // Team member form
+  const teamMemberForm = useForm<TeamMemberFormData>({
+    resolver: zodResolver(teamMemberFormSchema),
+    defaultValues: {
+      memberName: "",
+      email: "",
+      accessLevel: "member",
+      password: "",
+      permissions: []
+    }
+  });
+
+  // Add team member mutation
+  const addTeamMemberMutation = useMutation({
+    mutationFn: async (data: TeamMemberFormData) => {
+      return await apiRequest('/api/team/members', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Team Member Added",
+        description: "The team member has been added successfully.",
+      });
+      teamMemberForm.reset();
+      // Invalidate team members query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Add Team Member",
+        description: error?.message || "There was an error adding the team member.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Handle team member form submission
+  const handleAddTeamMember = (data: TeamMemberFormData) => {
+    addTeamMemberMutation.mutate(data);
+  };
+
+  // Edit team member state and form
+  const [editingMember, setEditingMember] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const editMemberForm = useForm<TeamMemberUpdateData>({
+    resolver: zodResolver(teamMemberUpdateSchema),
+    defaultValues: {
+      memberName: "",
+      accessLevel: "member",
+      permissions: [],
+      isActive: true
+    }
+  });
+
+  // Update team member mutation
+  const updateTeamMemberMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: TeamMemberUpdateData }) => {
+      return await apiRequest(`/api/team/members/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Team Member Updated",
+        description: "The team member has been updated successfully.",
+      });
+      setShowEditModal(false);
+      setEditingMember(null);
+      editMemberForm.reset();
+      // Invalidate team members query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Update Team Member",
+        description: error?.message || "There was an error updating the team member.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Delete team member mutation
+  const deleteTeamMemberMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/team/members/${id}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Team Member Removed",
+        description: "The team member's access has been revoked successfully.",
+      });
+      // Invalidate team members query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Remove Team Member",
+        description: error?.message || "There was an error removing the team member.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Handle edit team member
+  const handleEditTeamMember = (member: any) => {
+    setEditingMember(member);
+    editMemberForm.reset({
+      memberName: member.name,
+      accessLevel: member.accessLevel,
+      permissions: member.permissions || [],
+      isActive: member.isActive
+    });
+    setShowEditModal(true);
+  };
+
+  // Handle update team member form submission
+  const handleUpdateTeamMember = (data: TeamMemberUpdateData) => {
+    if (editingMember) {
+      updateTeamMemberMutation.mutate({ id: editingMember.id, data });
+    }
+  };
+
+  // Handle delete team member with confirmation
+  const handleDeleteTeamMember = (member: any) => {
+    if (window.confirm(`Are you sure you want to revoke access for ${member.name}? This action cannot be undone.`)) {
+      deleteTeamMemberMutation.mutate(member.id);
+    }
+  };
 
   // Email form
   const emailForm = useForm<EmailFormData>({
@@ -666,46 +842,89 @@ export default function TeamPortal() {
             <TechnicalLabel text="ADD TEAM MEMBER" className="text-primary text-xl" />
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <TechnicalLabel text="MEMBER NAME" className="text-white mb-2" />
-                <input
-                  type="text"
-                  placeholder="Team member name"
-                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                  data-testid="input-member-name"
-                />
+            <form onSubmit={teamMemberForm.handleSubmit(handleAddTeamMember)} className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <TechnicalLabel text="MEMBER NAME" className="text-white mb-2" />
+                  <input
+                    type="text"
+                    placeholder="Team member name"
+                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    data-testid="input-member-name"
+                    {...teamMemberForm.register("memberName")}
+                  />
+                  {teamMemberForm.formState.errors.memberName && (
+                    <p className="text-red-500 text-sm mt-1">{teamMemberForm.formState.errors.memberName.message}</p>
+                  )}
+                </div>
+                <div>
+                  <TechnicalLabel text="EMAIL ADDRESS" className="text-white mb-2" />
+                  <input
+                    type="email"
+                    placeholder="member@company.com"
+                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    data-testid="input-member-email"
+                    {...teamMemberForm.register("email")}
+                  />
+                  {teamMemberForm.formState.errors.email && (
+                    <p className="text-red-500 text-sm mt-1">{teamMemberForm.formState.errors.email.message}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <TechnicalLabel text="ACCESS LEVEL" className="text-white mb-2" />
-                <select className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary">
-                  <option value="">SELECT LEVEL</option>
-                  <option value="admin">ADMIN</option>
-                  <option value="moderator">MODERATOR</option>
-                  <option value="viewer">VIEWER</option>
-                </select>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <TechnicalLabel text="ACCESS LEVEL" className="text-white mb-2" />
+                  <select 
+                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    data-testid="select-access-level"
+                    {...teamMemberForm.register("accessLevel")}
+                  >
+                    <option value="">SELECT LEVEL</option>
+                    <option value="founder">FOUNDER</option>
+                    <option value="admin">ADMIN</option>
+                    <option value="member">MEMBER</option>
+                  </select>
+                  {teamMemberForm.formState.errors.accessLevel && (
+                    <p className="text-red-500 text-sm mt-1">{teamMemberForm.formState.errors.accessLevel.message}</p>
+                  )}
+                </div>
+                <div>
+                  <TechnicalLabel text="INITIAL PASSWORD" className="text-white mb-2" />
+                  <input
+                    type="password"
+                    placeholder="Set initial password"
+                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    data-testid="input-member-password"
+                    {...teamMemberForm.register("password")}
+                  />
+                  {teamMemberForm.formState.errors.password && (
+                    <p className="text-red-500 text-sm mt-1">{teamMemberForm.formState.errors.password.message}</p>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div>
-              <TechnicalLabel text="INITIAL PASSWORD" className="text-white mb-2" />
-              <input
-                type="password"
-                placeholder="Set initial password"
-                className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                data-testid="input-member-password"
-              />
-            </div>
-
-            <div className="text-center">
-              <Button
-                className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary"
-                data-testid="button-add-member"
-              >
-                <Plus className="w-5 h-5 mr-3" />
-                ADD MEMBER
-              </Button>
-            </div>
+              <div className="text-center">
+                <Button
+                  type="submit"
+                  disabled={addTeamMemberMutation.isPending}
+                  className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary disabled:opacity-50"
+                  data-testid="button-add-member"
+                >
+                  {addTeamMemberMutation.isPending ? (
+                    <>
+                      <div className="w-5 h-5 mr-3 animate-spin border-2 border-black border-t-transparent rounded-full"></div>
+                      ADDING...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-5 h-5 mr-3" />
+                      ADD MEMBER
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
 
@@ -714,12 +933,210 @@ export default function TeamPortal() {
           <CardHeader className="text-center">
             <TechnicalLabel text="TEAM MEMBERS" className="text-primary text-xl" />
           </CardHeader>
-          <CardContent className="text-center p-12">
-            <Key className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <TechnicalLabel text="NO TEAM MEMBERS" className="text-primary text-2xl" />
-            <TechnicalLabel text="Team member access keys will appear here" className="text-muted-foreground" />
+          <CardContent className="p-6">
+            {membersLoading ? (
+              <div className="text-center p-12">
+                <div className="w-16 h-16 mx-auto mb-4 animate-spin border-4 border-primary border-t-transparent rounded-full"></div>
+                <TechnicalLabel text="LOADING TEAM MEMBERS..." className="text-primary text-xl" />
+              </div>
+            ) : membersError ? (
+              <div className="text-center p-12">
+                <Key className="w-16 h-16 mx-auto mb-4 text-red-500" />
+                <TechnicalLabel text="ERROR LOADING MEMBERS" className="text-red-500 text-xl" />
+                <TechnicalLabel text="Please try refreshing the page" className="text-muted-foreground" />
+              </div>
+            ) : !teamMembersData?.members || teamMembersData.members.length === 0 ? (
+              <div className="text-center p-12">
+                <Key className="w-16 h-16 mx-auto mb-4 text-primary" />
+                <TechnicalLabel text="NO TEAM MEMBERS" className="text-primary text-2xl" />
+                <TechnicalLabel text="Team member access keys will appear here" className="text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-4" data-testid="team-members-list">
+                {teamMembersData.members.map((member: any, index: number) => (
+                  <div 
+                    key={member.id || index} 
+                    className="border border-primary/30 bg-black/50 p-4 rounded"
+                    data-testid={`team-member-${index}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Key className="w-5 h-5 text-primary" />
+                            <TechnicalLabel 
+                              text={member.name || 'Unknown Member'} 
+                              className="text-primary font-semibold text-lg" 
+                            />
+                          </div>
+                          <span className={`px-3 py-1 text-xs border rounded ${
+                            member.accessLevel === 'founder' 
+                              ? 'border-purple-500 text-purple-500 bg-purple-500/10' 
+                              : member.accessLevel === 'admin'
+                              ? 'border-red-500 text-red-500 bg-red-500/10'
+                              : 'border-green-500 text-green-500 bg-green-500/10'
+                          }`}>
+                            {member.accessLevel?.toUpperCase() || 'MEMBER'}
+                          </span>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <TechnicalLabel 
+                              text={`EMAIL: ${member.email || 'N/A'}`} 
+                              className="text-gray-300" 
+                            />
+                          </div>
+                          <div>
+                            <TechnicalLabel 
+                              text={`MEMBER ID: ${member.id || 'N/A'}`} 
+                              className="text-gray-400" 
+                            />
+                          </div>
+                          <div>
+                            <TechnicalLabel 
+                              text={`ADDED: ${member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'N/A'}`} 
+                              className="text-gray-400" 
+                            />
+                          </div>
+                          <div>
+                            <TechnicalLabel 
+                              text={`STATUS: ${member.isActive ? 'ACTIVE' : 'INACTIVE'}`} 
+                              className={`${member.isActive ? 'text-green-400' : 'text-red-400'}`} 
+                            />
+                          </div>
+                          {member.permissions && member.permissions.length > 0 && (
+                            <div className="md:col-span-2">
+                              <TechnicalLabel 
+                                text={`PERMISSIONS: ${member.permissions.join(', ')}`} 
+                                className="text-blue-400" 
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          size="sm"
+                          onClick={() => handleEditTeamMember(member)}
+                          disabled={updateTeamMemberMutation.isPending}
+                          className="h-8 w-8 p-0 bg-transparent border border-yellow-500/30 hover:bg-yellow-500/10 disabled:opacity-50"
+                          data-testid={`edit-member-${index}`}
+                        >
+                          {updateTeamMemberMutation.isPending && editingMember?.id === member.id ? (
+                            <div className="w-4 h-4 animate-spin border border-yellow-500 border-t-transparent rounded-full" />
+                          ) : (
+                            <Edit className="w-4 h-4 text-yellow-500" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleDeleteTeamMember(member)}
+                          disabled={deleteTeamMemberMutation.isPending}
+                          className="h-8 w-8 p-0 bg-transparent border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50"
+                          data-testid={`delete-member-${index}`}
+                        >
+                          {deleteTeamMemberMutation.isPending ? (
+                            <div className="w-4 h-4 animate-spin border border-red-500 border-t-transparent rounded-full" />
+                          ) : (
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Edit Team Member Modal */}
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="sm:max-w-[600px] bg-black border-2 border-primary text-white">
+            <DialogHeader>
+              <DialogTitle className="text-center">
+                <TechnicalLabel text="EDIT TEAM MEMBER" className="text-primary text-xl" />
+              </DialogTitle>
+            </DialogHeader>
+            
+            <form onSubmit={editMemberForm.handleSubmit(handleUpdateTeamMember)} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <TechnicalLabel text="MEMBER NAME" className="text-white mb-2" />
+                  <input
+                    type="text"
+                    placeholder="Full name"
+                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    data-testid="edit-input-member-name"
+                    {...editMemberForm.register("memberName")}
+                  />
+                  {editMemberForm.formState.errors.memberName && (
+                    <p className="text-red-500 text-sm mt-1">{editMemberForm.formState.errors.memberName.message}</p>
+                  )}
+                </div>
+                <div>
+                  <TechnicalLabel text="ACCESS LEVEL" className="text-white mb-2" />
+                  <select
+                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    data-testid="edit-select-access-level"
+                    {...editMemberForm.register("accessLevel")}
+                  >
+                    <option value="">SELECT LEVEL</option>
+                    <option value="founder">FOUNDER</option>
+                    <option value="admin">ADMIN</option>
+                    <option value="member">MEMBER</option>
+                  </select>
+                  {editMemberForm.formState.errors.accessLevel && (
+                    <p className="text-red-500 text-sm mt-1">{editMemberForm.formState.errors.accessLevel.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <TechnicalLabel text="MEMBER STATUS" className="text-white mb-2" />
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 text-primary bg-black border-2 border-primary focus:ring-primary focus:ring-2 rounded"
+                    data-testid="edit-checkbox-active"
+                    {...editMemberForm.register("isActive")}
+                  />
+                  <TechnicalLabel text="ACTIVE MEMBER" className="text-white" />
+                </label>
+                {editMemberForm.formState.errors.isActive && (
+                  <p className="text-red-500 text-sm mt-1">{editMemberForm.formState.errors.isActive.message}</p>
+                )}
+              </div>
+
+              <DialogFooter className="gap-4 sm:gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 bg-transparent border-2 border-gray-500 text-gray-300 hover:bg-gray-500/10"
+                  data-testid="edit-button-cancel"
+                >
+                  <TechnicalLabel text="CANCEL" />
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateTeamMemberMutation.isPending}
+                  className="flex-1 bg-primary hover:bg-primary/90 text-black border-2 border-primary disabled:opacity-50"
+                  data-testid="edit-button-save"
+                >
+                  {updateTeamMemberMutation.isPending ? (
+                    <>
+                      <div className="w-5 h-5 mr-3 animate-spin border-2 border-black border-t-transparent rounded-full"></div>
+                      UPDATING...
+                    </>
+                  ) : (
+                    <TechnicalLabel text="UPDATE MEMBER" />
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
