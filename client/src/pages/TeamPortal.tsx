@@ -108,6 +108,15 @@ export default function TeamPortal() {
     enabled: !!user && user.role === 'team',
   });
 
+  // User credentials query (for data section)
+  const { data: credentialsData, isLoading: credentialsLoading, error: credentialsError } = useQuery({
+    queryKey: ['/api/team/credentials'],
+    enabled: !!user && user.role === 'team',
+  });
+
+  // Search state for credentials
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Email form
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailFormSchema),
@@ -516,10 +525,115 @@ export default function TeamPortal() {
           <CardHeader className="text-center">
             <TechnicalLabel text="USER CREDENTIALS" className="text-primary text-xl" />
           </CardHeader>
-          <CardContent className="text-center p-12">
-            <Shield className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <TechnicalLabel text="SECURE DATA AREA" className="text-primary text-2xl" />
-            <TechnicalLabel text="User credentials will be displayed here" className="text-muted-foreground" />
+          <CardContent className="p-6">
+            {credentialsLoading ? (
+              <div className="text-center p-12">
+                <div className="w-16 h-16 mx-auto mb-4 animate-spin border-4 border-primary border-t-transparent rounded-full"></div>
+                <TechnicalLabel text="LOADING CREDENTIALS..." className="text-primary text-xl" />
+              </div>
+            ) : credentialsError ? (
+              <div className="text-center p-12">
+                <Shield className="w-16 h-16 mx-auto mb-4 text-red-500" />
+                <TechnicalLabel text="ERROR LOADING CREDENTIALS" className="text-red-500 text-xl" />
+                <TechnicalLabel text="Please try refreshing the page" className="text-muted-foreground" />
+              </div>
+            ) : (() => {
+              const credentials = credentialsData?.credentials || [];
+              const filteredCredentials = credentials.filter((cred: any) => 
+                !searchTerm || 
+                cred.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                cred.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                cred.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                cred.platform?.toLowerCase().includes(searchTerm.toLowerCase())
+              );
+
+              return !credentials.length ? (
+                <div className="text-center p-12">
+                  <Shield className="w-16 h-16 mx-auto mb-4 text-primary" />
+                  <TechnicalLabel text="NO CREDENTIALS FOUND" className="text-primary text-2xl" />
+                  <TechnicalLabel text="User credentials will appear here when available" className="text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-4" data-testid="credentials-list">
+                  {searchTerm && (
+                    <div className="mb-4 text-center">
+                      <TechnicalLabel 
+                        text={`SHOWING ${filteredCredentials.length} OF ${credentials.length} CREDENTIALS`} 
+                        className="text-primary" 
+                      />
+                    </div>
+                  )}
+                  {filteredCredentials.length === 0 && searchTerm ? (
+                    <div className="text-center p-8">
+                      <Search className="w-12 h-12 mx-auto mb-4 text-primary" />
+                      <TechnicalLabel text="NO MATCHING CREDENTIALS" className="text-primary text-xl" />
+                      <TechnicalLabel text={`No results found for "${searchTerm}"`} className="text-muted-foreground" />
+                    </div>
+                  ) : (
+                    filteredCredentials.map((credential: any, index: number) => (
+                      <div 
+                        key={credential.id || index} 
+                        className="border border-primary/30 bg-black/50 p-4 rounded"
+                        data-testid={`credential-item-${index}`}
+                      >
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <div className="mb-2">
+                              <TechnicalLabel 
+                                text={`USER: ${credential.user?.firstName || 'N/A'} ${credential.user?.lastName || ''}`} 
+                                className="text-primary font-semibold" 
+                              />
+                            </div>
+                            <div className="mb-2">
+                              <TechnicalLabel 
+                                text={`EMAIL: ${credential.user?.email || 'N/A'}`} 
+                                className="text-gray-300 text-sm" 
+                              />
+                            </div>
+                            <div className="mb-2">
+                              <TechnicalLabel 
+                                text={`PLATFORM: ${credential.platform || 'N/A'}`} 
+                                className="text-white" 
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="mb-2">
+                              <TechnicalLabel 
+                                text={`USERNAME: ${credential.username || 'N/A'}`} 
+                                className="text-gray-300 text-sm" 
+                              />
+                            </div>
+                            <div className="mb-2 flex items-center gap-2">
+                              <TechnicalLabel 
+                                text="PASSWORD:" 
+                                className="text-gray-300 text-sm" 
+                              />
+                              <span className="font-mono text-sm bg-black border border-primary/30 px-2 py-1 rounded">
+                                ••••••••
+                              </span>
+                              <Button
+                                size="sm"
+                                className="h-6 w-6 p-0 bg-transparent border border-primary/30 hover:bg-primary/10"
+                                data-testid={`toggle-password-${index}`}
+                              >
+                                <Eye className="w-3 h-3 text-primary" />
+                              </Button>
+                            </div>
+                            <div>
+                              <TechnicalLabel 
+                                text={`ADDED: ${credential.createdAt ? new Date(credential.createdAt).toLocaleDateString() : 'N/A'}`} 
+                                className="text-gray-400 text-xs" 
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>

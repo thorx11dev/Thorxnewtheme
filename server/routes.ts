@@ -615,6 +615,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user credentials (for team data management)
+  app.get("/api/team/credentials", requireAuth, async (req, res) => {
+    try {
+      // Check if user has team role
+      if (req.session.user?.role !== 'team') {
+        return res.status(403).json({
+          message: "Access denied. Team role required.",
+          error: "FORBIDDEN"
+        });
+      }
+
+      const credentials = await storage.getAllUserCredentials();
+
+      res.json({
+        credentials,
+        total: credentials.length
+      });
+    } catch (error) {
+      console.error("Get user credentials error:", error);
+      res.status(500).json({
+        message: "Failed to fetch user credentials",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
