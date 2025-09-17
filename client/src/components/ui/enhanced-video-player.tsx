@@ -168,25 +168,7 @@ export default function EnhancedVideoPlayer({
               ))}
             </div>
 
-            {/* Control Icons - Right Side */}
-            <div className="flex items-center gap-1">
-              {controlIcons.map((control) => {
-                const IconComponent = control.icon;
-                return (
-                  <button
-                    key={control.id}
-                    className={`w-8 h-8 border border-black flex items-center justify-center transition-all duration-200 ${
-                      control.active 
-                        ? 'bg-blue-500 text-white' 
-                        : 'bg-white text-black hover:bg-gray-100'
-                    }`}
-                    data-testid={`control-${control.id}`}
-                  >
-                    <IconComponent className="w-4 h-4" />
-                  </button>
-                );
-              })}
-            </div>
+            
           </div>
         </div>
 
