@@ -88,6 +88,45 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+// Animated Placeholder Component for Contact Form
+function AnimatedPlaceholder({ examples }: { examples: string[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentText, setCurrentText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    const example = examples[currentIndex];
+    let timeout: NodeJS.Timeout;
+
+    if (isTyping) {
+      if (currentText.length < example.length) {
+        timeout = setTimeout(() => {
+          setCurrentText(example.slice(0, currentText.length + 1));
+        }, 100);
+      } else {
+        timeout = setTimeout(() => setIsTyping(false), 1000);
+      }
+    } else {
+      if (currentText.length > 0) {
+        timeout = setTimeout(() => {
+          setCurrentText(currentText.slice(0, -1));
+        }, 50);
+      } else {
+        setCurrentIndex((prev) => (prev + 1) % examples.length);
+        setIsTyping(true);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [currentText, currentIndex, examples, isTyping]);
+
+  return (
+    <span className="text-muted-foreground">
+      {currentText}<span className="animate-pulse">|</span>
+    </span>
+  );
+}
+
 // Interfaces
 interface Earning {
   id: string;
@@ -1636,20 +1675,20 @@ export default function UserPortal() {
     const [chatMessages, setChatMessages] = useState([
       {
         id: 1,
-        text: "Hello! I'm here to help you with any questions about THORX. How can I assist you today?",
+        text: "Hello! Welcome to THORX Support. How can I assist you today?",
         sender: "support",
-        timestamp: new Date(Date.now() - 5000).toISOString()
+        timestamp: new Date(Date.now() - 5000).toISOString(),
+        avatar: "TS"
       }
     ]);
     const [newMessage, setNewMessage] = useState("");
     const [contactForm, setContactForm] = useState({
       name: "",
       email: "",
-      subject: "",
       description: ""
     });
 
-    // Chat functionality
+    // Chat functionality with Telegram/WhatsApp style
     const sendMessage = () => {
       if (!newMessage.trim()) return;
       
@@ -1657,27 +1696,29 @@ export default function UserPortal() {
         id: chatMessages.length + 1,
         text: newMessage,
         sender: "user",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        avatar: displayUser?.firstName?.charAt(0).toUpperCase() || "U"
       };
       
       setChatMessages(prev => [...prev, userMessage]);
       setNewMessage("");
       
-      // Simulate support response
+      // Simulate support response with typing indicator
       setTimeout(() => {
         const responses = [
-          "Thanks for your message! Let me help you with that.",
-          "I understand your concern. Here's what you can do...",
-          "That's a great question! Here's the information you need:",
-          "I'm here to help! Let me provide you with the details.",
-          "Thanks for reaching out. I'll assist you right away."
+          "Thanks for reaching out! Let me help you with that right away.",
+          "I understand your question. Here's what you need to know...",
+          "Great question! I'm here to provide you with the best solution.",
+          "I'm on it! Let me walk you through this step by step.",
+          "Perfect! I can definitely help you resolve this issue."
         ];
         
         const supportMessage = {
           id: chatMessages.length + 2,
           text: responses[Math.floor(Math.random() * responses.length)],
           sender: "support",
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          avatar: "TS"
         };
         
         setChatMessages(prev => [...prev, supportMessage]);
@@ -1688,10 +1729,10 @@ export default function UserPortal() {
     const handleContactSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       toast({
-        title: "Message Sent!",
-        description: "Thank you for contacting us. We'll get back to you within 24 hours.",
+        title: "Message Sent Successfully!",
+        description: "Our team will get back to you within 24 hours.",
       });
-      setContactForm({ name: "", email: "", subject: "", description: "" });
+      setContactForm({ name: "", email: "", description: "" });
     };
 
     const formatTime = (timestamp: string) => {
@@ -1702,349 +1743,288 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Hero Section */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+        {/* Work Section Style Header */}
         <div className="wireframe-border p-8 mb-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
               <LifeBuoy className="w-5 h-5" />
-              <TechnicalLabel text="HELP PROTOCOL v2.14" className="text-white" />
+              <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white" />
             </div>
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
               GET <span className="text-primary">SUPPORT</span><br />
-              24/7 ASSISTANCE
+              INSTANT ASSISTANCE
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
-              Find answers, get help, and connect with our support team
+              Professional support, instant solutions, comprehensive guidance
             </p>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
-        {/* Help Tabs Interface */}
-        <div className="wireframe-border bg-primary/5 p-6">
-          <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
-            {/* Tab Navigation */}
-            <TabsList className="grid w-full grid-cols-3 bg-black border-2 border-primary p-1 h-auto">
-              <TabsTrigger 
-                value="guide" 
-                className="data-[state=active]:bg-primary data-[state=active]:text-black text-white border-2 border-transparent data-[state=active]:border-black font-black py-3"
-              >
-                <Book className="w-4 h-4 mr-2" />
-                HELP GUIDE
-              </TabsTrigger>
-              <TabsTrigger 
-                value="chat" 
-                className="data-[state=active]:bg-primary data-[state=active]:text-black text-white border-2 border-transparent data-[state=active]:border-black font-black py-3"
-              >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                LIVE SUPPORT
-              </TabsTrigger>
-              <TabsTrigger 
-                value="contact" 
-                className="data-[state=active]:bg-primary data-[state=active]:text-black text-white border-2 border-transparent data-[state=active]:border-black font-black py-3"
-              >
-                <Mail className="w-4 h-4 mr-2" />
-                CONTACT TEAM
-              </TabsTrigger>
-            </TabsList>
+        {/* Auth Page Style Tabs */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <div className="split-card bg-white border-3 border-black p-6 lg:p-8">
+            <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
+              {/* Tab Navigation - Auth Page Style */}
+              <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted border-2 border-black">
+                <TabsTrigger 
+                  value="guide" 
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3"
+                >
+                  AREA GUIDE
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="help" 
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3"
+                >
+                  AREA HELP
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="contact" 
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3"
+                >
+                  AREA CONTACT
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Tab Content */}
-            <div className="mt-6">
-              {/* Guide Tab */}
-              <TabsContent value="guide" className="mt-0">
-                <div className="space-y-6">
-                  {/* How We Can Help */}
-                  <div className="wireframe-section p-6">
-                    <div className="border-b-2 border-black pb-4 mb-6">
-                      <TechnicalLabel text="HOW WE CAN HELP YOU" className="text-foreground text-xl font-black" />
+              {/* Tab Content */}
+              <div className="mt-6">
+                {/* Area Guide - Single Blank Sheet with Q&A Notes */}
+                <TabsContent value="guide" className="mt-0">
+                  <div className="bg-white border-2 border-black p-8 min-h-[600px]">
+                    <div className="text-center mb-8">
+                      <TechnicalLabel text="THORX SUPPORT GUIDE" className="mb-2" />
+                      <h3 className="text-2xl md:text-3xl font-black text-black">FREQUENTLY ASKED QUESTIONS</h3>
                     </div>
-                    
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div className="border-l-4 border-primary pl-4">
-                          <TechnicalLabel text="GETTING STARTED" className="text-primary font-black mb-2" />
-                          <TechnicalLabel text="Learn how to set up your account, watch your first ad, and start earning immediately. Our step-by-step guide will have you earning within minutes." className="text-muted-foreground" />
-                        </div>
-                        
-                        <div className="border-l-4 border-primary pl-4">
-                          <TechnicalLabel text="MAXIMIZING EARNINGS" className="text-primary font-black mb-2" />
-                          <TechnicalLabel text="Discover advanced strategies to boost your daily earnings through optimal ad watching schedules, referral programs, and bonus tasks." className="text-muted-foreground" />
-                        </div>
-                        
-                        <div className="border-l-4 border-primary pl-4">
-                          <TechnicalLabel text="WITHDRAWAL PROCESS" className="text-primary font-black mb-2" />
-                          <TechnicalLabel text="Understand our fast and secure withdrawal system. Learn about payment methods, processing times, and fee structures." className="text-muted-foreground" />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="border-l-4 border-primary pl-4">
-                          <TechnicalLabel text="REFERRAL SYSTEM" className="text-primary font-black mb-2" />
-                          <TechnicalLabel text="Build your network and earn passive income. Get 25% commission on all referral earnings with our lifetime earning program." className="text-muted-foreground" />
-                        </div>
-                        
-                        <div className="border-l-4 border-primary pl-4">
-                          <TechnicalLabel text="TECHNICAL SUPPORT" className="text-primary font-black mb-2" />
-                          <TechnicalLabel text="Resolve account issues, payment problems, or platform bugs. Our technical team provides 24/7 assistance for smooth operation." className="text-muted-foreground" />
-                        </div>
-                        
-                        <div className="border-l-4 border-primary pl-4">
-                          <TechnicalLabel text="ACCOUNT SECURITY" className="text-primary font-black mb-2" />
-                          <TechnicalLabel text="Keep your account safe with our security best practices. Learn about two-factor authentication and secure withdrawal procedures." className="text-muted-foreground" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* FAQ Section */}
-                  <div className="wireframe-section p-6">
-                    <div className="border-b-2 border-black pb-4 mb-6">
-                      <TechnicalLabel text="FREQUENTLY ASKED QUESTIONS" className="text-foreground text-xl font-black" />
-                    </div>
-                    
-                    <div className="space-y-4">
+                    <div className="space-y-6 max-w-4xl mx-auto">
                       {[
                         {
-                          question: "HOW DO I START EARNING?",
-                          answer: "Simply sign up, verify your account, and start watching ads. Each ad watched earns you instant rewards that accumulate in your balance."
+                          q: "How do I start earning on THORX?",
+                          a: "Simply register your account, verify your email, navigate to the Work section, and start watching advertisements. Each completed ad earns you instant rewards."
                         },
                         {
-                          question: "WHAT IS THE MINIMUM WITHDRAWAL?",
-                          answer: "The minimum withdrawal amount is PKR 100.00. There's a small processing fee of PKR 15.00 for each withdrawal."
+                          q: "What is the minimum withdrawal amount?",
+                          a: "The minimum withdrawal is PKR 100.00. We charge a processing fee of PKR 15.00 for each transaction to cover payment gateway costs."
                         },
                         {
-                          question: "HOW LONG DO WITHDRAWALS TAKE?",
-                          answer: "Withdrawals are processed within 24-48 hours. JazzCash and EasyPaisa transfers are usually instant during business hours."
+                          q: "How long do withdrawals take to process?",
+                          a: "Standard withdrawals are processed within 24-48 hours. JazzCash and EasyPaisa transfers are usually completed within 2-4 hours during business days."
                         },
                         {
-                          question: "HOW MUCH CAN I EARN FROM REFERRALS?",
-                          answer: "You earn 25% commission from all your referrals' earnings forever. There's no limit to how much you can earn through referrals."
+                          q: "How does the referral system work?",
+                          a: "Share your unique referral code with friends. You earn 25% commission on all their earnings forever. There's no limit to how much you can earn through referrals."
                         },
                         {
-                          question: "IS THORX LEGITIMATE AND SAFE?",
-                          answer: "Yes, THORX is a registered platform with thousands of active users. We use bank-level security and have processed millions in payments."
+                          q: "Is my personal information secure?",
+                          a: "Yes, we use 256-bit encryption and follow international security standards. Your data is protected with bank-level security protocols."
                         },
                         {
-                          question: "CAN I USE THORX ON MOBILE?",
-                          answer: "Absolutely! THORX is fully optimized for mobile devices. You can earn on-the-go using any smartphone or tablet."
+                          q: "Can I use THORX on mobile devices?",
+                          a: "Absolutely! THORX is fully responsive and optimized for smartphones and tablets. You can earn anywhere, anytime."
+                        },
+                        {
+                          q: "What payment methods are supported?",
+                          a: "We support JazzCash, EasyPaisa, and direct bank transfers for Pakistani users. More payment options are being added regularly."
+                        },
+                        {
+                          q: "How can I maximize my daily earnings?",
+                          a: "Watch all available ads daily, complete bonus tasks, refer active friends, and participate in our special promotional campaigns."
                         }
                       ].map((faq, index) => (
-                        <div key={index} className="border border-muted-foreground/20 p-4 hover:bg-white transition-colors">
-                          <TechnicalLabel text={faq.question} className="text-primary text-lg font-black mb-2" />
-                          <TechnicalLabel text={faq.answer} className="text-muted-foreground" />
+                        <div key={index} className="border-l-4 border-primary pl-6 py-4">
+                          <h4 className="text-lg font-black text-black mb-3">
+                            Q{index + 1}: {faq.q}
+                          </h4>
+                          <p className="text-muted-foreground leading-relaxed">
+                            {faq.a}
+                          </p>
                         </div>
                       ))}
                     </div>
-                  </div>
-                </div>
-              </TabsContent>
 
-              {/* Chat Tab */}
-              <TabsContent value="chat" className="mt-0">
-                <div className="wireframe-section p-6 bg-white max-h-[600px] flex flex-col">
-                  {/* Chat Header */}
-                  <div className="border-b-2 border-black pb-4 mb-4 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                      <TechnicalLabel text="TS" className="text-black font-black" />
-                    </div>
-                    <div>
-                      <TechnicalLabel text="THORX Support Team" className="text-foreground font-black" />
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <TechnicalLabel text="Online • Usually replies instantly" className="text-muted-foreground text-xs" />
-                      </div>
+                    <div className="mt-8 pt-6 border-t-2 border-black text-center">
+                      <TechnicalLabel text="NEED MORE HELP? USE AREA HELP FOR LIVE CHAT OR AREA CONTACT FOR DIRECT SUPPORT" className="text-muted-foreground" />
                     </div>
                   </div>
+                </TabsContent>
 
-                  {/* Chat Messages */}
-                  <div className="flex-1 overflow-y-auto space-y-4 mb-4 max-h-[400px]">
-                    {chatMessages.map((message) => (
-                      <div 
-                        key={message.id} 
-                        className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div 
-                          className={`max-w-[80%] p-3 border-2 ${
-                            message.sender === 'user' 
-                              ? 'bg-primary text-black border-black' 
-                              : 'bg-black text-white border-primary'
-                          }`}
-                        >
-                          <TechnicalLabel text={message.text} className={message.sender === 'user' ? 'text-black' : 'text-white'} />
-                          <div className="mt-1">
-                            <TechnicalLabel 
-                              text={formatTime(message.timestamp)} 
-                              className={`text-xs ${message.sender === 'user' ? 'text-black/60' : 'text-white/60'}`} 
-                            />
+                {/* Area Help - Telegram/WhatsApp Style Chat */}
+                <TabsContent value="help" className="mt-0">
+                  <div className="bg-white border-2 border-black overflow-hidden">
+                    {/* Chat Header - Telegram Style */}
+                    <div className="bg-primary text-black px-6 py-4 border-b-2 border-black">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center">
+                          <TechnicalLabel text="TS" className="text-white font-black text-lg" />
+                        </div>
+                        <div>
+                          <h3 className="font-black text-lg">THORX Support Team</h3>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <TechnicalLabel text="Online • Usually replies instantly" className="text-black/70 text-sm" />
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Chat Input */}
-                  <div className="border-t-2 border-black pt-4">
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type your message..."
-                        className="flex-1 bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary placeholder-white/50"
-                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                      />
-                      <Button
-                        onClick={sendMessage}
-                        className="bg-primary hover:bg-primary/90 text-black px-6 py-3 font-black border-2 border-black"
-                        disabled={!newMessage.trim()}
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="mt-2">
-                      <TechnicalLabel text="Press Enter to send • Our team typically responds within minutes" className="text-muted-foreground text-xs text-center" />
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* Contact Tab */}
-              <TabsContent value="contact" className="mt-0">
-                <div className="grid lg:grid-cols-2 gap-8">
-                  {/* Contact Form */}
-                  <div className="wireframe-section p-6">
-                    <div className="border-b-2 border-black pb-4 mb-6">
-                      <TechnicalLabel text="CONTACT THORX TEAM" className="text-foreground text-xl font-black" />
-                      <TechnicalLabel text="Send us a detailed message and we'll get back to you within 24 hours" className="text-muted-foreground text-sm mt-1" />
                     </div>
 
-                    <form onSubmit={handleContactSubmit} className="space-y-4">
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <TechnicalLabel text="FULL NAME *" className="text-foreground mb-2 font-black" />
-                          <input
-                            type="text"
-                            required
-                            value={contactForm.name}
-                            onChange={(e) => setContactForm(prev => ({...prev, name: e.target.value}))}
-                            placeholder="Enter your full name"
-                            className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary placeholder-white/50"
-                          />
+                    {/* Chat Messages - WhatsApp Style */}
+                    <div className="bg-[#f0f2f5] min-h-[500px] p-4 space-y-3">
+                      {chatMessages.map((message) => (
+                        <div 
+                          key={message.id} 
+                          className={`flex items-end gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          {message.sender === 'support' && (
+                            <div className="w-8 h-8 bg-primary text-black rounded-full flex items-center justify-center text-sm font-black mb-1">
+                              {message.avatar}
+                            </div>
+                          )}
+                          
+                          <div 
+                            className={`max-w-[70%] px-4 py-3 rounded-lg shadow-sm ${
+                              message.sender === 'user' 
+                                ? 'bg-primary text-black ml-auto' 
+                                : 'bg-white text-black border border-gray-200'
+                            }`}
+                          >
+                            <p className="text-sm font-medium mb-1">{message.text}</p>
+                            <p className={`text-xs ${message.sender === 'user' ? 'text-black/60' : 'text-gray-500'} text-right`}>
+                              {formatTime(message.timestamp)}
+                            </p>
+                          </div>
+
+                          {message.sender === 'user' && (
+                            <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-sm font-black mb-1">
+                              {message.avatar}
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <TechnicalLabel text="EMAIL ADDRESS *" className="text-foreground mb-2 font-black" />
-                          <input
-                            type="email"
-                            required
-                            value={contactForm.email}
-                            onChange={(e) => setContactForm(prev => ({...prev, email: e.target.value}))}
-                            placeholder="Enter your email"
-                            className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary placeholder-white/50"
-                          />
-                        </div>
-                      </div>
+                      ))}
+                    </div>
 
-                      <div>
-                        <TechnicalLabel text="SUBJECT *" className="text-foreground mb-2 font-black" />
+                    {/* Chat Input - Modern Style */}
+                    <div className="bg-white border-t-2 border-black p-4">
+                      <div className="flex items-center gap-3">
                         <input
                           type="text"
-                          required
-                          value={contactForm.subject}
-                          onChange={(e) => setContactForm(prev => ({...prev, subject: e.target.value}))}
-                          placeholder="Brief description of your issue"
-                          className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary placeholder-white/50"
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          placeholder="Type your message..."
+                          className="flex-1 bg-gray-100 border-2 border-gray-300 text-black px-4 py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium"
+                          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                         />
+                        <Button
+                          onClick={sendMessage}
+                          className="bg-primary hover:bg-primary/90 text-black px-6 py-3 font-black border-2 border-black rounded-lg"
+                          disabled={!newMessage.trim()}
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                        </Button>
                       </div>
+                      <div className="mt-2 text-center">
+                        <TechnicalLabel text="Press Enter to send • Our support team is standing by 24/7" className="text-gray-500 text-xs" />
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
 
-                      <div>
-                        <TechnicalLabel text="PROBLEM DESCRIPTION *" className="text-foreground mb-2 font-black" />
+                {/* Area Contact - Registration Form Style */}
+                <TabsContent value="contact" className="mt-0">
+                  <div className="text-center mb-6">
+                    <TechnicalLabel text="DIRECT TEAM CONTACT" className="mb-2" />
+                    <h3 className="text-2xl md:text-3xl font-black text-black">SEND US A MESSAGE</h3>
+                  </div>
+
+                  <form onSubmit={handleContactSubmit} className="space-y-6 max-w-2xl mx-auto">
+                    <div>
+                      <TechnicalLabel text="FULL NAME" className="mb-3 font-black" />
+                      <div className="relative">
+                        <Input 
+                          type="text"
+                          required
+                          value={contactForm.name}
+                          onChange={(e) => setContactForm(prev => ({...prev, name: e.target.value}))}
+                          className="border-2 border-black text-lg py-3"
+                        />
+                        {!contactForm.name && (
+                          <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                            <AnimatedPlaceholder examples={['John Doe', 'Ahmed Khan', 'Sarah Wilson']} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <TechnicalLabel text="EMAIL ADDRESS" className="mb-3 font-black" />
+                      <div className="relative">
+                        <Input 
+                          type="email"
+                          required
+                          value={contactForm.email}
+                          onChange={(e) => setContactForm(prev => ({...prev, email: e.target.value}))}
+                          className="border-2 border-black text-lg py-3"
+                        />
+                        {!contactForm.email && (
+                          <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                            <AnimatedPlaceholder examples={['your.email@gmail.com', 'contact@thorx.com', 'support@example.com']} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <TechnicalLabel text="PROBLEM / DESCRIPTION" className="mb-3 font-black" />
+                      <div className="relative">
                         <textarea
                           required
                           rows={6}
                           value={contactForm.description}
                           onChange={(e) => setContactForm(prev => ({...prev, description: e.target.value}))}
-                          placeholder="Please describe your issue in detail. Include any error messages, steps you've tried, and relevant account information."
-                          className="w-full bg-black border-2 border-primary text-white px-4 py-3 focus:outline-none focus:border-primary placeholder-white/50 resize-none"
+                          className="flex w-full border-2 border-black bg-background px-3 py-3 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                          placeholder=""
                         />
-                      </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full bg-primary hover:bg-primary/90 text-black py-4 text-lg font-black border-2 border-black"
-                      >
-                        <Mail className="w-5 h-5 mr-3" />
-                        SEND MESSAGE TO TEAM
-                      </Button>
-                    </form>
-                  </div>
-
-                  {/* Contact Information */}
-                  <div className="space-y-6">
-                    <div className="wireframe-section p-6 bg-black text-white">
-                      <div className="border-b-2 border-primary pb-4 mb-6">
-                        <TechnicalLabel text="DIRECT CONTACT" className="text-primary text-xl font-black" />
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-4">
-                          <Mail className="w-8 h-8 text-primary" />
-                          <div>
-                            <TechnicalLabel text="EMAIL SUPPORT" className="text-primary font-black" />
-                            <TechnicalLabel text="support@thorx.com" className="text-white" />
-                            <TechnicalLabel text="Response time: 24 hours" className="text-white/60 text-xs" />
+                        {!contactForm.description && (
+                          <div className="absolute top-3 left-3 pointer-events-none text-muted-foreground">
+                            <AnimatedPlaceholder examples={['Describe your issue in detail...', 'Tell us what happened...', 'How can we help you today?']} />
                           </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                          <Phone className="w-8 h-8 text-primary" />
-                          <div>
-                            <TechnicalLabel text="PHONE SUPPORT" className="text-primary font-black" />
-                            <TechnicalLabel text="+92 300 1234567" className="text-white" />
-                            <TechnicalLabel text="Available: 9 AM - 6 PM PST" className="text-white/60 text-xs" />
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                          <MessageCircle className="w-8 h-8 text-primary" />
-                          <div>
-                            <TechnicalLabel text="LIVE CHAT" className="text-primary font-black" />
-                            <TechnicalLabel text="Use the Live Support tab" className="text-white" />
-                            <TechnicalLabel text="Response time: Instant" className="text-white/60 text-xs" />
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="wireframe-section p-6">
-                      <div className="border-b-2 border-black pb-4 mb-4">
-                        <TechnicalLabel text="RESPONSE COMMITMENT" className="text-foreground text-lg font-black" />
+                    <Button 
+                      type="submit"
+                      className="w-full bg-black text-white text-xl font-black py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black"
+                    >
+                      SEND MESSAGE TO TEAM →
+                    </Button>
+                  </form>
+
+                  {/* Contact Info */}
+                  <div className="mt-8 pt-6 border-t-2 border-black">
+                    <div className="grid md:grid-cols-3 gap-4 text-center">
+                      <div className="bg-black text-white p-4 border-2 border-black">
+                        <Mail className="w-8 h-8 mx-auto mb-2 text-primary" />
+                        <TechnicalLabel text="EMAIL" className="text-primary font-black mb-1" />
+                        <TechnicalLabel text="support@thorx.com" className="text-white text-sm" />
                       </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-green-500" />
-                          <TechnicalLabel text="Technical issues: 2-4 hours" className="text-muted-foreground" />
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-green-500" />
-                          <TechnicalLabel text="Payment inquiries: 24 hours" className="text-muted-foreground" />
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-green-500" />
-                          <TechnicalLabel text="Account problems: 12 hours" className="text-muted-foreground" />
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-green-500" />
-                          <TechnicalLabel text="General questions: 24 hours" className="text-muted-foreground" />
-                        </div>
+                      <div className="bg-primary text-black p-4 border-2 border-black">
+                        <Phone className="w-8 h-8 mx-auto mb-2" />
+                        <TechnicalLabel text="PHONE" className="text-black font-black mb-1" />
+                        <TechnicalLabel text="+92 300 1234567" className="text-black text-sm" />
+                      </div>
+                      <div className="bg-muted text-black p-4 border-2 border-black">
+                        <Clock className="w-8 h-8 mx-auto mb-2 text-primary" />
+                        <TechnicalLabel text="RESPONSE TIME" className="text-black font-black mb-1" />
+                        <TechnicalLabel text="Within 24 Hours" className="text-muted-foreground text-sm" />
                       </div>
                     </div>
                   </div>
-                </div>
-              </TabsContent>
-            </div>
-          </Tabs>
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
         </div>
       </div>
     );
