@@ -2002,26 +2002,7 @@ export default function UserPortal() {
                     </Button>
                   </form>
 
-                  {/* Contact Info */}
-                  <div className="mt-8 pt-6 border-t-2 border-black">
-                    <div className="grid md:grid-cols-3 gap-4 text-center">
-                      <div className="bg-black text-white p-4 border-2 border-black">
-                        <Mail className="w-8 h-8 mx-auto mb-2 text-primary" />
-                        <TechnicalLabel text="EMAIL" className="text-primary font-black mb-1" />
-                        <TechnicalLabel text="support@thorx.com" className="text-white text-sm" />
-                      </div>
-                      <div className="bg-primary text-black p-4 border-2 border-black">
-                        <Phone className="w-8 h-8 mx-auto mb-2" />
-                        <TechnicalLabel text="PHONE" className="text-black font-black mb-1" />
-                        <TechnicalLabel text="+92 300 1234567" className="text-black text-sm" />
-                      </div>
-                      <div className="bg-muted text-black p-4 border-2 border-black">
-                        <Clock className="w-8 h-8 mx-auto mb-2 text-primary" />
-                        <TechnicalLabel text="RESPONSE TIME" className="text-black font-black mb-1" />
-                        <TechnicalLabel text="Within 24 Hours" className="text-muted-foreground text-sm" />
-                      </div>
-                    </div>
-                  </div>
+                  
                 </TabsContent>
               </div>
             </Tabs>
