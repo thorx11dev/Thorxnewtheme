@@ -223,7 +223,7 @@ export default function UserPortal() {
     enabled: !!user,
   });
 
-  const { data: referralsData, isLoading: referralsLoading, error: referralsError } = useQuery({
+  const { data: referralsData } = useQuery({
     queryKey: ["referrals"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/referrals");
@@ -1026,6 +1026,7 @@ export default function UserPortal() {
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
         </div>
+
         {/* Top Metrics Section - 4 Cards as per wireframe */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           {/* Total Referrals */}
@@ -1036,7 +1037,7 @@ export default function UserPortal() {
           </div>
 
           {/* Referral Earnings */}
-          <div className="wireframe-section p-4 md:p-6 text-center text-[#f8f8f8] bg-[#000000]">
+          <div className="wireframe-section p-4 md:p-6 text-center bg-primary text-white">
             <DollarSign className="w-8 h-8 mx-auto mb-3 text-white" />
             <div className="text-2xl md:text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
             <TechnicalLabel text="REFERRAL EARNINGS" className="text-white/80 text-xs" />
@@ -1050,12 +1051,13 @@ export default function UserPortal() {
           </div>
 
           {/* Service Info */}
-          <div className="wireframe-section p-4 md:p-6 text-center bg-[#e8e5d9]">
+          <div className="wireframe-section p-4 md:p-6 text-center">
             <RefreshCw className="w-8 h-8 mx-auto mb-3 text-primary" />
             <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">∞</div>
             <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
           </div>
         </div>
+
         {/* Middle Section - Invitation Area and Leadership Area */}
         <div className="grid lg:grid-cols-2 gap-8 mb-8">
           {/* Invitation Area */}
@@ -1091,14 +1093,6 @@ export default function UserPortal() {
                 <Button
                   variant="outline"
                   className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
-                  onClick={() => {
-                    const referralLink = `${window.location.origin}/auth?ref=${displayUser?.referralCode}`;
-                    navigator.clipboard.writeText(referralLink);
-                    toast({
-                      title: "Link Copied!",
-                      description: "Referral link copied to clipboard",
-                    });
-                  }}
                 >
                   <Link2 className="w-4 h-4 mr-2" />
                   GENERATE LINK
@@ -1106,32 +1100,6 @@ export default function UserPortal() {
                 <Button
                   variant="outline"
                   className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
-                  onClick={() => {
-                    const referralLink = `${window.location.origin}/auth?ref=${displayUser?.referralCode}`;
-                    const shareText = `Join THORX and start earning! Use my referral code: ${displayUser?.referralCode}`;
-                    
-                    if (navigator.share) {
-                      navigator.share({
-                        title: 'Join THORX - Earn Real Money',
-                        text: shareText,
-                        url: referralLink,
-                      }).catch(() => {
-                        // Fallback to clipboard
-                        navigator.clipboard.writeText(`${shareText}\n${referralLink}`);
-                        toast({
-                          title: "Copied to Clipboard!",
-                          description: "Share text and link copied",
-                        });
-                      });
-                    } else {
-                      // Fallback for browsers without Web Share API
-                      navigator.clipboard.writeText(`${shareText}\n${referralLink}`);
-                      toast({
-                        title: "Copied to Clipboard!",
-                        description: "Share text and link copied",
-                      });
-                    }
-                  }}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   SHARE
@@ -1185,6 +1153,7 @@ export default function UserPortal() {
             </div>
           </div>
         </div>
+
         {/* Bottom Section - Leaderboard List (Blue highlighted in wireframe) */}
         <div className="wireframe-border bg-primary/5 p-6">
           <div className="border-b-2 border-primary pb-4 mb-6">
@@ -1236,7 +1205,7 @@ export default function UserPortal() {
                     </div>
 
                     {/* Revision (Tier Badge) */}
-                    <div className="px-3 py-1 text-xs font-black border-2 border-black from-blue-600 to-purple-600 text-white bg-[#000000]">
+                    <div className={`px-3 py-1 text-xs font-black border-2 border-black ${getTierColor(leader.tier)}`}>
                       {leader.tier}
                     </div>
                   </div>
@@ -1262,35 +1231,6 @@ export default function UserPortal() {
             >
               VIEW COMPLETE LEADERBOARD
             </Button>
-          </div>
-        </div>
-        {/* Referral Analytics Section */}
-        <div className="mt-8 wireframe-section p-6">
-          <div className="border-b-2 border-black pb-4 mb-6">
-            <TechnicalLabel text="REFERRAL ANALYTICS" className="text-foreground text-lg font-black" />
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-3 bg-primary/10 border border-primary">
-              <div className="text-lg font-black text-primary">{referralsData?.stats.count || 0}</div>
-              <TechnicalLabel text="ACTIVE REFERRALS" className="text-muted-foreground text-xs" />
-            </div>
-            <div className="text-center p-3 bg-green-100 border border-green-500">
-              <div className="text-lg font-black text-green-600">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
-              <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
-            </div>
-            <div className="text-center p-3 bg-blue-100 border border-blue-500">
-              <div className="text-lg font-black text-blue-600">25%</div>
-              <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs" />
-            </div>
-            <div className="text-center p-3 bg-purple-100 border border-purple-500">
-              <div className="text-lg font-black text-purple-600">
-                {referralsData?.referrals ? 
-                  Math.round((referralsData.referrals.filter(r => r.status === 'active').length / Math.max(referralsData.referrals.length, 1)) * 100) 
-                  : 0}%
-              </div>
-              <TechnicalLabel text="CONVERSION RATE" className="text-muted-foreground text-xs" />
-            </div>
           </div>
         </div>
 
@@ -1336,7 +1276,25 @@ export default function UserPortal() {
             </div>
           </div>
         )}
-        
+
+        {/* Empty State for No Referrals */}
+        {(!referralsData?.referrals || referralsData.referrals.length === 0) && (
+          <div className="mt-8 wireframe-section p-12 text-center">
+            <HandHeart className="w-16 h-16 mx-auto mb-4 text-primary" />
+            <TechnicalLabel text="NO REFERRALS YET" className="text-primary text-xl mb-2" />
+            <TechnicalLabel text="Start sharing your referral code to build your network!" className="text-muted-foreground" />
+            
+            <div className="mt-6">
+              <Button
+                onClick={copyReferralCode}
+                className="bg-primary hover:bg-primary/90 text-black px-8 py-3 text-lg font-black border-2 border-black"
+              >
+                <Copy className="w-5 h-5 mr-3" />
+                GET STARTED - COPY CODE
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
