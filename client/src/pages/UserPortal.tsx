@@ -1771,19 +1771,19 @@ export default function UserPortal() {
               <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted border-2 border-black">
                 <TabsTrigger 
                   value="guide" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3"
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3 flex items-center justify-center"
                 >
                   AREA GUIDE
                 </TabsTrigger>
                 <TabsTrigger 
                   value="help" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3"
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3 flex items-center justify-center"
                 >
                   AREA HELP
                 </TabsTrigger>
                 <TabsTrigger 
                   value="contact" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3"
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3 flex items-center justify-center"
                 >
                   AREA CONTACT
                 </TabsTrigger>
