@@ -1764,7 +1764,7 @@ export default function UserPortal() {
         </div>
 
         {/* Auth Page Style Tabs */}
-        <div className="max-w-4xl mx-auto mb-8">
+        <div className="max-w-7xl mx-auto mb-8">
           <div className="split-card bg-white border-3 border-black p-6 lg:p-8">
             <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
               {/* Tab Navigation - Auth Page Style */}
@@ -1799,7 +1799,7 @@ export default function UserPortal() {
                       <h3 className="text-3xl md:text-4xl lg:text-5xl font-black text-black mb-4 tracking-tighter leading-tight">FREQUENTLY ASKED QUESTIONS</h3>
                     </div>
 
-                    <div className="space-y-6 max-w-4xl mx-auto">
+                    <div className="space-y-6 max-w-7xl mx-auto">
                       {[
                         {
                           q: "How do I start earning on THORX?",
@@ -1835,7 +1835,7 @@ export default function UserPortal() {
                         }
                       ].map((faq, index) => (
                         <div key={index} className="border-l-4 border-primary pl-6 py-4">
-                          <h4 className="text-lg font-black text-black mb-3">
+                          <h4 className="text-xl md:text-2xl font-black text-black mb-3">
                             Q{index + 1}: {faq.q}
                           </h4>
                           <p className="text-muted-foreground leading-relaxed">
