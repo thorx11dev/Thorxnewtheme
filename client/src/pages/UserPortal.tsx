@@ -1036,7 +1036,7 @@ export default function UserPortal() {
           </div>
 
           {/* Referral Earnings */}
-          <div className="wireframe-section p-4 md:p-6 text-center text-white bg-[#000000]">
+          <div className="wireframe-section p-4 md:p-6 text-center text-white bg-black">
             <DollarSign className="w-8 h-8 mx-auto mb-3 text-white" />
             <div className="text-2xl md:text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
             <TechnicalLabel text="REFERRAL EARNINGS" className="text-white/80 text-xs" />
