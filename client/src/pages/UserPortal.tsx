@@ -1420,7 +1420,7 @@ export default function UserPortal() {
           </div>
 
           {/* Pending Withdrawals */}
-          <div className="bg-black text-white p-6 text-center border-2 border-black hover:bg-primary hover:text-black transition-all duration-300">
+          <div className="bg-black text-white p-6 text-center border-2 border-black">
             <Clock className="w-12 h-12 mx-auto mb-4 text-primary" />
             <div className="text-3xl md:text-4xl font-black mb-2 text-primary">
               {withdrawalHistory.filter(w => w.status === 'PROCESSING' || w.status === 'PENDING').length}
