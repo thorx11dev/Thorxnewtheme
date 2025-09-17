@@ -1,377 +1,2201 @@
 
-import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import TechnicalLabel from '@/components/ui/technical-label';
-import { 
-  User, 
-  Briefcase, 
-  HelpCircle, 
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import TechnicalLabel from "@/components/ui/technical-label";
+import Barcode from "@/components/ui/barcode";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import EnhancedVideoPlayer from "@/components/ui/enhanced-video-player";
+import IndustrialTabs, { WORK_TABS } from "@/components/ui/industrial-tabs";
+import MetricsCards from "@/components/ui/metrics-cards";
+import { useLocation } from "wouter";
+import {
   LogOut,
-  Send,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Calendar,
+  Clock,
+  ChevronRight,
+  ChevronLeft,
+  Eye,
+  Target,
+  Award,
+  ArrowUpRight,
+  BarChart3,
+  PieChart,
+  Zap,
+  Copy,
+  CheckCircle2,
+  Wallet,
+  Activity,
+  Star,
+  Gift,
+  Play,
+  Pause,
+  Timer,
+  PlayCircle,
+  PauseCircle,
+  StopCircle,
+  Filter,
+  Flame,
+  HelpCircle,
+  MessageCircle,
+  Book,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
+  RotateCw,
   Phone,
   Mail,
-  MessageCircle
-} from 'lucide-react';
+  CreditCard,
+  History,
+  Download,
+  Home,
+  Briefcase,
+  UserCheck,
+  HandHeart,
+  LifeBuoy,
+  Crown,
+  Trophy,
+  Medal,
+  Zap as ZapIcon,
+  TrendingDown,
+  RefreshCw,
+  Share2,
+  Link2,
+  ExternalLink
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
 
-function UserPortal() {
-  const { user, logout } = useAuth();
-  const [activeSection, setActiveSection] = useState('dashboard');
-  const [helpTab, setHelpTab] = useState('guide');
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState([
-    { sender: 'support', message: 'Hello! How can we help you today?', time: '10:30 AM' },
-    { sender: 'user', message: 'I need help with my account settings', time: '10:31 AM' },
-    { sender: 'support', message: 'Sure! I\'d be happy to help you with your account settings. What specifically would you like to change?', time: '10:32 AM' }
-  ]);
+// Interfaces
+interface Earning {
+  id: string;
+  type: string;
+  amount: string;
+  description: string;
+  status: string;
+  createdAt: string;
+}
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+interface ReferralUser {
+  id: string;
+  referrerId: string;
+  referredId: string;
+  status: string;
+  totalEarned: string;
+  createdAt: string;
+  referred: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    createdAt: string;
   };
+}
 
-  const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      setChatHistory([...chatHistory, { 
-        sender: 'user', 
-        message: chatMessage, 
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-      setChatMessage('');
-      
-      // Simulate support response after 2 seconds
+interface AdItem {
+  id: string;
+  title: string;
+  type: "video" | "banner" | "interactive";
+  duration: number;
+  reward: string;
+  description: string;
+  difficulty: "easy" | "medium" | "hard";
+  category: string;
+  thumbnail?: string;
+}
+
+// Sample data
+const availableAds: AdItem[] = [
+  {
+    id: "ad_001",
+    title: "CRYPTO TRADING PLATFORM",
+    type: "video",
+    duration: 30,
+    reward: "2.50",
+    description: "Watch this crypto trading platform advertisement",
+    difficulty: "easy",
+    category: "Finance",
+  },
+  {
+    id: "ad_002",
+    title: "MOBILE GAME DOWNLOAD",
+    type: "video",
+    duration: 15,
+    reward: "1.25",
+    description: "Download and try this exciting mobile game",
+    difficulty: "easy",
+    category: "Gaming",
+  },
+  {
+    id: "ad_003",
+    title: "E-COMMERCE DEAL",
+    type: "interactive",
+    duration: 45,
+    reward: "3.75",
+    description: "Interactive advertisement for latest e-commerce deals",
+    difficulty: "medium",
+    category: "Shopping",
+  },
+  {
+    id: "ad_004",
+    title: "FITNESS APP PROMOTION",
+    type: "video",
+    duration: 20,
+    reward: "1.75",
+    description: "Learn about this revolutionary fitness application",
+    difficulty: "easy",
+    category: "Health",
+  },
+];
+
+const sections = [
+  { id: "dashboard", name: "Dashboard", icon: Home },
+  { id: "work", name: "Work", icon: Briefcase },
+  { id: "referrals", name: "Referrals", icon: UserCheck },
+  { id: "payout", name: "Payout", icon: CreditCard },
+  { id: "help", name: "Help", icon: LifeBuoy },
+];
+
+export default function UserPortal() {
+  const { user, logout, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Current section state
+  const [currentSection, setCurrentSection] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // Work section states
+  const [selectedAd, setSelectedAd] = useState<AdItem | null>(null);
+  const [isWatching, setIsWatching] = useState(false);
+  const [watchProgress, setWatchProgress] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  // Enhanced work section states
+  const [activeWorkTab, setActiveWorkTab] = useState<string>("ads");
+  const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
+  // Enhanced work section configuration complete
+
+  const [completedAds, setCompletedAds] = useState<Set<string>>(new Set());
+
+  // Fetch user data
+  const { data: earningsData } = useQuery({
+    queryKey: ["earnings"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/earnings?limit=10");
+      return await response.json() as { earnings: Earning[]; total: string };
+    },
+    enabled: !!user,
+  });
+
+  const { data: referralsData } = useQuery({
+    queryKey: ["referrals"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/referrals");
+      return await response.json() as {
+        referrals: ReferralUser[];
+        stats: { count: number; totalEarned: string }
+      };
+    },
+    enabled: !!user,
+  });
+
+  const { data: todayAdViews } = useQuery({
+    queryKey: ["ad-views", "today"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/ad-views/today");
+      return await response.json() as { count: number };
+    },
+    enabled: !!user,
+  });
+
+  // Record ad view mutation
+  const recordAdViewMutation = useMutation({
+    mutationFn: async (data: {
+      adId: string;
+      adType: string;
+      duration: number;
+      completed: boolean;
+      earnedAmount: string;
+    }) => {
+      const response = await apiRequest("POST", "/api/ad-view", data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ad-views"] });
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+    },
+  });
+
+  // Navigation handlers
+  const navigateToSection = useCallback((index: number) => {
+    if (index >= 0 && index < sections.length && index !== currentSection) {
+      setIsTransitioning(true);
       setTimeout(() => {
-        setChatHistory(prev => [...prev, {
-          sender: 'support',
-          message: 'Thank you for your message. Our team will get back to you shortly.',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }]);
-      }, 2000);
+        setCurrentSection(index);
+        setIsTransitioning(false);
+      }, 150);
+    }
+  }, [currentSection]);
+
+  const nextSection = useCallback(() => {
+    navigateToSection((currentSection + 1) % sections.length);
+  }, [currentSection, navigateToSection]);
+
+  const prevSection = useCallback(() => {
+    navigateToSection((currentSection - 1 + sections.length) % sections.length);
+  }, [currentSection, navigateToSection]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case "ArrowLeft":
+          e.preventDefault();
+          prevSection();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          nextSection();
+          break;
+        case "Escape":
+          e.preventDefault();
+          setLocation("/");
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nextSection, prevSection, setLocation]);
+
+  // Touch/swipe support
+  useEffect(() => {
+    let startX = 0;
+    let endX = 0;
+    let startY = 0;
+    let endY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      endX = e.touches[0].clientX;
+      endY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = () => {
+      const deltaX = startX - endX;
+      const deltaY = Math.abs(startY - endY);
+
+      // Only trigger if horizontal swipe is longer than vertical
+      if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 50) {
+        if (deltaX > 0) {
+          nextSection();
+        } else {
+          prevSection();
+        }
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart);
+    window.addEventListener("touchmove", handleTouchMove);
+    window.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [nextSection, prevSection]);
+
+  // Ad watching timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isWatching && selectedAd && watchProgress < 100) {
+      interval = setInterval(() => {
+        setWatchProgress(prev => {
+          const newProgress = prev + (100 / selectedAd.duration);
+          if (newProgress >= 100) {
+            setIsWatching(false);
+            setIsCompleted(true);
+
+            recordAdViewMutation.mutate({
+              adId: selectedAd.id,
+              adType: selectedAd.type,
+              duration: selectedAd.duration,
+              completed: true,
+              earnedAmount: selectedAd.reward,
+            });
+
+            setCompletedAds(prev => new Set(Array.from(prev).concat(selectedAd.id)));
+
+            toast({
+              title: "Ad Completed! 🎉",
+              description: `You earned ${formatCurrency(selectedAd.reward)}`,
+              variant: "default",
+            });
+
+            return 100;
+          }
+          return newProgress;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isWatching, selectedAd, watchProgress, recordAdViewMutation, toast]);
+
+  // If no user data and not loading, show default guest user
+  const displayUser = user || {
+    id: "guest",
+    firstName: "Guest",
+    lastName: "User",
+    email: "guest@thorx.com",
+    identity: "GUEST_USER",
+    phone: "+92 300 0000000",
+    referralCode: "GUEST-CODE",
+    totalEarnings: "0.00",
+    availableBalance: "0.00",
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Utility functions
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatCurrency = (amount: string | number) => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return `PKR ${numAmount.toFixed(2)}`;
+  };
+
+  const copyReferralCode = () => {
+    navigator.clipboard.writeText(displayUser?.referralCode || 'GUEST-CODE');
+    toast({
+      title: "Copied!",
+      description: "Referral code copied to clipboard",
+    });
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getAdTypeIcon = (type: string) => {
+    switch (type) {
+      case 'video': return '🎥';
+      case 'banner': return '📰';
+      case 'interactive': return '🎮';
+      default: return '📺';
     }
   };
 
-  const renderHelpSection = () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <TechnicalLabel text="THORX INDUSTRIAL" className="text-orange-400 text-sm mb-2" />
-          <h1 className="text-4xl font-black tracking-tight">HELP CENTER</h1>
-          <div className="h-1 w-24 bg-orange-400 mt-2"></div>
-        </div>
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      case 'medium': return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'hard': return 'bg-rose-100 text-rose-800 border-rose-300';
+      default: return 'bg-slate-100 text-slate-800 border-slate-300';
+    }
+  };
 
-        {/* Tabs */}
-        <Tabs value={helpTab} onValueChange={setHelpTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-slate-800/50 border border-slate-700">
-            <TabsTrigger 
-              value="guide" 
-              className="data-[state=active]:bg-orange-400 data-[state=active]:text-black font-semibold"
-            >
-              AREA GUIDE
-            </TabsTrigger>
-            <TabsTrigger 
-              value="help" 
-              className="data-[state=active]:bg-orange-400 data-[state=active]:text-black font-semibold"
-            >
-              AREA HELP
-            </TabsTrigger>
-            <TabsTrigger 
-              value="contact" 
-              className="data-[state=active]:bg-orange-400 data-[state=active]:text-black font-semibold"
-            >
-              AREA CONTACT
-            </TabsTrigger>
-          </TabsList>
+  const getDifficultyColorDark = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-emerald-900/30 text-emerald-300 border-emerald-600';
+      case 'medium': return 'bg-amber-900/30 text-amber-300 border-amber-600';
+      case 'hard': return 'bg-rose-900/30 text-rose-300 border-rose-600';
+      default: return 'bg-slate-800 text-slate-300 border-slate-600';
+    }
+  };
 
-          <TabsContent value="guide" className="mt-6">
-            <Card className="bg-slate-800/30 border-slate-700">
-              <CardContent className="p-8">
-                <div className="space-y-8">
-                  <div>
-                    <h3 className="text-xl font-bold text-orange-400 mb-3">Getting Started</h3>
-                    <div className="space-y-3 text-slate-300">
-                      <p><strong>Q: How do I navigate the THORX portal?</strong></p>
-                      <p>A: Use the sidebar navigation to access different sections. Dashboard provides overview, Work shows tasks, and Profile manages your account.</p>
-                      
-                      <p><strong>Q: How do I update my profile information?</strong></p>
-                      <p>A: Navigate to the Profile section and click on the information you want to update. Changes are saved automatically.</p>
-                      
-                      <p><strong>Q: Where can I view my work assignments?</strong></p>
-                      <p>A: All work assignments are available in the Work section with detailed task information and deadlines.</p>
-                    </div>
-                  </div>
+  const startWatching = (ad: AdItem) => {
+    setSelectedAd(ad);
+    setWatchProgress(0);
+    setIsCompleted(false);
+    setIsWatching(true);
+  };
 
-                  <div>
-                    <h3 className="text-xl font-bold text-orange-400 mb-3">Account Management</h3>
-                    <div className="space-y-3 text-slate-300">
-                      <p><strong>Q: How do I change my password?</strong></p>
-                      <p>A: Go to Profile → Security Settings and follow the password change process.</p>
-                      
-                      <p><strong>Q: What if I forget my password?</strong></p>
-                      <p>A: Use the "Forgot Password" link on the login page to reset your credentials.</p>
-                      
-                      <p><strong>Q: How do I enable two-factor authentication?</strong></p>
-                      <p>A: Navigate to Profile → Security and enable 2FA for enhanced account protection.</p>
-                    </div>
-                  </div>
+  // Enhanced mock data for charts
+  const earningsChartData = [
+    { date: 'Mon', earnings: 5.25, ads: 8, tasks: 2 },
+    { date: 'Tue', earnings: 3.75, ads: 6, tasks: 1 },
+    { date: 'Wed', earnings: 8.50, ads: 12, tasks: 3 },
+    { date: 'Thu', earnings: 6.25, ads: 10, tasks: 2 },
+    { date: 'Fri', earnings: 12.75, ads: 18, tasks: 4 },
+    { date: 'Sat', earnings: 15.50, ads: 22, tasks: 5 },
+    { date: 'Sun', earnings: 9.25, ads: 14, tasks: 3 }
+  ];
 
-                  <div>
-                    <h3 className="text-xl font-bold text-orange-400 mb-3">Technical Support</h3>
-                    <div className="space-y-3 text-slate-300">
-                      <p><strong>Q: The portal is running slowly, what should I do?</strong></p>
-                      <p>A: Clear your browser cache, ensure stable internet connection, and try refreshing the page.</p>
-                      
-                      <p><strong>Q: I'm experiencing login issues, how can I resolve this?</strong></p>
-                      <p>A: Check your credentials, ensure caps lock is off, and contact support if issues persist.</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+  const earningTypesData = [
+    { name: 'Ad Views', value: 65, color: 'hsl(var(--primary))' },
+    { name: 'Referrals', value: 25, color: 'hsl(var(--secondary))' },
+    { name: 'Daily Tasks', value: 7, color: 'hsl(var(--chart-3))' },
+    { name: 'Bonuses', value: 3, color: 'hsl(var(--chart-4))' }
+  ];
 
-          <TabsContent value="help" className="mt-6">
-            <Card className="bg-slate-800/30 border-slate-700">
-              <CardContent className="p-0">
-                <div className="h-[500px] flex flex-col">
-                  {/* Chat Header */}
-                  <div className="bg-slate-800 p-4 border-b border-slate-700">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-400 rounded-full flex items-center justify-center">
-                        <MessageCircle className="w-5 h-5 text-black" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-white">THORX Support</h3>
-                        <p className="text-sm text-slate-400">Online • Usually replies instantly</p>
-                      </div>
-                    </div>
-                  </div>
+  const dailyGoal = 50;
+  const currentProgress = parseFloat(displayUser?.totalEarnings || '0.00');
+  const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
+  const dailyLimit = 50;
+  const remainingAds = dailyLimit - (todayAdViews?.count || 0);
 
-                  {/* Chat Messages */}
-                  <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-                    {chatHistory.map((chat, index) => (
-                      <div key={index} className={`flex ${chat.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                          chat.sender === 'user' 
-                            ? 'bg-orange-400 text-black' 
-                            : 'bg-slate-700 text-white'
-                        }`}>
-                          <p className="text-sm">{chat.message}</p>
-                          <p className={`text-xs mt-1 ${
-                            chat.sender === 'user' ? 'text-black/70' : 'text-slate-400'
-                          }`}>
-                            {chat.time}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+  return (
+    <div className="min-h-screen bg-background relative">
+      {/* Industrial Grid Overlay */}
+      <div className="industrial-grid fixed inset-0 z-0" />
 
-                  {/* Chat Input */}
-                  <div className="border-t border-slate-700 p-4">
-                    <div className="flex gap-2">
-                      <Input
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        placeholder="Type your message..."
-                        className="flex-1 bg-slate-700 border-slate-600 text-white placeholder-slate-400"
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      />
-                      <Button 
-                        onClick={handleSendMessage}
-                        className="bg-orange-400 hover:bg-orange-500 text-black"
-                      >
-                        <Send className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+      {/* Navigation Header */}
+      <nav className="fixed top-0 w-full z-50 bg-background border-b-2 border-black" data-testid="portal-navigation">
+        <div className="max-w-7xl mx-auto px-4 md:px-8">
+          <div className="flex items-center justify-between h-16 md:h-20">
+            {/* Logo */}
+            <div className="flex items-center">
+              <div className="bg-black text-white px-4 py-2 border-2 border-black">
+                <TechnicalLabel text="THORX" className="text-white text-lg font-black" />
+              </div>
+            </div>
 
-          <TabsContent value="contact" className="mt-6">
-            <Card className="bg-slate-800/30 border-slate-700">
-              <CardContent className="p-8">
-                <form className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-slate-300">First Name</Label>
-                      <Input
-                        id="firstName"
-                        placeholder="Enter your first name"
-                        className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-slate-300">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        placeholder="Enter your last name"
-                        className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-slate-300">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email address"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-slate-300">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="Enter your phone number"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="subject" className="text-slate-300">Subject</Label>
-                    <Input
-                      id="subject"
-                      placeholder="What can we help you with?"
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="message" className="text-slate-300">Message</Label>
-                    <Textarea
-                      id="message"
-                      placeholder="Please describe your inquiry in detail..."
-                      rows={4}
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 resize-none"
-                    />
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-orange-400 hover:bg-orange-500 text-black font-semibold"
+            {/* Desktop Tab Navigation */}
+            <nav className="hidden md:flex items-center space-x-1" role="navigation" aria-label="Primary navigation">
+              {sections.map((section, index) => {
+                const Icon = section.icon;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => navigateToSection(index)}
+                    className={`flex items-center space-x-2 px-4 py-2 border-2 border-black transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      currentSection === index
+                        ? 'bg-primary text-black font-black'
+                        : 'bg-background text-foreground hover:bg-primary hover:text-black'
+                    }`}
+                    data-testid={`nav-tab-${section.id}`}
+                    aria-label={`Go to ${section.name}`}
+                    aria-current={currentSection === index ? 'page' : undefined}
                   >
-                    Send Message
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                    <Icon className="w-4 h-4" />
+                    <TechnicalLabel text={section.name.toUpperCase()} className="text-sm" />
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Mobile Section Indicator (simple dots for reference) */}
+            <div className="flex md:hidden items-center space-x-2" aria-hidden="true">
+              {sections.map((section, index) => (
+                <div
+                  key={section.id}
+                  className={`w-2 h-2 border border-black transition-all duration-300 ${
+                    currentSection === index
+                      ? 'bg-primary'
+                      : 'bg-transparent'
+                  }`}
+                  data-testid={`nav-indicator-${section.id}`}
+                />
+              ))}
+            </div>
+
+            {/* User Controls */}
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center text-foreground">
+                <TechnicalLabel text={displayUser?.firstName || "USER"} className="text-foreground" />
+              </div>
+              <Button
+                onClick={logout}
+                variant="outline"
+                size="sm"
+                className="border-2 border-black text-foreground hover:bg-black hover:text-white"
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Desktop Navigation Controls */}
+      <div className="hidden md:block fixed left-4 top-1/2 transform -translate-y-1/2 z-40">
+        <Button
+          onClick={prevSection}
+          variant="outline"
+          size="lg"
+          className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
+          data-testid="button-prev-section"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </Button>
+      </div>
+
+      <div className="hidden md:block fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
+        <Button
+          onClick={nextSection}
+          variant="outline"
+          size="lg"
+          className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
+          data-testid="button-next-section"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </Button>
+      </div>
+
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t-2 border-black" role="navigation" aria-label="Mobile navigation">
+        <div className="flex" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          {sections.map((section, index) => {
+            const Icon = section.icon;
+            return (
+              <button
+                key={section.id}
+                onClick={() => navigateToSection(index)}
+                className={`flex-1 flex flex-col items-center justify-center py-3 px-2 min-h-[60px] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  currentSection === index
+                    ? 'bg-primary text-black'
+                    : 'bg-background text-foreground'
+                } border-r-2 border-black last:border-r-0`}
+                data-testid={`mobile-tab-${section.id}`}
+                aria-label={`Go to ${section.name}`}
+                aria-current={currentSection === index ? 'page' : undefined}
+              >
+                <Icon className="w-5 h-5 mb-1" />
+                <TechnicalLabel
+                  text={section.name.toUpperCase()}
+                  className="text-sm leading-none text-center"
+                />
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Section Content */}
+      <div className="pt-20 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
+        {sections.map((section, index) => (
+          <section
+            key={section.id}
+            className={`cinematic-section ${currentSection === index ? 'active' : ''} ${
+              isTransitioning ? 'transitioning' : ''
+            }`}
+            data-testid={`section-${section.id}`}
+          >
+            {/* Section Content */}
+            {index === 0 && renderDashboardSection()}
+            {index === 1 && renderWorkSection()}
+            {index === 2 && renderReferralsSection()}
+            {index === 3 && renderPayoutSection()}
+            {index === 4 && renderHelpSection()}
+          </section>
+        ))}
       </div>
     </div>
   );
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
-      <div className="flex">
-        {/* Sidebar */}
-        <div className="w-64 min-h-screen bg-slate-900/50 border-r border-slate-700 p-6">
-          <div className="mb-8">
-            <TechnicalLabel text="THORX INDUSTRIAL" className="text-orange-400 text-xs mb-2" />
-            <h2 className="text-xl font-black">USER PORTAL</h2>
-          </div>
-
-          <nav className="space-y-2">
-            <button
-              onClick={() => setActiveSection('dashboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeSection === 'dashboard' 
-                  ? 'bg-orange-400 text-black' 
-                  : 'text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <User className="w-5 h-5" />
-              Dashboard
-            </button>
-            
-            <button
-              onClick={() => setActiveSection('work')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeSection === 'work' 
-                  ? 'bg-orange-400 text-black' 
-                  : 'text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <Briefcase className="w-5 h-5" />
-              Work
-            </button>
-            
-            <button
-              onClick={() => setActiveSection('help')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeSection === 'help' 
-                  ? 'bg-orange-400 text-black' 
-                  : 'text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <HelpCircle className="w-5 h-5" />
-              Help
-            </button>
-          </nav>
-
-          <div className="mt-auto pt-8">
-            <Button
-              onClick={handleLogout}
-              variant="ghost"
-              className="w-full justify-start text-slate-300 hover:bg-slate-800"
-            >
-              <LogOut className="w-5 h-5 mr-3" />
-              Logout
-            </Button>
+  // Dashboard Section
+  function renderDashboardSection() {
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+        {/* Hero Section */}
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <Activity className="w-5 h-5" />
+              <TechnicalLabel text="DASHBOARD PROTOCOL v4.12" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-8 tracking-tighter leading-tight">
+              ASSALAM U ALAYKUM,<br />
+              <span className="text-primary bg-primary/10 px-2 py-1 inline-block mt-2">{displayUser?.firstName || "GUEST"}</span>
+            </h1>
+            <div className="max-w-3xl mx-auto mb-2">
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                Track your earnings • Monitor your progress in real-time
+              </p>
+            </div>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1">
-          {activeSection === 'help' ? (
-            renderHelpSection()
-          ) : (
-            <div className="p-8">
-              <div className="max-w-4xl mx-auto">
-                <TechnicalLabel text="THORX INDUSTRIAL" className="text-orange-400 text-sm mb-2" />
-                <h1 className="text-4xl font-black tracking-tight mb-8">
-                  {activeSection === 'dashboard' && 'DASHBOARD'}
-                  {activeSection === 'work' && 'WORK CENTER'}
-                </h1>
-                
-                <Card className="bg-slate-800/30 border-slate-700">
-                  <CardContent className="p-8">
-                    {activeSection === 'dashboard' && (
-                      <div>
-                        <h2 className="text-2xl font-bold mb-4">Welcome back, {user?.username}!</h2>
-                        <p className="text-slate-300">Your dashboard content will appear here.</p>
-                      </div>
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+          {/* Total Earnings */}
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10" data-testid="card-total-earnings">
+            <div className="flex items-start justify-between mb-3">
+              <Wallet className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-total-earnings">{formatCurrency(displayUser?.totalEarnings || '0.00')}</p>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-3 h-3 text-green-500" />
+              <TechnicalLabel text="+15.2% THIS WEEK" className="text-green-500 text-xs" />
+            </div>
+          </div>
+
+          {/* Available Balance */}
+          <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/20" data-testid="card-available-balance">
+            <div className="flex items-start justify-between mb-3">
+              <DollarSign className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-available-balance">{formatCurrency(displayUser?.availableBalance || '0.00')}</p>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-3 h-3 text-primary" />
+              <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-primary/70 text-xs" />
+            </div>
+          </div>
+
+          {/* Active Referrals */}
+          <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-active-referrals">
+            <div className="flex items-start justify-between mb-3">
+              <Users className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
+              <TechnicalLabel text="ACTIVE REFERRALS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-referrals-count">{referralsData?.stats.count || 0}</p>
+            <div className="flex items-center gap-2">
+              <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
+              <TechnicalLabel text={`+${formatCurrency(referralsData?.stats.totalEarned || '0.00')} EARNED`} className="text-muted-foreground text-xs" />
+            </div>
+          </div>
+
+          {/* Daily Progress */}
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-daily-goal">
+            <div className="flex items-start justify-between mb-3">
+              <Target className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-daily-progress">{Math.round(progressPercentage)}%</p>
+            <Progress value={progressPercentage} className="progress-enhanced h-2 mb-3" />
+            <TechnicalLabel text={`${formatCurrency(currentProgress.toString())} / ${formatCurrency(dailyGoal.toString())}`} className="text-muted-foreground text-xs" />
+          </div>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
+          {/* Weekly Earnings Chart */}
+          <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+              <CardTitle className="flex items-center justify-between">
+                <TechnicalLabel text="WEEKLY EARNINGS" className="text-foreground group-hover:text-primary/90 transition-colors" />
+                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                  <BarChart3 className="w-4 h-4 text-primary" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2 md:p-4">
+              <ResponsiveContainer width="100%" height={280} minHeight={250}>
+                <AreaChart data={earningsChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.2} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={10}
+                    fontFamily="var(--font-sans)"
+                    tickLine={false}
+                    axisLine={false}
+                    hide={window.innerWidth < 768}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={10}
+                    fontFamily="var(--font-sans)"
+                    tickFormatter={(value) => window.innerWidth < 768 ? `${value}` : `PKR ${value}`}
+                    tickLine={false}
+                    axisLine={false}
+                    hide={window.innerWidth < 768}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Tooltip
+                    formatter={(value) => [`PKR ${value}`, 'Earnings']}
+                    labelFormatter={(label) => `Day: ${label}`}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '2px solid hsl(var(--primary))',
+                      borderRadius: '4px',
+                      color: 'hsl(var(--primary))',
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
+                    }}
+                    labelStyle={{ color: 'hsl(var(--primary))' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="earnings"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={3}
+                    fill="url(#earningsGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Earnings Breakdown */}
+          <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+              <CardTitle className="flex items-center justify-between">
+                <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground group-hover:text-primary/90 transition-colors" />
+                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                  <PieChart className="w-4 h-4 text-primary" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2 md:p-4">
+              <ResponsiveContainer width="100%" height={280} minHeight={250}>
+                <RechartsPieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                  <Pie
+                    data={earningTypesData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={window.innerWidth < 768 ? 70 : 80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }: { name: string; percent: number }) =>
+                      window.innerWidth < 768 ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(0)}%`
+                    }
+                  >
+                    {earningTypesData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value, name) => [`${value}%`, name]}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '2px solid hsl(var(--primary))',
+                      borderRadius: '4px',
+                      color: 'hsl(var(--primary))',
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
+                    }}
+                    labelStyle={{ color: 'hsl(var(--primary))' }}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Enhanced Work Section
+  function renderWorkSection() {
+    // Handle video completion
+    const handleVideoComplete = (tabId: string, earnings: string) => {
+      setCompletedVideos(prev => new Set(Array.from(prev).concat(tabId)));
+      toast({
+        title: "Ad Completed!",
+        description: `You earned $${earnings}`,
+      });
+    };
+
+    // Prepare metrics data
+    const metricsData = [
+      {
+        id: "ads-watched",
+        title: "ADS WATCHED",
+        value: todayAdViews?.count || 0,
+        subtitle: "Today's activity",
+        icon: Eye,
+        variant: "orange" as const,
+        trend: { direction: "up" as const, percentage: "+12%" }
+      },
+      {
+        id: "remaining-ads",
+        title: "REMAINING ADS",
+        value: remainingAds,
+        subtitle: "Daily quota left",
+        icon: Target,
+        variant: "black" as const
+      },
+      {
+        id: "today-earnings",
+        title: "TODAY'S EARNINGS",
+        value: formatCurrency((completedAds.size * 2.5)),
+        subtitle: "Current session",
+        icon: DollarSign,
+        variant: "white" as const,
+        trend: { direction: "up" as const, percentage: "+$2.50" }
+      },
+      {
+        id: "daily-goal",
+        title: "DAILY GOAL",
+        value: `${Math.round((completedAds.size / dailyLimit) * 100)}%`,
+        subtitle: "Progress to limit",
+        icon: Award,
+        variant: "orange" as const,
+        trend: { direction: "up" as const, percentage: "+15%" }
+      }
+    ];
+
+    // Get current video tab data for player
+    const currentVideoTab = {
+      id: activeWorkTab,
+      title: WORK_TABS.find(tab => tab.id === activeWorkTab)?.title || "ADS",
+      icon: activeWorkTab === "ads" ? "📺" :
+            activeWorkTab === "surveys" ? "📊" :
+            activeWorkTab === "referrals" ? "👥" : "✅",
+      color: "primary",
+      videoUrl: `#${activeWorkTab}-video`,
+      reward: "2.50",
+      description: WORK_TABS.find(tab => tab.id === activeWorkTab)?.description || "Watch and earn"
+    };
+
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+        {/* Enhanced Header */}
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <Briefcase className="w-5 h-5" />
+              <TechnicalLabel text="WORK PROTOCOL v3.21" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              START <span className="text-primary">EARNING</span><br />
+              WATCH & EARN REWARDS
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Watch advertisements, complete tasks, and earn real money daily
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+          </div>
+        </div>
+
+        {/* Enhanced Metrics Cards */}
+        <MetricsCards metrics={metricsData} className="mb-10" />
+
+        {/* Industrial Tab System */}
+        {/* Industrial Work Interface - Wireframe Style */}
+          <div className="industrial-video-frame p-4 mb-8">
+            <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
+              
+              {WORK_TABS.map(tab => (
+                <TabsContent key={tab.id} value={tab.id} className="mt-0">
+                  <div className="space-y-4">
+                    {/* Enhanced Video Player for active tab */}
+                    {tab.id === activeWorkTab && (
+                      <EnhancedVideoPlayer
+                        tab={currentVideoTab}
+                        isActive={true}
+                        onComplete={handleVideoComplete}
+                        autoplay={false}
+                        isMobile={isMobile}
+                      />
                     )}
-                    
-                    {activeSection === 'work' && (
-                      <div>
-                        <h2 className="text-2xl font-bold mb-4">Work Assignments</h2>
-                        <p className="text-slate-300">Your work tasks and assignments will appear here.</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
+
+        {/* Available Ads */}
+        {remainingAds > 0 ? (
+          <div></div>
+        ) : null}
+      </div>
+    );
+  }
+
+  // Enhanced Referrals Section - Wireframe-Inspired Industrial Design
+  function renderReferralsSection() {
+    // Mock data for leadership board
+    const leaderboardData = [
+      {
+        id: "1",
+        rank: 1,
+        name: "Don Ivan",
+        earnings: "2,450.00",
+        referrals: 15,
+        status: "ACTIVE",
+        tier: "PLATINUM",
+        joinDate: "2024-01-15",
+        isCurrentUser: false
+      },
+      {
+        id: "2", 
+        rank: 2,
+        name: "Saad Rauf",
+        earnings: "1,890.50",
+        referrals: 12,
+        status: "ACTIVE", 
+        tier: "GOLD",
+        joinDate: "2024-02-03",
+        isCurrentUser: false
+      },
+      {
+        id: "3",
+        rank: 3,
+        name: "Zain Abbas",
+        earnings: "1,425.75",
+        referrals: 9,
+        status: "ACTIVE",
+        tier: "SILVER",
+        joinDate: "2024-02-18",
+        isCurrentUser: false
+      }
+    ];
+
+    const getRankIcon = (rank: number) => {
+      switch (rank) {
+        case 1: return <Crown className="w-5 h-5 text-yellow-500" />;
+        case 2: return <Trophy className="w-5 h-5 text-gray-400" />;
+        case 3: return <Medal className="w-5 h-5 text-amber-600" />;
+        default: return <Star className="w-5 h-5 text-muted-foreground" />;
+      }
+    };
+
+    const getTierColor = (tier: string) => {
+      switch (tier) {
+        case 'PLATINUM': return 'bg-gradient-to-r from-blue-600 to-purple-600 text-white';
+        case 'GOLD': return 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white';
+        case 'SILVER': return 'bg-gradient-to-r from-gray-400 to-gray-600 text-white';
+        default: return 'bg-black text-white';
+      }
+    };
+
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+        {/* Hero Section */}
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <UserCheck className="w-5 h-5" />
+              <TechnicalLabel text="REFERRAL PROTOCOL v3.14" className="text-white" />
+            </div>
+            <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              BUILD YOUR <span className="text-primary">NETWORK</span><br />
+              EARN MORE TOGETHER
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Invite friends, earn together, and build a passive income stream through referrals
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+          </div>
+        </div>
+        {/* Top Metrics Section - 4 Cards as per wireframe */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+          {/* Total Referrals */}
+          <div className="wireframe-section p-4 md:p-6 text-center">
+            <Users className="w-8 h-8 mx-auto mb-3 text-primary" />
+            <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">{referralsData?.stats.count || 0}</div>
+            <TechnicalLabel text="TOTAL REFERRALS" className="text-muted-foreground text-xs" />
+          </div>
+
+          {/* Referral Earnings */}
+          <div className="p-4 md:p-6 text-center text-white bg-black border-2 border-black">
+            <DollarSign className="w-8 h-8 mx-auto mb-3 text-white" />
+            <div className="text-2xl md:text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
+            <TechnicalLabel text="REFERRAL EARNINGS" className="text-white/80 text-xs" />
+          </div>
+
+          {/* Commission Rate */}
+          <div className="wireframe-section p-4 md:p-6 text-center">
+            <TrendingUp className="w-8 h-8 mx-auto mb-3 text-primary" />
+            <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">25%</div>
+            <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs" />
+          </div>
+
+          {/* Service Info */}
+          <div className="wireframe-section p-4 md:p-6 text-center bg-[#e8e5d9]">
+            <RefreshCw className="w-8 h-8 mx-auto mb-3 text-primary" />
+            <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">∞</div>
+            <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
+          </div>
+        </div>
+        {/* Middle Section - Invitation Area and Leadership Area */}
+        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+          {/* Invitation Area */}
+          <div className="wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Share2 className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="INVITATION AREA" className="text-foreground text-lg font-black" />
               </div>
+              <TechnicalLabel text="PROTOCOL: NETWORK_EXPANSION_v2.1" className="text-muted-foreground text-xs" />
+            </div>
+
+            {/* Referral Code Display */}
+            <div className="bg-black text-white p-6 border-2 border-primary mb-6">
+              <TechnicalLabel text="YOUR REFERRAL CODE" className="text-primary mb-4 text-center" />
+              <div className="bg-primary text-black px-6 py-4 text-2xl md:text-3xl font-black tracking-widest text-center border-2 border-white">
+                {displayUser?.referralCode}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <Button
+                onClick={copyReferralCode}
+                className="w-full bg-primary hover:bg-primary/90 text-black px-6 py-4 text-lg font-black border-2 border-black"
+                data-testid="button-copy-referral"
+              >
+                <Copy className="w-5 h-5 mr-3" />
+                COPY REFERRAL CODE
+              </Button>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                >
+                  <Link2 className="w-4 h-4 mr-2" />
+                  GENERATE LINK
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  SHARE
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 p-3 bg-muted border border-muted-foreground/20">
+              <TechnicalLabel text="COMMISSION: 25% of all referral earnings forever" className="text-muted-foreground text-center text-xs" />
+            </div>
+          </div>
+
+          {/* Leadership Area */}
+          <div className="wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Crown className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="LEADERSHIP AREA" className="text-foreground text-lg font-black" />
+              </div>
+              <TechnicalLabel text="TOP PERFORMERS RANKING" className="text-muted-foreground text-xs" />
+            </div>
+
+            {/* Leadership Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="text-center p-3 bg-muted border border-muted-foreground/20">
+                <div className="text-lg font-black text-foreground">#{referralsData?.stats.count ? Math.min(referralsData.stats.count + 15, 50) : 42}</div>
+                <TechnicalLabel text="YOUR RANK" className="text-muted-foreground text-xs" />
+              </div>
+              <div className="text-center p-3 bg-primary text-white border border-primary">
+                <div className="text-lg font-black text-white">TOP 10%</div>
+                <TechnicalLabel text="PERCENTILE" className="text-white/80 text-xs" />
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                VIEW FULL LEADERBOARD
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+              >
+                <Trophy className="w-4 h-4 mr-2" />
+                MY ACHIEVEMENTS
+              </Button>
+            </div>
+          </div>
+        </div>
+        {/* Bottom Section - Leaderboard List (Blue highlighted in wireframe) */}
+        <div className="wireframe-border bg-primary/5 p-6">
+          <div className="border-b-2 border-primary pb-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="TOP REFERRERS LEADERBOARD" className="text-foreground text-lg font-black" />
+              </div>
+              <div className="bg-primary text-white px-3 py-1 border border-primary">
+                <TechnicalLabel text="LIVE RANKINGS" className="text-white text-xs" />
+              </div>
+            </div>
+          </div>
+
+          {/* Leaderboard Items */}
+          <div className="space-y-4">
+            {leaderboardData.map((leader, index) => (
+              <div key={leader.id} className="wireframe-section p-4 hover:bg-white transition-colors duration-200">
+                <div className="flex items-center justify-between">
+                  {/* Left Side - Rank and Name */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-black text-white font-black text-lg flex items-center justify-center border border-black">
+                        {leader.rank}
+                      </div>
+                      {getRankIcon(leader.rank)}
+                    </div>
+                    
+                    <div>
+                      <div className="text-lg font-black text-foreground mb-1">
+                        {leader.name}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TechnicalLabel text={`${leader.referrals} REFERRALS`} className="text-muted-foreground text-xs" />
+                        <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                        <TechnicalLabel text={`JOINED ${new Date(leader.joinDate).toLocaleDateString()}`} className="text-muted-foreground text-xs" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Side - Rank Info and Revision */}
+                  <div className="flex items-center gap-4">
+                    {/* Rank Info */}
+                    <div className="text-right">
+                      <div className="text-lg font-black text-primary mb-1">
+                        {formatCurrency(leader.earnings)}
+                      </div>
+                      <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
+                    </div>
+
+                    {/* Revision (Tier Badge) */}
+                    <div className="px-3 py-1 text-xs font-black border-2 border-black from-blue-600 to-purple-600 text-white bg-[#000000]">
+                      {leader.tier}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Indicator */}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${leader.status === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                    <TechnicalLabel text={`STATUS: ${leader.status}`} className="text-muted-foreground text-xs" />
+                  </div>
+                  <TechnicalLabel text={`RANK #${leader.rank} OF 500+ USERS`} className="text-muted-foreground text-xs" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* View More Button */}
+          <div className="mt-6 text-center">
+            <Button
+              variant="outline"
+              className="border-2 border-primary text-primary hover:bg-primary hover:text-white px-8 py-3 font-black"
+            >
+              VIEW COMPLETE LEADERBOARD
+            </Button>
+          </div>
+        </div>
+        {/* Your Referrals Section */}
+        {referralsData?.referrals && referralsData.referrals.length > 0 && (
+          <div className="mt-8 wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <TechnicalLabel text="YOUR NETWORK" className="text-foreground text-lg font-black" />
+            </div>
+            
+            <div className="grid gap-4">
+              {referralsData.referrals.map((referral, index) => (
+                <div key={referral.id} className="wireframe-section p-4 hover:bg-white transition-colors" data-testid={`referral-${referral.id}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/60 text-white font-black text-lg flex items-center justify-center border-2 border-black">
+                        {referral.referred.firstName[0]}{referral.referred.lastName[0]}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-foreground">
+                          {referral.referred.firstName} {referral.referred.lastName}
+                        </h3>
+                        <TechnicalLabel text={referral.referred.email} className="text-muted-foreground text-xs" />
+                        <TechnicalLabel text={`Joined: ${formatDate(referral.referred.createdAt)}`} className="text-muted-foreground text-xs" />
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-black text-primary">
+                        +{formatCurrency(referral.totalEarned)}
+                      </div>
+                      <TechnicalLabel text={`TIER ${index + 1}`} className="text-muted-foreground text-xs" />
+                      <div className={`inline-block px-2 py-1 text-xs font-semibold border mt-1 ${
+                        referral.status === 'active'
+                          ? 'bg-green-100 text-green-800 border-green-600'
+                          : 'bg-gray-100 text-gray-800 border-gray-600'
+                      }`}>
+                        {referral.status.toUpperCase()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Enhanced Payout Section - Wireframe Industrial Design
+  function renderPayoutSection() {
+    // Mock withdrawal history data for demonstration
+    const withdrawalHistory = [
+      {
+        id: "wd_001",
+        amount: "1,250.00",
+        method: "JazzCash",
+        account: "03XX-XXXXXXX45",
+        status: "COMPLETED",
+        date: "2024-01-15T10:30:00Z",
+        transactionId: "TXN_789456123"
+      },
+      {
+        id: "wd_002", 
+        amount: "850.50",
+        method: "EasyPaisa",
+        account: "03XX-XXXXXXX23",
+        status: "PROCESSING",
+        date: "2024-01-14T14:20:00Z",
+        transactionId: "TXN_654321987"
+      },
+      {
+        id: "wd_003",
+        amount: "2,100.75",
+        method: "Bank Transfer",
+        account: "****-****-8901",
+        status: "PENDING",
+        date: "2024-01-13T09:15:00Z",
+        transactionId: "TXN_147258369"
+      }
+    ];
+
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'COMPLETED': return 'bg-green-500 text-white';
+        case 'PROCESSING': return 'bg-yellow-500 text-black';
+        case 'PENDING': return 'bg-orange-500 text-white';
+        case 'FAILED': return 'bg-red-500 text-white';
+        default: return 'bg-gray-500 text-white';
+      }
+    };
+
+    const getMethodIcon = (method: string) => {
+      switch (method) {
+        case 'JazzCash': return '📱';
+        case 'EasyPaisa': return '💳';
+        case 'Bank Transfer': return '🏦';
+        default: return '💰';
+      }
+    };
+
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+        {/* Hero Section - Wireframe Style */}
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <CreditCard className="w-5 h-5" />
+              <TechnicalLabel text="PAYOUT PROTOCOL v2.8" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              WITHDRAW YOUR <span className="text-primary">EARNINGS</span><br />
+              INSTANT PROCESSING
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Fast, secure, and reliable withdrawal system with real-time processing
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+          </div>
+        </div>
+
+        {/* Enhanced Balance Overview - 3 Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Available Balance */}
+          <div className="p-6 text-center bg-primary text-black border-2 border-black hover:bg-primary/90 transition-all duration-300">
+            <Wallet className="w-12 h-12 mx-auto mb-4" />
+            <div className="text-3xl md:text-4xl font-black mb-2">{formatCurrency(displayUser?.availableBalance || '0.00')}</div>
+            <TechnicalLabel text="AVAILABLE BALANCE" className="text-black text-xs" />
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-black/80 text-xs" />
+            </div>
+          </div>
+
+          {/* Total Earned */}
+          <div className="wireframe-section p-6 text-center hover:bg-white transition-colors duration-200">
+            <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
+            <div className="text-3xl md:text-4xl font-black mb-2 text-primary">{formatCurrency(displayUser?.totalEarnings || '0.00')}</div>
+            <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <TrendingUp className="w-4 h-4 text-green-500" />
+              <TechnicalLabel text="+15.2% THIS MONTH" className="text-green-500 text-xs" />
+            </div>
+          </div>
+
+          {/* Pending Withdrawals */}
+          <div className="bg-black text-white p-6 text-center border-2 border-black hover:bg-primary hover:text-black transition-all duration-300">
+            <Clock className="w-12 h-12 mx-auto mb-4 text-primary" />
+            <div className="text-3xl md:text-4xl font-black mb-2 text-primary">
+              {withdrawalHistory.filter(w => w.status === 'PROCESSING' || w.status === 'PENDING').length}
+            </div>
+            <TechnicalLabel text="PENDING WITHDRAWALS" className="text-white/80 text-xs" />
+            <div className="mt-2">
+              <TechnicalLabel text="IN PROCESSING QUEUE" className="text-primary text-xs" />
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Withdrawal Interface */}
+        <div className="grid lg:grid-cols-3 gap-8 mb-8">
+          {/* Withdrawal Form - Left 2 columns */}
+          <div className="lg:col-span-2 wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Download className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="WITHDRAWAL INTERFACE" className="text-foreground text-lg font-black" />
+              </div>
+              <TechnicalLabel text="PROTOCOL: INSTANT_PAYOUT_v2.8" className="text-muted-foreground text-xs" />
+            </div>
+
+            <div className="space-y-6">
+              {/* Amount and Method Selection */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-foreground mb-3 font-black" />
+                  <div className="bg-black border-2 border-primary p-4">
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      className="w-full bg-transparent text-primary text-2xl font-black outline-none placeholder-primary/50"
+                    />
+                    <TechnicalLabel text="PKR (Pakistani Rupee)" className="text-white/60 text-xs mt-1" />
+                  </div>
+                </div>
+
+                <div>
+                  <TechnicalLabel text="PAYMENT METHOD" className="text-foreground mb-3 font-black" />
+                  <div className="bg-primary/10 border-2 border-primary p-4">
+                    <select className="w-full bg-transparent text-foreground text-lg font-black outline-none">
+                      <option value="" className="bg-black text-white">SELECT PAYMENT METHOD</option>
+                      <option value="jazzcash" className="bg-black text-white">📱 JazzCash Mobile Wallet</option>
+                      <option value="easypaisa" className="bg-black text-white">💳 EasyPaisa Digital Wallet</option>
+                      <option value="bank" className="bg-black text-white">🏦 Bank Transfer (ACH)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Details */}
+              <div>
+                <TechnicalLabel text="ACCOUNT DETAILS" className="text-foreground mb-3 font-black" />
+                <div className="bg-black border-2 border-primary p-4">
+                  <input
+                    type="text"
+                    placeholder="Account number or phone number"
+                    className="w-full bg-transparent text-primary text-lg font-black outline-none placeholder-primary/50"
+                  />
+                  <TechnicalLabel text="SECURE: All data encrypted with AES-256" className="text-white/60 text-xs mt-2" />
+                </div>
+              </div>
+
+              {/* Fee Calculator */}
+              <div className="bg-muted/20 border-2 border-muted-foreground/30 p-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex justify-between">
+                    <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-muted-foreground" />
+                    <TechnicalLabel text="PKR 0.00" className="text-foreground font-black" />
+                  </div>
+                  <div className="flex justify-between">
+                    <TechnicalLabel text="PROCESSING FEE:" className="text-muted-foreground" />
+                    <TechnicalLabel text="PKR 15.00" className="text-foreground font-black" />
+                  </div>
+                  <div className="flex justify-between col-span-2 border-t border-muted-foreground/30 pt-2">
+                    <TechnicalLabel text="NET AMOUNT:" className="text-primary font-black" />
+                    <TechnicalLabel text="PKR 0.00" className="text-primary font-black text-lg" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90 text-black px-6 py-4 text-lg font-black border-2 border-black"
+                  data-testid="button-withdraw"
+                >
+                  <Download className="w-5 h-5 mr-3" />
+                  PROCESS WITHDRAWAL
+                </Button>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    SCHEDULE LATER
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    QUICK WITHDRAW
+                  </Button>
+                </div>
+              </div>
+
+              {/* Terms Notice */}
+              <div className="bg-primary/5 border border-primary/30 p-3">
+                <TechnicalLabel text="TERMS: Minimum withdrawal PKR 100.00 • Processing time: 24-48 hours • Fees may apply" className="text-muted-foreground text-center text-xs" />
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stats - Right column */}
+          <div className="wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Activity className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="WITHDRAWAL STATS" className="text-foreground text-lg font-black" />
+              </div>
+              <TechnicalLabel text="REAL-TIME METRICS" className="text-muted-foreground text-xs" />
+            </div>
+
+            {/* Quick Stats */}
+            <div className="space-y-4">
+              <div className="bg-black text-white p-4 border-2 border-primary text-center">
+                <div className="text-2xl font-black text-primary mb-1">24h</div>
+                <TechnicalLabel text="AVG PROCESSING TIME" className="text-white/80 text-xs" />
+              </div>
+              
+              <div className="text-center p-4 bg-primary text-black border-2 border-black">
+                <div className="text-2xl font-black mb-1">99.8%</div>
+                <TechnicalLabel text="SUCCESS RATE" className="text-black/80 text-xs" />
+              </div>
+              
+              <div className="text-center p-4 bg-muted border border-muted-foreground/30">
+                <div className="text-2xl font-black text-foreground mb-1">PKR 15</div>
+                <TechnicalLabel text="PROCESSING FEE" className="text-muted-foreground text-xs" />
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="mt-6 space-y-3">
+              <Button
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+              >
+                <History className="w-4 h-4 mr-2" />
+                VIEW ALL HISTORY
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                EXPORT RECORDS
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Payment History */}
+        <div className="wireframe-border bg-primary/5 p-6">
+          <div className="border-b-2 border-primary pb-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <History className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="WITHDRAWAL TRANSACTION HISTORY" className="text-foreground text-lg font-black" />
+              </div>
+              <div className="bg-primary text-white px-3 py-1 border border-primary">
+                <TechnicalLabel text="LIVE UPDATES" className="text-white text-xs" />
+              </div>
+            </div>
+          </div>
+
+          {/* Transaction History */}
+          {withdrawalHistory.length > 0 ? (
+            <div className="space-y-4">
+              {withdrawalHistory.map((transaction) => (
+                <div key={transaction.id} className="wireframe-section p-4 hover:bg-white transition-colors duration-200">
+                  <div className="flex items-center justify-between mb-3">
+                    {/* Left side - Method and Amount */}
+                    <div className="flex items-center gap-4">
+                      <div className="text-2xl">{getMethodIcon(transaction.method)}</div>
+                      <div>
+                        <div className="text-lg font-black text-foreground mb-1">
+                          {formatCurrency(transaction.amount)}
+                        </div>
+                        <TechnicalLabel text={transaction.method} className="text-muted-foreground text-xs" />
+                      </div>
+                    </div>
+
+                    {/* Right side - Status and Date */}
+                    <div className="text-right">
+                      <div className={`inline-block px-3 py-1 text-xs font-black border-2 border-black ${getStatusColor(transaction.status)} mb-2`}>
+                        {transaction.status}
+                      </div>
+                      <div>
+                        <TechnicalLabel text={formatDate(transaction.date)} className="text-muted-foreground text-xs" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transaction Details */}
+                  <div className="border-t border-muted-foreground/20 pt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <TechnicalLabel text={`ACCOUNT: ${transaction.account}`} className="text-muted-foreground text-xs" />
+                      <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                      <TechnicalLabel text={`TXN: ${transaction.transactionId}`} className="text-muted-foreground text-xs" />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border border-primary text-primary hover:bg-primary hover:text-black text-xs px-3 py-1"
+                    >
+                      VIEW DETAILS
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center p-12">
+              <History className="w-16 h-16 mx-auto mb-4 text-primary opacity-60" />
+              <TechnicalLabel text="NO WITHDRAWAL HISTORY" className="text-primary text-2xl font-black mb-2" />
+              <TechnicalLabel text="Your withdrawal transactions will appear here once you make your first withdrawal" className="text-muted-foreground max-w-md mx-auto" />
+            </div>
+          )}
+
+          {/* Load More Button */}
+          {withdrawalHistory.length > 0 && (
+            <div className="mt-6 text-center">
+              <Button
+                variant="outline"
+                className="border-2 border-primary text-primary hover:bg-primary hover:text-black px-8 py-3 font-black"
+              >
+                LOAD MORE TRANSACTIONS
+              </Button>
             </div>
           )}
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-export default UserPortal;
+  // Help Section - Enhanced with THORX Design System
+  function renderHelpSection() {
+    const [activeHelpTab, setActiveHelpTab] = useState("guide");
+    const [chatMessages, setChatMessages] = useState([
+      {
+        id: 1,
+        text: "Hello! I'm here to help you with any questions about THORX. How can I assist you today?",
+        sender: "support",
+        timestamp: new Date(Date.now() - 5000).toISOString()
+      }
+    ]);
+    const [newMessage, setNewMessage] = useState("");
+    const [contactForm, setContactForm] = useState({
+      name: "",
+      email: "",
+      subject: "",
+      description: ""
+    });
+    const [isTyping, setIsTyping] = useState(false);
+
+    // Chat functionality with enhanced animations
+    const sendMessage = () => {
+      if (!newMessage.trim()) return;
+      
+      const userMessage = {
+        id: chatMessages.length + 1,
+        text: newMessage,
+        sender: "user",
+        timestamp: new Date().toISOString()
+      };
+      
+      setChatMessages(prev => [...prev, userMessage]);
+      setNewMessage("");
+      setIsTyping(true);
+      
+      // Simulate realistic typing delay
+      setTimeout(() => {
+        const responses = [
+          "Thanks for your message! Let me help you with that. I can provide detailed information about your account or any technical issues you're experiencing.",
+          "I understand your concern. Here's what you can do to resolve this issue quickly and efficiently...",
+          "That's a great question! Here's the information you need to maximize your earnings on THORX platform:",
+          "I'm here to help! Let me provide you with the details about our withdrawal process and payment methods.",
+          "Thanks for reaching out. I'll assist you right away with this matter. Let me check your account status..."
+        ];
+        
+        const supportMessage = {
+          id: chatMessages.length + 2,
+          text: responses[Math.floor(Math.random() * responses.length)],
+          sender: "support",
+          timestamp: new Date().toISOString()
+        };
+        
+        setIsTyping(false);
+        setChatMessages(prev => [...prev, supportMessage]);
+      }, 2000);
+    };
+
+    // Contact form submission with enhanced feedback
+    const handleContactSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      toast({
+        title: "Message Sent Successfully! 🎉",
+        description: "Thank you for contacting THORX. Our team will respond within 24 hours.",
+        variant: "default",
+      });
+      setContactForm({ name: "", email: "", subject: "", description: "" });
+    };
+
+    const formatTime = (timestamp: string) => {
+      return new Date(timestamp).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    return (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+        {/* Enhanced Hero Section with Cinematic Design */}
+        <div className="wireframe-border p-8 mb-8 relative overflow-hidden">
+          {/* Background Grid Pattern */}
+          <div className="absolute inset-0 opacity-5">
+            <div className="grid grid-cols-8 md:grid-cols-12 h-full">
+              {Array.from({ length: 96 }).map((_, i) => (
+                <div key={i} className="border border-black"></div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="text-center mb-8 relative z-10">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 border-2 border-black mb-6 transform transition-all duration-300 hover:scale-105">
+              <LifeBuoy className="w-6 h-6" />
+              <TechnicalLabel text="HELP PROTOCOL v3.47" className="text-white font-black text-lg" />
+            </div>
+            <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-6 tracking-tighter leading-none">
+              GET <span className="text-primary bg-primary/10 px-3 py-1 inline-block border-2 border-primary">SUPPORT</span><br />
+              <span className="bg-gradient-to-r from-black to-primary bg-clip-text text-transparent">24/7 ASSISTANCE</span>
+            </h1>
+            <div className="max-w-3xl mx-auto mb-8">
+              <p className="text-xl md:text-2xl text-muted-foreground mb-4 leading-relaxed">
+                Find answers • Get instant help • Connect with experts
+              </p>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="text-center p-3 bg-primary/10 border border-primary/30">
+                  <TechnicalLabel text="INSTANT CHAT" className="text-primary font-black" />
+                </div>
+                <div className="text-center p-3 bg-black text-white border-2 border-black">
+                  <TechnicalLabel text="24H RESPONSE" className="text-white font-black" />
+                </div>
+                <div className="text-center p-3 bg-primary/10 border border-primary/30">
+                  <TechnicalLabel text="EXPERT TEAM" className="text-primary font-black" />
+                </div>
+              </div>
+            </div>
+            <Barcode className="w-48 md:w-64 h-12 md:h-16 mx-auto opacity-60" />
+          </div>
+        </div>
+
+        {/* Enhanced Tab System with Industrial Design */}
+        <div className="relative">
+          {/* Tab Navigation with Enhanced Styling */}
+          <div className="mb-8">
+            <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
+              <div className="bg-black p-2 border-4 border-black mb-6">
+                <TabsList className="grid w-full grid-cols-3 bg-transparent gap-2 h-auto p-0">
+                  <TabsTrigger 
+                    value="guide" 
+                    className="data-[state=active]:bg-primary data-[state=active]:text-black data-[state=inactive]:bg-transparent data-[state=inactive]:text-white data-[state=inactive]:border-2 data-[state=inactive]:border-primary/50 font-black py-4 px-6 transition-all duration-300 hover:bg-primary/20"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <Book className="w-6 h-6" />
+                      <TechnicalLabel text="HELP GUIDE" className="text-sm" />
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="chat" 
+                    className="data-[state=active]:bg-primary data-[state=active]:text-black data-[state=inactive]:bg-transparent data-[state=inactive]:text-white data-[state=inactive]:border-2 data-[state=inactive]:border-primary/50 font-black py-4 px-6 transition-all duration-300 hover:bg-primary/20"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <MessageCircle className="w-6 h-6" />
+                      <TechnicalLabel text="LIVE SUPPORT" className="text-sm" />
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="contact" 
+                    className="data-[state=active]:bg-primary data-[state=active]:text-black data-[state=inactive]:bg-transparent data-[state=inactive]:text-white data-[state=inactive]:border-2 data-[state=inactive]:border-primary/50 font-black py-4 px-6 transition-all duration-300 hover:bg-primary/20"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <Mail className="w-6 h-6" />
+                      <TechnicalLabel text="CONTACT TEAM" className="text-sm" />
+                    </div>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              {/* Tab Content with Enhanced Layouts */}
+              <div className="min-h-[600px]">
+                {/* Guide Tab - Enhanced Layout */}
+                <TabsContent value="guide" className="mt-0 space-y-8">
+                  {/* Quick Help Overview */}
+                  <div className="grid lg:grid-cols-3 gap-6 mb-8">
+                    <div className="wireframe-section p-6 bg-primary/5 hover:bg-primary/10 transition-all duration-300 group cursor-pointer">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-primary mx-auto mb-4 flex items-center justify-center border-2 border-black group-hover:scale-110 transition-transform">
+                          <Book className="w-8 h-8 text-black" />
+                        </div>
+                        <TechnicalLabel text="GETTING STARTED" className="text-primary font-black text-lg mb-2" />
+                        <TechnicalLabel text="Complete setup guide to start earning immediately" className="text-muted-foreground text-sm" />
+                      </div>
+                    </div>
+
+                    <div className="wireframe-section p-6 bg-black text-white hover:bg-primary hover:text-black transition-all duration-300 group cursor-pointer">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-primary mx-auto mb-4 flex items-center justify-center border-2 border-white group-hover:border-black group-hover:scale-110 transition-all">
+                          <DollarSign className="w-8 h-8 text-black" />
+                        </div>
+                        <TechnicalLabel text="MAXIMIZE EARNINGS" className="group-hover:text-black text-primary font-black text-lg mb-2" />
+                        <TechnicalLabel text="Advanced strategies for optimal income generation" className="group-hover:text-black/80 text-white/80 text-sm" />
+                      </div>
+                    </div>
+
+                    <div className="wireframe-section p-6 bg-primary/5 hover:bg-primary/10 transition-all duration-300 group cursor-pointer">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-primary mx-auto mb-4 flex items-center justify-center border-2 border-black group-hover:scale-110 transition-transform">
+                          <CreditCard className="w-8 h-8 text-black" />
+                        </div>
+                        <TechnicalLabel text="FAST WITHDRAWALS" className="text-primary font-black text-lg mb-2" />
+                        <TechnicalLabel text="Secure payment methods and instant processing" className="text-muted-foreground text-sm" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comprehensive Help Sections */}
+                  <div className="grid lg:grid-cols-2 gap-8">
+                    {/* Left Column - Main Help Topics */}
+                    <div className="space-y-6">
+                      <div className="wireframe-border bg-white p-8">
+                        <div className="border-b-2 border-primary pb-4 mb-6">
+                          <div className="flex items-center gap-3">
+                            <Target className="w-8 h-8 text-primary" />
+                            <TechnicalLabel text="CORE PLATFORM FEATURES" className="text-foreground text-2xl font-black" />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-6">
+                          {[
+                            {
+                              icon: Eye,
+                              title: "AD WATCHING SYSTEM",
+                              desc: "Learn how our advanced ad watching system works. Understand different ad types, earning rates, and daily limits to maximize your income potential.",
+                              color: "bg-blue-500"
+                            },
+                            {
+                              icon: Users,
+                              title: "REFERRAL NETWORK",
+                              desc: "Build your passive income stream with our referral program. Get 25% lifetime commission and unlock additional earning tiers.",
+                              color: "bg-green-500"
+                            },
+                            {
+                              icon: Wallet,
+                              title: "PAYMENT PROCESSING",
+                              desc: "Fast, secure withdrawals through multiple payment methods including JazzCash, EasyPaisa, and direct bank transfers.",
+                              color: "bg-purple-500"
+                            }
+                          ].map((item, index) => (
+                            <div key={index} className="flex gap-4 p-4 border border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300">
+                              <div className={`w-12 h-12 ${item.color} flex items-center justify-center border-2 border-black`}>
+                                <item.icon className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <TechnicalLabel text={item.title} className="text-primary font-black text-lg mb-2" />
+                                <TechnicalLabel text={item.desc} className="text-muted-foreground text-sm leading-relaxed" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column - FAQ and Quick Actions */}
+                    <div className="space-y-6">
+                      <div className="wireframe-border bg-black text-white p-8">
+                        <div className="border-b-2 border-primary pb-4 mb-6">
+                          <div className="flex items-center gap-3">
+                            <HelpCircle className="w-8 h-8 text-primary" />
+                            <TechnicalLabel text="FREQUENTLY ASKED" className="text-white text-2xl font-black" />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          {[
+                            {
+                              q: "How much can I earn daily?",
+                              a: "Daily earnings range from PKR 100-500 depending on ads watched and referral activity."
+                            },
+                            {
+                              q: "Is THORX available worldwide?",
+                              a: "Currently available in Pakistan with plans to expand to more regions soon."
+                            },
+                            {
+                              q: "How do I track my progress?",
+                              a: "Use the Dashboard section to monitor real-time earnings, referrals, and withdrawal history."
+                            }
+                          ].map((faq, index) => (
+                            <div key={index} className="border border-primary/30 p-4 hover:bg-primary/10 transition-colors">
+                              <TechnicalLabel text={faq.q} className="text-primary font-black mb-2" />
+                              <TechnicalLabel text={faq.a} className="text-white/80 text-sm" />
+                            </div>
+                          ))}
+                        </div>
+
+                        <Button className="w-full mt-6 bg-primary hover:bg-primary/90 text-black font-black py-3 border-2 border-primary">
+                          <Book className="w-4 h-4 mr-2" />
+                          VIEW COMPLETE FAQ
+                        </Button>
+                      </div>
+
+                      {/* Quick Actions Panel */}
+                      <div className="wireframe-section p-6">
+                        <TechnicalLabel text="QUICK ACTIONS" className="text-foreground text-xl font-black mb-4" />
+                        <div className="space-y-3">
+                          {[
+                            { icon: Download, text: "DOWNLOAD MOBILE APP", color: "bg-primary" },
+                            { icon: MessageCircle, text: "JOIN COMMUNITY", color: "bg-black" },
+                            { icon: Star, text: "RATE OUR PLATFORM", color: "bg-primary" }
+                          ].map((action, index) => (
+                            <Button key={index} variant="outline" className={`w-full ${action.color} ${action.color === 'bg-primary' ? 'text-black hover:bg-primary/90' : 'text-white hover:bg-black/90'} font-black py-3 border-2 border-black`}>
+                              <action.icon className="w-4 h-4 mr-2" />
+                              {action.text}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Chat Tab - Enhanced WhatsApp-like Interface */}
+                <TabsContent value="chat" className="mt-0">
+                  <div className="wireframe-border bg-gradient-to-br from-primary/5 to-white p-8 max-h-[700px] flex flex-col">
+                    {/* Enhanced Chat Header */}
+                    <div className="bg-black text-white p-6 border-2 border-primary mb-6 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center border-4 border-white">
+                            <TechnicalLabel text="TS" className="text-black font-black text-lg" />
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+                        </div>
+                        <div>
+                          <TechnicalLabel text="THORX Support Team" className="text-white font-black text-xl" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <TechnicalLabel text="Online • Typically replies in seconds" className="text-primary text-sm" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <TechnicalLabel text="LIVE SUPPORT" className="text-primary font-black text-sm" />
+                        <TechnicalLabel text="ID: #HELP_571" className="text-white/60 text-xs" />
+                      </div>
+                    </div>
+
+                    {/* Enhanced Chat Messages */}
+                    <div className="flex-1 overflow-y-auto space-y-4 mb-6 max-h-[400px] bg-white/50 p-4 border-2 border-muted-foreground/20">
+                      {chatMessages.map((message) => (
+                        <div 
+                          key={message.id} 
+                          className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                        >
+                          <div 
+                            className={`max-w-[80%] p-4 border-2 shadow-lg ${
+                              message.sender === 'user' 
+                                ? 'bg-primary text-black border-black order-2' 
+                                : 'bg-black text-white border-primary order-1'
+                            }`}
+                          >
+                            <TechnicalLabel 
+                              text={message.text} 
+                              className={`${message.sender === 'user' ? 'text-black' : 'text-white'} leading-relaxed`} 
+                            />
+                            <div className="mt-2 flex items-center justify-between">
+                              <TechnicalLabel 
+                                text={formatTime(message.timestamp)} 
+                                className={`text-xs ${message.sender === 'user' ? 'text-black/60' : 'text-white/60'}`} 
+                              />
+                              {message.sender === 'user' && (
+                                <CheckCircle2 className="w-3 h-3 text-green-600" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Typing Indicator */}
+                      {isTyping && (
+                        <div className="flex justify-start animate-fadeIn">
+                          <div className="bg-black text-white p-4 border-2 border-primary">
+                            <div className="flex items-center gap-2">
+                              <div className="flex space-x-1">
+                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                              </div>
+                              <TechnicalLabel text="Support team is typing..." className="text-primary text-sm" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Enhanced Chat Input */}
+                    <div className="bg-black border-2 border-primary p-4">
+                      <div className="flex gap-3">
+                        <input
+                          type="text"
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          placeholder="Type your message here..."
+                          className="flex-1 bg-white border-2 border-primary text-black px-4 py-3 focus:outline-none focus:border-primary/80 placeholder-black/50 font-medium"
+                          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        />
+                        <Button
+                          onClick={sendMessage}
+                          className="bg-primary hover:bg-primary/90 text-black px-8 py-3 font-black border-2 border-white transform hover:scale-105 transition-all"
+                          disabled={!newMessage.trim()}
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                        </Button>
+                      </div>
+                      <div className="mt-3 text-center">
+                        <TechnicalLabel text="🔒 SECURE CHAT • PRESS ENTER TO SEND • AVERAGE RESPONSE: 30 SECONDS" className="text-primary text-xs" />
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Contact Tab - Enhanced Form Design */}
+                <TabsContent value="contact" className="mt-0">
+                  <div className="grid lg:grid-cols-5 gap-8">
+                    {/* Contact Form - 3 columns */}
+                    <div className="lg:col-span-3 wireframe-border bg-white p-8">
+                      <div className="border-b-2 border-black pb-6 mb-8">
+                        <div className="flex items-center gap-4 mb-3">
+                          <div className="w-12 h-12 bg-primary flex items-center justify-center border-2 border-black">
+                            <Mail className="w-6 h-6 text-black" />
+                          </div>
+                          <div>
+                            <TechnicalLabel text="CONTACT THORX TEAM" className="text-foreground text-2xl font-black" />
+                            <TechnicalLabel text="PRIORITY SUPPORT PROTOCOL v2.1" className="text-muted-foreground text-sm" />
+                          </div>
+                        </div>
+                        <TechnicalLabel text="Send us a detailed message and receive priority response within 24 hours" className="text-muted-foreground" />
+                      </div>
+
+                      <form onSubmit={handleContactSubmit} className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <TechnicalLabel text="FULL NAME *" className="text-foreground mb-3 font-black text-lg" />
+                            <input
+                              type="text"
+                              required
+                              value={contactForm.name}
+                              onChange={(e) => setContactForm(prev => ({...prev, name: e.target.value}))}
+                              placeholder="Enter your full name"
+                              className="w-full bg-black border-4 border-primary text-primary px-6 py-4 focus:outline-none focus:border-primary/80 placeholder-primary/50 text-lg font-bold"
+                            />
+                          </div>
+                          <div>
+                            <TechnicalLabel text="EMAIL ADDRESS *" className="text-foreground mb-3 font-black text-lg" />
+                            <input
+                              type="email"
+                              required
+                              value={contactForm.email}
+                              onChange={(e) => setContactForm(prev => ({...prev, email: e.target.value}))}
+                              placeholder="Enter your email"
+                              className="w-full bg-black border-4 border-primary text-primary px-6 py-4 focus:outline-none focus:border-primary/80 placeholder-primary/50 text-lg font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <TechnicalLabel text="SUBJECT *" className="text-foreground mb-3 font-black text-lg" />
+                          <input
+                            type="text"
+                            required
+                            value={contactForm.subject}
+                            onChange={(e) => setContactForm(prev => ({...prev, subject: e.target.value}))}
+                            placeholder="Brief description of your issue"
+                            className="w-full bg-black border-4 border-primary text-primary px-6 py-4 focus:outline-none focus:border-primary/80 placeholder-primary/50 text-lg font-bold"
+                          />
+                        </div>
+
+                        <div>
+                          <TechnicalLabel text="PROBLEM DESCRIPTION *" className="text-foreground mb-3 font-black text-lg" />
+                          <textarea
+                            required
+                            rows={8}
+                            value={contactForm.description}
+                            onChange={(e) => setContactForm(prev => ({...prev, description: e.target.value}))}
+                            placeholder="Please provide detailed information about your issue including:&#10;• What were you trying to do?&#10;• What happened instead?&#10;• Any error messages&#10;• Steps you've already tried&#10;• Your account information (if relevant)"
+                            className="w-full bg-black border-4 border-primary text-primary px-6 py-4 focus:outline-none focus:border-primary/80 placeholder-primary/50 resize-none text-lg font-bold"
+                          />
+                        </div>
+
+                        <Button
+                          type="submit"
+                          className="w-full bg-primary hover:bg-primary/90 text-black py-6 text-xl font-black border-4 border-black transform hover:scale-105 transition-all duration-300"
+                        >
+                          <Mail className="w-6 h-6 mr-3" />
+                          SEND MESSAGE TO TEAM
+                        </Button>
+
+                        <div className="bg-primary/10 border-2 border-primary/30 p-4 text-center">
+                          <TechnicalLabel text="⚡ PRIORITY SUPPORT • 24H RESPONSE GUARANTEE • SECURE TRANSMISSION" className="text-primary font-black text-sm" />
+                        </div>
+                      </form>
+                    </div>
+
+                    {/* Contact Information & Stats - 2 columns */}
+                    <div className="lg:col-span-2 space-y-6">
+                      {/* Direct Contact */}
+                      <div className="wireframe-section p-6 bg-black text-white">
+                        <div className="border-b-2 border-primary pb-4 mb-6">
+                          <TechnicalLabel text="DIRECT CONTACT" className="text-primary text-xl font-black" />
+                          <TechnicalLabel text="INSTANT COMMUNICATION CHANNELS" className="text-white/60 text-sm" />
+                        </div>
+                        
+                        <div className="space-y-6">
+                          {[
+                            {
+                              icon: Mail,
+                              title: "EMAIL SUPPORT",
+                              value: "support@thorx.com",
+                              subtitle: "Priority response: 24 hours",
+                              color: "text-blue-400"
+                            },
+                            {
+                              icon: Phone,
+                              title: "PHONE SUPPORT",
+                              value: "+92 300 1234567",
+                              subtitle: "Available: 9 AM - 6 PM PST",
+                              color: "text-green-400"
+                            },
+                            {
+                              icon: MessageCircle,
+                              title: "LIVE CHAT",
+                              value: "Click Live Support tab",
+                              subtitle: "Average response: 30 seconds",
+                              color: "text-primary"
+                            }
+                          ].map((contact, index) => (
+                            <div key={index} className="flex items-start gap-4 p-4 border border-primary/30 hover:bg-primary/10 transition-colors">
+                              <contact.icon className={`w-8 h-8 ${contact.color} mt-1`} />
+                              <div className="flex-1">
+                                <TechnicalLabel text={contact.title} className="text-primary font-black mb-1" />
+                                <TechnicalLabel text={contact.value} className="text-white text-lg mb-1" />
+                                <TechnicalLabel text={contact.subtitle} className="text-white/60 text-xs" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Support Statistics */}
+                      <div className="wireframe-section p-6">
+                        <div className="border-b-2 border-black pb-4 mb-6">
+                          <TechnicalLabel text="SUPPORT PERFORMANCE" className="text-foreground text-xl font-black" />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          {[
+                            { value: "99.8%", label: "SATISFACTION", color: "bg-green-500" },
+                            { value: "< 2h", label: "AVG RESPONSE", color: "bg-blue-500" },
+                            { value: "24/7", label: "AVAILABILITY", color: "bg-purple-500" },
+                            { value: "5000+", label: "ISSUES SOLVED", color: "bg-orange-500" }
+                          ].map((stat, index) => (
+                            <div key={index} className={`${stat.color} text-white p-4 text-center border-2 border-black`}>
+                              <div className="text-2xl font-black mb-1">{stat.value}</div>
+                              <TechnicalLabel text={stat.label} className="text-white/90 text-xs font-black" />
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-6 space-y-3">
+                          <TechnicalLabel text="RESPONSE TIME GUARANTEE:" className="text-foreground font-black" />
+                          {[
+                            "Technical issues: 2-4 hours",
+                            "Payment inquiries: 24 hours", 
+                            "Account problems: 12 hours",
+                            "General questions: 24 hours"
+                          ].map((item, index) => (
+                            <div key={index} className="flex items-center gap-3">
+                              <CheckCircle2 className="w-4 h-4 text-green-500" />
+                              <TechnicalLabel text={item} className="text-muted-foreground text-sm" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
