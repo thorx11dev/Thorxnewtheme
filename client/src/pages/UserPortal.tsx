@@ -1276,113 +1276,349 @@ export default function UserPortal() {
     );
   }
 
-  // Payout Section
+  // Enhanced Payout Section - Wireframe Industrial Design
   function renderPayoutSection() {
+    // Mock withdrawal history data for demonstration
+    const withdrawalHistory = [
+      {
+        id: "wd_001",
+        amount: "1,250.00",
+        method: "JazzCash",
+        account: "03XX-XXXXXXX45",
+        status: "COMPLETED",
+        date: "2024-01-15T10:30:00Z",
+        transactionId: "TXN_789456123"
+      },
+      {
+        id: "wd_002", 
+        amount: "850.50",
+        method: "EasyPaisa",
+        account: "03XX-XXXXXXX23",
+        status: "PROCESSING",
+        date: "2024-01-14T14:20:00Z",
+        transactionId: "TXN_654321987"
+      },
+      {
+        id: "wd_003",
+        amount: "2,100.75",
+        method: "Bank Transfer",
+        account: "****-****-8901",
+        status: "PENDING",
+        date: "2024-01-13T09:15:00Z",
+        transactionId: "TXN_147258369"
+      }
+    ];
+
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'COMPLETED': return 'bg-green-500 text-white';
+        case 'PROCESSING': return 'bg-yellow-500 text-black';
+        case 'PENDING': return 'bg-orange-500 text-white';
+        case 'FAILED': return 'bg-red-500 text-white';
+        default: return 'bg-gray-500 text-white';
+      }
+    };
+
+    const getMethodIcon = (method: string) => {
+      switch (method) {
+        case 'JazzCash': return '📱';
+        case 'EasyPaisa': return '💳';
+        case 'Bank Transfer': return '🏦';
+        default: return '💰';
+      }
+    };
+
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="mb-2">
-            <TechnicalLabel text="PAYOUT CENTER" className="text-foreground" />
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+        {/* Hero Section - Wireframe Style */}
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <CreditCard className="w-5 h-5" />
+              <TechnicalLabel text="PAYOUT PROTOCOL v2.8" className="text-white" />
+            </div>
+            <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              WITHDRAW YOUR <span className="text-primary">EARNINGS</span><br />
+              INSTANT PROCESSING
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Fast, secure, and reliable withdrawal system with real-time processing
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter">
-            WITHDRAW YOUR <span className="text-primary">EARNINGS</span><br />
-            INSTANT PAYMENTS
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Fast, secure withdrawals to your preferred payment method
-          </p>
-          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
         </div>
 
-        {/* Balance Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card className="border-2 border-primary bg-primary text-black overflow-hidden">
-            <CardContent className="p-6 text-center">
-              <Wallet className="w-12 h-12 mx-auto mb-4" />
-              <div className="text-3xl font-black mb-2">{formatCurrency(displayUser?.availableBalance || '0.00')}</div>
-              <TechnicalLabel text="AVAILABLE BALANCE" className="text-black" />
-            </CardContent>
-          </Card>
+        {/* Enhanced Balance Overview - 3 Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Available Balance */}
+          <div className="p-6 text-center bg-primary text-black border-2 border-black hover:bg-primary/90 transition-all duration-300">
+            <Wallet className="w-12 h-12 mx-auto mb-4" />
+            <div className="text-3xl md:text-4xl font-black mb-2">{formatCurrency(displayUser?.availableBalance || '0.00')}</div>
+            <TechnicalLabel text="AVAILABLE BALANCE" className="text-black text-xs" />
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-black/80 text-xs" />
+            </div>
+          </div>
 
-          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 text-center">
-              <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">{formatCurrency(displayUser?.totalEarnings || '0.00')}</div>
-              <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground" />
-            </CardContent>
-          </Card>
+          {/* Total Earned */}
+          <div className="wireframe-section p-6 text-center hover:bg-white transition-colors duration-200">
+            <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
+            <div className="text-3xl md:text-4xl font-black mb-2 text-primary">{formatCurrency(displayUser?.totalEarnings || '0.00')}</div>
+            <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <TrendingUp className="w-4 h-4 text-green-500" />
+              <TechnicalLabel text="+15.2% THIS MONTH" className="text-green-500 text-xs" />
+            </div>
+          </div>
 
-          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 text-center">
-              <Clock className="w-12 h-12 mx-auto mb-4 text-primary" />
-              <div className="text-3xl font-black mb-2 text-primary">0</div>
-              <TechnicalLabel text="PENDING WITHDRAWALS" className="text-muted-foreground" />
-            </CardContent>
-          </Card>
+          {/* Pending Withdrawals */}
+          <div className="bg-black text-white p-6 text-center border-2 border-black hover:bg-primary hover:text-black transition-all duration-300">
+            <Clock className="w-12 h-12 mx-auto mb-4 text-primary" />
+            <div className="text-3xl md:text-4xl font-black mb-2 text-primary">
+              {withdrawalHistory.filter(w => w.status === 'PROCESSING' || w.status === 'PENDING').length}
+            </div>
+            <TechnicalLabel text="PENDING WITHDRAWALS" className="text-white/80 text-xs" />
+            <div className="mt-2">
+              <TechnicalLabel text="IN PROCESSING QUEUE" className="text-primary text-xs" />
+            </div>
+          </div>
         </div>
 
-        {/* Withdrawal Form */}
-        <Card className="border-2 border-primary bg-black text-white mb-12 overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="WITHDRAW FUNDS" className="text-primary text-xl" />
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-white mb-2" />
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                />
+        {/* Enhanced Withdrawal Interface */}
+        <div className="grid lg:grid-cols-3 gap-8 mb-8">
+          {/* Withdrawal Form - Left 2 columns */}
+          <div className="lg:col-span-2 wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Download className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="WITHDRAWAL INTERFACE" className="text-foreground text-lg font-black" />
               </div>
+              <TechnicalLabel text="PROTOCOL: INSTANT_PAYOUT_v2.8" className="text-muted-foreground text-xs" />
+            </div>
+
+            <div className="space-y-6">
+              {/* Amount and Method Selection */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-foreground mb-3 font-black" />
+                  <div className="bg-black border-2 border-primary p-4">
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      className="w-full bg-transparent text-primary text-2xl font-black outline-none placeholder-primary/50"
+                    />
+                    <TechnicalLabel text="PKR (Pakistani Rupee)" className="text-white/60 text-xs mt-1" />
+                  </div>
+                </div>
+
+                <div>
+                  <TechnicalLabel text="PAYMENT METHOD" className="text-foreground mb-3 font-black" />
+                  <div className="bg-primary/10 border-2 border-primary p-4">
+                    <select className="w-full bg-transparent text-foreground text-lg font-black outline-none">
+                      <option value="" className="bg-black text-white">SELECT PAYMENT METHOD</option>
+                      <option value="jazzcash" className="bg-black text-white">📱 JazzCash Mobile Wallet</option>
+                      <option value="easypaisa" className="bg-black text-white">💳 EasyPaisa Digital Wallet</option>
+                      <option value="bank" className="bg-black text-white">🏦 Bank Transfer (ACH)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Details */}
               <div>
-                <TechnicalLabel text="PAYMENT METHOD" className="text-white mb-2" />
-                <select className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary">
-                  <option value="">SELECT METHOD</option>
-                  <option value="jazzcash">JazzCash</option>
-                  <option value="easypaisa">EasyPaisa</option>
-                  <option value="bank">Bank Transfer</option>
-                </select>
+                <TechnicalLabel text="ACCOUNT DETAILS" className="text-foreground mb-3 font-black" />
+                <div className="bg-black border-2 border-primary p-4">
+                  <input
+                    type="text"
+                    placeholder="Account number or phone number"
+                    className="w-full bg-transparent text-primary text-lg font-black outline-none placeholder-primary/50"
+                  />
+                  <TechnicalLabel text="SECURE: All data encrypted with AES-256" className="text-white/60 text-xs mt-2" />
+                </div>
+              </div>
+
+              {/* Fee Calculator */}
+              <div className="bg-muted/20 border-2 border-muted-foreground/30 p-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex justify-between">
+                    <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-muted-foreground" />
+                    <TechnicalLabel text="PKR 0.00" className="text-foreground font-black" />
+                  </div>
+                  <div className="flex justify-between">
+                    <TechnicalLabel text="PROCESSING FEE:" className="text-muted-foreground" />
+                    <TechnicalLabel text="PKR 15.00" className="text-foreground font-black" />
+                  </div>
+                  <div className="flex justify-between col-span-2 border-t border-muted-foreground/30 pt-2">
+                    <TechnicalLabel text="NET AMOUNT:" className="text-primary font-black" />
+                    <TechnicalLabel text="PKR 0.00" className="text-primary font-black text-lg" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90 text-black px-6 py-4 text-lg font-black border-2 border-black"
+                  data-testid="button-withdraw"
+                >
+                  <Download className="w-5 h-5 mr-3" />
+                  PROCESS WITHDRAWAL
+                </Button>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    SCHEDULE LATER
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    QUICK WITHDRAW
+                  </Button>
+                </div>
+              </div>
+
+              {/* Terms Notice */}
+              <div className="bg-primary/5 border border-primary/30 p-3">
+                <TechnicalLabel text="TERMS: Minimum withdrawal PKR 100.00 • Processing time: 24-48 hours • Fees may apply" className="text-muted-foreground text-center text-xs" />
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stats - Right column */}
+          <div className="wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Activity className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="WITHDRAWAL STATS" className="text-foreground text-lg font-black" />
+              </div>
+              <TechnicalLabel text="REAL-TIME METRICS" className="text-muted-foreground text-xs" />
+            </div>
+
+            {/* Quick Stats */}
+            <div className="space-y-4">
+              <div className="bg-black text-white p-4 border-2 border-primary text-center">
+                <div className="text-2xl font-black text-primary mb-1">24h</div>
+                <TechnicalLabel text="AVG PROCESSING TIME" className="text-white/80 text-xs" />
+              </div>
+              
+              <div className="text-center p-4 bg-primary text-black border-2 border-black">
+                <div className="text-2xl font-black mb-1">99.8%</div>
+                <TechnicalLabel text="SUCCESS RATE" className="text-black/80 text-xs" />
+              </div>
+              
+              <div className="text-center p-4 bg-muted border border-muted-foreground/30">
+                <div className="text-2xl font-black text-foreground mb-1">PKR 15</div>
+                <TechnicalLabel text="PROCESSING FEE" className="text-muted-foreground text-xs" />
               </div>
             </div>
 
-            <div>
-              <TechnicalLabel text="ACCOUNT DETAILS" className="text-white mb-2" />
-              <input
-                type="text"
-                placeholder="Account number or phone number"
-                className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
-              />
-            </div>
-
-            <div className="text-center">
+            {/* Quick Actions */}
+            <div className="mt-6 space-y-3">
               <Button
-                className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary"
-                data-testid="button-withdraw"
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
               >
-                <Download className="w-5 h-5 mr-3" />
-                REQUEST WITHDRAWAL
+                <History className="w-4 h-4 mr-2" />
+                VIEW ALL HISTORY
               </Button>
-              <div className="mt-4">
-                <TechnicalLabel text="Minimum withdrawal: PKR 100.00" className="text-muted-foreground" />
+              <Button
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                EXPORT RECORDS
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Payment History */}
+        <div className="wireframe-border bg-primary/5 p-6">
+          <div className="border-b-2 border-primary pb-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <History className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="WITHDRAWAL TRANSACTION HISTORY" className="text-foreground text-lg font-black" />
+              </div>
+              <div className="bg-primary text-white px-3 py-1 border border-primary">
+                <TechnicalLabel text="LIVE UPDATES" className="text-white text-xs" />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Payment History */}
-        <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="PAYMENT HISTORY" className="text-primary text-xl" />
-          </CardHeader>
-          <CardContent className="text-center p-12">
-            <History className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <TechnicalLabel text="NO WITHDRAWALS YET" className="text-primary text-2xl" />
-            <TechnicalLabel text="Your withdrawal history will appear here" className="text-muted-foreground" />
-          </CardContent>
-        </Card>
+          {/* Transaction History */}
+          {withdrawalHistory.length > 0 ? (
+            <div className="space-y-4">
+              {withdrawalHistory.map((transaction) => (
+                <div key={transaction.id} className="wireframe-section p-4 hover:bg-white transition-colors duration-200">
+                  <div className="flex items-center justify-between mb-3">
+                    {/* Left side - Method and Amount */}
+                    <div className="flex items-center gap-4">
+                      <div className="text-2xl">{getMethodIcon(transaction.method)}</div>
+                      <div>
+                        <div className="text-lg font-black text-foreground mb-1">
+                          {formatCurrency(transaction.amount)}
+                        </div>
+                        <TechnicalLabel text={transaction.method} className="text-muted-foreground text-xs" />
+                      </div>
+                    </div>
+
+                    {/* Right side - Status and Date */}
+                    <div className="text-right">
+                      <div className={`inline-block px-3 py-1 text-xs font-black border-2 border-black ${getStatusColor(transaction.status)} mb-2`}>
+                        {transaction.status}
+                      </div>
+                      <div>
+                        <TechnicalLabel text={formatDate(transaction.date)} className="text-muted-foreground text-xs" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transaction Details */}
+                  <div className="border-t border-muted-foreground/20 pt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <TechnicalLabel text={`ACCOUNT: ${transaction.account}`} className="text-muted-foreground text-xs" />
+                      <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                      <TechnicalLabel text={`TXN: ${transaction.transactionId}`} className="text-muted-foreground text-xs" />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border border-primary text-primary hover:bg-primary hover:text-black text-xs px-3 py-1"
+                    >
+                      VIEW DETAILS
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center p-12">
+              <History className="w-16 h-16 mx-auto mb-4 text-primary opacity-60" />
+              <TechnicalLabel text="NO WITHDRAWAL HISTORY" className="text-primary text-2xl font-black mb-2" />
+              <TechnicalLabel text="Your withdrawal transactions will appear here once you make your first withdrawal" className="text-muted-foreground max-w-md mx-auto" />
+            </div>
+          )}
+
+          {/* Load More Button */}
+          {withdrawalHistory.length > 0 && (
+            <div className="mt-6 text-center">
+              <Button
+                variant="outline"
+                className="border-2 border-primary text-primary hover:bg-primary hover:text-black px-8 py-3 font-black"
+              >
+                LOAD MORE TRANSACTIONS
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
