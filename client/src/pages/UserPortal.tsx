@@ -1745,9 +1745,9 @@ export default function UserPortal() {
 
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
-        {/* Work Section Style Header */}
-        <div className="wireframe-border p-8 mb-8">
-          <div className="text-center mb-8">
+        {/* Work Section Style Header - Fixed Height */}
+        <div className="wireframe-border p-6 md:p-8 mb-8 min-h-[280px] flex items-center justify-center">
+          <div className="text-center">
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
               <LifeBuoy className="w-5 h-5" />
               <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white" />
@@ -1763,40 +1763,40 @@ export default function UserPortal() {
           </div>
         </div>
 
-        {/* Auth Page Style Tabs */}
+        {/* Auth Page Style Tabs - Fixed Container */}
         <div className="max-w-4xl mx-auto mb-8">
-          <div className="split-card bg-white border-3 border-black p-6 lg:p-8">
-            <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
-              {/* Tab Navigation - Auth Page Style */}
-              <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted border-2 border-black">
+          <div className="split-card bg-white border-3 border-black p-6 lg:p-8 min-h-[800px]">
+            <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full h-full">
+              {/* Tab Navigation - Auth Page Style - Fixed Height */}
+              <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted border-2 border-black h-16">
                 <TabsTrigger 
                   value="guide" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3 flex items-center justify-center"
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base h-full flex items-center justify-center"
                 >
                   AREA GUIDE
                 </TabsTrigger>
                 <TabsTrigger 
                   value="help" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3 flex items-center justify-center"
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base h-full flex items-center justify-center"
                 >
                   AREA HELP
                 </TabsTrigger>
                 <TabsTrigger 
                   value="contact" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3 flex items-center justify-center"
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base h-full flex items-center justify-center"
                 >
                   AREA CONTACT
                 </TabsTrigger>
               </TabsList>
 
-              {/* Tab Content */}
-              <div className="mt-6">
+              {/* Tab Content - Fixed Height Container */}
+              <div className="min-h-[650px]">
                 {/* Area Guide - Single Blank Sheet with Q&A Notes */}
-                <TabsContent value="guide" className="mt-0">
-                  <div className="bg-white border-2 border-black p-8 min-h-[600px]">
-                    <div className="text-center mb-8">
+                <TabsContent value="guide" className="mt-0 h-full">
+                  <div className="bg-white border-2 border-black p-6 md:p-8 h-full min-h-[650px] flex flex-col">
+                    <div className="text-center mb-6 md:mb-8">
                       <TechnicalLabel text="THORX SUPPORT GUIDE" className="mb-2" />
-                      <h3 className="text-2xl md:text-3xl font-black text-black">FREQUENTLY ASKED QUESTIONS</h3>
+                      <h3 className="text-xl md:text-2xl lg:text-3xl font-black text-black">FREQUENTLY ASKED QUESTIONS</h3>
                     </div>
 
                     <div className="space-y-6 max-w-4xl mx-auto">
@@ -1852,16 +1852,16 @@ export default function UserPortal() {
                 </TabsContent>
 
                 {/* Area Help - Telegram/WhatsApp Style Chat */}
-                <TabsContent value="help" className="mt-0">
-                  <div className="bg-white border-2 border-black overflow-hidden">
-                    {/* Chat Header - Telegram Style */}
-                    <div className="bg-primary text-black px-6 py-4 border-b-2 border-black">
-                      <div className="flex items-center gap-4">
+                <TabsContent value="help" className="mt-0 h-full">
+                  <div className="bg-white border-2 border-black overflow-hidden h-full min-h-[650px] flex flex-col">
+                    {/* Chat Header - Telegram Style - Fixed Height */}
+                    <div className="bg-primary text-black px-4 md:px-6 py-4 border-b-2 border-black flex-shrink-0 h-20">
+                      <div className="flex items-center gap-4 h-full">
                         <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center">
                           <TechnicalLabel text="TS" className="text-white font-black text-lg" />
                         </div>
                         <div>
-                          <h3 className="font-black text-lg">THORX Support Team</h3>
+                          <h3 className="font-black text-base md:text-lg">THORX Support Team</h3>
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                             <TechnicalLabel text="Online • Usually replies instantly" className="text-black/70 text-sm" />
@@ -1870,8 +1870,8 @@ export default function UserPortal() {
                       </div>
                     </div>
 
-                    {/* Chat Messages - WhatsApp Style */}
-                    <div className="bg-[#f0f2f5] min-h-[500px] p-4 space-y-3">
+                    {/* Chat Messages - WhatsApp Style - Fixed Height */}
+                    <div className="bg-[#f0f2f5] flex-1 p-4 space-y-3 overflow-y-auto" style={{ minHeight: '450px', maxHeight: '450px' }}>
                       {chatMessages.map((message) => (
                         <div 
                           key={message.id} 
@@ -1905,26 +1905,26 @@ export default function UserPortal() {
                       ))}
                     </div>
 
-                    {/* Chat Input - Modern Style */}
-                    <div className="bg-white border-t-2 border-black p-4">
-                      <div className="flex items-center gap-3">
+                    {/* Chat Input - Modern Style - Fixed Height */}
+                    <div className="bg-white border-t-2 border-black p-4 flex-shrink-0 h-24">
+                      <div className="flex items-center gap-3 mb-2">
                         <input
                           type="text"
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Type your message..."
-                          className="flex-1 bg-gray-100 border-2 border-gray-300 text-black px-4 py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium"
+                          className="flex-1 bg-gray-100 border-2 border-gray-300 text-black px-4 py-2 md:py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium text-sm md:text-base"
                           onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                         />
                         <Button
                           onClick={sendMessage}
-                          className="bg-primary hover:bg-primary/90 text-black px-6 py-3 font-black border-2 border-black rounded-lg"
+                          className="bg-primary hover:bg-primary/90 text-black px-4 md:px-6 py-2 md:py-3 font-black border-2 border-black rounded-lg"
                           disabled={!newMessage.trim()}
                         >
-                          <MessageCircle className="w-5 h-5" />
+                          <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
                         </Button>
                       </div>
-                      <div className="mt-2 text-center">
+                      <div className="text-center">
                         <TechnicalLabel text="Press Enter to send • Our support team is standing by 24/7" className="text-gray-500 text-xs" />
                       </div>
                     </div>
@@ -1932,13 +1932,14 @@ export default function UserPortal() {
                 </TabsContent>
 
                 {/* Area Contact - Registration Form Style */}
-                <TabsContent value="contact" className="mt-0">
-                  <div className="text-center mb-6">
-                    <TechnicalLabel text="DIRECT TEAM CONTACT" className="mb-2" />
-                    <h3 className="text-2xl md:text-3xl font-black text-black">SEND US A MESSAGE</h3>
-                  </div>
+                <TabsContent value="contact" className="mt-0 h-full">
+                  <div className="h-full min-h-[650px] flex flex-col">
+                    <div className="text-center mb-6 flex-shrink-0">
+                      <TechnicalLabel text="DIRECT TEAM CONTACT" className="mb-2" />
+                      <h3 className="text-xl md:text-2xl lg:text-3xl font-black text-black">SEND US A MESSAGE</h3>
+                    </div>
 
-                  <form onSubmit={handleContactSubmit} className="space-y-6 max-w-2xl mx-auto">
+                    <form onSubmit={handleContactSubmit} className="space-y-4 md:space-y-6 max-w-2xl mx-auto flex-1 flex flex-col justify-center">
                     <div>
                       <TechnicalLabel text="FULL NAME" className="mb-3 font-black" />
                       <div className="relative">
@@ -1995,30 +1996,31 @@ export default function UserPortal() {
                     </div>
 
                     <Button 
-                      type="submit"
-                      className="w-full bg-black text-white text-xl font-black py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black"
-                    >
-                      SEND MESSAGE TO TEAM →
-                    </Button>
-                  </form>
+                        type="submit"
+                        className="w-full bg-black text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black"
+                      >
+                        SEND MESSAGE TO TEAM →
+                      </Button>
+                    </form>
 
-                  {/* Contact Info */}
-                  <div className="mt-8 pt-6 border-t-2 border-black">
-                    <div className="grid md:grid-cols-3 gap-4 text-center">
-                      <div className="bg-black text-white p-4 border-2 border-black">
-                        <Mail className="w-8 h-8 mx-auto mb-2 text-primary" />
-                        <TechnicalLabel text="EMAIL" className="text-primary font-black mb-1" />
-                        <TechnicalLabel text="support@thorx.com" className="text-white text-sm" />
-                      </div>
-                      <div className="bg-primary text-black p-4 border-2 border-black">
-                        <Phone className="w-8 h-8 mx-auto mb-2" />
-                        <TechnicalLabel text="PHONE" className="text-black font-black mb-1" />
-                        <TechnicalLabel text="+92 300 1234567" className="text-black text-sm" />
-                      </div>
-                      <div className="bg-muted text-black p-4 border-2 border-black">
-                        <Clock className="w-8 h-8 mx-auto mb-2 text-primary" />
-                        <TechnicalLabel text="RESPONSE TIME" className="text-black font-black mb-1" />
-                        <TechnicalLabel text="Within 24 Hours" className="text-muted-foreground text-sm" />
+                    {/* Contact Info - Fixed at bottom */}
+                    <div className="mt-6 pt-4 md:pt-6 border-t-2 border-black flex-shrink-0">
+                      <div className="grid md:grid-cols-3 gap-4 text-center">
+                        <div className="bg-black text-white p-3 md:p-4 border-2 border-black">
+                          <Mail className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 text-primary" />
+                          <TechnicalLabel text="EMAIL" className="text-primary font-black mb-1 text-xs md:text-sm" />
+                          <TechnicalLabel text="support@thorx.com" className="text-white text-xs md:text-sm" />
+                        </div>
+                        <div className="bg-primary text-black p-3 md:p-4 border-2 border-black">
+                          <Phone className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2" />
+                          <TechnicalLabel text="PHONE" className="text-black font-black mb-1 text-xs md:text-sm" />
+                          <TechnicalLabel text="+92 300 1234567" className="text-black text-xs md:text-sm" />
+                        </div>
+                        <div className="bg-muted text-black p-3 md:p-4 border-2 border-black">
+                          <Clock className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 text-primary" />
+                          <TechnicalLabel text="RESPONSE TIME" className="text-black font-black mb-1 text-xs md:text-sm" />
+                          <TechnicalLabel text="Within 24 Hours" className="text-muted-foreground text-xs md:text-sm" />
+                        </div>
                       </div>
                     </div>
                   </div>
