@@ -1752,11 +1752,11 @@ export default function UserPortal() {
               <LifeBuoy className="w-5 h-5" />
               <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-2xl md:text-3xl font-black text-foreground mb-4 tracking-tighter leading-tight">
               GET <span className="text-primary">SUPPORT</span><br />
               INSTANT ASSISTANCE
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
               Professional support, instant solutions, comprehensive guidance
             </p>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
@@ -1768,22 +1768,22 @@ export default function UserPortal() {
           <div className="split-card bg-white border-3 border-black p-6 lg:p-8">
             <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
               {/* Tab Navigation - Auth Page Style */}
-              <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted border-2 border-black">
+              <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted border-2 border-black h-12">
                 <TabsTrigger 
                   value="guide" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3 flex items-center justify-center"
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base h-full flex items-center justify-center"
                 >
                   AREA GUIDE
                 </TabsTrigger>
                 <TabsTrigger 
                   value="help" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3 flex items-center justify-center"
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base h-full flex items-center justify-center"
                 >
                   AREA HELP
                 </TabsTrigger>
                 <TabsTrigger 
                   value="contact" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-base py-3 flex items-center justify-center"
+                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base h-full flex items-center justify-center"
                 >
                   AREA CONTACT
                 </TabsTrigger>
