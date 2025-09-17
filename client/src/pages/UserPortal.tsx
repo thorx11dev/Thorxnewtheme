@@ -1026,7 +1026,6 @@ export default function UserPortal() {
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
         </div>
-
         {/* Top Metrics Section - 4 Cards as per wireframe */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           {/* Total Referrals */}
@@ -1037,7 +1036,7 @@ export default function UserPortal() {
           </div>
 
           {/* Referral Earnings */}
-          <div className="wireframe-section p-4 md:p-6 text-center bg-primary text-white">
+          <div className="wireframe-section p-4 md:p-6 text-center text-[#f8f8f8] bg-[#000000]">
             <DollarSign className="w-8 h-8 mx-auto mb-3 text-white" />
             <div className="text-2xl md:text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
             <TechnicalLabel text="REFERRAL EARNINGS" className="text-white/80 text-xs" />
@@ -1057,7 +1056,6 @@ export default function UserPortal() {
             <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
           </div>
         </div>
-
         {/* Middle Section - Invitation Area and Leadership Area */}
         <div className="grid lg:grid-cols-2 gap-8 mb-8">
           {/* Invitation Area */}
@@ -1153,7 +1151,6 @@ export default function UserPortal() {
             </div>
           </div>
         </div>
-
         {/* Bottom Section - Leaderboard List (Blue highlighted in wireframe) */}
         <div className="wireframe-border bg-primary/5 p-6">
           <div className="border-b-2 border-primary pb-4 mb-6">
@@ -1233,7 +1230,6 @@ export default function UserPortal() {
             </Button>
           </div>
         </div>
-
         {/* Your Referrals Section */}
         {referralsData?.referrals && referralsData.referrals.length > 0 && (
           <div className="mt-8 wireframe-section p-6">
@@ -1276,7 +1272,6 @@ export default function UserPortal() {
             </div>
           </div>
         )}
-
         {/* Empty State for No Referrals */}
         {(!referralsData?.referrals || referralsData.referrals.length === 0) && (
           <div className="mt-8 wireframe-section p-12 text-center">
