@@ -565,8 +565,6 @@
   .industrial-button-secondary:hover {
     background: linear-gradient(145deg, #000, #333);
     color: #fff;
-  }
-
   .counter-display {
     font-size: 2rem;
   }
