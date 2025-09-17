@@ -565,6 +565,8 @@
   .industrial-button-secondary:hover {
     background: linear-gradient(145deg, #000, #333);
     color: #fff;
+  }
+
   .counter-display {
     font-size: 2rem;
   }
@@ -731,5 +733,204 @@
     border: 2px solid #000;
     padding: 8px;
     font-family: 'Inter', monospace;
+  }
+
+  /* Enhanced wireframe sections */
+  .wireframe-section {
+    @apply bg-white border-2 border-black relative;
+    background-image: 
+      linear-gradient(to right, #000 1px, transparent 1px),
+      linear-gradient(to bottom, #000 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: -1px -1px;
+  }
+
+  /* Enhanced animations for Help section */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  /* Enhanced chat message animations */
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .chat-message-support {
+    animation: slideInLeft 0.4s ease-out;
+  }
+
+  .chat-message-user {
+    animation: slideInRight 0.4s ease-out;
+  }
+
+  /* Enhanced tab styling */
+  .enhanced-tab-system .tabs-list {
+    background: linear-gradient(135deg, #000 0%, #333 100%);
+    border: 4px solid hsl(var(--primary));
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .enhanced-tab-trigger {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .enhanced-tab-trigger::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s;
+  }
+
+  .enhanced-tab-trigger:hover::before {
+    left: 100%;
+  }
+
+  /* Enhanced form styling */
+  .enhanced-contact-form input,
+  .enhanced-contact-form textarea {
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .enhanced-contact-form input:focus,
+  .enhanced-contact-form textarea:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.3);
+  }
+
+  /* Enhanced button hover effects */
+  .enhanced-button {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .enhanced-button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+
+  .enhanced-button:hover::before {
+    width: 300px;
+    height: 300px;
+  }
+
+  /* Enhanced grid overlay for sections */
+  .enhanced-grid-overlay {
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background-image: 
+      linear-gradient(to right, #000 1px, transparent 1px),
+      linear-gradient(to bottom, #000 1px, transparent 1px);
+    background-size: 30px 30px;
+    pointer-events: none;
+  }
+
+  /* Enhanced status indicators */
+  .status-online {
+    position: relative;
+  }
+
+  .status-online::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: inherit;
+    animation: pulse-ring 2s infinite;
+  }
+
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  /* Enhanced typography for technical labels */
+  .technical-label-enhanced {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 900;
+    position: relative;
+  }
+
+  /* Enhanced wireframe borders with corner accents */
+  .wireframe-border-enhanced {
+    @apply border-2 border-black relative;
+    position: relative;
+  }
+
+  .wireframe-border-enhanced::before,
+  .wireframe-border-enhanced::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 3px solid hsl(var(--primary));
+  }
+
+  .wireframe-border-enhanced::before {
+    top: -3px;
+    left: -3px;
+    border-bottom: none;
+    border-right: none;
+  }
+
+  .wireframe-border-enhanced::after {
+    bottom: -3px;
+    right: -3px;
+    border-top: none;
+    border-left: none;
   }
 }
