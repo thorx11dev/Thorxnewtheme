@@ -1337,7 +1337,7 @@ export default function UserPortal() {
               <CreditCard className="w-5 h-5" />
               <TechnicalLabel text="PAYOUT PROTOCOL v2.8" className="text-white" />
             </div>
-            <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
               WITHDRAW YOUR <span className="text-primary">EARNINGS</span><br />
               INSTANT PROCESSING
             </h1>
