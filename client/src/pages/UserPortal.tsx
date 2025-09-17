@@ -925,7 +925,7 @@ export default function UserPortal() {
                     <IconComponent className="w-5 h-5 md:w-6 md:h-6" />
                     <div className="text-center">
                       <TechnicalLabel text={tab.title} className="text-xs md:text-sm font-bold leading-none" />
-                      <div className="text-xs text-muted-foreground mt-1 leading-none">
+                      <div className="text-xs opacity-70 mt-1 leading-none">
                         {tab.count} available
                       </div>
                     </div>
