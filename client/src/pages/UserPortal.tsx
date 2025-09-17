@@ -928,24 +928,7 @@ export default function UserPortal() {
             {WORK_TABS.map((tab) => (
               <TabsContent key={tab.id} value={tab.id} className="mt-6">
                 <div className="space-y-6">
-                  {/* Tab Description */}
-                  <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
-                          <tab.icon className="w-8 h-8 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold text-foreground mb-2">{tab.title} CENTER</h3>
-                          <p className="text-muted-foreground mb-2">{tab.description}</p>
-                          <div className="flex items-center gap-4 text-sm">
-                            <span className="text-primary font-semibold">Earn: {tab.earnings}</span>
-                            <span className="text-muted-foreground">Available: {tab.count}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  
 
                   {/* Enhanced Video Player for active tab */}
                   {tab.id === activeWorkTab && (
