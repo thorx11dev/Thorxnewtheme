@@ -647,18 +647,21 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
-        <div className="text-center mb-8">
-          <div className="mb-3">
-            <TechnicalLabel text="EARNING DASHBOARD" className="text-muted-foreground" />
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <Activity className="w-5 h-5" />
+              <TechnicalLabel text="DASHBOARD PROTOCOL v4.12" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              WELCOME BACK, <span className="text-primary">{displayUser?.firstName || "GUEST"}</span><br />
+              PERFORMANCE OVERVIEW
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Track your earnings, manage referrals, and monitor your progress in real-time
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-foreground mb-4 tracking-tighter leading-tight">
-            WELCOME BACK,<br />
-            <span className="text-primary">{displayUser?.firstName || "GUEST"}</span>
-          </h1>
-          <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-xl mx-auto leading-relaxed">
-            Track your earnings, manage referrals, and monitor your progress in real-time
-          </p>
-          <Barcode className="w-20 md:w-24 h-4 md:h-5 mx-auto opacity-60" />
         </div>
 
         {/* Key Metrics Cards */}
@@ -900,19 +903,21 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Enhanced Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <Briefcase className="w-4 h-4" />
-            <TechnicalLabel text="WORK CENTER" className="text-primary" />
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <Briefcase className="w-5 h-5" />
+              <TechnicalLabel text="WORK PROTOCOL v3.21" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              START <span className="text-primary">EARNING</span><br />
+              WATCH & EARN REWARDS
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Watch advertisements, complete tasks, and earn real money daily
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
-            START <span className="text-primary">EARNING</span><br />
-            WATCH & EARN REWARDS
-          </h1>
-          <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
-            Watch advertisements, complete tasks, and earn real money daily
-          </p>
-          <Barcode className="w-24 md:w-32 h-6 md:h-8 mx-auto opacity-60" />
         </div>
 
         {/* Enhanced Metrics Cards */}
@@ -1628,19 +1633,21 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <LifeBuoy className="w-4 h-4" />
-            <TechnicalLabel text="HELP CENTER" className="text-primary" />
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <LifeBuoy className="w-5 h-5" />
+              <TechnicalLabel text="HELP PROTOCOL v1.85" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              GET <span className="text-primary">SUPPORT</span><br />
+              24/7 ASSISTANCE
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Find answers, get help, and connect with our support team
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
-            GET <span className="text-primary">SUPPORT</span><br />
-            24/7 ASSISTANCE
-          </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Find answers, get help, and connect with our support team
-          </p>
-          <Barcode className="w-48 h-10 mx-auto opacity-60" />
         </div>
 
         {/* Quick Help Cards */}

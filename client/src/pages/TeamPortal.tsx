@@ -375,19 +375,21 @@ export default function TeamPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <Activity className="w-4 h-4" />
-            <TechnicalLabel text="TEAM DASHBOARD" className="text-primary" />
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <Activity className="w-5 h-5" />
+              <TechnicalLabel text="TEAM DASHBOARD PROTOCOL v5.03" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              TEAM <span className="text-primary">CONTROL</span><br />
+              SYSTEM METRICS
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Monitor team performance and user metrics in real-time
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
-            TEAM <span className="text-primary">CONTROL</span><br />
-            SYSTEM METRICS
-          </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Monitor team performance and user metrics in real-time
-          </p>
-          <Barcode className="w-48 h-10 mx-auto opacity-60" />
         </div>
 
         {/* Metrics Cards */}
@@ -461,19 +463,21 @@ export default function TeamPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <Mail className="w-4 h-4" />
-            <TechnicalLabel text="EMAIL MANAGEMENT" className="text-primary" />
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <Mail className="w-5 h-5" />
+              <TechnicalLabel text="EMAIL PROTOCOL v2.14" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              TEAM <span className="text-primary">INBOX</span><br />
+              EMAIL CONTROL
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Send emails and manage team communications
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
-            TEAM <span className="text-primary">INBOX</span><br />
-            EMAIL CONTROL
-          </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Send emails and manage team communications
-          </p>
-          <Barcode className="w-48 h-10 mx-auto opacity-60" />
         </div>
 
         {/* Email Composition */}
@@ -655,19 +659,21 @@ export default function TeamPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <Database className="w-4 h-4" />
-            <TechnicalLabel text="USER DATA ACCESS" className="text-primary" />
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <Database className="w-5 h-5" />
+              <TechnicalLabel text="DATA ACCESS PROTOCOL v3.67" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              USER <span className="text-primary">DATA</span><br />
+              CREDENTIALS VIEW
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Access and manage user credentials and account information
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
-            USER <span className="text-primary">DATA</span><br />
-            CREDENTIALS VIEW
-          </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Access and manage user credentials and account information
-          </p>
-          <Barcode className="w-48 h-10 mx-auto opacity-60" />
         </div>
 
         {/* Search and Filters */}
@@ -821,19 +827,21 @@ export default function TeamPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 border border-primary mb-4">
-            <Key className="w-4 h-4" />
-            <TechnicalLabel text="ACCESS MANAGEMENT" className="text-primary" />
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <Key className="w-5 h-5" />
+              <TechnicalLabel text="ACCESS PROTOCOL v4.91" className="text-white" />
+            </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              TEAM <span className="text-primary">KEYS</span><br />
+              MEMBER ACCESS
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Manage team member access keys and permissions
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-white mb-4 tracking-tighter">
-            TEAM <span className="text-primary">KEYS</span><br />
-            MEMBER ACCESS
-          </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Manage team member access keys and permissions
-          </p>
-          <Barcode className="w-48 h-10 mx-auto opacity-60" />
         </div>
 
         {/* Add New Member */}
