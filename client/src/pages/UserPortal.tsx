@@ -654,7 +654,7 @@ export default function UserPortal() {
               <TechnicalLabel text="DASHBOARD PROTOCOL v4.12" className="text-white" />
             </div>
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
-              WELCOME BACK, <span className="text-primary">{displayUser?.firstName || "GUEST"}</span><br />
+              ASSALAM U ALAYKUM, <span className="text-primary">{displayUser?.firstName || "GUEST"}</span><br />
               PERFORMANCE OVERVIEW
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
