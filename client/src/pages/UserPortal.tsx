@@ -1854,21 +1854,7 @@ export default function UserPortal() {
                 {/* Area Help - Telegram/WhatsApp Style Chat */}
                 <TabsContent value="help" className="mt-0">
                   <div className="bg-white border-2 border-black overflow-hidden">
-                    {/* Chat Header - Telegram Style */}
-                    <div className="bg-primary text-black px-6 py-4 border-b-2 border-black">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center">
-                          <TechnicalLabel text="TS" className="text-white font-black text-lg" />
-                        </div>
-                        <div>
-                          <h3 className="font-black text-lg">THORX Support Team</h3>
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <TechnicalLabel text="Online • Usually replies instantly" className="text-black/70 text-sm" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    
 
                     {/* Chat Messages - WhatsApp Style */}
                     <div className="bg-[#f0f2f5] min-h-[500px] p-4 space-y-3">
