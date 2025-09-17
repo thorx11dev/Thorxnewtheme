@@ -1202,7 +1202,7 @@ export default function UserPortal() {
                     </div>
 
                     {/* Revision (Tier Badge) */}
-                    <div className={`px-3 py-1 text-xs font-black border-2 border-black ${getTierColor(leader.tier)}`}>
+                    <div className="px-3 py-1 text-xs font-black border-2 border-black from-blue-600 to-purple-600 text-white bg-[#000000]">
                       {leader.tier}
                     </div>
                   </div>
@@ -1272,7 +1272,6 @@ export default function UserPortal() {
             </div>
           </div>
         )}
-        
       </div>
     );
   }
