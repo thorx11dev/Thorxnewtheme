@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -848,7 +847,7 @@ export default function UserPortal() {
         trend: { direction: "up" as const, percentage: "+12%" }
       },
       {
-        id: "remaining-ads", 
+        id: "remaining-ads",
         title: "REMAINING ADS",
         value: remainingAds,
         subtitle: "Daily quota left",
@@ -857,7 +856,7 @@ export default function UserPortal() {
       },
       {
         id: "today-earnings",
-        title: "TODAY'S EARNINGS", 
+        title: "TODAY'S EARNINGS",
         value: formatCurrency((completedAds.size * 2.5)),
         subtitle: "Current session",
         icon: DollarSign,
@@ -879,7 +878,7 @@ export default function UserPortal() {
     const currentVideoTab = {
       id: activeWorkTab,
       title: WORK_TABS.find(tab => tab.id === activeWorkTab)?.title || "ADS",
-      icon: activeWorkTab === "ads" ? "📺" : 
+      icon: activeWorkTab === "ads" ? "📺" :
             activeWorkTab === "surveys" ? "📊" :
             activeWorkTab === "referrals" ? "👥" : "✅",
       color: "primary",
@@ -910,41 +909,39 @@ export default function UserPortal() {
         <MetricsCards metrics={metricsData} className="mb-10" />
 
         {/* Industrial Tab System */}
-        <div className="mb-8">
-          <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
-            <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full border-2 border-black">
-              {WORK_TABS.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-                  data-testid={`work-tab-${tab.id}`}
-                >
-                  {tab.title}
-                </TabsTrigger>
+        {/* Industrial Work Interface - Wireframe Style */}
+          <div className="industrial-video-frame p-4 mb-8">
+            <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
+              <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full border-2 border-black">
+                {WORK_TABS.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                    data-testid={`work-tab-${tab.id}`}
+                  >
+                    {tab.title}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {WORK_TABS.map(tab => (
+                <TabsContent key={tab.id} value={tab.id} className="mt-0">
+                  <div className="space-y-4">
+                    {/* Enhanced Video Player for active tab */}
+                    {tab.id === activeWorkTab && (
+                      <EnhancedVideoPlayer
+                        tab={currentVideoTab}
+                        isActive={true}
+                        onComplete={handleVideoComplete}
+                        autoplay={false}
+                        isMobile={isMobile}
+                      />
+                    )}
+                  </div>
+                </TabsContent>
               ))}
-            </TabsList>
-
-            {WORK_TABS.map((tab) => (
-              <TabsContent key={tab.id} value={tab.id} className="mt-6">
-                <div className="space-y-6">
-                  
-
-                  {/* Enhanced Video Player for active tab */}
-                  {tab.id === activeWorkTab && (
-                    <EnhancedVideoPlayer
-                      tab={currentVideoTab}
-                      isActive={true}
-                      onComplete={handleVideoComplete}
-                      autoplay={false}
-                      isMobile={isMobile}
-                    />
-                  )}
-                </div>
-              </TabsContent>
-            ))}
-          </Tabs>
-        </div>
+            </Tabs>
+          </div>
 
         {/* Available Ads */}
         {remainingAds > 0 ? (
