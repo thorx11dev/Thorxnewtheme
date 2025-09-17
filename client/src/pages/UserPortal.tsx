@@ -1752,11 +1752,11 @@ export default function UserPortal() {
               <LifeBuoy className="w-5 h-5" />
               <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white" />
             </div>
-            <h1 className="text-2xl md:text-3xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
               GET <span className="text-primary">SUPPORT</span><br />
               INSTANT ASSISTANCE
             </h1>
-            <p className="text-base md:text-lg text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
               Professional support, instant solutions, comprehensive guidance
             </p>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
@@ -1796,7 +1796,7 @@ export default function UserPortal() {
                   <div className="bg-white border-2 border-black p-8 min-h-[600px]">
                     <div className="text-center mb-8">
                       <TechnicalLabel text="THORX SUPPORT GUIDE" className="mb-2" />
-                      <h3 className="text-2xl md:text-3xl font-black text-black">FREQUENTLY ASKED QUESTIONS</h3>
+                      <h3 className="text-3xl md:text-4xl lg:text-5xl font-black text-black mb-4 tracking-tighter leading-tight">FREQUENTLY ASKED QUESTIONS</h3>
                     </div>
 
                     <div className="space-y-6 max-w-4xl mx-auto">
