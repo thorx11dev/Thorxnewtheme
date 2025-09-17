@@ -223,7 +223,7 @@ export default function UserPortal() {
     enabled: !!user,
   });
 
-  const { data: referralsData } = useQuery({
+  const { data: referralsData, isLoading: referralsLoading, error: referralsError } = useQuery({
     queryKey: ["referrals"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/referrals");
@@ -1091,6 +1091,14 @@ export default function UserPortal() {
                 <Button
                   variant="outline"
                   className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                  onClick={() => {
+                    const referralLink = `${window.location.origin}/auth?ref=${displayUser?.referralCode}`;
+                    navigator.clipboard.writeText(referralLink);
+                    toast({
+                      title: "Link Copied!",
+                      description: "Referral link copied to clipboard",
+                    });
+                  }}
                 >
                   <Link2 className="w-4 h-4 mr-2" />
                   GENERATE LINK
@@ -1098,6 +1106,32 @@ export default function UserPortal() {
                 <Button
                   variant="outline"
                   className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                  onClick={() => {
+                    const referralLink = `${window.location.origin}/auth?ref=${displayUser?.referralCode}`;
+                    const shareText = `Join THORX and start earning! Use my referral code: ${displayUser?.referralCode}`;
+                    
+                    if (navigator.share) {
+                      navigator.share({
+                        title: 'Join THORX - Earn Real Money',
+                        text: shareText,
+                        url: referralLink,
+                      }).catch(() => {
+                        // Fallback to clipboard
+                        navigator.clipboard.writeText(`${shareText}\n${referralLink}`);
+                        toast({
+                          title: "Copied to Clipboard!",
+                          description: "Share text and link copied",
+                        });
+                      });
+                    } else {
+                      // Fallback for browsers without Web Share API
+                      navigator.clipboard.writeText(`${shareText}\n${referralLink}`);
+                      toast({
+                        title: "Copied to Clipboard!",
+                        description: "Share text and link copied",
+                      });
+                    }
+                  }}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   SHARE
@@ -1230,6 +1264,36 @@ export default function UserPortal() {
             </Button>
           </div>
         </div>
+        {/* Referral Analytics Section */}
+        <div className="mt-8 wireframe-section p-6">
+          <div className="border-b-2 border-black pb-4 mb-6">
+            <TechnicalLabel text="REFERRAL ANALYTICS" className="text-foreground text-lg font-black" />
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-3 bg-primary/10 border border-primary">
+              <div className="text-lg font-black text-primary">{referralsData?.stats.count || 0}</div>
+              <TechnicalLabel text="ACTIVE REFERRALS" className="text-muted-foreground text-xs" />
+            </div>
+            <div className="text-center p-3 bg-green-100 border border-green-500">
+              <div className="text-lg font-black text-green-600">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
+              <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
+            </div>
+            <div className="text-center p-3 bg-blue-100 border border-blue-500">
+              <div className="text-lg font-black text-blue-600">25%</div>
+              <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs" />
+            </div>
+            <div className="text-center p-3 bg-purple-100 border border-purple-500">
+              <div className="text-lg font-black text-purple-600">
+                {referralsData?.referrals ? 
+                  Math.round((referralsData.referrals.filter(r => r.status === 'active').length / Math.max(referralsData.referrals.length, 1)) * 100) 
+                  : 0}%
+              </div>
+              <TechnicalLabel text="CONVERSION RATE" className="text-muted-foreground text-xs" />
+            </div>
+          </div>
+        </div>
+
         {/* Your Referrals Section */}
         {referralsData?.referrals && referralsData.referrals.length > 0 && (
           <div className="mt-8 wireframe-section p-6">
