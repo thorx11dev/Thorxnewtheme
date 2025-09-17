@@ -912,18 +912,7 @@ export default function UserPortal() {
         {/* Industrial Work Interface - Wireframe Style */}
           <div className="industrial-video-frame p-4 mb-8">
             <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
-              <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full border-2 border-black">
-                {WORK_TABS.map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-                    data-testid={`work-tab-${tab.id}`}
-                  >
-                    {tab.title}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              
               {WORK_TABS.map(tab => (
                 <TabsContent key={tab.id} value={tab.id} className="mt-0">
                   <div className="space-y-4">
