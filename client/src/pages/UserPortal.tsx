@@ -1050,7 +1050,7 @@ export default function UserPortal() {
           </div>
 
           {/* Service Info */}
-          <div className="wireframe-section p-4 md:p-6 text-center">
+          <div className="wireframe-section p-4 md:p-6 text-center bg-[#e8e5d9]">
             <RefreshCw className="w-8 h-8 mx-auto mb-3 text-primary" />
             <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">∞</div>
             <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
