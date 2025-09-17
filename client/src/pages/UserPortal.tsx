@@ -653,16 +653,13 @@ export default function UserPortal() {
               <Activity className="w-5 h-5" />
               <TechnicalLabel text="DASHBOARD PROTOCOL v4.12" className="text-white" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-6 tracking-tighter leading-tight">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-8 tracking-tighter leading-tight">
               ASSALAM U ALAYKUM,<br />
               <span className="text-primary bg-primary/10 px-2 py-1 inline-block mt-2">{displayUser?.firstName || "GUEST"}</span>
             </h1>
-            <div className="max-w-3xl mx-auto">
-              <p className="text-xl md:text-2xl text-foreground/80 mb-4 font-medium leading-relaxed">
-                Welcome to your dashboard
-              </p>
+            <div className="max-w-3xl mx-auto mb-2">
               <p className="text-lg text-muted-foreground leading-relaxed">
-                Track your earnings • Manage referrals • Monitor your progress in real-time
+                Track your earnings • Monitor your progress in real-time
               </p>
             </div>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
