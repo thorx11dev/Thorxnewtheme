@@ -102,7 +102,7 @@
     width: 100%;
     height: 100%;
     opacity: 0.1;
-    background-image: 
+    background-image:
       linear-gradient(hsl(var(--muted-foreground)) 0.5px, transparent 0.5px),
       linear-gradient(90deg, hsl(var(--muted-foreground)) 0.5px, transparent 0.5px);
     background-size: 24px 24px;
@@ -401,6 +401,172 @@
     50% { transform: translateY(-3px); }
   }
 
+  /* Wireframe Industrial Design System */
+  .wireframe-border {
+    border: 4px solid #000;
+    background: #fff;
+    position: relative;
+  }
+
+  .wireframe-border::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 2px solid hsl(var(--primary));
+    pointer-events: none;
+  }
+
+  .wireframe-section {
+    border: 2px solid #000;
+    background: #f8f8f8;
+    position: relative;
+  }
+
+  .wireframe-section::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    border: 2px solid #000;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+  }
+
+  /* Industrial corner brackets */
+  .industrial-brackets::before,
+  .industrial-brackets::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #000;
+  }
+
+  .industrial-brackets::before {
+    top: -2px;
+    left: -2px;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  .industrial-brackets::after {
+    bottom: -2px;
+    right: -2px;
+    border-left: none;
+    border-top: none;
+  }
+
+  /* Enhanced leaderboard styles */
+  .leaderboard-item {
+    border: 2px solid #000;
+    background: linear-gradient(145deg, #ffffff, #f5f5f5);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .leaderboard-item:hover {
+    background: linear-gradient(145deg, #f5f5f5, #e8e8e8);
+    transform: translateX(4px);
+    box-shadow: -4px 4px 0px #000;
+  }
+
+  .rank-badge {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #000;
+    background: #000;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 14px;
+  }
+
+  .tier-badge {
+    border: 2px solid #000;
+    padding: 4px 8px;
+    font-weight: 900;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Referral code display enhancement */
+  .referral-code-display {
+    background: linear-gradient(145deg, hsl(var(--primary)), hsl(var(--primary)/0.8));
+    border: 3px solid #000;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    font-family: 'Courier New', monospace;
+  }
+
+  /* Industrial grid system for referrals */
+  .referral-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  @media (min-width: 768px) {
+    .referral-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .referral-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* Status indicators */
+  .status-active {
+    background: linear-gradient(145deg, #10b981, #059669);
+    color: white;
+    border: 2px solid #000;
+  }
+
+  .status-inactive {
+    background: linear-gradient(145deg, #6b7280, #4b5563);
+    color: white;
+    border: 2px solid #000;
+  }
+
+  /* Industrial button variants */
+  .industrial-button-primary {
+    background: linear-gradient(145deg, hsl(var(--primary)), hsl(var(--primary)/0.8));
+    border: 3px solid #000;
+    color: #000;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .industrial-button-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  }
+
+  .industrial-button-secondary {
+    background: linear-gradient(145deg, #ffffff, #f5f5f5);
+    border: 3px solid #000;
+    color: #000;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .industrial-button-secondary:hover {
+    background: linear-gradient(145deg, #000, #333);
+    color: #fff;
+  }
+
   .counter-display {
     font-size: 2rem;
   }
@@ -465,7 +631,7 @@
   /* Industrial Video Player Styles */
   .industrial-video-frame {
     background: linear-gradient(145deg, #f0f0f0, #ffffff);
-    box-shadow: 
+    box-shadow:
       inset 0 2px 4px rgba(0,0,0,0.1),
       0 4px 8px rgba(0,0,0,0.1);
     border: 3px solid #000;
@@ -568,13 +734,4 @@
     padding: 8px;
     font-family: 'Inter', monospace;
   }
-
-  .wireframe-border {
-    border: 4px solid #000;
-    background: #fff;
-  }
-
-  .wireframe-section {
-    border: 2px solid #000;
-    background: #f8f8f8;
-  }
+}

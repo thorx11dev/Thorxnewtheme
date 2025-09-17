@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -59,7 +60,16 @@ import {
   Briefcase,
   UserCheck,
   HandHeart,
-  LifeBuoy
+  LifeBuoy,
+  Crown,
+  Trophy,
+  Medal,
+  Zap as ZapIcon,
+  TrendingDown,
+  RefreshCw,
+  Share2,
+  Link2,
+  ExternalLink
 } from "lucide-react";
 import {
   LineChart,
@@ -940,121 +950,351 @@ export default function UserPortal() {
     );
   }
 
-  // Referrals Section
+  // Enhanced Referrals Section - Wireframe-Inspired Industrial Design
   function renderReferralsSection() {
+    // Mock data for leadership board
+    const leaderboardData = [
+      {
+        id: "1",
+        rank: 1,
+        name: "Don Ivan",
+        earnings: "2,450.00",
+        referrals: 15,
+        status: "ACTIVE",
+        tier: "PLATINUM",
+        joinDate: "2024-01-15",
+        isCurrentUser: false
+      },
+      {
+        id: "2", 
+        rank: 2,
+        name: "Saad Rauf",
+        earnings: "1,890.50",
+        referrals: 12,
+        status: "ACTIVE", 
+        tier: "GOLD",
+        joinDate: "2024-02-03",
+        isCurrentUser: false
+      },
+      {
+        id: "3",
+        rank: 3,
+        name: "Zain Abbas",
+        earnings: "1,425.75",
+        referrals: 9,
+        status: "ACTIVE",
+        tier: "SILVER",
+        joinDate: "2024-02-18",
+        isCurrentUser: false
+      }
+    ];
+
+    const getRankIcon = (rank: number) => {
+      switch (rank) {
+        case 1: return <Crown className="w-5 h-5 text-yellow-500" />;
+        case 2: return <Trophy className="w-5 h-5 text-gray-400" />;
+        case 3: return <Medal className="w-5 h-5 text-amber-600" />;
+        default: return <Star className="w-5 h-5 text-muted-foreground" />;
+      }
+    };
+
+    const getTierColor = (tier: string) => {
+      switch (tier) {
+        case 'PLATINUM': return 'bg-gradient-to-r from-blue-600 to-purple-600 text-white';
+        case 'GOLD': return 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white';
+        case 'SILVER': return 'bg-gradient-to-r from-gray-400 to-gray-600 text-white';
+        default: return 'bg-black text-white';
+      }
+    };
+
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="mb-2">
-            <TechnicalLabel text="REFERRAL SYSTEM" className="text-foreground" />
-          </div>
-          <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter">
-            BUILD YOUR <span className="text-primary">NETWORK</span><br />
-            EARN MORE TOGETHER
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Invite friends, earn together, and build a passive income stream through referrals
-          </p>
-          <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
-        </div>
-
-        {/* Referral Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="split-card bg-primary text-black border-2 border-black p-6 text-center">
-            <Users className="w-12 h-12 mx-auto mb-4 text-white" />
-            <div className="text-3xl font-black mb-2 text-white">{referralsData?.stats.count || 0}</div>
-            <TechnicalLabel text="TOTAL REFERRALS" className="text-white" />
-          </div>
-
-          <div className="split-card bg-black text-white border-2 border-black p-6 text-center">
-            <DollarSign className="w-12 h-12 mx-auto mb-4 text-white" />
-            <div className="text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
-            <TechnicalLabel text="REFERRAL EARNINGS" className="text-white" />
-          </div>
-
-          <div className="split-card bg-muted border-2 border-black p-6 text-center">
-            <TrendingUp className="w-12 h-12 mx-auto mb-4 text-foreground" />
-            <div className="text-3xl font-black mb-2 text-foreground">25%</div>
-            <TechnicalLabel text="COMMISSION RATE" className="text-foreground" />
-          </div>
-        </div>
-
-        {/* Referral Code Card */}
-        <Card className="border-2 border-primary bg-black text-white mb-12 overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="YOUR REFERRAL CODE" className="text-primary text-xl" />
-          </CardHeader>
-          <CardContent className="text-center space-y-6">
-            <div className="bg-primary text-black px-8 py-6 text-4xl font-black tracking-widest inline-block border-2 border-primary">
-              {displayUser?.referralCode}
+        <div className="wireframe-border p-8 mb-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <UserCheck className="w-5 h-5" />
+              <TechnicalLabel text="REFERRAL PROTOCOL v3.14" className="text-white" />
             </div>
-            <div className="space-y-4">
+            <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              BUILD YOUR <span className="text-primary">NETWORK</span><br />
+              EARN MORE TOGETHER
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Invite friends, earn together, and build a passive income stream through referrals
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+          </div>
+        </div>
+
+        {/* Top Metrics Section - 4 Cards as per wireframe */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+          {/* Total Referrals */}
+          <div className="wireframe-section p-4 md:p-6 text-center">
+            <Users className="w-8 h-8 mx-auto mb-3 text-primary" />
+            <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">{referralsData?.stats.count || 0}</div>
+            <TechnicalLabel text="TOTAL REFERRALS" className="text-muted-foreground text-xs" />
+          </div>
+
+          {/* Referral Earnings */}
+          <div className="wireframe-section p-4 md:p-6 text-center bg-primary text-white">
+            <DollarSign className="w-8 h-8 mx-auto mb-3 text-white" />
+            <div className="text-2xl md:text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
+            <TechnicalLabel text="REFERRAL EARNINGS" className="text-white/80 text-xs" />
+          </div>
+
+          {/* Commission Rate */}
+          <div className="wireframe-section p-4 md:p-6 text-center">
+            <TrendingUp className="w-8 h-8 mx-auto mb-3 text-primary" />
+            <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">25%</div>
+            <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs" />
+          </div>
+
+          {/* Service Info */}
+          <div className="wireframe-section p-4 md:p-6 text-center">
+            <RefreshCw className="w-8 h-8 mx-auto mb-3 text-primary" />
+            <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">∞</div>
+            <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
+          </div>
+        </div>
+
+        {/* Middle Section - Invitation Area and Leadership Area */}
+        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+          {/* Invitation Area */}
+          <div className="wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Share2 className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="INVITATION AREA" className="text-foreground text-lg font-black" />
+              </div>
+              <TechnicalLabel text="PROTOCOL: NETWORK_EXPANSION_v2.1" className="text-muted-foreground text-xs" />
+            </div>
+
+            {/* Referral Code Display */}
+            <div className="bg-black text-white p-6 border-2 border-primary mb-6">
+              <TechnicalLabel text="YOUR REFERRAL CODE" className="text-primary mb-4 text-center" />
+              <div className="bg-primary text-black px-6 py-4 text-2xl md:text-3xl font-black tracking-widest text-center border-2 border-white">
+                {displayUser?.referralCode}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
               <Button
                 onClick={copyReferralCode}
-                className="bg-primary hover:bg-primary/90 text-black px-8 py-3 text-lg font-black border-2 border-primary"
+                className="w-full bg-primary hover:bg-primary/90 text-black px-6 py-4 text-lg font-black border-2 border-black"
                 data-testid="button-copy-referral"
               >
                 <Copy className="w-5 h-5 mr-3" />
-                COPY CODE
+                COPY REFERRAL CODE
               </Button>
-              <TechnicalLabel text="Share this code with friends to earn 25% of their earnings forever!" className="text-gray-300 max-w-lg mx-auto" />
+              
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                >
+                  <Link2 className="w-4 h-4 mr-2" />
+                  GENERATE LINK
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  SHARE
+                </Button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Referrals List */}
-        <div className="space-y-8">
-          <div className="text-center">
-            <TechnicalLabel text="YOUR REFERRALS" className="text-primary text-2xl" />
+            <div className="mt-4 p-3 bg-muted border border-muted-foreground/20">
+              <TechnicalLabel text="COMMISSION: 25% of all referral earnings forever" className="text-muted-foreground text-center text-xs" />
+            </div>
           </div>
 
-          {referralsData?.referrals && referralsData.referrals.length > 0 ? (
-            <div className="grid gap-6">
-              {referralsData.referrals.map((referral, index) => (
-                <Card key={referral.id} className="border-2 border-primary bg-black text-white overflow-hidden" data-testid={`referral-${referral.id}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/60 text-black font-black text-2xl flex items-center justify-center border-2 border-primary">
-                          {referral.referred.firstName[0]}{referral.referred.lastName[0]}
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-black text-white">
-                            {referral.referred.firstName} {referral.referred.lastName}
-                          </h3>
-                          <TechnicalLabel text={referral.referred.email} className="text-muted-foreground" />
-                          <TechnicalLabel text={`Joined: ${formatDate(referral.referred.createdAt)}`} className="text-muted-foreground" />
-                        </div>
+          {/* Leadership Area */}
+          <div className="wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Crown className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="LEADERSHIP AREA" className="text-foreground text-lg font-black" />
+              </div>
+              <TechnicalLabel text="TOP PERFORMERS RANKING" className="text-muted-foreground text-xs" />
+            </div>
+
+            {/* Leadership Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="text-center p-3 bg-muted border border-muted-foreground/20">
+                <div className="text-lg font-black text-foreground">#{referralsData?.stats.count ? Math.min(referralsData.stats.count + 15, 50) : 42}</div>
+                <TechnicalLabel text="YOUR RANK" className="text-muted-foreground text-xs" />
+              </div>
+              <div className="text-center p-3 bg-primary text-white border border-primary">
+                <div className="text-lg font-black text-white">TOP 10%</div>
+                <TechnicalLabel text="PERCENTILE" className="text-white/80 text-xs" />
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                VIEW FULL LEADERBOARD
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+              >
+                <Trophy className="w-4 h-4 mr-2" />
+                MY ACHIEVEMENTS
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Section - Leaderboard List (Blue highlighted in wireframe) */}
+        <div className="wireframe-border bg-primary/5 p-6">
+          <div className="border-b-2 border-primary pb-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-6 h-6 text-primary" />
+                <TechnicalLabel text="TOP REFERRERS LEADERBOARD" className="text-foreground text-lg font-black" />
+              </div>
+              <div className="bg-primary text-white px-3 py-1 border border-primary">
+                <TechnicalLabel text="LIVE RANKINGS" className="text-white text-xs" />
+              </div>
+            </div>
+          </div>
+
+          {/* Leaderboard Items */}
+          <div className="space-y-4">
+            {leaderboardData.map((leader, index) => (
+              <div key={leader.id} className="wireframe-section p-4 hover:bg-white transition-colors duration-200">
+                <div className="flex items-center justify-between">
+                  {/* Left Side - Rank and Name */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-black text-white font-black text-lg flex items-center justify-center border border-black">
+                        {leader.rank}
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-black text-primary">
-                          +{formatCurrency(referral.totalEarned)}
-                        </div>
-                        <TechnicalLabel text={`TIER ${index + 1}`} className="text-muted-foreground" />
-                        <div className={`inline-block px-3 py-1 text-xs font-semibold border mt-2 ${
-                          referral.status === 'active'
-                            ? 'bg-green-900 text-green-400 border-green-600'
-                            : 'bg-gray-900 text-gray-400 border-gray-600'
-                        }`}>
-                          {referral.status.toUpperCase()}
-                        </div>
+                      {getRankIcon(leader.rank)}
+                    </div>
+                    
+                    <div>
+                      <div className="text-lg font-black text-foreground mb-1">
+                        {leader.name}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TechnicalLabel text={`${leader.referrals} REFERRALS`} className="text-muted-foreground text-xs" />
+                        <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                        <TechnicalLabel text={`JOINED ${new Date(leader.joinDate).toLocaleDateString()}`} className="text-muted-foreground text-xs" />
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+
+                  {/* Right Side - Rank Info and Revision */}
+                  <div className="flex items-center gap-4">
+                    {/* Rank Info */}
+                    <div className="text-right">
+                      <div className="text-lg font-black text-primary mb-1">
+                        {formatCurrency(leader.earnings)}
+                      </div>
+                      <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
+                    </div>
+
+                    {/* Revision (Tier Badge) */}
+                    <div className={`px-3 py-1 text-xs font-black border-2 border-black ${getTierColor(leader.tier)}`}>
+                      {leader.tier}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Indicator */}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${leader.status === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                    <TechnicalLabel text={`STATUS: ${leader.status}`} className="text-muted-foreground text-xs" />
+                  </div>
+                  <TechnicalLabel text={`RANK #${leader.rank} OF 500+ USERS`} className="text-muted-foreground text-xs" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* View More Button */}
+          <div className="mt-6 text-center">
+            <Button
+              variant="outline"
+              className="border-2 border-primary text-primary hover:bg-primary hover:text-white px-8 py-3 font-black"
+            >
+              VIEW COMPLETE LEADERBOARD
+            </Button>
+          </div>
+        </div>
+
+        {/* Your Referrals Section */}
+        {referralsData?.referrals && referralsData.referrals.length > 0 && (
+          <div className="mt-8 wireframe-section p-6">
+            <div className="border-b-2 border-black pb-4 mb-6">
+              <TechnicalLabel text="YOUR NETWORK" className="text-foreground text-lg font-black" />
+            </div>
+            
+            <div className="grid gap-4">
+              {referralsData.referrals.map((referral, index) => (
+                <div key={referral.id} className="wireframe-section p-4 hover:bg-white transition-colors" data-testid={`referral-${referral.id}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/60 text-white font-black text-lg flex items-center justify-center border-2 border-black">
+                        {referral.referred.firstName[0]}{referral.referred.lastName[0]}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-foreground">
+                          {referral.referred.firstName} {referral.referred.lastName}
+                        </h3>
+                        <TechnicalLabel text={referral.referred.email} className="text-muted-foreground text-xs" />
+                        <TechnicalLabel text={`Joined: ${formatDate(referral.referred.createdAt)}`} className="text-muted-foreground text-xs" />
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-black text-primary">
+                        +{formatCurrency(referral.totalEarned)}
+                      </div>
+                      <TechnicalLabel text={`TIER ${index + 1}`} className="text-muted-foreground text-xs" />
+                      <div className={`inline-block px-2 py-1 text-xs font-semibold border mt-1 ${
+                        referral.status === 'active'
+                          ? 'bg-green-100 text-green-800 border-green-600'
+                          : 'bg-gray-100 text-gray-800 border-gray-600'
+                      }`}>
+                        {referral.status.toUpperCase()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
-          ) : (
-            <Card className="border-2 border-primary bg-black text-white text-center p-12">
-              <div className="space-y-4">
-                <HandHeart className="w-16 h-16 mx-auto text-primary" />
-                <TechnicalLabel text="NO REFERRALS YET" className="text-primary text-2xl" />
-                <TechnicalLabel text="Start sharing your referral code to build your network!" className="text-muted-foreground" />
-              </div>
-            </Card>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Empty State for No Referrals */}
+        {(!referralsData?.referrals || referralsData.referrals.length === 0) && (
+          <div className="mt-8 wireframe-section p-12 text-center">
+            <HandHeart className="w-16 h-16 mx-auto mb-4 text-primary" />
+            <TechnicalLabel text="NO REFERRALS YET" className="text-primary text-xl mb-2" />
+            <TechnicalLabel text="Start sharing your referral code to build your network!" className="text-muted-foreground" />
+            
+            <div className="mt-6">
+              <Button
+                onClick={copyReferralCode}
+                className="bg-primary hover:bg-primary/90 text-black px-8 py-3 text-lg font-black border-2 border-black"
+              >
+                <Copy className="w-5 h-5 mr-3" />
+                GET STARTED - COPY CODE
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
