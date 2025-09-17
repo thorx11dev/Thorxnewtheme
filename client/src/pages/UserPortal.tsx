@@ -919,14 +919,16 @@ export default function UserPortal() {
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base flex flex-col items-center gap-2 p-3 md:p-4 transition-all duration-300"
+                    className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base"
                     data-testid={`work-tab-${tab.id}`}
                   >
-                    <IconComponent className="w-5 h-5 md:w-6 md:h-6" />
-                    <div className="text-center">
-                      <TechnicalLabel text={tab.title} className="text-xs md:text-sm font-bold leading-none" />
-                      <div className="text-xs opacity-70 mt-1 leading-none">
-                        {tab.count} available
+                    <div className="flex flex-col items-center gap-2 p-2 md:p-3">
+                      <IconComponent className="w-5 h-5 md:w-6 md:h-6" />
+                      <div className="text-center">
+                        <TechnicalLabel text={tab.title} className="text-xs md:text-sm font-bold leading-none" />
+                        <div className="text-xs opacity-70 mt-1 leading-none">
+                          {tab.count} available
+                        </div>
                       </div>
                     </div>
                   </TabsTrigger>
