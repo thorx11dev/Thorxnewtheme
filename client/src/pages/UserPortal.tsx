@@ -1272,24 +1272,7 @@ export default function UserPortal() {
             </div>
           </div>
         )}
-        {/* Empty State for No Referrals */}
-        {(!referralsData?.referrals || referralsData.referrals.length === 0) && (
-          <div className="mt-8 wireframe-section p-12 text-center">
-            <HandHeart className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <TechnicalLabel text="NO REFERRALS YET" className="text-primary text-xl mb-2" />
-            <TechnicalLabel text="Start sharing your referral code to build your network!" className="text-muted-foreground" />
-            
-            <div className="mt-6">
-              <Button
-                onClick={copyReferralCode}
-                className="bg-primary hover:bg-primary/90 text-black px-8 py-3 text-lg font-black border-2 border-black"
-              >
-                <Copy className="w-5 h-5 mr-3" />
-                GET STARTED - COPY CODE
-              </Button>
-            </div>
-          </div>
-        )}
+        
       </div>
     );
   }
