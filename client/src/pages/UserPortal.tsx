@@ -1449,44 +1449,11 @@ export default function UserPortal() {
           </div>
         </div>
 
-        {/* Main Payout Interface */}
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Transaction History */}
-          <div className="lg:col-span-1">
-            <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20">
-              <CardHeader className="border-b border-muted-foreground/20">
-                <CardTitle className="flex items-center gap-3">
-                  <History className="w-5 h-5 text-primary" />
-                  <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="max-h-96 overflow-y-auto">
-                  {historyItems.map((item, index) => (
-                    <div 
-                      key={item.id}
-                      className="p-4 border-b border-muted-foreground/10 hover:bg-muted/50 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <TechnicalLabel text={item.method} className="text-foreground text-xs font-black" />
-                        <div className={`w-2 h-2 rounded-full ${
-                          item.status === 'COMPLETED' ? 'bg-green-500' :
-                          item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
-                        }`} />
-                      </div>
-                      <div className="text-sm font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
-                      <div className="text-xs text-muted-foreground">{formatDate(item.date)}</div>
-                      <div className="text-xs text-muted-foreground mt-1">#{item.transactionId}</div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Column - Payout Form */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Enter Details Section */}
+        {/* Main Payout Interface - New Layout */}
+        <div className="grid gap-8">
+          {/* Top Row - Enter Details and Payment Method */}
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Left - Enter Details Section */}
             <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20">
               <CardHeader className="border-b border-muted-foreground/20 bg-gradient-to-r from-primary/10 to-primary/5">
                 <CardTitle className="flex items-center gap-3">
@@ -1544,7 +1511,7 @@ export default function UserPortal() {
               </CardContent>
             </Card>
 
-            {/* Payment Method Selection */}
+            {/* Right - Payment Method Selection */}
             <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20">
               <CardHeader className="border-b border-muted-foreground/20 bg-gradient-to-r from-secondary/10 to-secondary/5">
                 <CardTitle className="flex items-center gap-3">
@@ -1611,112 +1578,150 @@ export default function UserPortal() {
                 )}
               </CardContent>
             </Card>
+          </div>
 
-            {/* Final Statement */}
-            <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20">
-              <CardHeader className="border-b border-muted-foreground/20 bg-gradient-to-r from-muted to-muted/50">
-                <CardTitle className="flex items-center gap-3">
-                  <Activity className="w-5 h-5 text-primary" />
-                  <TechnicalLabel text="FINAL STATEMENT" className="text-foreground" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                    <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-foreground" />
-                    <TechnicalLabel text={formatCurrency(withdrawalAmount)} className="text-foreground font-black text-lg" />
+          {/* Bottom Row - History, Final Statement, and Help */}
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Left - Transaction History */}
+            <div className="lg:col-span-1">
+              <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 mb-8">
+                <CardHeader className="border-b border-muted-foreground/20">
+                  <CardTitle className="flex items-center gap-3">
+                    <History className="w-5 h-5 text-primary" />
+                    <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground" />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="max-h-96 overflow-y-auto">
+                    {historyItems.map((item, index) => (
+                      <div 
+                        key={item.id}
+                        className="p-4 border-b border-muted-foreground/10 hover:bg-muted/50 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <TechnicalLabel text={item.method} className="text-foreground text-xs font-black" />
+                          <div className={`w-2 h-2 rounded-full ${
+                            item.status === 'COMPLETED' ? 'bg-green-500' :
+                            item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
+                          }`} />
+                        </div>
+                        <div className="text-sm font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
+                        <div className="text-xs text-muted-foreground">{formatDate(item.date)}</div>
+                        <div className="text-xs text-muted-foreground mt-1">#{item.transactionId}</div>
+                      </div>
+                    ))}
                   </div>
-                  
-                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                    <TechnicalLabel text="PLATFORM FEE (13%):" className="text-foreground" />
-                    <TechnicalLabel text={`-${formatCurrency(platformFee)}`} className="text-red-600 font-black" />
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                    <TechnicalLabel text="DIRECT REFERRAL FEE (15%):" className="text-foreground" />
-                    <TechnicalLabel text={`-${formatCurrency(directReferralFee)}`} className="text-red-600 font-black" />
-                  </div>
+                </CardContent>
+              </Card>
 
-                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                    <TechnicalLabel text="INDIRECT REFERRAL FEE (7%):" className="text-foreground" />
-                    <TechnicalLabel text={`-${formatCurrency(indirectReferralFee)}`} className="text-red-600 font-black" />
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                    <TechnicalLabel text="PROCESSING FEE:" className="text-foreground" />
-                    <TechnicalLabel text={`-PKR ${processingFee.toFixed(2)}`} className="text-red-600 font-black" />
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-3 bg-muted/50 px-4 rounded-lg">
-                    <TechnicalLabel text="TOTAL DEDUCTIONS:" className="text-foreground font-black text-lg" />
-                    <TechnicalLabel text={`-PKR ${totalDeductions.toFixed(2)}`} className="text-red-600 font-black text-lg" />
-                  </div>
-                  
-                  <div className="flex justify-between items-center py-4 bg-gradient-to-r from-green-100 to-green-50 border-2 border-green-500 px-4 rounded-lg">
-                    <TechnicalLabel text="NET AMOUNT:" className="text-green-700 font-black text-xl" />
-                    <TechnicalLabel text={formatCurrency(netAmount)} className="text-green-700 font-black text-2xl" />
-                  </div>
-                </div>
-
-                {/* Enhanced Submit Button */}
-                <div className="mt-8">
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!withdrawAmount || !selectedMethod || !accountDetails || isProcessing}
-                    className="w-full bg-black hover:bg-primary text-white hover:text-black py-6 text-xl font-black border-2 border-black transition-all duration-300"
-                    size="lg"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
-                        PROCESSING...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-5 h-5 mr-3" />
-                        SUBMIT PAYOUT REQUEST
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Enhanced Support Section */}
-            <Card className="split-card bg-gradient-to-br from-muted to-muted/60 border-2 border-muted-foreground/20">
-              <CardHeader className="border-b border-muted-foreground/20">
-                <CardTitle className="flex items-center gap-3">
-                  <HelpCircle className="w-5 h-5 text-primary" />
-                  <TechnicalLabel text="NEED HELP?" className="text-foreground" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <h4 className="font-black text-foreground">PAYOUT INFORMATION</h4>
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <p>• Processing time: 24-48 hours</p>
-                      <p>• Minimum withdrawal: PKR 100</p>
-                      <p>• Maximum per day: PKR 50,000</p>
-                      <p>• Available 24/7</p>
+              {/* Need Help Section - Now below history */}
+              <Card className="split-card bg-gradient-to-br from-muted to-muted/60 border-2 border-muted-foreground/20">
+                <CardHeader className="border-b border-muted-foreground/20">
+                  <CardTitle className="flex items-center gap-3">
+                    <HelpCircle className="w-5 h-5 text-primary" />
+                    <TechnicalLabel text="NEED HELP?" className="text-foreground" />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <h4 className="font-black text-foreground">PAYOUT INFORMATION</h4>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>• Processing time: 24-48 hours</p>
+                        <p>• Minimum withdrawal: PKR 100</p>
+                        <p>• Maximum per day: PKR 50,000</p>
+                        <p>• Available 24/7</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <h4 className="font-black text-foreground">QUICK ACTIONS</h4>
+                      <div className="grid grid-cols-1 gap-2">
+                        <Button variant="outline" size="sm" className="border-2 border-black text-foreground hover:bg-black hover:text-white">
+                          <Book className="w-4 h-4 mr-2" />
+                          FAQ
+                        </Button>
+                        <Button variant="outline" size="sm" className="border-2 border-black text-foreground hover:bg-black hover:text-white">
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Support
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <h4 className="font-black text-foreground">QUICK ACTIONS</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" size="sm" className="border-2 border-black text-foreground hover:bg-black hover:text-white">
-                        <Book className="w-4 h-4 mr-2" />
-                        FAQ
-                      </Button>
-                      <Button variant="outline" size="sm" className="border-2 border-black text-foreground hover:bg-black hover:text-white">
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Support
-                      </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right - Final Statement and Submit */}
+            <div className="lg:col-span-2">
+              <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20">
+                <CardHeader className="border-b border-muted-foreground/20 bg-gradient-to-r from-muted to-muted/50">
+                  <CardTitle className="flex items-center gap-3">
+                    <Activity className="w-5 h-5 text-primary" />
+                    <TechnicalLabel text="FINAL STATEMENT" className="text-foreground" />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-foreground" />
+                      <TechnicalLabel text={formatCurrency(withdrawalAmount)} className="text-foreground font-black text-lg" />
+                    </div>
+                    
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="PLATFORM FEE (13%):" className="text-foreground" />
+                      <TechnicalLabel text={`-${formatCurrency(platformFee)}`} className="text-red-600 font-black" />
+                    </div>
+                    
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="DIRECT REFERRAL FEE (15%):" className="text-foreground" />
+                      <TechnicalLabel text={`-${formatCurrency(directReferralFee)}`} className="text-red-600 font-black" />
+                    </div>
+
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="INDIRECT REFERRAL FEE (7%):" className="text-foreground" />
+                      <TechnicalLabel text={`-${formatCurrency(indirectReferralFee)}`} className="text-red-600 font-black" />
+                    </div>
+                    
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="PROCESSING FEE:" className="text-foreground" />
+                      <TechnicalLabel text={`-PKR ${processingFee.toFixed(2)}`} className="text-red-600 font-black" />
+                    </div>
+                    
+                    <div className="flex justify-between items-center py-3 bg-muted/50 px-4 rounded-lg">
+                      <TechnicalLabel text="TOTAL DEDUCTIONS:" className="text-foreground font-black text-lg" />
+                      <TechnicalLabel text={`-PKR ${totalDeductions.toFixed(2)}`} className="text-red-600 font-black text-lg" />
+                    </div>
+                    
+                    <div className="flex justify-between items-center py-4 bg-gradient-to-r from-green-100 to-green-50 border-2 border-green-500 px-4 rounded-lg">
+                      <TechnicalLabel text="NET AMOUNT:" className="text-green-700 font-black text-xl" />
+                      <TechnicalLabel text={formatCurrency(netAmount)} className="text-green-700 font-black text-2xl" />
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+
+                  {/* Enhanced Submit Button */}
+                  <div className="mt-8">
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={!withdrawAmount || !selectedMethod || !accountDetails || isProcessing}
+                      className="w-full bg-black hover:bg-primary text-white hover:text-black py-6 text-xl font-black border-2 border-black transition-all duration-300"
+                      size="lg"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
+                          PROCESSING...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-5 h-5 mr-3" />
+                          SUBMIT PAYOUT REQUEST
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
