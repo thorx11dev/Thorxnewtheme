@@ -536,7 +536,6 @@ export default function UserPortal() {
     <div className="min-h-screen bg-background relative">
       {/* Industrial Grid Overlay */}
       <div className="industrial-grid fixed inset-0 z-0" />
-
       {/* Navigation Header */}
       <nav className="fixed top-0 w-full z-50 bg-background border-b-2 border-black" data-testid="portal-navigation">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
@@ -605,7 +604,6 @@ export default function UserPortal() {
           </div>
         </div>
       </nav>
-
       {/* Desktop Navigation Controls */}
       <div className="hidden md:block fixed left-4 top-1/2 transform -translate-y-1/2 z-40">
         <Button
@@ -618,7 +616,6 @@ export default function UserPortal() {
           <ChevronLeft className="w-6 h-6" />
         </Button>
       </div>
-
       <div className="hidden md:block fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
         <Button
           onClick={nextSection}
@@ -630,7 +627,6 @@ export default function UserPortal() {
           <ChevronRight className="w-6 h-6" />
         </Button>
       </div>
-
       {/* Mobile Bottom Tab Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t-2 border-black" role="navigation" aria-label="Mobile navigation">
         <div className="flex" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -659,15 +655,12 @@ export default function UserPortal() {
           })}
         </div>
       </nav>
-
       {/* Section Content */}
       <div className="pt-20 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
         {sections.map((section, index) => (
           <section
             key={section.id}
-            className={`cinematic-section ${currentSection === index ? 'active' : ''} ${
-              isTransitioning ? 'transitioning' : ''
-            }`}
+            className="cinematic-section active text-center"
             data-testid={`section-${section.id}`}
           >
             {/* Section Content */}
