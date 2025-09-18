@@ -1524,11 +1524,7 @@ export default function UserPortal() {
                     {/* Bank Transfer */}
                     <button
                       onClick={() => setSelectedMethod('bank')}
-                      className={`p-4 border-2 border-black text-left transition-all ${
-                        selectedMethod === 'bank' 
-                          ? 'bg-primary text-white' 
-                          : 'bg-white text-black hover:bg-gray-50'
-                      }`}
+                      className="p-4 border-2 border-black text-left transition-all text-black hover:bg-gray-50 bg-[#e8e5d8]"
                     >
                       <div className="flex items-center gap-3">
                         <div className="text-2xl">🏦</div>
