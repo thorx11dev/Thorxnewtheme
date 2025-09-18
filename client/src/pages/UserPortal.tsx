@@ -1484,7 +1484,7 @@ export default function UserPortal() {
               <div className="space-y-6">
                 {/* Choose Method Section */}
                 <div className="bg-white border-2 border-black p-6">
-                  <div className="bg-blue-500 text-white px-4 py-2 mb-6 border-2 border-black">
+                  <div className="text-white px-4 py-2 mb-6 border-2 border-black bg-[#ff6933]">
                     <TechnicalLabel text="CHOOSE METHOD" className="text-white font-black" />
                   </div>
 
