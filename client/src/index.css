@@ -565,6 +565,210 @@
   .industrial-button-secondary:hover {
     background: linear-gradient(145deg, #000, #333);
     color: #fff;
+  }
+
+  /* Enhanced Wireframe Industrial Design System */
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Wireframe technical drawing style */
+  .wireframe-technical {
+    position: relative;
+    background: #ffffff;
+    border: 2px solid #000;
+  }
+
+  .wireframe-technical::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+  }
+
+  /* Industrial measurement marks */
+  .measurement-marks::before,
+  .measurement-marks::after {
+    content: '';
+    position: absolute;
+    background: #000;
+  }
+
+  .measurement-marks::before {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+  }
+
+  .measurement-marks::after {
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 100%;
+  }
+
+  /* Technical annotation style */
+  .technical-annotation {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #000;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #000;
+    padding: 2px 6px;
+  }
+
+  /* Blueprint style background */
+  .blueprint-bg {
+    background: #1a365d;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+
+  /* Industrial form elements */
+  .industrial-input {
+    background: #fff;
+    border: 2px solid #000;
+    padding: 12px 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+  }
+
+  .industrial-input:focus {
+    outline: none;
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--primary)/0.2);
+  }
+
+  .industrial-select {
+    background: #fff;
+    border: 2px solid #000;
+    padding: 12px 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  /* Corner brackets for industrial feel */
+  .corner-brackets {
+    position: relative;
+  }
+
+  .corner-brackets::before,
+  .corner-brackets::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #000;
+  }
+
+  .corner-brackets::before {
+    top: -2px;
+    left: -2px;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  .corner-brackets::after {
+    bottom: -2px;
+    right: -2px;
+    border-left: none;
+    border-top: none;
+  }
+
+  /* Status indicator styles */
+  .status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid #000;
+  }
+
+  .status-completed {
+    background: #10b981;
+  }
+
+  .status-processing {
+    background: #f59e0b;
+    animation: pulse-status 2s infinite;
+  }
+
+  .status-pending {
+    background: #ef4444;
+  }
+
+  @keyframes pulse-status {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Technical drawing lines */
+  .tech-line {
+    position: relative;
+  }
+
+  .tech-line::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #000;
+    transform: translateY(-50%);
+  }
+
+  /* Industrial table styles */
+  .industrial-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 2px solid #000;
+  }
+
+  .industrial-table th,
+  .industrial-table td {
+    padding: 12px 16px;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    text-align: left;
+    font-weight: 700;
+  }
+
+  .industrial-table th {
+    background: #000;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 12px;
+  }
+
+  .industrial-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .industrial-table td:last-child,
+  .industrial-table th:last-child {
+    border-right: none;
+  }
+
   .counter-display {
     font-size: 2rem;
   }
