@@ -1537,23 +1537,7 @@ export default function UserPortal() {
                   </div>
                 </div>
 
-                {/* Need Help Section */}
-                <div className="bg-white border-2 border-black p-6">
-                  <div className="text-center mb-4">
-                    <TechnicalLabel text="NEED HELP?" className="text-black font-black text-lg" />
-                  </div>
-                  <div className="space-y-3">
-                    <button className="w-full p-3 border-2 border-black text-black hover:bg-black hover:text-white transition-colors font-bold">
-                      📞 CALL SUPPORT
-                    </button>
-                    <button className="w-full p-3 border-2 border-black text-black hover:bg-black hover:text-white transition-colors font-bold">
-                      💬 LIVE CHAT
-                    </button>
-                    <button className="w-full p-3 border-2 border-black text-black hover:bg-black hover:text-white transition-colors font-bold">
-                      📧 EMAIL US
-                    </button>
-                  </div>
-                </div>
+                
 
                 {/* Any Questions Section */}
                 <div className="bg-white border-2 border-black p-6">
