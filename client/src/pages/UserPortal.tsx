@@ -1323,237 +1323,400 @@ export default function UserPortal() {
     );
   }
 
-  // Enhanced Payout Section - Wireframe Industrial Design Matching the Provided Image
+  // Enhanced Payout Section - Thorx Theme with Modern Dark Design
   function renderPayoutSection() {
-    // State for form inputs
+    // Enhanced state management
     const [withdrawAmount, setWithdrawAmount] = useState("");
     const [selectedMethod, setSelectedMethod] = useState("");
     const [accountDetails, setAccountDetails] = useState("");
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [errors, setErrors] = useState<{[key: string]: string}>({});
     
-    // Mock withdrawal history data for the left sidebar
+    // Mock withdrawal history data with enhanced status tracking
     const historyItems = Array.from({ length: 12 }, (_, i) => ({
       id: `history_${i + 1}`,
       date: new Date(2024, 0, 15 - i).toISOString(),
       amount: (Math.random() * 2000 + 100).toFixed(2),
-      status: ['COMPLETED', 'PROCESSING', 'PENDING'][Math.floor(Math.random() * 3)]
+      method: ['JazzCash', 'EasyPaisa', 'Bank'][Math.floor(Math.random() * 3)],
+      status: ['COMPLETED', 'PROCESSING', 'PENDING'][Math.floor(Math.random() * 3)],
+      transactionId: `TX${(1000000 + i).toString()}`
     }));
 
-    // Real-time fee calculation
+    // Enhanced fee calculation with validation
     const withdrawalAmount = parseFloat(withdrawAmount) || 0;
     const processingFee = 15.00;
-    const platformFee = withdrawalAmount * 0.025; // 2.5%
-    const directDeduction = withdrawalAmount * 0.15; // 15%
-    const totalDeductions = processingFee + platformFee + directDeduction;
+    const platformFeeRate = 0.13; // 13% as per requirements
+    const directReferralFeeRate = 0.15; // 15% as per requirements 
+    const indirectReferralFeeRate = 0.07; // 7% as per requirements
+    
+    const platformFee = withdrawalAmount * platformFeeRate;
+    const directReferralFee = withdrawalAmount * directReferralFeeRate;
+    const indirectReferralFee = withdrawalAmount * indirectReferralFeeRate;
+    const totalDeductions = processingFee + platformFee + directReferralFee + indirectReferralFee;
     const netAmount = Math.max(0, withdrawalAmount - totalDeductions);
 
+    // Enhanced validation
+    const validateForm = () => {
+      const newErrors: {[key: string]: string} = {};
+      
+      if (!withdrawAmount || withdrawalAmount < 100) {
+        newErrors.amount = "Minimum withdrawal amount is PKR 100";
+      }
+      if (withdrawalAmount > 50000) {
+        newErrors.amount = "Maximum daily withdrawal is PKR 50,000";
+      }
+      if (!selectedMethod) {
+        newErrors.method = "Please select a payment method";
+      }
+      if (!accountDetails) {
+        newErrors.account = "Account details are required";
+      }
+      if (selectedMethod === 'jazzcash' || selectedMethod === 'easypaisa') {
+        if (!/^03[0-9]{9}$/.test(accountDetails)) {
+          newErrors.account = "Please enter a valid mobile number (03XXXXXXXXX)";
+        }
+      }
+
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    };
+
+    // Enhanced payment method data with proper icons
+    const paymentMethods = [
+      {
+        id: 'jazzcash',
+        name: 'JAZZ CASH',
+        icon: Phone,
+        description: 'Mobile Wallet Transfer',
+        color: 'bg-gradient-to-r from-red-600 to-red-700',
+        textColor: 'text-white',
+        processing: '2-4 hours',
+        placeholder: '03XXXXXXXXX'
+      },
+      {
+        id: 'easypaisa',
+        name: 'EASY PAISA', 
+        icon: CreditCard,
+        description: 'Digital Wallet Service',
+        color: 'bg-gradient-to-r from-green-600 to-green-700',
+        textColor: 'text-white',
+        processing: '2-4 hours',
+        placeholder: '03XXXXXXXXX'
+      },
+      {
+        id: 'bank',
+        name: 'BANK TRANSFER',
+        icon: Home,
+        description: 'Direct Bank Account',
+        color: 'bg-gradient-to-r from-blue-600 to-blue-700',
+        textColor: 'text-white',
+        processing: '24-48 hours',
+        placeholder: 'Account Number / IBAN'
+      }
+    ];
+
+    const handleSubmit = async () => {
+      if (!validateForm()) return;
+      
+      setIsProcessing(true);
+      // Simulate API call
+      setTimeout(() => {
+        setIsProcessing(false);
+        toast({
+          title: "Payout Request Submitted!",
+          description: `Your withdrawal of ${formatCurrency(netAmount)} has been submitted for processing.`,
+        });
+      }, 2000);
+    };
+
     return (
-      <div className="min-h-screen bg-[#e8e5d9] relative overflow-hidden">
-        {/* Grid Background Overlay */}
-        <div className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
-        {/* Main Container - Exact Wireframe Layout */}
-        <div className="h-screen flex">
-          {/* Left Sidebar - History Navigation */}
-          <div className="w-64 bg-white border-r-4 border-black flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b-2 border-black bg-black text-white">
-              <TechnicalLabel text="TRANSACTION HISTORY" className="text-white text-sm" />
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+        {/* Enhanced Header Section */}
+        <div className="wireframe-border p-8 mb-8 bg-gradient-to-br from-card to-card/90">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
+              <Wallet className="w-5 h-5" />
+              <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white" />
             </div>
-            
-            {/* History Items - Scrollable List */}
-            <div className="flex-1 overflow-y-auto">
-              {historyItems.map((item, index) => (
-                <div 
-                  key={item.id}
-                  className="border-b-2 border-black p-4 hover:bg-gray-50 cursor-pointer transition-colors group"
-                >
-                  <div className="flex items-center justify-between">
-                    <TechnicalLabel text={`HISTORY`} className="text-black font-black text-xs" />
-                    <div className={`w-2 h-2 rounded-full ${
-                      item.status === 'COMPLETED' ? 'bg-green-500' :
-                      item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
-                    }`} />
-                  </div>
-                  <div className="mt-2">
-                    <div className="text-sm font-bold">{formatCurrency(item.amount)}</div>
-                    <div className="text-xs text-gray-600">{formatDate(item.date)}</div>
-                  </div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+              SECURE <span className="text-primary">PAYOUT</span><br />
+              INSTANT WITHDRAWALS
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+              Fast, secure, and transparent withdrawal processing system
+            </p>
+            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+          </div>
+        </div>
+
+        {/* Main Payout Interface */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Left Column - Transaction History */}
+          <div className="lg:col-span-1">
+            <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20">
+              <CardHeader className="border-b border-muted-foreground/20">
+                <CardTitle className="flex items-center gap-3">
+                  <History className="w-5 h-5 text-primary" />
+                  <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-96 overflow-y-auto">
+                  {historyItems.map((item, index) => (
+                    <div 
+                      key={item.id}
+                      className="p-4 border-b border-muted-foreground/10 hover:bg-muted/50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <TechnicalLabel text={item.method} className="text-foreground text-xs font-black" />
+                        <div className={`w-2 h-2 rounded-full ${
+                          item.status === 'COMPLETED' ? 'bg-green-500' :
+                          item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
+                        }`} />
+                      </div>
+                      <div className="text-sm font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
+                      <div className="text-xs text-muted-foreground">{formatDate(item.date)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">#{item.transactionId}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col">
-            {/* Header Section */}
-            <div className="bg-white border-b-4 border-black p-6">
-              <div className="text-center">
-                <h1 className="text-4xl md:text-6xl font-black text-black tracking-tight mb-2">
-                  PAYOUT
-                </h1>
-                <TechnicalLabel text="WITHDRAWAL PROCESSING SYSTEM v2.8" className="text-black/60" />
-              </div>
-            </div>
-
-            {/* Main Content Grid */}
-            <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Left Column - Enter Detail */}
-              <div className="space-y-6">
-                {/* Enter Detail Section */}
-                <div className="bg-white border-2 border-black p-6">
-                  <div className="text-white px-4 py-2 mb-6 border-2 border-black bg-[#ff6933]">
-                    <TechnicalLabel text="ENTER DETAIL" className="text-white font-black" />
-                  </div>
-
-                  {/* Input Field */}
-                  <div className="space-y-4">
-                    <div>
-                      <TechnicalLabel text="WITHDRAWAL AMOUNT (PKR)" className="text-black mb-2 font-black" />
-                      <input
-                        type="number"
-                        value={withdrawAmount}
-                        onChange={(e) => setWithdrawAmount(e.target.value)}
-                        placeholder="Enter amount..."
-                        className="w-full p-4 border-2 border-black bg-white text-black text-xl font-bold placeholder-gray-400 outline-none focus:border-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <TechnicalLabel text="ACCOUNT DETAILS" className="text-black mb-2 font-black" />
-                      <input
-                        type="text"
-                        value={accountDetails}
-                        onChange={(e) => setAccountDetails(e.target.value)}
-                        placeholder="Phone number or account..."
-                        className="w-full p-4 border-2 border-black bg-white text-black text-lg font-bold placeholder-gray-400 outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Final Statement Section */}
-                <div className="bg-white border-2 border-black p-6">
-                  <div className="text-white px-4 py-2 mb-6 border-2 border-black bg-[#000000]">
-                    <TechnicalLabel text="FINAL STATEMENT" className="text-white font-black" />
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                      <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-black" />
-                      <TechnicalLabel text={formatCurrency(withdrawalAmount)} className="text-black font-black" />
-                    </div>
-                    
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                      <TechnicalLabel text="PLATFORM FEE (2.5%):" className="text-black" />
-                      <TechnicalLabel text={formatCurrency(platformFee)} className="text-red-600 font-black" />
-                    </div>
-                    
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                      <TechnicalLabel text="DIRECT DEDUCTION (15%):" className="text-black" />
-                      <TechnicalLabel text={formatCurrency(directDeduction)} className="text-red-600 font-black" />
-                    </div>
-                    
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                      <TechnicalLabel text="PROCESSING FEE:" className="text-black" />
-                      <TechnicalLabel text="PKR 15.00" className="text-red-600 font-black" />
-                    </div>
-                    
-                    <div className="flex justify-between items-center py-3 border-t-2 border-black bg-gray-50">
-                      <TechnicalLabel text="TOTAL DEDUCTIONS:" className="text-black font-black" />
-                      <TechnicalLabel text={`PKR -${totalDeductions.toFixed(2)}`} className="text-red-600 font-black text-lg" />
-                    </div>
-                    
-                    <div className="flex justify-between items-center py-3 bg-green-50 border-2 border-green-500">
-                      <TechnicalLabel text="NET AMOUNT:" className="text-green-700 font-black" />
-                      <TechnicalLabel text={formatCurrency(netAmount)} className="text-green-700 font-black text-xl" />
-                    </div>
-                  </div>
-
-                  {/* GO Button */}
-                  <div className="mt-6">
-                    <button 
-                      className="w-full bg-black text-white py-4 border-2 border-black font-black text-xl hover:bg-gray-800 transition-colors disabled:opacity-50"
-                      disabled={!withdrawAmount || !selectedMethod || !accountDetails}
-                    >
-                      GO!
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column - Choose Method & Support */}
-              <div className="space-y-6">
-                {/* Choose Method Section */}
-                <div className="bg-white border-2 border-black p-6">
-                  <div className="text-white px-4 py-2 mb-6 border-2 border-black bg-[#ff6933]">
-                    <TechnicalLabel text="CHOOSE METHOD" className="text-white font-black" />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    {/* Jazz Cash */}
-                    <button
-                      onClick={() => setSelectedMethod('jazzcash')}
-                      className="p-4 border-2 border-black text-left transition-all text-black hover:bg-gray-50 bg-[#e8e5d8]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl">📱</div>
-                        <div>
-                          <TechnicalLabel text="JAZZ CASH" className={`font-black ${selectedMethod === 'jazzcash' ? 'text-white' : 'text-black'}`} />
-                          <div className="text-xs opacity-80">Mobile Wallet Transfer</div>
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* Easy Paisa */}
-                    <button
-                      onClick={() => setSelectedMethod('easypaisa')}
-                      className={`p-4 border-2 border-black text-left transition-all ${
-                        selectedMethod === 'easypaisa' 
-                          ? 'bg-primary text-white' 
-                          : 'bg-white text-black hover:bg-gray-50'
+          {/* Right Column - Payout Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Enter Details Section */}
+            <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20">
+              <CardHeader className="border-b border-muted-foreground/20 bg-gradient-to-r from-primary/10 to-primary/5">
+                <CardTitle className="flex items-center gap-3">
+                  <Download className="w-5 h-5 text-primary" />
+                  <TechnicalLabel text="ENTER PAYOUT DETAILS" className="text-foreground" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  {/* Amount Input */}
+                  <div>
+                    <TechnicalLabel text="WITHDRAWAL AMOUNT (PKR)" className="text-foreground mb-3 font-black" />
+                    <Input
+                      type="number"
+                      value={withdrawAmount}
+                      onChange={(e) => {
+                        setWithdrawAmount(e.target.value);
+                        if (errors.amount) setErrors(prev => ({...prev, amount: ''}));
+                      }}
+                      placeholder="Enter amount (Min: PKR 100)"
+                      className={`border-2 text-lg py-3 font-bold ${
+                        errors.amount ? 'border-red-500' : 'border-black focus:border-primary'
                       }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl">💳</div>
-                        <div>
-                          <TechnicalLabel text="EASY PAISA" className={`font-black ${selectedMethod === 'easypaisa' ? 'text-white' : 'text-black'}`} />
-                          <div className="text-xs opacity-80">Digital Wallet Service</div>
-                        </div>
-                      </div>
-                    </button>
+                    />
+                    {errors.amount && (
+                      <p className="text-red-600 text-sm mt-2 font-medium">{errors.amount}</p>
+                    )}
+                  </div>
 
-                    {/* Bank Transfer */}
-                    <button
-                      onClick={() => setSelectedMethod('bank')}
-                      className="p-4 border-2 border-black text-left transition-all hover:bg-gray-50 bg-[#e8e5d8] text-[#2a2c37]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl">🏦</div>
-                        <div>
-                          <TechnicalLabel text="BANK TRANSFER" className={`font-black ${selectedMethod === 'bank' ? 'text-white' : 'text-black'}`} />
-                          <div className="text-xs opacity-80">Direct Bank Account</div>
+                  {/* Account Details Input */}
+                  <div>
+                    <TechnicalLabel text="ACCOUNT DETAILS" className="text-foreground mb-3 font-black" />
+                    <Input
+                      type="text"
+                      value={accountDetails}
+                      onChange={(e) => {
+                        setAccountDetails(e.target.value);
+                        if (errors.account) setErrors(prev => ({...prev, account: ''}));
+                      }}
+                      placeholder={
+                        selectedMethod ? 
+                        paymentMethods.find(m => m.id === selectedMethod)?.placeholder || "Enter details" :
+                        "Select payment method first"
+                      }
+                      className={`border-2 text-lg py-3 font-bold ${
+                        errors.account ? 'border-red-500' : 'border-black focus:border-primary'
+                      }`}
+                      disabled={!selectedMethod}
+                    />
+                    {errors.account && (
+                      <p className="text-red-600 text-sm mt-2 font-medium">{errors.account}</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Method Selection */}
+            <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20">
+              <CardHeader className="border-b border-muted-foreground/20 bg-gradient-to-r from-secondary/10 to-secondary/5">
+                <CardTitle className="flex items-center gap-3">
+                  <CreditCard className="w-5 h-5 text-primary" />
+                  <TechnicalLabel text="CHOOSE PAYMENT METHOD" className="text-foreground" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid gap-4">
+                  {paymentMethods.map((method) => {
+                    const IconComponent = method.icon;
+                    const isSelected = selectedMethod === method.id;
+                    
+                    return (
+                      <button
+                        key={method.id}
+                        onClick={() => {
+                          setSelectedMethod(method.id);
+                          setAccountDetails('');
+                          if (errors.method) setErrors(prev => ({...prev, method: ''}));
+                        }}
+                        className={`p-4 border-2 border-black text-left transition-all duration-300 ${
+                          isSelected 
+                            ? `${method.color} ${method.textColor} shadow-lg` 
+                            : 'bg-background text-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                            isSelected ? 'bg-white/20' : 'bg-primary/10'
+                          }`}>
+                            <IconComponent className={`w-6 h-6 ${
+                              isSelected ? 'text-white' : 'text-primary'
+                            }`} />
+                          </div>
+                          <div className="flex-1">
+                            <TechnicalLabel 
+                              text={method.name} 
+                              className={`font-black text-lg mb-1 ${
+                                isSelected ? method.textColor : 'text-foreground'
+                              }`} 
+                            />
+                            <div className={`text-sm ${
+                              isSelected ? 'text-white/80' : 'text-muted-foreground'
+                            }`}>
+                              {method.description}
+                            </div>
+                            <div className={`text-xs mt-1 ${
+                              isSelected ? 'text-white/60' : 'text-muted-foreground/60'
+                            }`}>
+                              Processing: {method.processing}
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2 className="w-6 h-6 text-white" />
+                          )}
                         </div>
-                      </div>
-                    </button>
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.method && (
+                  <p className="text-red-600 text-sm mt-3 font-medium">{errors.method}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Final Statement */}
+            <Card className="split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20">
+              <CardHeader className="border-b border-muted-foreground/20 bg-gradient-to-r from-muted to-muted/50">
+                <CardTitle className="flex items-center gap-3">
+                  <Activity className="w-5 h-5 text-primary" />
+                  <TechnicalLabel text="FINAL STATEMENT" className="text-foreground" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                    <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-foreground" />
+                    <TechnicalLabel text={formatCurrency(withdrawalAmount)} className="text-foreground font-black text-lg" />
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                    <TechnicalLabel text="PLATFORM FEE (13%):" className="text-foreground" />
+                    <TechnicalLabel text={`-${formatCurrency(platformFee)}`} className="text-red-600 font-black" />
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                    <TechnicalLabel text="DIRECT REFERRAL FEE (15%):" className="text-foreground" />
+                    <TechnicalLabel text={`-${formatCurrency(directReferralFee)}`} className="text-red-600 font-black" />
+                  </div>
+
+                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                    <TechnicalLabel text="INDIRECT REFERRAL FEE (7%):" className="text-foreground" />
+                    <TechnicalLabel text={`-${formatCurrency(indirectReferralFee)}`} className="text-red-600 font-black" />
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                    <TechnicalLabel text="PROCESSING FEE:" className="text-foreground" />
+                    <TechnicalLabel text={`-PKR ${processingFee.toFixed(2)}`} className="text-red-600 font-black" />
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-3 bg-muted/50 px-4 rounded-lg">
+                    <TechnicalLabel text="TOTAL DEDUCTIONS:" className="text-foreground font-black text-lg" />
+                    <TechnicalLabel text={`-PKR ${totalDeductions.toFixed(2)}`} className="text-red-600 font-black text-lg" />
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-4 bg-gradient-to-r from-green-100 to-green-50 border-2 border-green-500 px-4 rounded-lg">
+                    <TechnicalLabel text="NET AMOUNT:" className="text-green-700 font-black text-xl" />
+                    <TechnicalLabel text={formatCurrency(netAmount)} className="text-green-700 font-black text-2xl" />
                   </div>
                 </div>
 
-                
+                {/* Enhanced Submit Button */}
+                <div className="mt-8">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!withdrawAmount || !selectedMethod || !accountDetails || isProcessing}
+                    className="w-full bg-black hover:bg-primary text-white hover:text-black py-6 text-xl font-black border-2 border-black transition-all duration-300"
+                    size="lg"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
+                        PROCESSING...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-5 h-5 mr-3" />
+                        SUBMIT PAYOUT REQUEST
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-                {/* Any Questions Section */}
-                <div className="bg-white border-2 border-black p-6">
-                  <div className="text-center mb-4">
-                    <TechnicalLabel text="ANY QUESTIONS?" className="text-black font-black text-lg" />
+            {/* Enhanced Support Section */}
+            <Card className="split-card bg-gradient-to-br from-muted to-muted/60 border-2 border-muted-foreground/20">
+              <CardHeader className="border-b border-muted-foreground/20">
+                <CardTitle className="flex items-center gap-3">
+                  <HelpCircle className="w-5 h-5 text-primary" />
+                  <TechnicalLabel text="NEED HELP?" className="text-foreground" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="font-black text-foreground">PAYOUT INFORMATION</h4>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <p>• Processing time: 24-48 hours</p>
+                      <p>• Minimum withdrawal: PKR 100</p>
+                      <p>• Maximum per day: PKR 50,000</p>
+                      <p>• Available 24/7</p>
+                    </div>
                   </div>
-                  <div className="space-y-2 text-sm text-black">
-                    <p>• Processing time: 24-48 hours</p>
-                    <p>• Minimum withdrawal: PKR 100</p>
-                    <p>• Maximum per day: PKR 50,000</p>
-                    <p>• Fee: PKR 15 + 2.5% + 15% deduction</p>
-                    <p>• Support: 24/7 available</p>
+                  <div className="space-y-3">
+                    <h4 className="font-black text-foreground">QUICK ACTIONS</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" size="sm" className="border-2 border-black text-foreground hover:bg-black hover:text-white">
+                        <Book className="w-4 h-4 mr-2" />
+                        FAQ
+                      </Button>
+                      <Button variant="outline" size="sm" className="border-2 border-black text-foreground hover:bg-black hover:text-white">
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Support
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
