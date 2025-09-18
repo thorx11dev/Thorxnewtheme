@@ -1432,7 +1432,7 @@ export default function UserPortal() {
 
                 {/* Final Statement Section */}
                 <div className="bg-white border-2 border-black p-6">
-                  <div className="bg-blue-500 text-white px-4 py-2 mb-6 border-2 border-black">
+                  <div className="text-white px-4 py-2 mb-6 border-2 border-black bg-[#000000]">
                     <TechnicalLabel text="FINAL STATEMENT" className="text-white font-black" />
                   </div>
 
