@@ -1350,7 +1350,6 @@ export default function UserPortal() {
       <div className="min-h-screen bg-[#e8e5d9] relative overflow-hidden">
         {/* Grid Background Overlay */}
         <div className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none" />
-        
         {/* Main Container - Exact Wireframe Layout */}
         <div className="h-screen flex">
           {/* Left Sidebar - History Navigation */}
@@ -1401,7 +1400,7 @@ export default function UserPortal() {
               <div className="space-y-6">
                 {/* Enter Detail Section */}
                 <div className="bg-white border-2 border-black p-6">
-                  <div className="bg-blue-500 text-white px-4 py-2 mb-6 border-2 border-black">
+                  <div className="text-white px-4 py-2 mb-6 border-2 border-black bg-[#ff6933]">
                     <TechnicalLabel text="ENTER DETAIL" className="text-white font-black" />
                   </div>
 
