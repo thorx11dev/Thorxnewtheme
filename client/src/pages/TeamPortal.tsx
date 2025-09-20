@@ -127,10 +127,12 @@ export default function TeamPortal() {
     enabled: !!user && user.role === 'team',
   });
 
-  // Team emails query (received messages)
+  // Team emails query (received messages) with auto-refresh
   const { data: emailsData, isLoading: emailsLoading, error: emailsError } = useQuery({
     queryKey: ['/api/team/emails'],
     enabled: !!user && user.role === 'team',
+    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchIntervalInBackground: true,
   });
 
   // User credentials query (for data section)
@@ -566,6 +568,11 @@ export default function TeamPortal() {
                               text={email.subject || 'No Subject'} 
                               className="text-foreground font-semibold text-sm" 
                             />
+                            {email.subject?.startsWith('Contact Message from') && (
+                              <div className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 border border-blue-300 ml-2">
+                                USER CONTACT
+                              </div>
+                            )}
                           </div>
                           <div className="text-muted-foreground text-xs line-clamp-2">
                             {email.content ? (

@@ -946,6 +946,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User contact message endpoint
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const { name, email, description } = req.body;
+
+      if (!name || !email || !description) {
+        return res.status(400).json({
+          message: "Name, email, and description are required",
+          error: "MISSING_FIELDS"
+        });
+      }
+
+      // Create a team email entry for the contact message
+      const contactEmailData = {
+        fromUserId: null, // External user contact
+        toEmail: "team@thorx.com", // Team email
+        fromEmail: email,
+        subject: `Contact Message from ${name}`,
+        content: `Contact Form Submission\n\nName: ${name}\nEmail: ${email}\n\nMessage:\n${description}`,
+        type: 'inbound' as const,
+        status: 'sent' as const
+      };
+
+      const contactEmail = await storage.createTeamEmail(contactEmailData);
+
+      res.status(201).json({
+        success: true,
+        message: "Contact message sent successfully",
+        messageId: contactEmail.id
+      });
+    } catch (error) {
+      console.error("Contact message error:", error);
+      res.status(500).json({
+        message: "Failed to send contact message",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
   // Bootstrap founder endpoint (only works when no team members exist)
   app.post("/api/bootstrap-founder", async (req, res) => {
     try {

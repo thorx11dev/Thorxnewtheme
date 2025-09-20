@@ -1878,6 +1878,7 @@ export default function UserPortal() {
       email: "",
       description: ""
     });
+    const [isContactSubmitting, setIsContactSubmitting] = useState(false);
 
     // Chat functionality with Telegram/WhatsApp style
     const sendMessage = () => {
@@ -1917,13 +1918,42 @@ export default function UserPortal() {
     };
 
     // Contact form submission
-    const handleContactSubmit = (e: React.FormEvent) => {
+    const handleContactSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      toast({
-        title: "Message Sent Successfully!",
-        description: "Our team will get back to you within 24 hours.",
-      });
-      setContactForm({ name: "", email: "", description: "" });
+      
+      if (!contactForm.name || !contactForm.email || !contactForm.description) {
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all fields before sending.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setIsContactSubmitting(true);
+
+      try {
+        const response = await apiRequest("POST", "/api/contact", contactForm);
+        
+        if (response.ok) {
+          toast({
+            title: "Message Sent Successfully!",
+            description: "Our team will get back to you within 24 hours.",
+          });
+          setContactForm({ name: "", email: "", description: "" });
+        } else {
+          throw new Error("Failed to send message");
+        }
+      } catch (error) {
+        console.error("Contact form error:", error);
+        toast({
+          title: "Failed to Send Message",
+          description: "Please try again or contact us directly.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsContactSubmitting(false);
+      }
     };
 
     const formatTime = (timestamp: string) => {
@@ -2172,9 +2202,17 @@ export default function UserPortal() {
 
                     <Button 
                       type="submit"
-                      className="w-full bg-black text-white text-xl font-black py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black"
+                      disabled={isContactSubmitting}
+                      className="w-full bg-black text-white text-xl font-black py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black disabled:opacity-50"
                     >
-                      SEND MESSAGE TO TEAM →
+                      {isContactSubmitting ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
+                          SENDING MESSAGE...
+                        </>
+                      ) : (
+                        "SEND MESSAGE TO TEAM →"
+                      )}
                     </Button>
                   </form>
 
