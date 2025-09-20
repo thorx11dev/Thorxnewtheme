@@ -92,10 +92,26 @@
     min-height: 100vh;
     position: relative;
     overflow-x: hidden;
+    padding-top: 0;
   }
   
   .auth-page .cinematic-section {
     z-index: 10;
+    position: relative;
+    padding-top: 240px;
+    padding-bottom: 40px;
+    height: auto;
+    min-height: 100vh;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (max-width: 768px) {
+    .auth-page .cinematic-section {
+      padding-top: 10rem !important;
+      padding-bottom: 2rem !important;
+    }
   }
 }
 
@@ -147,7 +163,7 @@
     height: 100vh;
     height: 100dvh;
     height: 100svh;
-    padding-top: 200px;
+    padding-top: 240px;
     padding-bottom: 40px;
     padding-left: 20px;
     padding-right: 20px;
@@ -176,7 +192,7 @@
       height: 100vh !important;
       height: 100dvh !important;
       height: 100svh !important;
-      padding: 9rem 1rem 2rem 1rem !important;
+      padding: 10rem 1rem 2rem 1rem !important;
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
@@ -198,14 +214,14 @@
   .cinematic-section[data-section="1"] {
     align-items: center;
     justify-content: center;
-    padding-top: 80px;
+    padding-top: 240px;
     display: flex;
   }
 
   @media (max-width: 768px) {
     .cinematic-section[data-section="1"] {
       justify-content: center !important;
-      padding: 4rem 1rem 2rem 1rem !important;
+      padding: 10rem 1rem 2rem 1rem !important;
     }
   }
 
