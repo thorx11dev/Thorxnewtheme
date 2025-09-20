@@ -37,7 +37,7 @@ export interface IStorage {
   getRegistrationByEmail(email: string): Promise<Registration | undefined>;
   
   // User management methods
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: InsertUser & { id?: string }): Promise<User>; // Allow external ID (from Supabase)
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByReferralCode(referralCode: string): Promise<User | undefined>;
@@ -110,8 +110,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User management methods
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const hashedPassword = await bcrypt.hash(insertUser.passwordHash, 12);
+  async createUser(insertUser: InsertUser & { id?: string }): Promise<User> {
+    const hashedPassword = insertUser.passwordHash === 'supabase_managed' 
+      ? 'supabase_managed' // Don't hash if managed by Supabase
+      : await bcrypt.hash(insertUser.passwordHash, 12);
     const referralCode = this.generateReferralCode();
     
     const userData = {
@@ -119,6 +121,11 @@ export class DatabaseStorage implements IStorage {
       passwordHash: hashedPassword,
       referralCode,
     };
+
+    // If external ID is provided (e.g., from Supabase), use it
+    if (insertUser.id) {
+      userData.id = insertUser.id;
+    }
 
     const [user] = await db.insert(users).values(userData).returning();
     

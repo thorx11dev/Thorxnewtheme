@@ -4,6 +4,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { insertRegistrationSchema, insertUserSchema } from "@shared/schema";
+import { createServerSupabaseClient } from "./supabase";
 import { z } from "zod";
 
 // Extend session data type
@@ -33,7 +34,51 @@ declare module "express-session" {
   }
 }
 
-// Authentication middleware
+// Extend Express Request to include Supabase user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any; // Supabase user object
+    }
+  }
+}
+
+// Supabase Authentication middleware
+export const requireSupabaseAuth = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        message: "Authentication required",
+        error: "UNAUTHORIZED"
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const supabase = createServerSupabaseClient();
+    
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({
+        message: "Invalid or expired token",
+        error: "UNAUTHORIZED"
+      });
+    }
+
+    // Attach user to request for downstream use
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(401).json({
+      message: "Authentication failed",
+      error: "UNAUTHORIZED"
+    });
+  }
+};
+
+// Legacy session-based authentication middleware (for gradual migration)
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (!req.session.userId) {
     return res.status(401).json({
@@ -83,7 +128,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   }));
 
-  // User registration endpoint
+  // Supabase user registration endpoint
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const validatedData = registerSchema.parse(req.body);
+      const supabase = createServerSupabaseClient();
+
+      // Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: validatedData.email,
+        password: validatedData.password,
+        user_metadata: {
+          firstName: validatedData.firstName,
+          lastName: validatedData.lastName,
+          identity: validatedData.identity,
+          phone: validatedData.phone,
+          referralCode: validatedData.referralCode
+        }
+      });
+
+      if (authError || !authData.user) {
+        console.error('Supabase auth registration error:', authError);
+        return res.status(400).json({
+          message: authError?.message || "Registration failed",
+          error: "REGISTRATION_FAILED"
+        });
+      }
+
+      // Find referrer if referral code provided
+      let referredBy: string | undefined;
+      if (validatedData.referralCode) {
+        const referrer = await storage.getUserByReferralCode(validatedData.referralCode);
+        if (referrer) {
+          referredBy = referrer.id;
+        }
+      }
+
+      // Create user data for local database
+      const userData = {
+        id: authData.user.id, // Use Supabase user ID
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        identity: validatedData.identity,
+        phone: validatedData.phone,
+        email: validatedData.email,
+        passwordHash: 'supabase_managed', // Password managed by Supabase
+        referralCode: "", // Will be generated in storage layer
+        referredBy,
+      };
+
+      const user = await storage.createUser(userData);
+
+      res.status(201).json({
+        success: true,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          referralCode: user.referralCode,
+        },
+        message: "Registration successful"
+      });
+    } catch (error) {
+      console.error("Supabase registration error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid registration data",
+          errors: error.errors
+        });
+      }
+
+      res.status(500).json({
+        message: "Registration failed",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Note: Client handles login directly via Supabase client
+  // This endpoint is removed to avoid exposing session tokens through backend
+
+  // Supabase user logout endpoint
+  app.post("/api/auth/logout", requireSupabaseAuth, async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.substring(7);
+      
+      if (token) {
+        const supabase = createServerSupabaseClient();
+        await supabase.auth.admin.signOut(token);
+      }
+
+      res.json({
+        success: true,
+        message: "Logout successful"
+      });
+    } catch (error) {
+      console.error("Supabase logout error:", error);
+      res.status(500).json({
+        message: "Logout failed",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Supabase get current user endpoint
+  app.get("/api/auth/user", requireSupabaseAuth, async (req, res) => {
+    try {
+      const supabaseUser = req.user;
+      const user = await storage.getUserById(supabaseUser.id);
+      
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+          error: "USER_NOT_FOUND"
+        });
+      }
+
+      res.json({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        identity: user.identity,
+        phone: user.phone,
+        referralCode: user.referralCode,
+        totalEarnings: user.totalEarnings,
+        availableBalance: user.availableBalance,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        role: user.role || 'user',
+      });
+    } catch (error) {
+      console.error("Get Supabase user error:", error);
+      res.status(500).json({
+        message: "Failed to fetch user data",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Legacy user registration endpoint (session-based)
   app.post("/api/register", async (req, res) => {
     try {
       const validatedData = registerSchema.parse(req.body);
@@ -223,7 +409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User login endpoint
+  // Legacy user login endpoint (session-based)
   app.post("/api/login", async (req, res) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
@@ -285,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User logout endpoint
+  // Legacy user logout endpoint (session-based)
   app.post("/api/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) {
@@ -304,7 +490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Get current user endpoint
+  // Legacy get current user endpoint (session-based)
   app.get("/api/user", requireAuth, async (req, res) => {
     try {
       // Check if it's an anonymous user
@@ -501,6 +687,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       totalPaid: 2.5,
       activeUsers: 45,
       securityScore: 99
+    });
+  });
+
+  // Supabase configuration endpoint for automatic frontend reconnection
+  app.get("/api/config/supabase", (req, res) => {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return res.status(500).json({
+        error: "Supabase configuration not available",
+        message: "Server environment variables not configured"
+      });
+    }
+    
+    res.json({
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey
     });
   });
 
