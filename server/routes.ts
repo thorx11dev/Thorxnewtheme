@@ -556,10 +556,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { recipient, subject, message } = teamEmailSchema.parse(req.body);
 
       const emailData = {
-        senderId: req.session.userId!,
-        recipient,
+        fromUserId: req.session.userId!,
+        toEmail: recipient,
+        fromEmail: req.session.user!.email,
         subject,
-        message,
+        content: message,
         type: 'outbound' as const
       };
 
