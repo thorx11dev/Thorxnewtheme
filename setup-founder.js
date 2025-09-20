@@ -6,14 +6,14 @@ async function setupFounder() {
     const response = await axios.post('http://localhost:5000/api/bootstrap-founder', {
       firstName: 'Aon',
       lastName: 'Imram',
-      email: 'thorxdidi9426!',
+      email: 'thorx11dev@gmail.com',
       password: 'Thorxdidi9426!'
     });
     
     console.log('✅ Founder account created successfully!');
     console.log('Response:', response.data);
     console.log('\n🔑 You can now login with:');
-    console.log('Email: thorxdidi9426!');
+    console.log('Email: thorx11dev@gmail.com');
     console.log('Password: Thorxdidi9426!');
     console.log('\n🚀 Navigate to /auth and login to access the team portal!');
   } catch (error) {
