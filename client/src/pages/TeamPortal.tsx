@@ -22,7 +22,6 @@ import {
   DollarSign,
   Activity,
   Mail,
-  Send,
   Database,
   Key,
   UserCheck,
@@ -42,14 +41,7 @@ import {
   ChevronRight
 } from "lucide-react";
 
-// Email form schema
-const emailFormSchema = z.object({
-  recipient: z.string().email("Please enter a valid email address"),
-  subject: z.string().min(1, "Subject is required"),
-  message: z.string().min(1, "Message is required")
-});
 
-type EmailFormData = z.infer<typeof emailFormSchema>;
 
 // Team member form schema - aligned with backend
 const teamMemberFormSchema = z.object({
@@ -297,49 +289,7 @@ export default function TeamPortal() {
     }
   };
 
-  // Email form
-  const emailForm = useForm<EmailFormData>({
-    resolver: zodResolver(emailFormSchema),
-    defaultValues: {
-      recipient: "",
-      subject: "",
-      message: ""
-    }
-  });
-
-  // Send email mutation
-  const sendEmailMutation = useMutation({
-    mutationFn: async (data: EmailFormData) => {
-      return await apiRequest('/api/team/emails', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Email Sent",
-        description: "Your email has been sent successfully.",
-      });
-      emailForm.reset();
-      // Invalidate emails query to refresh the list
-      queryClient.invalidateQueries({ queryKey: ['/api/team/emails'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to Send Email",
-        description: error?.message || "There was an error sending your email.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Handle email form submission
-  const handleSendEmail = (data: EmailFormData) => {
-    sendEmailMutation.mutate(data);
-  };
+  
 
   // Logout handler
   const handleLogout = async () => {
@@ -488,6 +438,38 @@ export default function TeamPortal() {
     );
   }
 
+  // Selected message state
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [messagePriorities, setMessagePriorities] = useState<{[key: string]: 'low' | 'medium' | 'high'}>({});
+
+  // Copy email to clipboard
+  const copyEmailToClipboard = (email: string) => {
+    navigator.clipboard.writeText(email).then(() => {
+      toast({
+        title: "Email Copied",
+        description: `${email} has been copied to clipboard.`,
+      });
+    }).catch(() => {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy email to clipboard.",
+        variant: "destructive"
+      });
+    });
+  };
+
+  // Set message priority
+  const setMessagePriority = (messageId: string, priority: 'low' | 'medium' | 'high') => {
+    setMessagePriorities(prev => ({
+      ...prev,
+      [messageId]: priority
+    }));
+    toast({
+      title: "Priority Updated",
+      description: `Message priority set to ${priority.toUpperCase()}.`,
+    });
+  };
+
   // Inbox Section
   function renderInboxSection() {
     return (
@@ -497,199 +479,252 @@ export default function TeamPortal() {
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
               <Mail className="w-5 h-5" />
-              <TechnicalLabel text="EMAIL PROTOCOL v2.14" className="text-white" />
+              <TechnicalLabel text="INBOX PROTOCOL v3.01" className="text-white" />
             </div>
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
               TEAM <span className="text-primary">INBOX</span><br />
-              EMAIL CONTROL
+              MESSAGE CENTER
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
-              Send emails and manage team communications
+              View and manage user messages with priority controls
             </p>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
-        {/* Email Composition */}
-        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 mb-8">
-          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
-            <CardTitle className="flex items-center justify-between">
-              <TechnicalLabel text="SEND EMAIL" className="text-foreground group-hover:text-primary/90 transition-colors" />
-              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                <Send className="w-4 h-4 text-primary" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <form onSubmit={emailForm.handleSubmit(handleSendEmail)} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <TechnicalLabel text="RECIPIENT" className="text-foreground mb-2" />
-                  <input
-                    type="email"
-                    placeholder="user@email.com"
-                    className={`w-full bg-background border-2 text-foreground px-4 py-3 text-lg focus:outline-none ${
-                      emailForm.formState.errors.recipient
-                        ? 'border-red-500 focus:border-red-500'
-                        : 'border-muted-foreground/30 focus:border-primary'
-                    }`}
-                    data-testid="input-email-recipient"
-                    {...emailForm.register("recipient")}
-                  />
-                  {emailForm.formState.errors.recipient && (
-                    <TechnicalLabel 
-                      text={emailForm.formState.errors.recipient.message || ""}
-                      className="text-red-500 text-sm mt-1"
-                    />
-                  )}
-                </div>
-                <div>
-                  <TechnicalLabel text="SUBJECT" className="text-foreground mb-2" />
-                  <input
-                    type="text"
-                    placeholder="Email subject"
-                    className={`w-full bg-background border-2 text-foreground px-4 py-3 text-lg focus:outline-none ${
-                      emailForm.formState.errors.subject
-                        ? 'border-red-500 focus:border-red-500'
-                        : 'border-muted-foreground/30 focus:border-primary'
-                    }`}
-                    data-testid="input-email-subject"
-                    {...emailForm.register("subject")}
-                  />
-                  {emailForm.formState.errors.subject && (
-                    <TechnicalLabel 
-                      text={emailForm.formState.errors.subject.message || ""}
-                      className="text-red-500 text-sm mt-1"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <TechnicalLabel text="MESSAGE" className="text-foreground mb-2" />
-                <textarea
-                  rows={6}
-                  placeholder="Enter your message..."
-                  className={`w-full bg-background border-2 text-foreground px-4 py-3 text-lg focus:outline-none ${
-                    emailForm.formState.errors.message
-                      ? 'border-red-500 focus:border-red-500'
-                      : 'border-muted-foreground/30 focus:border-primary'
-                  }`}
-                  data-testid="textarea-email-message"
-                  {...emailForm.register("message")}
-                ></textarea>
-                {emailForm.formState.errors.message && (
-                  <TechnicalLabel 
-                    text={emailForm.formState.errors.message.message || ""}
-                    className="text-red-500 text-sm mt-1"
-                  />
+        {/* Two Panel Layout */}
+        <div className="grid lg:grid-cols-5 gap-8">
+          {/* Messages List Panel */}
+          <div className="lg:col-span-2">
+            <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+              <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  <TechnicalLabel text="MESSAGE LIST" className="text-foreground group-hover:text-primary/90 transition-colors" />
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                      <Mail className="w-4 h-4 text-primary" />
+                    </div>
+                    {emailsData?.emails && (
+                      <div className="px-2 py-1 bg-primary/20 border border-primary/30">
+                        <TechnicalLabel text={`${emailsData.emails.length}`} className="text-primary text-sm font-black" />
+                      </div>
+                    )}
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 max-h-[600px] overflow-y-auto">
+                {emailsLoading ? (
+                  <div className="text-center p-12">
+                    <div className="w-16 h-16 mx-auto mb-4 animate-spin border-4 border-primary border-t-transparent rounded-full"></div>
+                    <TechnicalLabel text="LOADING MESSAGES..." className="text-primary text-xl" />
+                  </div>
+                ) : emailsError ? (
+                  <div className="text-center p-12">
+                    <Mail className="w-16 h-16 mx-auto mb-4 text-red-500" />
+                    <TechnicalLabel text="ERROR LOADING MESSAGES" className="text-red-500 text-xl" />
+                    <TechnicalLabel text="Please try refreshing the page" className="text-muted-foreground" />
+                  </div>
+                ) : !emailsData?.emails || emailsData.emails.length === 0 ? (
+                  <div className="text-center p-12">
+                    <Mail className="w-16 h-16 mx-auto mb-4 text-primary" />
+                    <TechnicalLabel text="NO MESSAGES" className="text-primary text-2xl" />
+                    <TechnicalLabel text="User messages will appear here" className="text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-0" data-testid="email-messages-list">
+                    {emailsData.emails.map((email: any, index: number) => {
+                      const priority = messagePriorities[email.id] || 'medium';
+                      const isSelected = selectedMessage?.id === email.id;
+                      return (
+                        <div 
+                          key={email.id || index} 
+                          onClick={() => setSelectedMessage(email)}
+                          className={`border-b border-muted-foreground/20 p-4 transition-all cursor-pointer hover:bg-primary/5 ${
+                            isSelected ? 'bg-primary/10 border-l-4 border-l-primary' : ''
+                          }`}
+                          data-testid={`email-message-${index}`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-3 h-3 border-2 ${
+                                priority === 'high' ? 'bg-red-500 border-red-500' :
+                                priority === 'low' ? 'bg-green-500 border-green-500' :
+                                'bg-yellow-500 border-yellow-500'
+                              }`} />
+                              <TechnicalLabel 
+                                text={email.fromEmail || 'Unknown Sender'} 
+                                className="text-primary text-sm font-semibold" 
+                              />
+                            </div>
+                            <TechnicalLabel 
+                              text={email.createdAt ? new Date(email.createdAt).toLocaleDateString() : 'N/A'} 
+                              className="text-muted-foreground text-xs" 
+                            />
+                          </div>
+                          <div className="mb-2">
+                            <TechnicalLabel 
+                              text={email.subject || 'No Subject'} 
+                              className="text-foreground font-semibold text-sm" 
+                            />
+                          </div>
+                          <div className="text-muted-foreground text-xs line-clamp-2">
+                            {email.content ? (
+                              email.content.length > 80 
+                                ? `${email.content.substring(0, 80)}...` 
+                                : email.content
+                            ) : 'No message content'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
-              </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              <div className="text-center">
-                <Button
-                  type="submit"
-                  disabled={sendEmailMutation.isPending}
-                  className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-black disabled:opacity-50"
-                  data-testid="button-send-email"
-                >
-                  {sendEmailMutation.isPending ? (
-                    <>
-                      <div className="w-5 h-5 mr-3 animate-spin border-2 border-black border-t-transparent rounded-full"></div>
-                      SENDING...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-5 h-5 mr-3" />
-                      SEND EMAIL
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Received Messages */}
-        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
-            <CardTitle className="flex items-center justify-between">
-              <TechnicalLabel text="RECEIVED MESSAGES" className="text-foreground group-hover:text-primary/90 transition-colors" />
-              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                <Mail className="w-4 h-4 text-primary" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            {emailsLoading ? (
-              <div className="text-center p-12">
-                <div className="w-16 h-16 mx-auto mb-4 animate-spin border-4 border-primary border-t-transparent rounded-full"></div>
-                <TechnicalLabel text="LOADING MESSAGES..." className="text-primary text-xl" />
-              </div>
-            ) : emailsError ? (
-              <div className="text-center p-12">
-                <Mail className="w-16 h-16 mx-auto mb-4 text-red-500" />
-                <TechnicalLabel text="ERROR LOADING MESSAGES" className="text-red-500 text-xl" />
-                <TechnicalLabel text="Please try refreshing the page" className="text-muted-foreground" />
-              </div>
-            ) : !emailsData?.emails || emailsData.emails.length === 0 ? (
-              <div className="text-center p-12">
-                <Mail className="w-16 h-16 mx-auto mb-4 text-primary" />
-                <TechnicalLabel text="NO MESSAGES" className="text-primary text-2xl" />
-                <TechnicalLabel text="Received messages will appear here" className="text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="space-y-4" data-testid="email-messages-list">
-                {emailsData.emails.map((email: any, index: number) => (
-                  <div 
-                    key={email.id || index} 
-                    className="border-2 border-muted-foreground/20 bg-background hover:bg-primary/5 p-4 transition-colors cursor-pointer"
-                    data-testid={`email-message-${index}`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+          {/* Message Details Panel */}
+          <div className="lg:col-span-3">
+            <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+              <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  <TechnicalLabel text="MESSAGE DETAILS" className="text-foreground group-hover:text-primary/90 transition-colors" />
+                  <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                    <Eye className="w-4 h-4 text-primary" />
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {!selectedMessage ? (
+                  <div className="text-center p-12">
+                    <Mail className="w-16 h-16 mx-auto mb-4 text-primary" />
+                    <TechnicalLabel text="SELECT A MESSAGE" className="text-primary text-2xl" />
+                    <TechnicalLabel text="Click on a message from the list to view details" className="text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Message Header */}
+                    <div className="border-2 border-muted-foreground/20 bg-background p-4">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
                           <TechnicalLabel 
-                            text={`FROM: ${email.type === 'inbound' ? email.senderId || 'EXTERNAL' : 'TEAM'}`} 
-                            className="text-primary text-sm" 
+                            text="MESSAGE SUBJECT" 
+                            className="text-muted-foreground text-sm mb-1" 
                           />
-                          <span className={`px-2 py-1 text-xs border-2 ${
-                            email.type === 'inbound' 
-                              ? 'border-green-500 text-green-500' 
-                              : 'border-blue-500 text-blue-500'
+                          <TechnicalLabel 
+                            text={selectedMessage.subject || 'No Subject'} 
+                            className="text-foreground text-xl font-black" 
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <TechnicalLabel text="PRIORITY:" className="text-muted-foreground text-sm" />
+                          <select
+                            value={messagePriorities[selectedMessage.id] || 'medium'}
+                            onChange={(e) => setMessagePriority(selectedMessage.id, e.target.value as 'low' | 'medium' | 'high')}
+                            className="bg-background border-2 border-muted-foreground/30 text-foreground px-3 py-1 text-sm focus:outline-none focus:border-primary"
+                            data-testid="priority-select"
+                          >
+                            <option value="low">LOW</option>
+                            <option value="medium">MEDIUM</option>
+                            <option value="high">HIGH</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <TechnicalLabel 
+                            text="FROM EMAIL:" 
+                            className="text-muted-foreground mb-1" 
+                          />
+                          <div className="flex items-center gap-2">
+                            <TechnicalLabel 
+                              text={selectedMessage.fromEmail || 'Unknown'} 
+                              className="text-primary font-mono" 
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => copyEmailToClipboard(selectedMessage.fromEmail)}
+                              className="h-6 w-6 p-0 bg-transparent border border-primary/30 hover:bg-primary/10"
+                              data-testid="copy-email-button"
+                            >
+                              <Download className="w-3 h-3 text-primary" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div>
+                          <TechnicalLabel 
+                            text="TO EMAIL:" 
+                            className="text-muted-foreground mb-1" 
+                          />
+                          <TechnicalLabel 
+                            text={selectedMessage.toEmail || 'N/A'} 
+                            className="text-foreground font-mono" 
+                          />
+                        </div>
+                        <div>
+                          <TechnicalLabel 
+                            text="MESSAGE TYPE:" 
+                            className="text-muted-foreground mb-1" 
+                          />
+                          <span className={`px-2 py-1 text-xs border-2 inline-block ${
+                            selectedMessage.type === 'inbound' 
+                              ? 'border-green-500 text-green-500 bg-green-500/10' 
+                              : 'border-blue-500 text-blue-500 bg-blue-500/10'
                           }`}>
-                            {email.type?.toUpperCase() || 'UNKNOWN'}
+                            {selectedMessage.type?.toUpperCase() || 'UNKNOWN'}
                           </span>
                         </div>
+                        <div>
+                          <TechnicalLabel 
+                            text="RECEIVED:" 
+                            className="text-muted-foreground mb-1" 
+                          />
+                          <TechnicalLabel 
+                            text={selectedMessage.createdAt ? new Date(selectedMessage.createdAt).toLocaleString() : 'N/A'} 
+                            className="text-foreground" 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Message Content */}
+                    <div className="border-2 border-muted-foreground/20 bg-background p-4">
+                      <TechnicalLabel 
+                        text="MESSAGE CONTENT" 
+                        className="text-muted-foreground text-sm mb-3" 
+                      />
+                      <div className="bg-muted/30 border border-muted-foreground/20 p-4 min-h-[200px]">
+                        <div className="text-foreground whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                          {selectedMessage.content || 'No message content available'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Message Actions */}
+                    <div className="flex items-center justify-between border-t border-muted-foreground/20 pt-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 border-2 ${
+                          (messagePriorities[selectedMessage.id] || 'medium') === 'high' ? 'bg-red-500 border-red-500' :
+                          (messagePriorities[selectedMessage.id] || 'medium') === 'low' ? 'bg-green-500 border-green-500' :
+                          'bg-yellow-500 border-yellow-500'
+                        }`} />
                         <TechnicalLabel 
-                          text={`TO: ${email.recipient || 'N/A'}`} 
-                          className="text-muted-foreground text-sm" 
+                          text={`PRIORITY: ${(messagePriorities[selectedMessage.id] || 'medium').toUpperCase()}`} 
+                          className="text-foreground text-sm" 
                         />
                       </div>
                       <TechnicalLabel 
-                        text={email.createdAt ? new Date(email.createdAt).toLocaleDateString() : 'N/A'} 
-                        className="text-muted-foreground text-xs" 
+                        text={`ID: ${selectedMessage.id || 'N/A'}`} 
+                        className="text-muted-foreground text-xs font-mono" 
                       />
-                    </div>
-                    <div className="mb-2">
-                      <TechnicalLabel 
-                        text={`SUBJECT: ${email.subject || 'No Subject'}`} 
-                        className="text-foreground font-semibold" 
-                      />
-                    </div>
-                    <div className="text-muted-foreground text-sm">
-                      {email.message ? (
-                        email.message.length > 200 
-                          ? `${email.message.substring(0, 200)}...` 
-                          : email.message
-                      ) : 'No message content'}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
