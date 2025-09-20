@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -35,7 +36,10 @@ import {
   Upload,
   Filter,
   Search,
-  Settings
+  Settings,
+  Home,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 // Email form schema
@@ -103,7 +107,7 @@ export default function TeamPortal() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <div className="text-2xl font-black mb-2">THORX TEAM</div>
           <div className="text-sm">LOADING...</div>
@@ -354,6 +358,15 @@ export default function TeamPortal() {
     }
   };
 
+  // Navigation functions
+  const nextSection = () => {
+    navigateToSection((currentSection + 1) % teamSections.length);
+  };
+
+  const prevSection = () => {
+    navigateToSection((currentSection - 1 + teamSections.length) % teamSections.length);
+  };
+
   // Render current section
   const renderCurrentSection = () => {
     switch (currentSection) {
@@ -373,7 +386,7 @@ export default function TeamPortal() {
   // Dashboard Section
   function renderDashboardSection() {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
         <div className="wireframe-border p-8 mb-8">
           <div className="text-center mb-8">
@@ -393,65 +406,82 @@ export default function TeamPortal() {
         </div>
 
         {/* Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 text-center">
-              <Users className="w-12 h-12 mx-auto mb-4 text-primary" />
-              {metricsLoading ? (
-                <div className="text-3xl font-black mb-2 text-primary animate-pulse">---</div>
-              ) : metricsError ? (
-                <div className="text-3xl font-black mb-2 text-red-500">ERR</div>
-              ) : (
-                <div className="text-3xl font-black mb-2 text-primary" data-testid="metric-total-users">
-                  {teamMetrics?.totalUsers?.toLocaleString() || '0'}
-                </div>
-              )}
-              <TechnicalLabel text="TOTAL USERS" className="text-muted-foreground" />
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-12">
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10">
+            <div className="flex items-start justify-between mb-3">
+              <Users className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="TOTAL USERS" className="text-muted-foreground text-xs" />
+            </div>
+            {metricsLoading ? (
+              <div className="text-2xl md:text-3xl font-black mb-2 text-primary animate-pulse">---</div>
+            ) : metricsError ? (
+              <div className="text-2xl md:text-3xl font-black mb-2 text-red-500">ERR</div>
+            ) : (
+              <div className="text-2xl md:text-3xl font-black mb-2 text-primary group-hover:text-primary/90 transition-colors" data-testid="metric-total-users">
+                {teamMetrics?.totalUsers?.toLocaleString() || '0'}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Activity className="w-3 h-3 text-muted-foreground" />
+              <TechnicalLabel text="REGISTERED ACCOUNTS" className="text-muted-foreground text-xs" />
+            </div>
+          </div>
 
-          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 text-center">
-              <UserCheck className="w-12 h-12 mx-auto mb-4 text-primary" />
-              {metricsLoading ? (
-                <div className="text-3xl font-black mb-2 text-primary animate-pulse">---</div>
-              ) : metricsError ? (
-                <div className="text-3xl font-black mb-2 text-red-500">ERR</div>
-              ) : (
-                <div className="text-3xl font-black mb-2 text-primary" data-testid="metric-active-users">
-                  {teamMetrics?.activeUsers?.toLocaleString() || '0'}
-                </div>
-              )}
-              <TechnicalLabel text="ACTIVE USERS" className="text-muted-foreground" />
-            </CardContent>
-          </Card>
+          <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/20">
+            <div className="flex items-start justify-between mb-3">
+              <UserCheck className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="ACTIVE USERS" className="text-muted-foreground text-xs" />
+            </div>
+            {metricsLoading ? (
+              <div className="text-2xl md:text-3xl font-black mb-2 text-primary animate-pulse">---</div>
+            ) : metricsError ? (
+              <div className="text-2xl md:text-3xl font-black mb-2 text-red-500">ERR</div>
+            ) : (
+              <div className="text-2xl md:text-3xl font-black mb-2 text-primary group-hover:text-primary/90 transition-colors" data-testid="metric-active-users">
+                {teamMetrics?.activeUsers?.toLocaleString() || '0'}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Activity className="w-3 h-3 text-primary" />
+              <TechnicalLabel text="LAST 30 DAYS" className="text-primary/70 text-xs" />
+            </div>
+          </div>
 
-          <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-            <CardContent className="p-6 text-center">
-              <DollarSign className="w-12 h-12 mx-auto mb-4 text-primary" />
-              {metricsLoading ? (
-                <div className="text-3xl font-black mb-2 text-primary animate-pulse">---</div>
-              ) : metricsError ? (
-                <div className="text-3xl font-black mb-2 text-red-500">ERR</div>
-              ) : (
-                <div className="text-3xl font-black mb-2 text-primary" data-testid="metric-total-earnings">
-                  ₨{parseFloat(teamMetrics?.totalEarnings || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-              )}
-              <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground" />
-            </CardContent>
-          </Card>
+          <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10">
+            <div className="flex items-start justify-between mb-3">
+              <DollarSign className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
+              <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
+            </div>
+            {metricsLoading ? (
+              <div className="text-2xl md:text-3xl font-black mb-2 text-foreground animate-pulse">---</div>
+            ) : metricsError ? (
+              <div className="text-2xl md:text-3xl font-black mb-2 text-red-500">ERR</div>
+            ) : (
+              <div className="text-2xl md:text-3xl font-black mb-2 text-foreground group-hover:text-foreground/90 transition-colors" data-testid="metric-total-earnings">
+                ₨{parseFloat(teamMetrics?.totalEarnings || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Activity className="w-3 h-3 text-muted-foreground" />
+              <TechnicalLabel text="PLATFORM REVENUE" className="text-muted-foreground text-xs" />
+            </div>
+          </div>
         </div>
 
         {/* Recent Activity */}
-        <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="RECENT ACTIVITY" className="text-primary text-xl" />
+        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+            <CardTitle className="flex items-center justify-between">
+              <TechnicalLabel text="SYSTEM MONITORING" className="text-foreground group-hover:text-primary/90 transition-colors" />
+              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                <Activity className="w-4 h-4 text-primary" />
+              </div>
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-center p-12">
             <Activity className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <TechnicalLabel text="SYSTEM MONITORING ACTIVE" className="text-primary text-2xl" />
-            <TechnicalLabel text="Real-time metrics being tracked" className="text-muted-foreground" />
+            <TechnicalLabel text="REAL-TIME METRICS TRACKING" className="text-primary text-2xl" />
+            <TechnicalLabel text="All systems operational and monitoring active" className="text-muted-foreground" />
           </CardContent>
         </Card>
       </div>
@@ -461,7 +491,7 @@ export default function TeamPortal() {
   // Inbox Section
   function renderInboxSection() {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
         <div className="wireframe-border p-8 mb-8">
           <div className="text-center mb-8">
@@ -481,22 +511,27 @@ export default function TeamPortal() {
         </div>
 
         {/* Email Composition */}
-        <Card className="border-2 border-primary bg-black text-white mb-8 overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="SEND EMAIL" className="text-primary text-xl" />
+        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 mb-8">
+          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+            <CardTitle className="flex items-center justify-between">
+              <TechnicalLabel text="SEND EMAIL" className="text-foreground group-hover:text-primary/90 transition-colors" />
+              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                <Send className="w-4 h-4 text-primary" />
+              </div>
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="p-6">
             <form onSubmit={emailForm.handleSubmit(handleSendEmail)} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <TechnicalLabel text="RECIPIENT" className="text-white mb-2" />
+                  <TechnicalLabel text="RECIPIENT" className="text-foreground mb-2" />
                   <input
                     type="email"
                     placeholder="user@email.com"
-                    className={`w-full bg-black border-2 text-white px-4 py-3 text-lg focus:outline-none ${
+                    className={`w-full bg-background border-2 text-foreground px-4 py-3 text-lg focus:outline-none ${
                       emailForm.formState.errors.recipient
                         ? 'border-red-500 focus:border-red-500'
-                        : 'border-primary focus:border-primary'
+                        : 'border-muted-foreground/30 focus:border-primary'
                     }`}
                     data-testid="input-email-recipient"
                     {...emailForm.register("recipient")}
@@ -509,14 +544,14 @@ export default function TeamPortal() {
                   )}
                 </div>
                 <div>
-                  <TechnicalLabel text="SUBJECT" className="text-white mb-2" />
+                  <TechnicalLabel text="SUBJECT" className="text-foreground mb-2" />
                   <input
                     type="text"
                     placeholder="Email subject"
-                    className={`w-full bg-black border-2 text-white px-4 py-3 text-lg focus:outline-none ${
+                    className={`w-full bg-background border-2 text-foreground px-4 py-3 text-lg focus:outline-none ${
                       emailForm.formState.errors.subject
                         ? 'border-red-500 focus:border-red-500'
-                        : 'border-primary focus:border-primary'
+                        : 'border-muted-foreground/30 focus:border-primary'
                     }`}
                     data-testid="input-email-subject"
                     {...emailForm.register("subject")}
@@ -531,14 +566,14 @@ export default function TeamPortal() {
               </div>
 
               <div>
-                <TechnicalLabel text="MESSAGE" className="text-white mb-2" />
+                <TechnicalLabel text="MESSAGE" className="text-foreground mb-2" />
                 <textarea
                   rows={6}
                   placeholder="Enter your message..."
-                  className={`w-full bg-black border-2 text-white px-4 py-3 text-lg focus:outline-none ${
+                  className={`w-full bg-background border-2 text-foreground px-4 py-3 text-lg focus:outline-none ${
                     emailForm.formState.errors.message
                       ? 'border-red-500 focus:border-red-500'
-                      : 'border-primary focus:border-primary'
+                      : 'border-muted-foreground/30 focus:border-primary'
                   }`}
                   data-testid="textarea-email-message"
                   {...emailForm.register("message")}
@@ -555,7 +590,7 @@ export default function TeamPortal() {
                 <Button
                   type="submit"
                   disabled={sendEmailMutation.isPending}
-                  className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary disabled:opacity-50"
+                  className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-black disabled:opacity-50"
                   data-testid="button-send-email"
                 >
                   {sendEmailMutation.isPending ? (
@@ -576,9 +611,14 @@ export default function TeamPortal() {
         </Card>
 
         {/* Received Messages */}
-        <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="RECEIVED MESSAGES" className="text-primary text-xl" />
+        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+            <CardTitle className="flex items-center justify-between">
+              <TechnicalLabel text="RECEIVED MESSAGES" className="text-foreground group-hover:text-primary/90 transition-colors" />
+              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                <Mail className="w-4 h-4 text-primary" />
+              </div>
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             {emailsLoading ? (
@@ -603,7 +643,7 @@ export default function TeamPortal() {
                 {emailsData.emails.map((email: any, index: number) => (
                   <div 
                     key={email.id || index} 
-                    className="border border-primary/30 bg-black/50 p-4 rounded"
+                    className="border-2 border-muted-foreground/20 bg-background hover:bg-primary/5 p-4 transition-colors cursor-pointer"
                     data-testid={`email-message-${index}`}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -613,7 +653,7 @@ export default function TeamPortal() {
                             text={`FROM: ${email.type === 'inbound' ? email.senderId || 'EXTERNAL' : 'TEAM'}`} 
                             className="text-primary text-sm" 
                           />
-                          <span className={`px-2 py-1 text-xs border ${
+                          <span className={`px-2 py-1 text-xs border-2 ${
                             email.type === 'inbound' 
                               ? 'border-green-500 text-green-500' 
                               : 'border-blue-500 text-blue-500'
@@ -623,21 +663,21 @@ export default function TeamPortal() {
                         </div>
                         <TechnicalLabel 
                           text={`TO: ${email.recipient || 'N/A'}`} 
-                          className="text-gray-300 text-sm" 
+                          className="text-muted-foreground text-sm" 
                         />
                       </div>
                       <TechnicalLabel 
                         text={email.createdAt ? new Date(email.createdAt).toLocaleDateString() : 'N/A'} 
-                        className="text-gray-400 text-xs" 
+                        className="text-muted-foreground text-xs" 
                       />
                     </div>
                     <div className="mb-2">
                       <TechnicalLabel 
                         text={`SUBJECT: ${email.subject || 'No Subject'}`} 
-                        className="text-white font-semibold" 
+                        className="text-foreground font-semibold" 
                       />
                     </div>
-                    <div className="text-gray-300 text-sm">
+                    <div className="text-muted-foreground text-sm">
                       {email.message ? (
                         email.message.length > 200 
                           ? `${email.message.substring(0, 200)}...` 
@@ -657,7 +697,7 @@ export default function TeamPortal() {
   // Data Section
   function renderDataSection() {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
         <div className="wireframe-border p-8 mb-8">
           <div className="text-center mb-8">
@@ -677,7 +717,7 @@ export default function TeamPortal() {
         </div>
 
         {/* Search and Filters */}
-        <Card className="border-2 border-primary bg-black text-white mb-8 overflow-hidden">
+        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 mb-8">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
@@ -686,13 +726,15 @@ export default function TeamPortal() {
                   <input
                     type="text"
                     placeholder="Search users..."
-                    className="w-full bg-black border-2 border-primary text-white pl-12 pr-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground pl-12 pr-4 py-3 text-lg focus:outline-none focus:border-primary"
                     data-testid="input-search-users"
                   />
                 </div>
               </div>
               <Button
-                className="bg-primary hover:bg-primary/90 text-black px-6 py-3 text-lg font-black border-2 border-primary"
+                className="bg-primary hover:bg-primary/90 text-black px-6 py-3 text-lg font-black border-2 border-black"
                 data-testid="button-export-data"
               >
                 <Download className="w-5 h-5 mr-2" />
@@ -703,9 +745,14 @@ export default function TeamPortal() {
         </Card>
 
         {/* User Credentials List */}
-        <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="USER CREDENTIALS" className="text-primary text-xl" />
+        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+            <CardTitle className="flex items-center justify-between">
+              <TechnicalLabel text="USER CREDENTIALS" className="text-foreground group-hover:text-primary/90 transition-colors" />
+              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                <Shield className="w-4 h-4 text-primary" />
+              </div>
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             {credentialsLoading ? (
@@ -755,7 +802,7 @@ export default function TeamPortal() {
                     filteredCredentials.map((credential: any, index: number) => (
                       <div 
                         key={credential.id || index} 
-                        className="border border-primary/30 bg-black/50 p-4 rounded"
+                        className="border-2 border-muted-foreground/20 bg-background hover:bg-primary/5 p-4 transition-colors"
                         data-testid={`credential-item-${index}`}
                       >
                         <div className="grid md:grid-cols-2 gap-4">
@@ -769,13 +816,13 @@ export default function TeamPortal() {
                             <div className="mb-2">
                               <TechnicalLabel 
                                 text={`EMAIL: ${credential.user?.email || 'N/A'}`} 
-                                className="text-gray-300 text-sm" 
+                                className="text-muted-foreground text-sm" 
                               />
                             </div>
                             <div className="mb-2">
                               <TechnicalLabel 
                                 text={`PLATFORM: ${credential.platform || 'N/A'}`} 
-                                className="text-white" 
+                                className="text-foreground" 
                               />
                             </div>
                           </div>
@@ -783,20 +830,20 @@ export default function TeamPortal() {
                             <div className="mb-2">
                               <TechnicalLabel 
                                 text={`USERNAME: ${credential.username || 'N/A'}`} 
-                                className="text-gray-300 text-sm" 
+                                className="text-muted-foreground text-sm" 
                               />
                             </div>
                             <div className="mb-2 flex items-center gap-2">
                               <TechnicalLabel 
                                 text="PASSWORD:" 
-                                className="text-gray-300 text-sm" 
+                                className="text-muted-foreground text-sm" 
                               />
-                              <span className="font-mono text-sm bg-black border border-primary/30 px-2 py-1 rounded">
+                              <span className="font-mono text-sm bg-muted border border-muted-foreground/30 px-2 py-1">
                                 ••••••••
                               </span>
                               <Button
                                 size="sm"
-                                className="h-6 w-6 p-0 bg-transparent border border-primary/30 hover:bg-primary/10"
+                                className="h-6 w-6 p-0 bg-transparent border border-muted-foreground/30 hover:bg-primary/10"
                                 data-testid={`toggle-password-${index}`}
                               >
                                 <Eye className="w-3 h-3 text-primary" />
@@ -805,7 +852,7 @@ export default function TeamPortal() {
                             <div>
                               <TechnicalLabel 
                                 text={`ADDED: ${credential.createdAt ? new Date(credential.createdAt).toLocaleDateString() : 'N/A'}`} 
-                                className="text-gray-400 text-xs" 
+                                className="text-muted-foreground text-xs" 
                               />
                             </div>
                           </div>
@@ -825,7 +872,7 @@ export default function TeamPortal() {
   // Team Keys Section
   function renderTeamKeysSection() {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
         <div className="wireframe-border p-8 mb-8">
           <div className="text-center mb-8">
@@ -845,19 +892,24 @@ export default function TeamPortal() {
         </div>
 
         {/* Add New Member */}
-        <Card className="border-2 border-primary bg-black text-white mb-8 overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="ADD TEAM MEMBER" className="text-primary text-xl" />
+        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 mb-8">
+          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+            <CardTitle className="flex items-center justify-between">
+              <TechnicalLabel text="ADD TEAM MEMBER" className="text-foreground group-hover:text-primary/90 transition-colors" />
+              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                <Plus className="w-4 h-4 text-primary" />
+              </div>
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="p-6">
             <form onSubmit={teamMemberForm.handleSubmit(handleAddTeamMember)} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <TechnicalLabel text="MEMBER NAME" className="text-white mb-2" />
+                  <TechnicalLabel text="MEMBER NAME" className="text-foreground mb-2" />
                   <input
                     type="text"
                     placeholder="Team member name"
-                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
                     data-testid="input-member-name"
                     {...teamMemberForm.register("memberName")}
                   />
@@ -866,11 +918,11 @@ export default function TeamPortal() {
                   )}
                 </div>
                 <div>
-                  <TechnicalLabel text="EMAIL ADDRESS" className="text-white mb-2" />
+                  <TechnicalLabel text="EMAIL ADDRESS" className="text-foreground mb-2" />
                   <input
                     type="email"
                     placeholder="member@company.com"
-                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
                     data-testid="input-member-email"
                     {...teamMemberForm.register("email")}
                   />
@@ -882,9 +934,9 @@ export default function TeamPortal() {
 
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <TechnicalLabel text="ACCESS LEVEL" className="text-white mb-2" />
+                  <TechnicalLabel text="ACCESS LEVEL" className="text-foreground mb-2" />
                   <select 
-                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
                     data-testid="select-access-level"
                     {...teamMemberForm.register("accessLevel")}
                   >
@@ -898,11 +950,11 @@ export default function TeamPortal() {
                   )}
                 </div>
                 <div>
-                  <TechnicalLabel text="INITIAL PASSWORD" className="text-white mb-2" />
+                  <TechnicalLabel text="INITIAL PASSWORD" className="text-foreground mb-2" />
                   <input
                     type="password"
                     placeholder="Set initial password"
-                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
                     data-testid="input-member-password"
                     {...teamMemberForm.register("password")}
                   />
@@ -916,7 +968,7 @@ export default function TeamPortal() {
                 <Button
                   type="submit"
                   disabled={addTeamMemberMutation.isPending}
-                  className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-primary disabled:opacity-50"
+                  className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-black disabled:opacity-50"
                   data-testid="button-add-member"
                 >
                   {addTeamMemberMutation.isPending ? (
@@ -937,9 +989,14 @@ export default function TeamPortal() {
         </Card>
 
         {/* Team Members List */}
-        <Card className="border-2 border-primary bg-black text-white overflow-hidden">
-          <CardHeader className="text-center">
-            <TechnicalLabel text="TEAM MEMBERS" className="text-primary text-xl" />
+        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+            <CardTitle className="flex items-center justify-between">
+              <TechnicalLabel text="TEAM MEMBERS" className="text-foreground group-hover:text-primary/90 transition-colors" />
+              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                <Key className="w-4 h-4 text-primary" />
+              </div>
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             {membersLoading ? (
@@ -964,7 +1021,7 @@ export default function TeamPortal() {
                 {teamMembersData.members.map((member: any, index: number) => (
                   <div 
                     key={member.id || index} 
-                    className="border border-primary/30 bg-black/50 p-4 rounded"
+                    className="border-2 border-muted-foreground/20 bg-background hover:bg-primary/5 p-4 transition-colors"
                     data-testid={`team-member-${index}`}
                   >
                     <div className="flex items-center justify-between">
@@ -977,7 +1034,7 @@ export default function TeamPortal() {
                               className="text-primary font-semibold text-lg" 
                             />
                           </div>
-                          <span className={`px-3 py-1 text-xs border rounded ${
+                          <span className={`px-3 py-1 text-xs border-2 ${
                             member.accessLevel === 'founder' 
                               ? 'border-purple-500 text-purple-500 bg-purple-500/10' 
                               : member.accessLevel === 'admin'
@@ -991,19 +1048,19 @@ export default function TeamPortal() {
                           <div>
                             <TechnicalLabel 
                               text={`EMAIL: ${member.email || 'N/A'}`} 
-                              className="text-gray-300" 
+                              className="text-muted-foreground" 
                             />
                           </div>
                           <div>
                             <TechnicalLabel 
                               text={`MEMBER ID: ${member.id || 'N/A'}`} 
-                              className="text-gray-400" 
+                              className="text-muted-foreground" 
                             />
                           </div>
                           <div>
                             <TechnicalLabel 
                               text={`ADDED: ${member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'N/A'}`} 
-                              className="text-gray-400" 
+                              className="text-muted-foreground" 
                             />
                           </div>
                           <div>
@@ -1027,7 +1084,7 @@ export default function TeamPortal() {
                           size="sm"
                           onClick={() => handleEditTeamMember(member)}
                           disabled={updateTeamMemberMutation.isPending}
-                          className="h-8 w-8 p-0 bg-transparent border border-yellow-500/30 hover:bg-yellow-500/10 disabled:opacity-50"
+                          className="h-8 w-8 p-0 bg-transparent border-2 border-yellow-500/30 hover:bg-yellow-500/10 disabled:opacity-50"
                           data-testid={`edit-member-${index}`}
                         >
                           {updateTeamMemberMutation.isPending && editingMember?.id === member.id ? (
@@ -1040,7 +1097,7 @@ export default function TeamPortal() {
                           size="sm"
                           onClick={() => handleDeleteTeamMember(member)}
                           disabled={deleteTeamMemberMutation.isPending}
-                          className="h-8 w-8 p-0 bg-transparent border border-red-500/30 hover:bg-red-500/10 disabled:opacity-50"
+                          className="h-8 w-8 p-0 bg-transparent border-2 border-red-500/30 hover:bg-red-500/10 disabled:opacity-50"
                           data-testid={`delete-member-${index}`}
                         >
                           {deleteTeamMemberMutation.isPending ? (
@@ -1060,7 +1117,7 @@ export default function TeamPortal() {
 
         {/* Edit Team Member Modal */}
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-          <DialogContent className="sm:max-w-[600px] bg-black border-2 border-primary text-white">
+          <DialogContent className="sm:max-w-[600px] bg-background border-2 border-primary text-foreground">
             <DialogHeader>
               <DialogTitle className="text-center">
                 <TechnicalLabel text="EDIT TEAM MEMBER" className="text-primary text-xl" />
@@ -1070,11 +1127,11 @@ export default function TeamPortal() {
             <form onSubmit={editMemberForm.handleSubmit(handleUpdateTeamMember)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <TechnicalLabel text="MEMBER NAME" className="text-white mb-2" />
+                  <TechnicalLabel text="MEMBER NAME" className="text-foreground mb-2" />
                   <input
                     type="text"
                     placeholder="Full name"
-                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
                     data-testid="edit-input-member-name"
                     {...editMemberForm.register("memberName")}
                   />
@@ -1083,9 +1140,9 @@ export default function TeamPortal() {
                   )}
                 </div>
                 <div>
-                  <TechnicalLabel text="ACCESS LEVEL" className="text-white mb-2" />
+                  <TechnicalLabel text="ACCESS LEVEL" className="text-foreground mb-2" />
                   <select
-                    className="w-full bg-black border-2 border-primary text-white px-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
                     data-testid="edit-select-access-level"
                     {...editMemberForm.register("accessLevel")}
                   >
@@ -1101,15 +1158,15 @@ export default function TeamPortal() {
               </div>
 
               <div>
-                <TechnicalLabel text="MEMBER STATUS" className="text-white mb-2" />
+                <TechnicalLabel text="MEMBER STATUS" className="text-foreground mb-2" />
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    className="w-5 h-5 text-primary bg-black border-2 border-primary focus:ring-primary focus:ring-2 rounded"
+                    className="w-5 h-5 text-primary bg-background border-2 border-muted-foreground/30 focus:ring-primary focus:ring-2"
                     data-testid="edit-checkbox-active"
                     {...editMemberForm.register("isActive")}
                   />
-                  <TechnicalLabel text="ACTIVE MEMBER" className="text-white" />
+                  <TechnicalLabel text="ACTIVE MEMBER" className="text-foreground" />
                 </label>
                 {editMemberForm.formState.errors.isActive && (
                   <p className="text-red-500 text-sm mt-1">{editMemberForm.formState.errors.isActive.message}</p>
@@ -1121,7 +1178,7 @@ export default function TeamPortal() {
                   type="button"
                   variant="outline"
                   onClick={() => setShowEditModal(false)}
-                  className="flex-1 bg-transparent border-2 border-gray-500 text-gray-300 hover:bg-gray-500/10"
+                  className="flex-1 bg-transparent border-2 border-muted-foreground/30 text-muted-foreground hover:bg-muted-foreground/10"
                   data-testid="edit-button-cancel"
                 >
                   <TechnicalLabel text="CANCEL" />
@@ -1129,7 +1186,7 @@ export default function TeamPortal() {
                 <Button
                   type="submit"
                   disabled={updateTeamMemberMutation.isPending}
-                  className="flex-1 bg-primary hover:bg-primary/90 text-black border-2 border-primary disabled:opacity-50"
+                  className="flex-1 bg-primary hover:bg-primary/90 text-black border-2 border-black disabled:opacity-50"
                   data-testid="edit-button-save"
                 >
                   {updateTeamMemberMutation.isPending ? (
@@ -1150,9 +1207,9 @@ export default function TeamPortal() {
   }
 
   return (
-    <div className="team-portal">
+    <div className="min-h-screen bg-background relative">
       {/* Industrial Grid Overlay */}
-      <div className="industrial-grid" />
+      <div className="industrial-grid fixed inset-0 z-0" />
 
       {/* Navigation Header */}
       <nav className="fixed top-0 w-full z-50 bg-background border-b-2 border-black" data-testid="team-portal-navigation">
@@ -1225,6 +1282,31 @@ export default function TeamPortal() {
           </div>
         </div>
       </nav>
+
+      {/* Desktop Navigation Controls */}
+      <div className="hidden md:block fixed left-4 top-1/2 transform -translate-y-1/2 z-40">
+        <Button
+          onClick={prevSection}
+          variant="outline"
+          size="lg"
+          className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
+          data-testid="button-prev-section"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </Button>
+      </div>
+
+      <div className="hidden md:block fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
+        <Button
+          onClick={nextSection}
+          variant="outline"
+          size="lg"
+          className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
+          data-testid="button-next-section"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </Button>
+      </div>
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-background border-t-2 border-black md:hidden z-40" data-testid="team-mobile-navigation">
