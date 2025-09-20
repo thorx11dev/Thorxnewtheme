@@ -91,6 +91,11 @@
   .auth-page {
     min-height: 100vh;
     position: relative;
+    overflow-x: hidden;
+  }
+  
+  .auth-page .cinematic-section {
+    z-index: 10;
   }
 }
 
@@ -142,7 +147,7 @@
     height: 100vh;
     height: 100dvh;
     height: 100svh;
-    padding-top: 120px;
+    padding-top: 160px;
     padding-bottom: 40px;
     padding-left: 20px;
     padding-right: 20px;
@@ -171,7 +176,7 @@
       height: 100vh !important;
       height: 100dvh !important;
       height: 100svh !important;
-      padding: 5rem 1rem 2rem 1rem !important;
+      padding: 9rem 1rem 2rem 1rem !important;
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
@@ -200,7 +205,7 @@
   @media (max-width: 768px) {
     .cinematic-section[data-section="1"] {
       justify-content: center !important;
-      padding: 2rem 1rem 2rem 1rem !important;
+      padding: 4rem 1rem 2rem 1rem !important;
     }
   }
 
