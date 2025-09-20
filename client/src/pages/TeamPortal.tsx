@@ -1325,29 +1325,26 @@ export default function TeamPortal() {
         </div>
       </nav>
 
-      {/* Desktop Navigation Controls */}
-      <div className="hidden md:block fixed left-4 top-1/2 transform -translate-y-1/2 z-40">
-        <Button
-          onClick={prevSection}
-          variant="outline"
-          size="lg"
-          className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
-          data-testid="button-prev-section"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </Button>
-      </div>
-
-      <div className="hidden md:block fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
-        <Button
-          onClick={nextSection}
-          variant="outline"
-          size="lg"
-          className="bg-background border-2 border-black text-foreground hover:bg-black hover:text-white"
-          data-testid="button-next-section"
-        >
-          <ChevronRight className="w-6 h-6" />
-        </Button>
+      {/* Desktop Navigation Controls - Landing Page Style */}
+      <div className="arrow-keys-guide">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={prevSection}
+            className="arrow-key"
+            disabled={currentSection === 0}
+            data-testid="button-prev-section"
+          >
+            ←
+          </button>
+          <button
+            onClick={nextSection}
+            className="arrow-key"
+            disabled={currentSection === teamSections.length - 1}
+            data-testid="button-next-section"
+          >
+            →
+          </button>
+        </div>
       </div>
 
       {/* Mobile Bottom Navigation */}
