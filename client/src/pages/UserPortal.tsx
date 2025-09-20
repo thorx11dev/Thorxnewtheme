@@ -1336,15 +1336,73 @@ export default function UserPortal() {
     const pendingWithdrawals = 3;
     const totalPaidOutAmount = 45890.25;
     
-    // Mock withdrawal history data with enhanced status tracking
-    const historyItems = Array.from({ length: 12 }, (_, i) => ({
-      id: `history_${i + 1}`,
-      date: new Date(2024, 0, 15 - i).toISOString(),
-      amount: (Math.random() * 2000 + 100).toFixed(2),
-      method: ['JazzCash', 'EasyPaisa', 'Bank'][Math.floor(Math.random() * 3)],
-      status: ['COMPLETED', 'PROCESSING', 'PENDING'][Math.floor(Math.random() * 3)],
-      transactionId: `TX${(1000000 + i).toString()}`
-    }));
+    // Static withdrawal history data - no longer reactive to input changes
+    const staticHistoryItems = [
+      {
+        id: 'history_1',
+        date: '2024-01-15T10:30:00.000Z',
+        amount: '1250.00',
+        method: 'JazzCash',
+        status: 'COMPLETED',
+        transactionId: 'TX1000001'
+      },
+      {
+        id: 'history_2',
+        date: '2024-01-14T14:15:00.000Z',
+        amount: '890.50',
+        method: 'EasyPaisa',
+        status: 'PROCESSING',
+        transactionId: 'TX1000002'
+      },
+      {
+        id: 'history_3',
+        date: '2024-01-13T09:45:00.000Z',
+        amount: '2100.75',
+        method: 'Bank',
+        status: 'COMPLETED',
+        transactionId: 'TX1000003'
+      },
+      {
+        id: 'history_4',
+        date: '2024-01-12T16:20:00.000Z',
+        amount: '450.25',
+        method: 'JazzCash',
+        status: 'PENDING',
+        transactionId: 'TX1000004'
+      },
+      {
+        id: 'history_5',
+        date: '2024-01-11T11:30:00.000Z',
+        amount: '1850.00',
+        method: 'EasyPaisa',
+        status: 'COMPLETED',
+        transactionId: 'TX1000005'
+      },
+      {
+        id: 'history_6',
+        date: '2024-01-10T13:45:00.000Z',
+        amount: '675.80',
+        method: 'Bank',
+        status: 'COMPLETED',
+        transactionId: 'TX1000006'
+      },
+      {
+        id: 'history_7',
+        date: '2024-01-09T08:15:00.000Z',
+        amount: '1125.50',
+        method: 'JazzCash',
+        status: 'PROCESSING',
+        transactionId: 'TX1000007'
+      },
+      {
+        id: 'history_8',
+        date: '2024-01-08T15:30:00.000Z',
+        amount: '925.25',
+        method: 'EasyPaisa',
+        status: 'COMPLETED',
+        transactionId: 'TX1000008'
+      }
+    ];
 
     // Enhanced fee calculation with validation
     const withdrawalAmount = parseFloat(withdrawAmount) || 0;
@@ -1434,8 +1492,8 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Hero Section - User Portal Dashboard Style */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+        {/* Hero Section - Work/Dashboard Style Full Width */}
         <div className="wireframe-border p-8 mb-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
@@ -1455,10 +1513,10 @@ export default function UserPortal() {
           </div>
         </div>
 
-        {/* Key Metrics Cards - User Portal Dashboard Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-10">
+        {/* Key Metrics Cards - Work/Dashboard Style */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
           {/* Available Balance */}
-          <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 hover:shadow-lg hover:shadow-primary/20" data-testid="card-payout-available-balance">
+          <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/20" data-testid="card-payout-available-balance">
             <div className="flex items-start justify-between mb-3">
               <Wallet className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
               <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-xs" />
@@ -1473,7 +1531,7 @@ export default function UserPortal() {
           </div>
 
           {/* Pending Withdrawals */}
-          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 hover:shadow-lg hover:shadow-primary/10" data-testid="card-payout-pending-withdrawals">
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10" data-testid="card-payout-pending-withdrawals">
             <div className="flex items-start justify-between mb-3">
               <History className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
               <TechnicalLabel text="PENDING WITHDRAWALS" className="text-muted-foreground text-xs" />
@@ -1488,7 +1546,7 @@ export default function UserPortal() {
           </div>
 
           {/* Total Paid Out */}
-          <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-payout-total-paid">
+          <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-payout-total-paid">
             <div className="flex items-start justify-between mb-3">
               <DollarSign className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
               <TechnicalLabel text="TOTAL PAID OUT" className="text-muted-foreground text-xs" />
@@ -1501,253 +1559,253 @@ export default function UserPortal() {
               <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
             </div>
           </div>
+
+          {/* Daily Goal Progress - Work/Dashboard Style Fourth Card */}
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-payout-limits">
+            <div className="flex items-start justify-between mb-3">
+              <Target className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="DAILY LIMITS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-payout-limits">₨50K</p>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-3 h-3 text-green-500" />
+              <TechnicalLabel text="MAX WITHDRAWAL" className="text-muted-foreground text-xs" />
+            </div>
+          </div>
         </div>
 
-        {/* Withdrawal Form - User Portal Split Card Style */}
-        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 mb-8">
-          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
-            <CardTitle className="flex items-center justify-between">
-              <TechnicalLabel text="WITHDRAWAL REQUEST FORM" className="text-foreground group-hover:text-primary/90 transition-colors" />
-              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                <Download className="w-4 h-4 text-primary" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Amount Input */}
-              <div>
-                <TechnicalLabel text="WITHDRAWAL AMOUNT (₨)" className="text-foreground mb-2" />
-                <Input
-                  type="number"
-                  value={withdrawAmount}
-                  onChange={(e) => {
-                    setWithdrawAmount(e.target.value);
-                    if (errors.amount) setErrors(prev => ({...prev, amount: ''}));
-                  }}
-                  placeholder="Enter amount (Min: ₨ 100)"
-                  className={`border-2 px-4 py-3 text-lg ${
-                    errors.amount ? 'border-red-500 focus:border-red-500' : 'border-muted-foreground/30 focus:border-primary'
-                  }`}
-                  data-testid="input-payout-withdrawal-amount"
-                />
-                {errors.amount && (
-                  <TechnicalLabel text={errors.amount} className="text-red-500 text-sm mt-1" />
-                )}
-              </div>
+        {/* Main Content Grid - Work/Dashboard Style */}
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8 mb-8">
+          {/* Left Column - Enter Payout Details */}
+          <div className="lg:col-span-1">
+            <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+              <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  <TechnicalLabel text="ENTER PAYOUT DETAILS" className="text-foreground group-hover:text-primary/90 transition-colors" />
+                  <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                    <Download className="w-4 h-4 text-primary" />
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  {/* Amount Input */}
+                  <div>
+                    <TechnicalLabel text="WITHDRAWAL AMOUNT (₨)" className="text-foreground mb-2" />
+                    <Input
+                      type="number"
+                      value={withdrawAmount}
+                      onChange={(e) => {
+                        setWithdrawAmount(e.target.value);
+                        if (errors.amount) setErrors(prev => ({...prev, amount: ''}));
+                      }}
+                      placeholder="Enter amount (Min: ₨ 100)"
+                      className={`border-2 px-4 py-3 text-lg ${
+                        errors.amount ? 'border-red-500 focus:border-red-500' : 'border-muted-foreground/30 focus:border-primary'
+                      }`}
+                      data-testid="input-payout-withdrawal-amount"
+                    />
+                    {errors.amount && (
+                      <TechnicalLabel text={errors.amount} className="text-red-500 text-sm mt-1" />
+                    )}
+                  </div>
 
-              {/* Account Details Input */}
-              <div>
-                <TechnicalLabel text="ACCOUNT DETAILS" className="text-foreground mb-2" />
-                <Input
-                  type="text"
-                  value={accountDetails}
-                  onChange={(e) => {
-                    setAccountDetails(e.target.value);
-                    if (errors.account) setErrors(prev => ({...prev, account: ''}));
-                  }}
-                  placeholder={
-                    selectedMethod ? 
-                    paymentMethods.find(m => m.id === selectedMethod)?.placeholder || "Enter details" :
-                    "Select payment method first"
-                  }
-                  className={`border-2 px-4 py-3 text-lg ${
-                    errors.account ? 'border-red-500 focus:border-red-500' : 'border-muted-foreground/30 focus:border-primary'
-                  }`}
-                  disabled={!selectedMethod}
-                  data-testid="input-payout-account-details"
-                />
-                {errors.account && (
-                  <TechnicalLabel text={errors.account} className="text-red-500 text-sm mt-1" />
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                  {/* Account Details Input */}
+                  <div>
+                    <TechnicalLabel text="ACCOUNT DETAILS" className="text-foreground mb-2" />
+                    <Input
+                      type="text"
+                      value={accountDetails}
+                      onChange={(e) => {
+                        setAccountDetails(e.target.value);
+                        if (errors.account) setErrors(prev => ({...prev, account: ''}));
+                      }}
+                      placeholder={
+                        selectedMethod ? 
+                        paymentMethods.find(m => m.id === selectedMethod)?.placeholder || "Enter details" :
+                        "Select payment method first"
+                      }
+                      className={`border-2 px-4 py-3 text-lg ${
+                        errors.account ? 'border-red-500 focus:border-red-500' : 'border-muted-foreground/30 focus:border-primary'
+                      }`}
+                      disabled={!selectedMethod}
+                      data-testid="input-payout-account-details"
+                    />
+                    {errors.account && (
+                      <TechnicalLabel text={errors.account} className="text-red-500 text-sm mt-1" />
+                    )}
+                  </div>
 
-        {/* Payment Methods - User Portal Split Card Style */}
-        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 mb-8">
-          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
-            <CardTitle className="flex items-center justify-between">
-              <TechnicalLabel text="PAYMENT METHOD SELECTION" className="text-foreground group-hover:text-primary/90 transition-colors" />
-              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                <CreditCard className="w-4 h-4 text-primary" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-3 gap-6">
-              {paymentMethods.map((method) => {
-                const IconComponent = method.icon;
-                const isSelected = selectedMethod === method.id;
-                
-                return (
-                  <button
-                    key={method.id}
-                    onClick={() => {
-                      setSelectedMethod(method.id);
-                      setAccountDetails('');
-                      if (errors.method) setErrors(prev => ({...prev, method: ''}));
-                    }}
-                    className={`group split-card p-6 text-center transition-all duration-300 cursor-pointer hover:shadow-lg ${
-                      isSelected 
-                        ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/40 shadow-lg shadow-primary/20 transform scale-105' 
-                        : 'bg-gradient-to-br from-card/50 to-card/30 border-2 border-muted-foreground/20 hover:border-primary/30 hover:from-primary/5 hover:to-primary/10 hover:shadow-primary/10'
-                    }`}
-                    data-testid={`button-payout-payment-${method.id}`}
+                  {/* Fee Calculation */}
+                  <div className="space-y-4 pt-4 border-t border-muted-foreground/20">
+                    <TechnicalLabel text="FEE CALCULATION" className="text-foreground font-black" />
+                    
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-foreground text-sm" />
+                      <TechnicalLabel text={formatCurrency(withdrawalAmount)} className="text-foreground font-black text-sm" />
+                    </div>
+                    
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="PLATFORM FEE (13%):" className="text-foreground text-sm" />
+                      <TechnicalLabel text={`-${formatCurrency(platformFee)}`} className="text-red-600 font-black text-sm" />
+                    </div>
+                    
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="DIRECT REF. FEE (15%):" className="text-foreground text-sm" />
+                      <TechnicalLabel text={`-${formatCurrency(directReferralFee)}`} className="text-red-600 font-black text-sm" />
+                    </div>
+
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="INDIRECT REF. FEE (7%):" className="text-foreground text-sm" />
+                      <TechnicalLabel text={`-${formatCurrency(indirectReferralFee)}`} className="text-red-600 font-black text-sm" />
+                    </div>
+                    
+                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="PROCESSING FEE:" className="text-foreground text-sm" />
+                      <TechnicalLabel text={`-₨ ${processingFee.toFixed(2)}`} className="text-red-600 font-black text-sm" />
+                    </div>
+                    
+                    <div className="flex justify-between items-center py-3 bg-gradient-to-r from-green-100 to-green-50 border-2 border-green-500 px-4 rounded">
+                      <TechnicalLabel text="NET AMOUNT:" className="text-green-700 font-black text-lg" />
+                      <TechnicalLabel text={formatCurrency(netAmount)} className="text-green-700 font-black text-xl" data-testid="payout-net-amount" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Choose Payment Method */}
+          <div className="lg:col-span-2">
+            <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+              <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  <TechnicalLabel text="CHOOSE PAYMENT METHOD" className="text-foreground group-hover:text-primary/90 transition-colors" />
+                  <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                    <CreditCard className="w-4 h-4 text-primary" />
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid md:grid-cols-3 gap-6">
+                  {paymentMethods.map((method) => {
+                    const IconComponent = method.icon;
+                    const isSelected = selectedMethod === method.id;
+                    
+                    return (
+                      <button
+                        key={method.id}
+                        onClick={() => {
+                          setSelectedMethod(method.id);
+                          setAccountDetails('');
+                          if (errors.method) setErrors(prev => ({...prev, method: ''}));
+                        }}
+                        className={`group split-card p-6 text-center transition-all duration-300 cursor-pointer hover:shadow-lg ${
+                          isSelected 
+                            ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/40 shadow-lg shadow-primary/20 transform scale-105' 
+                            : 'bg-gradient-to-br from-card/50 to-card/30 border-2 border-muted-foreground/20 hover:border-primary/30 hover:from-primary/5 hover:to-primary/10 hover:shadow-primary/10'
+                        }`}
+                        data-testid={`button-payout-payment-${method.id}`}
+                      >
+                        <div className="flex flex-col items-center text-center gap-4">
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${
+                            isSelected ? 'bg-primary/30' : 'bg-primary/10 group-hover:bg-primary/20'
+                          }`}>
+                            <IconComponent className={`w-8 h-8 transition-colors ${
+                              isSelected ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
+                            }`} />
+                          </div>
+                          <div>
+                            <TechnicalLabel 
+                              text={method.name} 
+                              className={`font-black text-lg mb-2 transition-colors ${
+                                isSelected ? 'text-primary' : 'text-foreground group-hover:text-primary/90'
+                              }`} 
+                            />
+                            <div className={`text-sm mb-1 transition-colors ${
+                              isSelected ? 'text-primary/80' : 'text-muted-foreground group-hover:text-foreground'
+                            }`}>
+                              {method.description}
+                            </div>
+                            <div className={`text-xs transition-colors ${
+                              isSelected ? 'text-primary/60' : 'text-muted-foreground/60 group-hover:text-muted-foreground'
+                            }`}>
+                              Processing: {method.processing}
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2 className="w-6 h-6 text-primary" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.method && (
+                  <TechnicalLabel text={errors.method} className="text-red-500 text-sm mt-3" />
+                )}
+
+                {/* Submit Button */}
+                <div className="mt-8 pt-6 border-t border-muted-foreground/20">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!withdrawAmount || !selectedMethod || !accountDetails || isProcessing}
+                    className="w-full bg-primary hover:bg-primary/80 text-white py-6 text-xl font-black transition-all duration-300"
+                    size="lg"
+                    data-testid="button-payout-submit"
                   >
-                    <div className="flex flex-col items-center text-center gap-4">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${
-                        isSelected ? 'bg-primary/30' : 'bg-primary/10 group-hover:bg-primary/20'
-                      }`}>
-                        <IconComponent className={`w-8 h-8 transition-colors ${
-                          isSelected ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
+                    {isProcessing ? (
+                      <>
+                        <RefreshCw className="w-6 h-6 mr-3 animate-spin" />
+                        PROCESSING PAYOUT REQUEST...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-6 h-6 mr-3" />
+                        SUBMIT PAYOUT REQUEST
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Bottom Section - Transaction History and Help */}
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
+          {/* Transaction History - Takes 2 columns */}
+          <div className="lg:col-span-2">
+            <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+              <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+                <CardTitle className="flex items-center justify-between">
+                  <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground group-hover:text-primary/90 transition-colors" />
+                  <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                    <History className="w-4 h-4 text-primary" />
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-96 overflow-y-auto">
+                  {staticHistoryItems.map((item, index) => (
+                    <div 
+                      key={item.id}
+                      className="p-4 border-b border-muted-foreground/10 hover:bg-primary/5 transition-colors cursor-pointer"
+                      data-testid={`payout-transaction-${item.id}`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <TechnicalLabel text={item.method} className="text-foreground text-sm font-black" />
+                        <div className={`w-3 h-3 rounded-full ${
+                          item.status === 'COMPLETED' ? 'bg-green-500' :
+                          item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
                         }`} />
                       </div>
-                      <div>
-                        <TechnicalLabel 
-                          text={method.name} 
-                          className={`font-black text-lg mb-2 transition-colors ${
-                            isSelected ? 'text-primary' : 'text-foreground group-hover:text-primary/90'
-                          }`} 
-                        />
-                        <div className={`text-sm mb-1 transition-colors ${
-                          isSelected ? 'text-primary/80' : 'text-muted-foreground group-hover:text-foreground'
-                        }`}>
-                          {method.description}
-                        </div>
-                        <div className={`text-xs transition-colors ${
-                          isSelected ? 'text-primary/60' : 'text-muted-foreground/60 group-hover:text-muted-foreground'
-                        }`}>
-                          Processing: {method.processing}
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <CheckCircle2 className="w-6 h-6 text-primary" />
-                      )}
+                      <div className="text-lg font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
+                      <div className="text-sm text-muted-foreground mb-1">{formatDate(item.date)}</div>
+                      <div className="text-xs text-muted-foreground">#{item.transactionId}</div>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-            {errors.method && (
-              <TechnicalLabel text={errors.method} className="text-red-500 text-sm mt-3" />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Transaction History and Fee Calculation - User Portal Style Grid */}
-        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 mb-8">
-          {/* Transaction History */}
-          <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
-              <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                  <History className="w-4 h-4 text-primary" />
+                  ))}
                 </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-96 overflow-y-auto">
-                {historyItems.map((item, index) => (
-                  <div 
-                    key={item.id}
-                    className="p-4 border-b border-muted-foreground/10 hover:bg-primary/5 transition-colors cursor-pointer"
-                    data-testid={`payout-transaction-${item.id}`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <TechnicalLabel text={item.method} className="text-foreground text-sm font-black" />
-                      <div className={`w-3 h-3 rounded-full ${
-                        item.status === 'COMPLETED' ? 'bg-green-500' :
-                        item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
-                      }`} />
-                    </div>
-                    <div className="text-lg font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
-                    <div className="text-sm text-muted-foreground mb-1">{formatDate(item.date)}</div>
-                    <div className="text-xs text-muted-foreground">#{item.transactionId}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Fee Calculation Statement */}
-          <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
-              <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="FEE CALCULATION" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                  <Activity className="w-4 h-4 text-primary" />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                  <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-foreground" />
-                  <TechnicalLabel text={formatCurrency(withdrawalAmount)} className="text-foreground font-black" />
-                </div>
-                
-                <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                  <TechnicalLabel text="PLATFORM FEE (13%):" className="text-foreground" />
-                  <TechnicalLabel text={`-${formatCurrency(platformFee)}`} className="text-red-600 font-black" />
-                </div>
-                
-                <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                  <TechnicalLabel text="DIRECT REFERRAL FEE (15%):" className="text-foreground" />
-                  <TechnicalLabel text={`-${formatCurrency(directReferralFee)}`} className="text-red-600 font-black" />
-                </div>
-
-                <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                  <TechnicalLabel text="INDIRECT REFERRAL FEE (7%):" className="text-foreground" />
-                  <TechnicalLabel text={`-${formatCurrency(indirectReferralFee)}`} className="text-red-600 font-black" />
-                </div>
-                
-                <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                  <TechnicalLabel text="PROCESSING FEE:" className="text-foreground" />
-                  <TechnicalLabel text={`-₨ ${processingFee.toFixed(2)}`} className="text-red-600 font-black" />
-                </div>
-                
-                <div className="flex justify-between items-center py-4 bg-muted/50 px-4 rounded">
-                  <TechnicalLabel text="TOTAL DEDUCTIONS:" className="text-foreground font-black text-lg" />
-                  <TechnicalLabel text={`-₨ ${totalDeductions.toFixed(2)}`} className="text-red-600 font-black text-lg" />
-                </div>
-                
-                <div className="flex justify-between items-center py-4 bg-gradient-to-r from-green-100 to-green-50 border-2 border-green-500 px-4 rounded">
-                  <TechnicalLabel text="NET AMOUNT:" className="text-green-700 font-black text-xl" />
-                  <TechnicalLabel text={formatCurrency(netAmount)} className="text-green-700 font-black text-2xl" data-testid="payout-net-amount" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Submit Action and Help - User Portal Split Card Style */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Submit Button - Takes 2 columns */}
-          <div className="md:col-span-2">
-            <Card className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
-              <CardContent className="p-6 text-center">
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!withdrawAmount || !selectedMethod || !accountDetails || isProcessing}
-                  className="w-full bg-primary hover:bg-primary/80 text-white py-6 text-xl font-black transition-all duration-300"
-                  size="lg"
-                  data-testid="button-payout-submit"
-                >
-                  {isProcessing ? (
-                    <>
-                      <RefreshCw className="w-6 h-6 mr-3 animate-spin" />
-                      PROCESSING PAYOUT REQUEST...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-6 h-6 mr-3" />
-                      SUBMIT PAYOUT REQUEST
-                    </>
-                  )}
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -1756,7 +1814,7 @@ export default function UserPortal() {
           <Card className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 transition-all duration-300 hover:shadow-lg hover:shadow-muted-foreground/10">
             <CardHeader className="border-b border-muted-foreground/20 group-hover:border-muted-foreground/40 transition-colors">
               <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="PAYOUT SUPPORT" className="text-foreground group-hover:text-foreground/90 transition-colors" />
+                <TechnicalLabel text="NEED HELP?" className="text-foreground group-hover:text-foreground/90 transition-colors" />
                 <div className="p-2 bg-muted-foreground/10 border border-muted-foreground/20 group-hover:bg-muted-foreground/20 transition-all duration-300">
                   <HelpCircle className="w-4 h-4 text-foreground/80" />
                 </div>
@@ -1783,6 +1841,14 @@ export default function UserPortal() {
                     <Button variant="outline" size="sm" className="border-2 border-muted-foreground/30 text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all">
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Support
+                    </Button>
+                    <Button variant="outline" size="sm" className="border-2 border-muted-foreground/30 text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all">
+                      <Phone className="w-4 h-4 mr-2" />
+                      Call Support
+                    </Button>
+                    <Button variant="outline" size="sm" className="border-2 border-muted-foreground/30 text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all">
+                      <Mail className="w-4 h-4 mr-2" />
+                      Email Us
                     </Button>
                   </div>
                 </div>
