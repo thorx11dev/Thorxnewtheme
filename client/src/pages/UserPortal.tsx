@@ -684,22 +684,22 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
-        <div className="wireframe-border p-8 mb-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
-              <Activity className="w-5 h-5" />
-              <TechnicalLabel text="DASHBOARD PROTOCOL v4.12" className="text-white" />
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+          <div className="text-center mb-6 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
+              <Activity className="w-4 h-4 md:w-5 md:h-5" />
+              <TechnicalLabel text="DASHBOARD PROTOCOL v4.12" className="text-white text-xs md:text-sm" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-8 tracking-tighter leading-tight">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-6 md:mb-8 tracking-tighter leading-tight px-2">
               ASSALAM U ALAYKUM,<br />
-              <span className="text-primary bg-primary/10 px-2 py-1 inline-block mt-2">{displayUser?.firstName || "GUEST"}</span>
+              <span className="text-primary bg-primary/10 px-2 py-1 inline-block mt-2 text-xl md:text-4xl lg:text-5xl">{displayUser?.firstName || "GUEST"}</span>
             </h1>
             <div className="max-w-3xl mx-auto mb-2">
-              <p className="text-lg text-muted-foreground leading-relaxed">
+              <p className="text-sm md:text-lg text-muted-foreground leading-relaxed px-2">
                 Track your earnings • Monitor your progress in real-time
               </p>
             </div>
-            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
@@ -757,19 +757,19 @@ export default function UserPortal() {
         </div>
 
         {/* Charts Section */}
-        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
+        <div className="grid lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
           {/* Weekly Earnings Chart */}
           <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors p-3 md:p-6">
               <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="WEEKLY EARNINGS" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                  <BarChart3 className="w-4 h-4 text-primary" />
+                <TechnicalLabel text="WEEKLY EARNINGS" className="text-foreground group-hover:text-primary/90 transition-colors text-xs md:text-sm" />
+                <div className="p-1 md:p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                  <BarChart3 className="w-3 h-3 md:w-4 md:h-4 text-primary" />
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-2 md:p-4">
-              <ResponsiveContainer width="100%" height={280} minHeight={250}>
+              <ResponsiveContainer width="100%" height={isMobile ? 200 : 280} minHeight={isMobile ? 180 : 250}>
                 <AreaChart data={earningsChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                   <defs>
                     <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
@@ -781,21 +781,21 @@ export default function UserPortal() {
                   <XAxis
                     dataKey="date"
                     stroke="hsl(var(--muted-foreground))"
-                    fontSize={10}
+                    fontSize={isMobile ? 8 : 10}
                     fontFamily="var(--font-sans)"
                     tickLine={false}
                     axisLine={false}
-                    hide={window.innerWidth < 768}
+                    hide={isMobile}
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis
                     stroke="hsl(var(--muted-foreground))"
-                    fontSize={10}
+                    fontSize={isMobile ? 8 : 10}
                     fontFamily="var(--font-sans)"
-                    tickFormatter={(value) => window.innerWidth < 768 ? `${value}` : `PKR ${value}`}
+                    tickFormatter={(value) => isMobile ? `${value}` : `PKR ${value}`}
                     tickLine={false}
                     axisLine={false}
-                    hide={window.innerWidth < 768}
+                    hide={isMobile}
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip
@@ -807,7 +807,7 @@ export default function UserPortal() {
                       borderRadius: '4px',
                       color: 'hsl(var(--primary))',
                       fontFamily: 'var(--font-sans)',
-                      fontSize: '12px',
+                      fontSize: isMobile ? '10px' : '12px',
                       fontWeight: 'bold',
                       boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
                     }}
@@ -817,7 +817,7 @@ export default function UserPortal() {
                     type="monotone"
                     dataKey="earnings"
                     stroke="hsl(var(--primary))"
-                    strokeWidth={3}
+                    strokeWidth={isMobile ? 2 : 3}
                     fill="url(#earningsGradient)"
                   />
                 </AreaChart>
@@ -827,27 +827,28 @@ export default function UserPortal() {
 
           {/* Earnings Breakdown */}
           <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors p-3 md:p-6">
               <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                  <PieChart className="w-4 h-4 text-primary" />
+                <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground group-hover:text-primary/90 transition-colors text-xs md:text-sm" />
+                <div className="p-1 md:p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                  <PieChart className="w-3 h-3 md:w-4 md:h-4 text-primary" />
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-2 md:p-4">
-              <ResponsiveContainer width="100%" height={280} minHeight={250}>
+              <ResponsiveContainer width="100%" height={isMobile ? 200 : 280} minHeight={isMobile ? 180 : 250}>
                 <RechartsPieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                   <Pie
                     data={earningTypesData}
                     cx="50%"
                     cy="50%"
-                    outerRadius={window.innerWidth < 768 ? 70 : 80}
+                    outerRadius={isMobile ? 50 : 80}
                     fill="#8884d8"
                     dataKey="value"
                     label={({ name, percent }: { name: string; percent: number }) =>
-                      window.innerWidth < 768 ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(0)}%`
+                      isMobile ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(0)}%`
                     }
+                    labelStyle={{ fontSize: isMobile ? '10px' : '12px' }}
                   >
                     {earningTypesData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -861,7 +862,7 @@ export default function UserPortal() {
                       borderRadius: '4px',
                       color: 'hsl(var(--primary))',
                       fontFamily: 'var(--font-sans)',
-                      fontSize: '12px',
+                      fontSize: isMobile ? '10px' : '12px',
                       fontWeight: 'bold',
                       boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
                     }}
@@ -942,20 +943,20 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Enhanced Header */}
-        <div className="wireframe-border p-8 mb-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
-              <Briefcase className="w-5 h-5" />
-              <TechnicalLabel text="WORK PROTOCOL v3.21" className="text-white" />
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+          <div className="text-center mb-6 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
+              <Briefcase className="w-4 h-4 md:w-5 md:h-5" />
+              <TechnicalLabel text="WORK PROTOCOL v3.21" className="text-white text-xs md:text-sm" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight px-2">
               START <span className="text-primary">EARNING</span><br />
               WATCH & EARN REWARDS
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm md:text-lg lg:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed px-2">
               Watch advertisements, complete tasks, and earn real money daily
             </p>
-            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
@@ -1054,20 +1055,20 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
-        <div className="wireframe-border p-8 mb-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
-              <UserCheck className="w-5 h-5" />
-              <TechnicalLabel text="REFERRAL PROTOCOL v3.14" className="text-white" />
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+          <div className="text-center mb-6 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
+              <UserCheck className="w-4 h-4 md:w-5 md:h-5" />
+              <TechnicalLabel text="REFERRAL PROTOCOL v3.14" className="text-white text-xs md:text-sm" />
             </div>
-            <h1 className="text-4xl md:text-6xl lg:text-8xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-2xl md:text-4xl lg:text-6xl xl:text-8xl font-black text-foreground mb-4 tracking-tighter leading-tight px-2">
               BUILD YOUR <span className="text-primary">NETWORK</span><br />
               EARN MORE TOGETHER
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm md:text-lg lg:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed px-2">
               Invite friends, earn together, and build a passive income stream through referrals
             </p>
-            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
         {/* Top Metrics Section - 4 Cards as per wireframe */}
@@ -1491,22 +1492,22 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section - Work/Dashboard Style Full Width */}
-        <div className="wireframe-border p-8 mb-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
-              <Wallet className="w-5 h-5" />
-              <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white" />
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+          <div className="text-center mb-6 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
+              <Wallet className="w-4 h-4 md:w-5 md:h-5" />
+              <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white text-xs md:text-sm" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-8 tracking-tighter leading-tight">
-              SECURE <span className="text-primary bg-primary/10 px-2 py-1 inline-block">PAYOUT</span><br />
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-6 md:mb-8 tracking-tighter leading-tight px-2">
+              SECURE <span className="text-primary bg-primary/10 px-2 py-1 inline-block text-xl md:text-4xl lg:text-5xl">PAYOUT</span><br />
               SYSTEM READY
             </h1>
             <div className="max-w-3xl mx-auto mb-2">
-              <p className="text-lg text-muted-foreground leading-relaxed">
+              <p className="text-sm md:text-lg text-muted-foreground leading-relaxed px-2">
                 Fast withdrawals • Secure processing • Real-time tracking
               </p>
             </div>
-            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
@@ -1684,7 +1685,7 @@ export default function UserPortal() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="grid md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                   {paymentMethods.map((method) => {
                     const IconComponent = method.icon;
                     const isSelected = selectedMethod === method.id;
@@ -1697,29 +1698,29 @@ export default function UserPortal() {
                           setAccountDetails('');
                           if (errors.method) setErrors(prev => ({...prev, method: ''}));
                         }}
-                        className={`group split-card p-6 text-center transition-all duration-300 cursor-pointer hover:shadow-lg ${
+                        className={`group split-card p-4 md:p-6 text-center transition-all duration-300 cursor-pointer hover:shadow-lg ${
                           isSelected 
                             ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/40 shadow-lg shadow-primary/20 transform scale-105' 
                             : 'bg-gradient-to-br from-card/50 to-card/30 border-2 border-muted-foreground/20 hover:border-primary/30 hover:from-primary/5 hover:to-primary/10 hover:shadow-primary/10'
                         }`}
                         data-testid={`button-payout-payment-${method.id}`}
                       >
-                        <div className="flex flex-col items-center text-center gap-4">
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${
+                        <div className="flex flex-col items-center text-center gap-3 md:gap-4">
+                          <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center transition-colors ${
                             isSelected ? 'bg-primary/30' : 'bg-primary/10 group-hover:bg-primary/20'
                           }`}>
-                            <IconComponent className={`w-8 h-8 transition-colors ${
+                            <IconComponent className={`w-6 h-6 md:w-8 md:h-8 transition-colors ${
                               isSelected ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
                             }`} />
                           </div>
                           <div>
                             <TechnicalLabel 
                               text={method.name} 
-                              className={`font-black text-lg mb-2 transition-colors ${
+                              className={`font-black text-sm md:text-lg mb-1 md:mb-2 transition-colors ${
                                 isSelected ? 'text-primary' : 'text-foreground group-hover:text-primary/90'
                               }`} 
                             />
-                            <div className={`text-sm mb-1 transition-colors ${
+                            <div className={`text-xs md:text-sm mb-1 transition-colors ${
                               isSelected ? 'text-primary/80' : 'text-muted-foreground group-hover:text-foreground'
                             }`}>
                               {method.description}
@@ -1731,7 +1732,7 @@ export default function UserPortal() {
                             </div>
                           </div>
                           {isSelected && (
-                            <CheckCircle2 className="w-6 h-6 text-primary" />
+                            <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                           )}
                         </div>
                       </button>
@@ -1963,20 +1964,20 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Work Section Style Header */}
-        <div className="wireframe-border p-8 mb-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
-              <LifeBuoy className="w-5 h-5" />
-              <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white" />
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+          <div className="text-center mb-6 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
+              <LifeBuoy className="w-4 h-4 md:w-5 md:h-5" />
+              <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white text-xs md:text-sm" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight px-2">
               GET <span className="text-primary">SUPPORT</span><br />
               INSTANT ASSISTANCE
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm md:text-lg lg:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed px-2">
               Professional support, instant solutions, comprehensive guidance
             </p>
-            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
+            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
