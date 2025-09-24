@@ -337,7 +337,9 @@
   }
 
   .arrow-keys-guide {
-    display: none;
+    bottom: 20px;
+    left: 15px;
+    transform: scale(0.8);
   }
 
   .progress-dot {
