@@ -666,6 +666,12 @@ export default function UserPortal() {
               isTransitioning ? 'transitioning' : ''
             }`}
             data-testid={`section-${section.id}`}
+            style={{
+              paddingTop: isMobile ? '5rem' : undefined,
+              paddingBottom: isMobile ? '6rem' : undefined,
+              paddingLeft: isMobile ? '0.75rem' : undefined,
+              paddingRight: isMobile ? '0.75rem' : undefined,
+            }}
           >
             {/* Section Content */}
             {index === 0 && renderDashboardSection()}
@@ -682,15 +688,15 @@ export default function UserPortal() {
   // Dashboard Section
   function renderDashboardSection() {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+      <div className={`max-w-7xl mx-auto ${isMobile ? 'px-2' : 'px-4 md:px-8'} ${isMobile ? 'py-4' : 'py-8'} relative z-10`}>
         {/* Hero Section */}
-        <div className="wireframe-border p-8 mb-8">
+        <div className={`wireframe-border ${isMobile ? 'p-4 mb-6' : 'p-8 mb-8'}`}>
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
               <Activity className="w-5 h-5" />
               <TechnicalLabel text="DASHBOARD PROTOCOL v4.12" className="text-white" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-8 tracking-tighter leading-tight">
+            <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl md:text-4xl lg:text-5xl'} font-black text-foreground ${isMobile ? 'mb-4' : 'mb-8'} tracking-tighter leading-tight`}>
               ASSALAM U ALAYKUM,<br />
               <span className="text-primary bg-primary/10 px-2 py-1 inline-block mt-2">{displayUser?.firstName || "GUEST"}</span>
             </h1>
@@ -940,9 +946,9 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+      <div className={`max-w-7xl mx-auto ${isMobile ? 'px-2' : 'px-4 md:px-8'} ${isMobile ? 'py-4' : 'py-8'} relative z-10`}>
         {/* Enhanced Header */}
-        <div className="wireframe-border p-8 mb-8">
+        <div className={`wireframe-border ${isMobile ? 'p-4 mb-6' : 'p-8 mb-8'}`}>
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
               <Briefcase className="w-5 h-5" />
@@ -1052,9 +1058,9 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+      <div className={`max-w-7xl mx-auto ${isMobile ? 'px-2' : 'px-4 md:px-8'} ${isMobile ? 'py-4' : 'py-8'} relative z-10`}>
         {/* Hero Section */}
-        <div className="wireframe-border p-8 mb-8">
+        <div className={`wireframe-border ${isMobile ? 'p-4 mb-6' : 'p-8 mb-8'}`}>
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
               <UserCheck className="w-5 h-5" />
@@ -1489,9 +1495,9 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+      <div className={`max-w-7xl mx-auto ${isMobile ? 'px-2' : 'px-4 md:px-8'} ${isMobile ? 'py-4' : 'py-8'} relative z-10`}>
         {/* Hero Section - Work/Dashboard Style Full Width */}
-        <div className="wireframe-border p-8 mb-8">
+        <div className={`wireframe-border ${isMobile ? 'p-4 mb-6' : 'p-8 mb-8'}`}>
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
               <Wallet className="w-5 h-5" />
@@ -1961,9 +1967,9 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+      <div className={`max-w-7xl mx-auto ${isMobile ? 'px-2' : 'px-4 md:px-8'} ${isMobile ? 'py-4' : 'py-8'} relative z-10`}>
         {/* Work Section Style Header */}
-        <div className="wireframe-border p-8 mb-8">
+        <div className={`wireframe-border ${isMobile ? 'p-4 mb-6' : 'p-8 mb-8'}`}>
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 border-2 border-black mb-4">
               <LifeBuoy className="w-5 h-5" />
