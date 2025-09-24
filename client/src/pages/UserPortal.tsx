@@ -659,39 +659,22 @@ export default function UserPortal() {
 
       {/* Section Content */}
       <div className="pt-16 md:pt-20 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
-        {/* Desktop: Show all sections in cinematic mode */}
-        <div className="hidden md:block">
-          {sections.map((section, index) => (
-            <section
-              key={section.id}
-              className={`cinematic-section ${currentSection === index ? 'active' : ''} ${
-                isTransitioning ? 'transitioning' : ''
-              }`}
-              data-testid={`section-${section.id}`}
-            >
-              {/* Section Content */}
-              {index === 0 && renderDashboardSection()}
-              {index === 1 && renderWorkSection()}
-              {index === 2 && renderReferralsSection()}
-              {index === 3 && renderPayoutSection()}
-              {index === 4 && renderHelpSection()}
-            </section>
-          ))}
-        </div>
-
-        {/* Mobile: Show only active section */}
-        <div className="md:hidden">
+        {sections.map((section, index) => (
           <section
-            className="cinematic-section active"
-            data-testid={`section-${sections[currentSection]?.id}`}
+            key={section.id}
+            className={`cinematic-section ${currentSection === index ? 'active' : ''} ${
+              isTransitioning ? 'transitioning' : ''
+            }`}
+            data-testid={`section-${section.id}`}
           >
-            {currentSection === 0 && renderDashboardSection()}
-            {currentSection === 1 && renderWorkSection()}
-            {currentSection === 2 && renderReferralsSection()}
-            {currentSection === 3 && renderPayoutSection()}
-            {currentSection === 4 && renderHelpSection()}
+            {/* Section Content */}
+            {index === 0 && renderDashboardSection()}
+            {index === 1 && renderWorkSection()}
+            {index === 2 && renderReferralsSection()}
+            {index === 3 && renderPayoutSection()}
+            {index === 4 && renderHelpSection()}
           </section>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -721,7 +704,7 @@ export default function UserPortal() {
         </div>
 
         {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8 md:mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
           {/* Total Earnings */}
           <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10" data-testid="card-total-earnings">
             <div className="flex items-start justify-between mb-3">
@@ -774,7 +757,7 @@ export default function UserPortal() {
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
           {/* Weekly Earnings Chart */}
           <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
             <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
@@ -977,7 +960,7 @@ export default function UserPortal() {
         </div>
 
         {/* Enhanced Metrics Cards */}
-        <MetricsCards metrics={metricsData} className="mb-6 md:mb-10" />
+        <MetricsCards metrics={metricsData} className="mb-10" />
 
         {/* Industrial Tab System */}
         {/* Industrial Work Interface - Wireframe Style */}
@@ -1088,7 +1071,7 @@ export default function UserPortal() {
           </div>
         </div>
         {/* Top Metrics Section - 4 Cards as per wireframe */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
           {/* Total Referrals */}
           <div className="wireframe-section p-4 md:p-6 text-center">
             <Users className="w-8 h-8 mx-auto mb-3 text-primary" />
@@ -1118,7 +1101,7 @@ export default function UserPortal() {
           </div>
         </div>
         {/* Middle Section - Invitation Area and Leadership Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 mb-6 md:mb-8">
+        <div className="grid lg:grid-cols-2 gap-8 mb-8">
           {/* Invitation Area */}
           <div className="wireframe-section p-6">
             <div className="border-b-2 border-black pb-4 mb-6">
@@ -1528,7 +1511,7 @@ export default function UserPortal() {
         </div>
 
         {/* Key Metrics Cards - Work/Dashboard Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
           {/* Available Balance */}
           <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/20" data-testid="card-payout-available-balance">
             <div className="flex items-start justify-between mb-3">
@@ -1589,7 +1572,7 @@ export default function UserPortal() {
         </div>
 
         {/* Main Content Grid - Work/Dashboard Style */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mb-6 md:mb-8">
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8 mb-8">
           {/* Left Column - Enter Payout Details */}
           <div className="lg:col-span-1">
             <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
@@ -1787,7 +1770,7 @@ export default function UserPortal() {
         </div>
 
         {/* Bottom Section - Transaction History and Help */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Transaction History - Takes 2 columns */}
           <div className="lg:col-span-2">
             <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
