@@ -314,6 +314,11 @@
     .portal-container {
       overflow: visible;
     }
+
+    /* Hide desktop navigation arrows on mobile for portals only */
+    .portal-container .arrow-keys-guide {
+      display: none !important;
+    }
   }
 
   .portal-container .cinematic-section {
