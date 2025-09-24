@@ -1036,10 +1036,10 @@ export default function UserPortal() {
 
     const getRankIcon = (rank: number) => {
       switch (rank) {
-        case 1: return <Crown className="w-5 h-5 text-yellow-500" />;
-        case 2: return <Trophy className="w-5 h-5 text-gray-400" />;
-        case 3: return <Medal className="w-5 h-5 text-amber-600" />;
-        default: return <Star className="w-5 h-5 text-muted-foreground" />;
+        case 1: return <Crown className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />;
+        case 2: return <Trophy className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />;
+        case 3: return <Medal className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />;
+        default: return <Star className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />;
       }
     };
 
@@ -1053,208 +1053,208 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
         {/* Hero Section */}
-        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
-          <div className="text-center mb-6 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
-              <UserCheck className="w-4 h-4 md:w-5 md:h-5" />
-              <TechnicalLabel text="REFERRAL PROTOCOL v3.14" className="text-white text-xs md:text-sm" />
+        <div className="wireframe-border p-3 md:p-8 mb-3 md:mb-8">
+          <div className="text-center mb-4 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-2 md:px-4 py-1 md:py-2 border-2 border-black mb-3 md:mb-4">
+              <UserCheck className="w-3 h-3 md:w-5 md:h-5" />
+              <TechnicalLabel text="REFERRAL PROTOCOL v3.14" className="text-white text-xs" />
             </div>
-            <h1 className="text-2xl md:text-4xl lg:text-6xl xl:text-8xl font-black text-foreground mb-4 tracking-tighter leading-tight px-2">
+            <h1 className="referrals-hero-title text-xl md:text-4xl lg:text-6xl xl:text-8xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               BUILD YOUR <span className="text-primary">NETWORK</span><br />
               EARN MORE TOGETHER
             </h1>
-            <p className="text-sm md:text-lg lg:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed px-2">
+            <p className="portal-hero-subtitle text-xs md:text-lg lg:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
               Invite friends, earn together, and build a passive income stream through referrals
             </p>
-            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
+            <Barcode className="w-16 md:w-32 lg:w-48 h-4 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
         {/* Top Metrics Section - 4 Cards as per wireframe */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-6 md:mb-8">
           {/* Total Referrals */}
-          <div className="wireframe-section p-4 md:p-6 text-center">
-            <Users className="w-8 h-8 mx-auto mb-3 text-primary" />
-            <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">{referralsData?.stats.count || 0}</div>
-            <TechnicalLabel text="TOTAL REFERRALS" className="text-muted-foreground text-xs" />
+          <div className="wireframe-section p-3 md:p-6 text-center">
+            <Users className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-primary" />
+            <div className="metric-value-mobile text-lg md:text-3xl font-black mb-1 md:mb-2 text-foreground">{referralsData?.stats.count || 0}</div>
+            <TechnicalLabel text="TOTAL REFERRALS" className="text-muted-foreground text-xs leading-tight" />
           </div>
 
           {/* Referral Earnings */}
-          <div className="p-4 md:p-6 text-center text-white bg-black border-2 border-black">
-            <DollarSign className="w-8 h-8 mx-auto mb-3 text-white" />
-            <div className="text-2xl md:text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
-            <TechnicalLabel text="REFERRAL EARNINGS" className="text-white/80 text-xs" />
+          <div className="p-3 md:p-6 text-center text-white bg-black border-2 border-black">
+            <DollarSign className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-white" />
+            <div className="metric-value-mobile text-lg md:text-3xl font-black mb-1 md:mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
+            <TechnicalLabel text="REFERRAL EARNINGS" className="text-white/80 text-xs leading-tight" />
           </div>
 
           {/* Commission Rate */}
-          <div className="wireframe-section p-4 md:p-6 text-center">
-            <TrendingUp className="w-8 h-8 mx-auto mb-3 text-primary" />
-            <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">25%</div>
-            <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs" />
+          <div className="wireframe-section p-3 md:p-6 text-center">
+            <TrendingUp className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-primary" />
+            <div className="metric-value-mobile text-lg md:text-3xl font-black mb-1 md:mb-2 text-foreground">25%</div>
+            <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs leading-tight" />
           </div>
 
           {/* Service Info */}
-          <div className="wireframe-section p-4 md:p-6 text-center bg-[#e8e5d9]">
-            <RefreshCw className="w-8 h-8 mx-auto mb-3 text-primary" />
-            <div className="text-2xl md:text-3xl font-black mb-2 text-foreground">∞</div>
-            <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
+          <div className="wireframe-section p-3 md:p-6 text-center bg-[#e8e5d9]">
+            <RefreshCw className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-primary" />
+            <div className="metric-value-mobile text-lg md:text-3xl font-black mb-1 md:mb-2 text-foreground">∞</div>
+            <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs leading-tight" />
           </div>
         </div>
         {/* Middle Section - Invitation Area and Leadership Area */}
-        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid lg:grid-cols-2 gap-4 md:gap-8 mb-6 md:mb-8">
           {/* Invitation Area */}
-          <div className="wireframe-section p-6">
-            <div className="border-b-2 border-black pb-4 mb-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Share2 className="w-6 h-6 text-primary" />
-                <TechnicalLabel text="INVITATION AREA" className="text-foreground text-lg font-black" />
+          <div className="wireframe-section p-4 md:p-6">
+            <div className="border-b-2 border-black pb-3 md:pb-4 mb-4 md:mb-6">
+              <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+                <Share2 className="w-4 h-4 md:w-6 md:h-6 text-primary" />
+                <TechnicalLabel text="INVITATION AREA" className="text-foreground text-sm md:text-lg font-black" />
               </div>
               <TechnicalLabel text="PROTOCOL: NETWORK_EXPANSION_v2.1" className="text-muted-foreground text-xs" />
             </div>
 
             {/* Referral Code Display */}
-            <div className="bg-black text-white p-6 border-2 border-primary mb-6">
-              <TechnicalLabel text="YOUR REFERRAL CODE" className="text-primary mb-4 text-center" />
-              <div className="bg-primary text-black px-6 py-4 text-2xl md:text-3xl font-black tracking-widest text-center border-2 border-white">
+            <div className="bg-black text-white p-4 md:p-6 border-2 border-primary mb-4 md:mb-6">
+              <TechnicalLabel text="YOUR REFERRAL CODE" className="text-primary mb-3 md:mb-4 text-center text-xs md:text-sm" />
+              <div className="referral-code-display bg-primary text-black px-3 md:px-6 py-3 md:py-4 text-sm md:text-3xl font-black tracking-widest text-center border-2 border-white">
                 {displayUser?.referralCode}
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               <Button
                 onClick={copyReferralCode}
-                className="w-full bg-primary hover:bg-primary/90 text-black px-6 py-4 text-lg font-black border-2 border-black"
+                className="w-full bg-primary hover:bg-primary/90 text-black px-4 md:px-6 py-3 md:py-4 text-sm md:text-lg font-black border-2 border-black"
                 data-testid="button-copy-referral"
               >
-                <Copy className="w-5 h-5 mr-3" />
+                <Copy className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
                 COPY REFERRAL CODE
               </Button>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="button-group-mobile grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                 <Button
                   variant="outline"
-                  className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                  className="referral-action-button border-2 border-black text-foreground hover:bg-black hover:text-white py-2 md:py-3 font-black text-xs md:text-sm"
                 >
-                  <Link2 className="w-4 h-4 mr-2" />
+                  <Link2 className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                   GENERATE LINK
                 </Button>
                 <Button
                   variant="outline"
-                  className="border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                  className="referral-action-button border-2 border-black text-foreground hover:bg-black hover:text-white py-2 md:py-3 font-black text-xs md:text-sm"
                 >
-                  <ExternalLink className="w-4 h-4 mr-2" />
+                  <ExternalLink className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                   SHARE
                 </Button>
               </div>
             </div>
 
-            <div className="mt-4 p-3 bg-muted border border-muted-foreground/20">
-              <TechnicalLabel text="COMMISSION: 25% of all referral earnings forever" className="text-muted-foreground text-center text-xs" />
+            <div className="mt-3 md:mt-4 p-2 md:p-3 bg-muted border border-muted-foreground/20">
+              <TechnicalLabel text="COMMISSION: 25% of all referral earnings forever" className="text-muted-foreground text-center text-xs leading-tight" />
             </div>
           </div>
 
           {/* Leadership Area */}
-          <div className="wireframe-section p-6">
-            <div className="border-b-2 border-black pb-4 mb-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Crown className="w-6 h-6 text-primary" />
-                <TechnicalLabel text="LEADERSHIP AREA" className="text-foreground text-lg font-black" />
+          <div className="wireframe-section p-4 md:p-6">
+            <div className="border-b-2 border-black pb-3 md:pb-4 mb-4 md:mb-6">
+              <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+                <Crown className="w-4 h-4 md:w-6 md:h-6 text-primary" />
+                <TechnicalLabel text="LEADERSHIP AREA" className="text-foreground text-sm md:text-lg font-black" />
               </div>
               <TechnicalLabel text="TOP PERFORMERS RANKING" className="text-muted-foreground text-xs" />
             </div>
 
             {/* Leadership Stats */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="text-center p-3 bg-muted border border-muted-foreground/20">
-                <div className="text-lg font-black text-foreground">#{referralsData?.stats.count ? Math.min(referralsData.stats.count + 15, 50) : 42}</div>
-                <TechnicalLabel text="YOUR RANK" className="text-muted-foreground text-xs" />
+            <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
+              <div className="text-center p-2 md:p-3 bg-muted border border-muted-foreground/20">
+                <div className="metric-value-mobile text-base md:text-lg font-black text-foreground">#{referralsData?.stats.count ? Math.min(referralsData.stats.count + 15, 50) : 42}</div>
+                <TechnicalLabel text="YOUR RANK" className="text-muted-foreground text-xs leading-tight" />
               </div>
-              <div className="text-center p-3 bg-primary text-white border border-primary">
-                <div className="text-lg font-black text-white">TOP 10%</div>
-                <TechnicalLabel text="PERCENTILE" className="text-white/80 text-xs" />
+              <div className="text-center p-2 md:p-3 bg-primary text-white border border-primary">
+                <div className="metric-value-mobile text-base md:text-lg font-black text-white">TOP 10%</div>
+                <TechnicalLabel text="PERCENTILE" className="text-white/80 text-xs leading-tight" />
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               <Button
                 variant="outline"
-                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-2 md:py-3 font-black text-xs md:text-sm"
               >
-                <BarChart3 className="w-4 h-4 mr-2" />
+                <BarChart3 className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                 VIEW FULL LEADERBOARD
               </Button>
               <Button
                 variant="outline"
-                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-2 md:py-3 font-black text-xs md:text-sm"
               >
-                <Trophy className="w-4 h-4 mr-2" />
+                <Trophy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                 MY ACHIEVEMENTS
               </Button>
             </div>
           </div>
         </div>
         {/* Bottom Section - Leaderboard List (Blue highlighted in wireframe) */}
-        <div className="wireframe-border bg-primary/5 p-6">
-          <div className="border-b-2 border-primary pb-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Trophy className="w-6 h-6 text-primary" />
-                <TechnicalLabel text="TOP REFERRERS LEADERBOARD" className="text-foreground text-lg font-black" />
+        <div className="wireframe-border bg-primary/5 p-4 md:p-6">
+          <div className="border-b-2 border-primary pb-3 md:pb-4 mb-4 md:mb-6">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 md:gap-3">
+                <Trophy className="w-4 h-4 md:w-6 md:h-6 text-primary" />
+                <TechnicalLabel text="TOP REFERRERS LEADERBOARD" className="text-foreground text-sm md:text-lg font-black" />
               </div>
-              <div className="bg-primary text-white px-3 py-1 border border-primary">
+              <div className="bg-primary text-white px-2 md:px-3 py-1 border border-primary">
                 <TechnicalLabel text="LIVE RANKINGS" className="text-white text-xs" />
               </div>
             </div>
           </div>
 
           {/* Leaderboard Items */}
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {leaderboardData.map((leader, index) => (
-              <div key={leader.id} className="wireframe-section p-4 hover:bg-white transition-colors duration-200">
-                <div className="flex items-center justify-between">
+              <div key={leader.id} className="leaderboard-item wireframe-section p-3 md:p-4 hover:bg-white transition-colors duration-200">
+                <div className="flex items-start md:items-center justify-between flex-col md:flex-row gap-3 md:gap-0">
                   {/* Left Side - Rank and Name */}
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-black text-white font-black text-lg flex items-center justify-center border border-black">
+                  <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white font-black text-sm md:text-lg flex items-center justify-center border border-black">
                         {leader.rank}
                       </div>
                       {getRankIcon(leader.rank)}
                     </div>
                     
-                    <div>
-                      <div className="text-lg font-black text-foreground mb-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm md:text-lg font-black text-foreground mb-1">
                         {leader.name}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 md:gap-2 flex-wrap">
                         <TechnicalLabel text={`${leader.referrals} REFERRALS`} className="text-muted-foreground text-xs" />
-                        <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                        <div className="w-1 h-1 bg-muted-foreground rounded-full hidden md:block"></div>
                         <TechnicalLabel text={`JOINED ${new Date(leader.joinDate).toLocaleDateString()}`} className="text-muted-foreground text-xs" />
                       </div>
                     </div>
                   </div>
 
                   {/* Right Side - Rank Info and Revision */}
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between md:justify-end gap-3 md:gap-4 w-full md:w-auto">
                     {/* Rank Info */}
-                    <div className="text-right">
-                      <div className="text-lg font-black text-primary mb-1">
+                    <div className="text-left md:text-right">
+                      <div className="text-base md:text-lg font-black text-primary mb-1">
                         {formatCurrency(leader.earnings)}
                       </div>
                       <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
                     </div>
 
                     {/* Revision (Tier Badge) */}
-                    <div className="px-3 py-1 text-xs font-black border-2 border-black from-blue-600 to-purple-600 text-white bg-[#000000]">
+                    <div className="status-indicator-mobile px-2 md:px-3 py-1 text-xs font-black border-2 border-black text-white bg-[#000000] flex-shrink-0">
                       {leader.tier}
                     </div>
                   </div>
                 </div>
 
                 {/* Status Indicator */}
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-2 md:mt-3 flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${leader.status === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                     <TechnicalLabel text={`STATUS: ${leader.status}`} className="text-muted-foreground text-xs" />
@@ -1266,10 +1266,10 @@ export default function UserPortal() {
           </div>
 
           {/* View More Button */}
-          <div className="mt-6 text-center">
+          <div className="mt-4 md:mt-6 text-center">
             <Button
               variant="outline"
-              className="border-2 border-primary text-primary hover:bg-primary hover:text-white px-8 py-3 font-black"
+              className="border-2 border-primary text-primary hover:bg-primary hover:text-white px-4 md:px-8 py-2 md:py-3 font-black text-sm md:text-base"
             >
               VIEW COMPLETE LEADERBOARD
             </Button>
@@ -1277,33 +1277,33 @@ export default function UserPortal() {
         </div>
         {/* Your Referrals Section */}
         {referralsData?.referrals && referralsData.referrals.length > 0 && (
-          <div className="mt-8 wireframe-section p-6">
-            <div className="border-b-2 border-black pb-4 mb-6">
-              <TechnicalLabel text="YOUR NETWORK" className="text-foreground text-lg font-black" />
+          <div className="mt-6 md:mt-8 wireframe-section p-4 md:p-6">
+            <div className="border-b-2 border-black pb-3 md:pb-4 mb-4 md:mb-6">
+              <TechnicalLabel text="YOUR NETWORK" className="text-foreground text-sm md:text-lg font-black" />
             </div>
             
-            <div className="grid gap-4">
+            <div className="grid gap-3 md:gap-4">
               {referralsData.referrals.map((referral, index) => (
-                <div key={referral.id} className="wireframe-section p-4 hover:bg-white transition-colors" data-testid={`referral-${referral.id}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/60 text-white font-black text-lg flex items-center justify-center border-2 border-black">
+                <div key={referral.id} className="referral-network-card wireframe-section p-3 md:p-4 hover:bg-white transition-colors" data-testid={`referral-${referral.id}`}>
+                  <div className="flex items-center justify-between flex-col md:flex-row gap-3 md:gap-0">
+                    <div className="flex items-center space-x-3 md:space-x-4 w-full md:w-auto">
+                      <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-primary to-primary/60 text-white font-black text-sm md:text-lg flex items-center justify-center border-2 border-black flex-shrink-0">
                         {referral.referred.firstName[0]}{referral.referred.lastName[0]}
                       </div>
-                      <div>
-                        <h3 className="text-lg font-black text-foreground">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm md:text-lg font-black text-foreground">
                           {referral.referred.firstName} {referral.referred.lastName}
                         </h3>
-                        <TechnicalLabel text={referral.referred.email} className="text-muted-foreground text-xs" />
+                        <TechnicalLabel text={referral.referred.email} className="text-muted-foreground text-xs break-all" />
                         <TechnicalLabel text={`Joined: ${formatDate(referral.referred.createdAt)}`} className="text-muted-foreground text-xs" />
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xl font-black text-primary">
+                    <div className="text-center md:text-right w-full md:w-auto">
+                      <div className="text-lg md:text-xl font-black text-primary">
                         +{formatCurrency(referral.totalEarned)}
                       </div>
                       <TechnicalLabel text={`TIER ${index + 1}`} className="text-muted-foreground text-xs" />
-                      <div className={`inline-block px-2 py-1 text-xs font-semibold border mt-1 ${
+                      <div className={`status-indicator-mobile inline-block px-2 py-1 text-xs font-semibold border mt-1 ${
                         referral.status === 'active'
                           ? 'bg-green-100 text-green-800 border-green-600'
                           : 'bg-gray-100 text-gray-800 border-gray-600'
@@ -1490,106 +1490,106 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
         {/* Hero Section - Work/Dashboard Style Full Width */}
-        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
-          <div className="text-center mb-6 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
-              <Wallet className="w-4 h-4 md:w-5 md:h-5" />
-              <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white text-xs md:text-sm" />
+        <div className="wireframe-border p-3 md:p-8 mb-3 md:mb-8">
+          <div className="text-center mb-4 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-2 md:px-4 py-1 md:py-2 border-2 border-black mb-3 md:mb-4">
+              <Wallet className="w-3 h-3 md:w-5 md:h-5" />
+              <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white text-xs" />
             </div>
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-6 md:mb-8 tracking-tighter leading-tight px-2">
-              SECURE <span className="text-primary bg-primary/10 px-2 py-1 inline-block text-xl md:text-4xl lg:text-5xl">PAYOUT</span><br />
+            <h1 className="payout-hero-title text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 md:mb-8 tracking-tighter leading-tight px-1 md:px-2">
+              SECURE <span className="text-primary bg-primary/10 px-1 md:px-2 py-1 inline-block text-lg md:text-4xl lg:text-5xl">PAYOUT</span><br />
               SYSTEM READY
             </h1>
             <div className="max-w-3xl mx-auto mb-2">
-              <p className="text-sm md:text-lg text-muted-foreground leading-relaxed px-2">
+              <p className="portal-hero-subtitle text-xs md:text-lg text-muted-foreground leading-relaxed px-1 md:px-2">
                 Fast withdrawals • Secure processing • Real-time tracking
               </p>
             </div>
-            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
+            <Barcode className="w-16 md:w-32 lg:w-48 h-4 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
         {/* Key Metrics Cards - Work/Dashboard Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-6 md:mb-10">
           {/* Available Balance */}
-          <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/20" data-testid="card-payout-available-balance">
-            <div className="flex items-start justify-between mb-3">
-              <Wallet className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-xs" />
+          <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-3 md:p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/20" data-testid="card-payout-available-balance">
+            <div className="flex items-start justify-between mb-2 md:mb-3">
+              <Wallet className="w-6 h-6 md:w-8 md:h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-xs leading-tight" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-payout-available-balance">
+            <p className="metric-value-mobile text-lg md:text-3xl font-black text-primary mb-1 md:mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-payout-available-balance">
               {formatCurrency(displayUser?.availableBalance || '0.00')}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <CheckCircle2 className="w-3 h-3 text-primary" />
-              <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-primary/70 text-xs" />
+              <TechnicalLabel text="READY FOR WITHDRAWAL" className="text-primary/70 text-xs leading-tight" />
             </div>
           </div>
 
           {/* Pending Withdrawals */}
-          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10" data-testid="card-payout-pending-withdrawals">
-            <div className="flex items-start justify-between mb-3">
-              <History className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="PENDING WITHDRAWALS" className="text-muted-foreground text-xs" />
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-3 md:p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10" data-testid="card-payout-pending-withdrawals">
+            <div className="flex items-start justify-between mb-2 md:mb-3">
+              <History className="w-6 h-6 md:w-8 md:h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="PENDING WITHDRAWALS" className="text-muted-foreground text-xs leading-tight" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-payout-pending-count">
+            <p className="metric-value-mobile text-lg md:text-3xl font-black text-foreground mb-1 md:mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-payout-pending-count">
               {pendingWithdrawals}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <Clock className="w-3 h-3 text-muted-foreground" />
-              <TechnicalLabel text="PROCESSING QUEUE" className="text-muted-foreground text-xs" />
+              <TechnicalLabel text="PROCESSING QUEUE" className="text-muted-foreground text-xs leading-tight" />
             </div>
           </div>
 
           {/* Total Paid Out */}
-          <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-payout-total-paid">
-            <div className="flex items-start justify-between mb-3">
-              <DollarSign className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
-              <TechnicalLabel text="TOTAL PAID OUT" className="text-muted-foreground text-xs" />
+          <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-3 md:p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-payout-total-paid">
+            <div className="flex items-start justify-between mb-2 md:mb-3">
+              <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
+              <TechnicalLabel text="TOTAL PAID OUT" className="text-muted-foreground text-xs leading-tight" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-payout-total-paid">
+            <p className="metric-value-mobile text-lg md:text-3xl font-black text-foreground mb-1 md:mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-payout-total-paid">
               {formatCurrency(totalPaidOutAmount)}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <TrendingUp className="w-3 h-3 text-green-500" />
-              <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
+              <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs leading-tight" />
             </div>
           </div>
 
           {/* Daily Goal Progress - Work/Dashboard Style Fourth Card */}
-          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-payout-limits">
-            <div className="flex items-start justify-between mb-3">
-              <Target className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="DAILY LIMITS" className="text-muted-foreground text-xs" />
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-3 md:p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-payout-limits">
+            <div className="flex items-start justify-between mb-2 md:mb-3">
+              <Target className="w-6 h-6 md:w-8 md:h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="DAILY LIMITS" className="text-muted-foreground text-xs leading-tight" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-payout-limits">₨50K</p>
-            <div className="flex items-center gap-2">
+            <p className="metric-value-mobile text-lg md:text-3xl font-black text-primary mb-2 md:mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-payout-limits">₨50K</p>
+            <div className="flex items-center gap-1 md:gap-2">
               <CheckCircle2 className="w-3 h-3 text-green-500" />
-              <TechnicalLabel text="MAX WITHDRAWAL" className="text-muted-foreground text-xs" />
+              <TechnicalLabel text="MAX WITHDRAWAL" className="text-muted-foreground text-xs leading-tight" />
             </div>
           </div>
         </div>
 
         {/* Main Content Grid - Work/Dashboard Style */}
-        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8 mb-8">
+        <div className="grid lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mb-6 md:mb-8">
           {/* Left Column - Enter Payout Details */}
           <div className="lg:col-span-1">
             <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-              <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+              <CardHeader className="card-header-mobile border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors p-3 md:p-6">
                 <CardTitle className="flex items-center justify-between">
-                  <TechnicalLabel text="ENTER PAYOUT DETAILS" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                  <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                    <Download className="w-4 h-4 text-primary" />
+                  <TechnicalLabel text="ENTER PAYOUT DETAILS" className="text-foreground group-hover:text-primary/90 transition-colors text-xs md:text-sm" />
+                  <div className="p-1 md:p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                    <Download className="w-3 h-3 md:w-4 md:h-4 text-primary" />
                   </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-6">
+              <CardContent className="card-content-mobile p-3 md:p-6">
+                <div className="space-y-4 md:space-y-6">
                   {/* Amount Input */}
                   <div>
-                    <TechnicalLabel text="WITHDRAWAL AMOUNT (₨)" className="text-foreground mb-2" />
+                    <TechnicalLabel text="WITHDRAWAL AMOUNT (₨)" className="text-foreground mb-2 text-xs md:text-sm" />
                     <Input
                       type="number"
                       value={withdrawAmount}
@@ -1598,19 +1598,19 @@ export default function UserPortal() {
                         if (errors.amount) setErrors(prev => ({...prev, amount: ''}));
                       }}
                       placeholder="Enter amount (Min: ₨ 100)"
-                      className={`border-2 px-4 py-3 text-lg ${
+                      className={`payout-input border-2 px-3 md:px-4 py-2 md:py-3 text-base md:text-lg ${
                         errors.amount ? 'border-red-500 focus:border-red-500' : 'border-muted-foreground/30 focus:border-primary'
                       }`}
                       data-testid="input-payout-withdrawal-amount"
                     />
                     {errors.amount && (
-                      <TechnicalLabel text={errors.amount} className="text-red-500 text-sm mt-1" />
+                      <TechnicalLabel text={errors.amount} className="text-red-500 text-xs mt-1" />
                     )}
                   </div>
 
                   {/* Account Details Input */}
                   <div>
-                    <TechnicalLabel text="ACCOUNT DETAILS" className="text-foreground mb-2" />
+                    <TechnicalLabel text="ACCOUNT DETAILS" className="text-foreground mb-2 text-xs md:text-sm" />
                     <Input
                       type="text"
                       value={accountDetails}
@@ -1623,49 +1623,49 @@ export default function UserPortal() {
                         paymentMethods.find(m => m.id === selectedMethod)?.placeholder || "Enter details" :
                         "Select payment method first"
                       }
-                      className={`border-2 px-4 py-3 text-lg ${
+                      className={`payout-input border-2 px-3 md:px-4 py-2 md:py-3 text-base md:text-lg ${
                         errors.account ? 'border-red-500 focus:border-red-500' : 'border-muted-foreground/30 focus:border-primary'
                       }`}
                       disabled={!selectedMethod}
                       data-testid="input-payout-account-details"
                     />
                     {errors.account && (
-                      <TechnicalLabel text={errors.account} className="text-red-500 text-sm mt-1" />
+                      <TechnicalLabel text={errors.account} className="text-red-500 text-xs mt-1" />
                     )}
                   </div>
 
                   {/* Fee Calculation */}
-                  <div className="space-y-4 pt-4 border-t border-muted-foreground/20">
-                    <TechnicalLabel text="FEE CALCULATION" className="text-foreground font-black" />
+                  <div className="space-y-3 md:space-y-4 pt-3 md:pt-4 border-t border-muted-foreground/20">
+                    <TechnicalLabel text="FEE CALCULATION" className="fee-calculation-title text-foreground font-black text-sm md:text-base" />
                     
-                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                      <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-foreground text-sm" />
-                      <TechnicalLabel text={formatCurrency(withdrawalAmount)} className="text-foreground font-black text-sm" />
+                    <div className="fee-calculation-row flex justify-between items-center py-1 md:py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="WITHDRAWAL AMOUNT:" className="text-foreground text-xs md:text-sm" />
+                      <TechnicalLabel text={formatCurrency(withdrawalAmount)} className="text-foreground font-black text-xs md:text-sm" />
                     </div>
                     
-                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                      <TechnicalLabel text="PLATFORM FEE (13%):" className="text-foreground text-sm" />
-                      <TechnicalLabel text={`-${formatCurrency(platformFee)}`} className="text-red-600 font-black text-sm" />
+                    <div className="fee-calculation-row flex justify-between items-center py-1 md:py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="PLATFORM FEE (13%):" className="text-foreground text-xs md:text-sm" />
+                      <TechnicalLabel text={`-${formatCurrency(platformFee)}`} className="text-red-600 font-black text-xs md:text-sm" />
                     </div>
                     
-                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                      <TechnicalLabel text="DIRECT REF. FEE (15%):" className="text-foreground text-sm" />
-                      <TechnicalLabel text={`-${formatCurrency(directReferralFee)}`} className="text-red-600 font-black text-sm" />
+                    <div className="fee-calculation-row flex justify-between items-center py-1 md:py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="DIRECT REF. FEE (15%):" className="text-foreground text-xs md:text-sm" />
+                      <TechnicalLabel text={`-${formatCurrency(directReferralFee)}`} className="text-red-600 font-black text-xs md:text-sm" />
                     </div>
 
-                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                      <TechnicalLabel text="INDIRECT REF. FEE (7%):" className="text-foreground text-sm" />
-                      <TechnicalLabel text={`-${formatCurrency(indirectReferralFee)}`} className="text-red-600 font-black text-sm" />
+                    <div className="fee-calculation-row flex justify-between items-center py-1 md:py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="INDIRECT REF. FEE (7%):" className="text-foreground text-xs md:text-sm" />
+                      <TechnicalLabel text={`-${formatCurrency(indirectReferralFee)}`} className="text-red-600 font-black text-xs md:text-sm" />
                     </div>
                     
-                    <div className="flex justify-between items-center py-2 border-b border-muted-foreground/20">
-                      <TechnicalLabel text="PROCESSING FEE:" className="text-foreground text-sm" />
-                      <TechnicalLabel text={`-₨ ${processingFee.toFixed(2)}`} className="text-red-600 font-black text-sm" />
+                    <div className="fee-calculation-row flex justify-between items-center py-1 md:py-2 border-b border-muted-foreground/20">
+                      <TechnicalLabel text="PROCESSING FEE:" className="text-foreground text-xs md:text-sm" />
+                      <TechnicalLabel text={`-₨ ${processingFee.toFixed(2)}`} className="text-red-600 font-black text-xs md:text-sm" />
                     </div>
                     
-                    <div className="flex justify-between items-center py-3 bg-gradient-to-r from-green-100 to-green-50 border-2 border-green-500 px-4 rounded">
-                      <TechnicalLabel text="NET AMOUNT:" className="text-green-700 font-black text-lg" />
-                      <TechnicalLabel text={formatCurrency(netAmount)} className="text-green-700 font-black text-xl" data-testid="payout-net-amount" />
+                    <div className="flex justify-between items-center py-2 md:py-3 bg-gradient-to-r from-green-100 to-green-50 border-2 border-green-500 px-2 md:px-4 rounded">
+                      <TechnicalLabel text="NET AMOUNT:" className="text-green-700 font-black text-sm md:text-lg" />
+                      <TechnicalLabel text={formatCurrency(netAmount)} className="text-green-700 font-black text-base md:text-xl" data-testid="payout-net-amount" />
                     </div>
                   </div>
                 </div>
@@ -1676,16 +1676,16 @@ export default function UserPortal() {
           {/* Right Column - Choose Payment Method */}
           <div className="lg:col-span-2">
             <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-              <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
+              <CardHeader className="card-header-mobile border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors p-3 md:p-6">
                 <CardTitle className="flex items-center justify-between">
-                  <TechnicalLabel text="CHOOSE PAYMENT METHOD" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                  <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                    <CreditCard className="w-4 h-4 text-primary" />
+                  <TechnicalLabel text="CHOOSE PAYMENT METHOD" className="text-foreground group-hover:text-primary/90 transition-colors text-xs md:text-sm" />
+                  <div className="p-1 md:p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                    <CreditCard className="w-3 h-3 md:w-4 md:h-4 text-primary" />
                   </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+              <CardContent className="card-content-mobile p-3 md:p-6">
+                <div className="payment-method-grid grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
                   {paymentMethods.map((method) => {
                     const IconComponent = method.icon;
                     const isSelected = selectedMethod === method.id;
@@ -1698,29 +1698,29 @@ export default function UserPortal() {
                           setAccountDetails('');
                           if (errors.method) setErrors(prev => ({...prev, method: ''}));
                         }}
-                        className={`group split-card p-4 md:p-6 text-center transition-all duration-300 cursor-pointer hover:shadow-lg ${
+                        className={`payment-method-card group split-card p-3 md:p-6 text-center transition-all duration-300 cursor-pointer hover:shadow-lg ${
                           isSelected 
                             ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/40 shadow-lg shadow-primary/20 transform scale-105' 
                             : 'bg-gradient-to-br from-card/50 to-card/30 border-2 border-muted-foreground/20 hover:border-primary/30 hover:from-primary/5 hover:to-primary/10 hover:shadow-primary/10'
                         }`}
                         data-testid={`button-payout-payment-${method.id}`}
                       >
-                        <div className="flex flex-col items-center text-center gap-3 md:gap-4">
-                          <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center transition-colors ${
+                        <div className="flex flex-col items-center text-center gap-2 md:gap-4">
+                          <div className={`w-8 h-8 md:w-12 md:h-12 rounded-lg flex items-center justify-center transition-colors ${
                             isSelected ? 'bg-primary/30' : 'bg-primary/10 group-hover:bg-primary/20'
                           }`}>
-                            <IconComponent className={`w-6 h-6 md:w-8 md:h-8 transition-colors ${
+                            <IconComponent className={`w-5 h-5 md:w-8 md:h-8 transition-colors ${
                               isSelected ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'
                             }`} />
                           </div>
                           <div>
                             <TechnicalLabel 
                               text={method.name} 
-                              className={`font-black text-sm md:text-lg mb-1 md:mb-2 transition-colors ${
+                              className={`font-black text-xs md:text-lg mb-1 md:mb-2 transition-colors ${
                                 isSelected ? 'text-primary' : 'text-foreground group-hover:text-primary/90'
                               }`} 
                             />
-                            <div className={`text-xs md:text-sm mb-1 transition-colors ${
+                            <div className={`text-xs mb-1 transition-colors ${
                               isSelected ? 'text-primary/80' : 'text-muted-foreground group-hover:text-foreground'
                             }`}>
                               {method.description}
@@ -1732,7 +1732,7 @@ export default function UserPortal() {
                             </div>
                           </div>
                           {isSelected && (
-                            <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                            <CheckCircle2 className="w-4 h-4 md:w-6 md:h-6 text-primary" />
                           )}
                         </div>
                       </button>
@@ -1740,26 +1740,26 @@ export default function UserPortal() {
                   })}
                 </div>
                 {errors.method && (
-                  <TechnicalLabel text={errors.method} className="text-red-500 text-sm mt-3" />
+                  <TechnicalLabel text={errors.method} className="text-red-500 text-xs mt-3" />
                 )}
 
                 {/* Submit Button */}
-                <div className="mt-8 pt-6 border-t border-muted-foreground/20">
+                <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-muted-foreground/20">
                   <Button
                     onClick={handleSubmit}
                     disabled={!withdrawAmount || !selectedMethod || !accountDetails || isProcessing}
-                    className="w-full bg-primary hover:bg-primary/80 text-white py-6 text-xl font-black transition-all duration-300"
+                    className="payout-submit-button w-full bg-primary hover:bg-primary/80 text-white py-4 md:py-6 text-base md:text-xl font-black transition-all duration-300"
                     size="lg"
                     data-testid="button-payout-submit"
                   >
                     {isProcessing ? (
                       <>
-                        <RefreshCw className="w-6 h-6 mr-3 animate-spin" />
+                        <RefreshCw className="w-4 h-4 md:w-6 md:h-6 mr-2 md:mr-3 animate-spin" />
                         PROCESSING PAYOUT REQUEST...
                       </>
                     ) : (
                       <>
-                        <Zap className="w-6 h-6 mr-3" />
+                        <Zap className="w-4 h-4 md:w-6 md:h-6 mr-2 md:mr-3" />
                         SUBMIT PAYOUT REQUEST
                       </>
                     )}
@@ -1962,62 +1962,62 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
         {/* Work Section Style Header */}
-        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
-          <div className="text-center mb-6 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
-              <LifeBuoy className="w-4 h-4 md:w-5 md:h-5" />
-              <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white text-xs md:text-sm" />
+        <div className="wireframe-border p-3 md:p-8 mb-3 md:mb-8">
+          <div className="text-center mb-4 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-2 md:px-4 py-1 md:py-2 border-2 border-black mb-3 md:mb-4">
+              <LifeBuoy className="w-3 h-3 md:w-5 md:h-5" />
+              <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white text-xs" />
             </div>
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight px-2">
+            <h1 className="help-hero-title text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               GET <span className="text-primary">SUPPORT</span><br />
               INSTANT ASSISTANCE
             </h1>
-            <p className="text-sm md:text-lg lg:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed px-2">
+            <p className="portal-hero-subtitle text-xs md:text-lg lg:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
               Professional support, instant solutions, comprehensive guidance
             </p>
-            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
+            <Barcode className="w-16 md:w-32 lg:w-48 h-4 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
         {/* Auth Page Style Tabs */}
-        <div className="max-w-7xl mx-auto mb-8">
-          <div className="split-card bg-white border-3 border-black p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto mb-6 md:mb-8">
+          <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-8">
             <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
               {/* Tab Navigation - Auth Page Style */}
-              <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted border-2 border-black h-12">
+              <TabsList className="grid w-full grid-cols-3 mb-4 md:mb-6 bg-muted border-2 border-black h-10 md:h-12">
                 <TabsTrigger 
                   value="guide" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base h-full flex items-center justify-center"
+                  className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
                 >
                   AREA GUIDE
                 </TabsTrigger>
                 <TabsTrigger 
                   value="help" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base h-full flex items-center justify-center"
+                  className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
                 >
                   AREA HELP
                 </TabsTrigger>
                 <TabsTrigger 
                   value="contact" 
-                  className="data-[state=active]:bg-black data-[state=active]:text-white font-black text-sm md:text-base h-full flex items-center justify-center"
+                  className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
                 >
                   AREA CONTACT
                 </TabsTrigger>
               </TabsList>
 
               {/* Tab Content */}
-              <div className="mt-6">
+              <div className="mt-4 md:mt-6">
                 {/* Area Guide - Single Blank Sheet with Q&A Notes */}
                 <TabsContent value="guide" className="mt-0">
-                  <div className="bg-white border-2 border-black p-8 min-h-[600px]">
-                    <div className="text-center mb-8">
-                      <TechnicalLabel text="THORX SUPPORT GUIDE" className="mb-2" />
-                      <h3 className="text-3xl md:text-4xl lg:text-5xl font-black text-black mb-4 tracking-tighter leading-tight">FREQUENTLY ASKED QUESTIONS</h3>
+                  <div className="bg-white border-2 border-black p-4 md:p-8 min-h-[400px] md:min-h-[600px]">
+                    <div className="text-center mb-4 md:mb-8">
+                      <TechnicalLabel text="THORX SUPPORT GUIDE" className="mb-2 text-xs md:text-sm" />
+                      <h3 className="text-xl md:text-4xl lg:text-5xl font-black text-black mb-3 md:mb-4 tracking-tighter leading-tight">FREQUENTLY ASKED QUESTIONS</h3>
                     </div>
 
-                    <div className="space-y-6 max-w-7xl mx-auto">
+                    <div className="space-y-4 md:space-y-6 max-w-7xl mx-auto">
                       {[
                         {
                           q: "How do I start earning on THORX?",
@@ -2052,19 +2052,19 @@ export default function UserPortal() {
                           a: "Watch all available ads daily, complete bonus tasks, refer active friends, and participate in our special promotional campaigns."
                         }
                       ].map((faq, index) => (
-                        <div key={index} className="border-l-4 border-primary pl-6 py-4">
-                          <h4 className="text-xl md:text-2xl font-black text-black mb-3">
+                        <div key={index} className="border-l-4 border-primary pl-3 md:pl-6 py-3 md:py-4">
+                          <h4 className="faq-question text-sm md:text-2xl font-black text-black mb-2 md:mb-3">
                             Q{index + 1}: {faq.q}
                           </h4>
-                          <p className="text-muted-foreground leading-relaxed">
+                          <p className="faq-answer text-muted-foreground leading-relaxed text-xs md:text-base">
                             {faq.a}
                           </p>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-8 pt-6 border-t-2 border-black text-center">
-                      <TechnicalLabel text="NEED MORE HELP? USE AREA HELP FOR LIVE CHAT OR AREA CONTACT FOR DIRECT SUPPORT" className="text-muted-foreground" />
+                    <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t-2 border-black text-center">
+                      <TechnicalLabel text="NEED MORE HELP? USE AREA HELP FOR LIVE CHAT OR AREA CONTACT FOR DIRECT SUPPORT" className="text-muted-foreground text-xs md:text-sm" />
                     </div>
                   </div>
                 </TabsContent>
@@ -2072,36 +2072,34 @@ export default function UserPortal() {
                 {/* Area Help - Telegram/WhatsApp Style Chat */}
                 <TabsContent value="help" className="mt-0">
                   <div className="bg-white border-2 border-black overflow-hidden">
-                    
-
                     {/* Chat Messages - WhatsApp Style */}
-                    <div className="bg-[#f0f2f5] min-h-[500px] p-4 space-y-3">
+                    <div className="chat-container bg-[#f0f2f5] min-h-[300px] md:min-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3">
                       {chatMessages.map((message) => (
                         <div 
                           key={message.id} 
                           className={`flex items-end gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                           {message.sender === 'support' && (
-                            <div className="w-8 h-8 bg-primary text-black rounded-full flex items-center justify-center text-sm font-black mb-1">
+                            <div className="w-6 h-6 md:w-8 md:h-8 bg-primary text-black rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
                               {message.avatar}
                             </div>
                           )}
                           
                           <div 
-                            className={`max-w-[70%] px-4 py-3 rounded-lg shadow-sm ${
+                            className={`chat-message max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm ${
                               message.sender === 'user' 
                                 ? 'bg-primary text-black ml-auto' 
                                 : 'bg-white text-black border border-gray-200'
                             }`}
                           >
-                            <p className="text-sm font-medium mb-1">{message.text}</p>
+                            <p className="text-xs md:text-sm font-medium mb-1">{message.text}</p>
                             <p className={`text-xs ${message.sender === 'user' ? 'text-black/60' : 'text-gray-500'} text-right`}>
                               {formatTime(message.timestamp)}
                             </p>
                           </div>
 
                           {message.sender === 'user' && (
-                            <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-sm font-black mb-1">
+                            <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
                               {message.avatar}
                             </div>
                           )}
@@ -2110,22 +2108,22 @@ export default function UserPortal() {
                     </div>
 
                     {/* Chat Input - Modern Style */}
-                    <div className="bg-white border-t-2 border-black p-4">
-                      <div className="flex items-center gap-3">
+                    <div className="bg-white border-t-2 border-black p-3 md:p-4">
+                      <div className="flex items-center gap-2 md:gap-3">
                         <input
                           type="text"
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Type your message..."
-                          className="flex-1 bg-gray-100 border-2 border-gray-300 text-black px-4 py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium"
+                          className="chat-input flex-1 bg-gray-100 border-2 border-gray-300 text-black px-3 md:px-4 py-2 md:py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium text-sm md:text-base"
                           onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                         />
                         <Button
                           onClick={sendMessage}
-                          className="bg-primary hover:bg-primary/90 text-black px-6 py-3 font-black border-2 border-black rounded-lg"
+                          className="chat-send-button bg-primary hover:bg-primary/90 text-black px-4 md:px-6 py-2 md:py-3 font-black border-2 border-black rounded-lg"
                           disabled={!newMessage.trim()}
                         >
-                          <MessageCircle className="w-5 h-5" />
+                          <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
                         </Button>
                       </div>
                       <div className="mt-2 text-center">

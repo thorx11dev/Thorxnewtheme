@@ -94,7 +94,7 @@
     overflow-x: hidden;
     padding-top: 0;
   }
-  
+
   .auth-page .cinematic-section {
     z-index: 10;
     position: relative;
@@ -808,7 +808,7 @@
       grid-template-columns: 1fr !important;
       gap: 0.75rem !important;
     }
-    
+
     .grid.grid-cols-2.lg\\:grid-cols-4 {
       grid-template-columns: 1fr 1fr !important;
       gap: 0.5rem !important;
@@ -1020,6 +1020,286 @@
 
     .min-h-\\[500px\\] {
       min-height: 300px !important;
+    }
+  }
+
+  /* COMPREHENSIVE MOBILE OPTIMIZATIONS FOR USER PORTAL SECTIONS */
+
+  /* Referrals Section Mobile Optimizations */
+  @media (max-width: 768px) {
+    /* Referral hero section mobile improvements */
+    .referrals-hero-title {
+      font-size: 1.75rem !important;
+      line-height: 1.2 !important;
+      margin-bottom: 1rem !important;
+    }
+
+    /* Referral metrics grid - force single column on mobile */
+    .grid.grid-cols-2.lg\\:grid-cols-4 {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 0.75rem !important;
+    }
+
+    /* Referral invitation and leadership areas - stack vertically */
+    .grid.lg\\:grid-cols-2 {
+      grid-template-columns: 1fr !important;
+      gap: 1rem !important;
+    }
+
+    /* Referral code display mobile optimization */
+    .referral-code-display {
+      padding: 0.75rem !important;
+      font-size: 1rem !important;
+      letter-spacing: 1px !important;
+    }
+
+    /* Leaderboard mobile improvements */
+    .leaderboard-item {
+      padding: 0.75rem !important;
+      flex-direction: column !important;
+      align-items: flex-start !important;
+    }
+
+    .leaderboard-item .flex {
+      width: 100% !important;
+      flex-direction: column !important;
+      gap: 0.5rem !important;
+    }
+
+    /* Referral network cards mobile */
+    .referral-network-card {
+      padding: 0.75rem !important;
+      flex-direction: column !important;
+      text-align: center !important;
+    }
+
+    .referral-network-card .flex {
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+    }
+
+    /* Referral button improvements */
+    .referral-action-button {
+      padding: 0.5rem 1rem !important;
+      font-size: 0.75rem !important;
+      letter-spacing: 0.5px !important;
+    }
+  }
+
+  /* Payout Section Mobile Optimizations */
+  @media (max-width: 768px) {
+    /* Payout hero section */
+    .payout-hero-title {
+      font-size: 1.75rem !important;
+      line-height: 1.2 !important;
+    }
+
+    /* Payout grid layouts - force single column */
+    .grid.lg\\:grid-cols-3 {
+      grid-template-columns: 1fr !important;
+      gap: 1rem !important;
+    }
+
+    /* Payment method cards mobile */
+    .payment-method-card {
+      padding: 1rem !important;
+      min-height: auto !important;
+    }
+
+    .payment-method-grid {
+      grid-template-columns: 1fr !important;
+      gap: 0.75rem !important;
+    }
+
+    /* Fee calculation mobile improvements */
+    .fee-calculation-row {
+      padding: 0.25rem 0 !important;
+      font-size: 0.75rem !important;
+    }
+
+    .fee-calculation-title {
+      font-size: 0.875rem !important;
+      margin-bottom: 0.5rem !important;
+    }
+
+    /* Payout form inputs mobile */
+    .payout-input {
+      padding: 0.75rem !important;
+      font-size: 1rem !important;
+    }
+
+    .payout-submit-button {
+      padding: 0.875rem 1rem !important;
+      font-size: 1rem !important;
+      font-weight: 700 !important;
+    }
+
+    /* Transaction history mobile */
+    .transaction-history-item {
+      padding: 0.75rem !important;
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 0.25rem !important;
+    }
+
+    .transaction-amount {
+      font-size: 1rem !important;
+    }
+
+    .transaction-details {
+      font-size: 0.75rem !important;
+    }
+  }
+
+  /* Help Section Mobile Optimizations */
+  @media (max-width: 768px) {
+    /* Help hero section */
+    .help-hero-title {
+      font-size: 1.75rem !important;
+      line-height: 1.2 !important;
+    }
+
+    /* Help tabs mobile improvements */
+    .help-tab-button {
+      padding: 0.75rem 0.5rem !important;
+      font-size: 0.75rem !important;
+      letter-spacing: 0.5px !important;
+    }
+
+    /* FAQ section mobile */
+    .faq-question {
+      font-size: 1rem !important;
+      line-height: 1.3 !important;
+      margin-bottom: 0.75rem !important;
+    }
+
+    .faq-answer {
+      font-size: 0.875rem !important;
+      line-height: 1.4 !important;
+    }
+
+    /* Chat interface mobile */
+    .chat-container {
+      min-height: 300px !important;
+      max-height: 400px !important;
+    }
+
+    .chat-message {
+      max-width: 85% !important;
+      padding: 0.75rem !important;
+      font-size: 0.875rem !important;
+    }
+
+    .chat-input {
+      padding: 0.75rem !important;
+      font-size: 1rem !important;
+    }
+
+    .chat-send-button {
+      padding: 0.75rem !important;
+    }
+
+    /* Contact form mobile */
+    .contact-form-input {
+      padding: 0.75rem !important;
+      font-size: 1rem !important;
+    }
+
+    .contact-form-textarea {
+      padding: 0.75rem !important;
+      font-size: 1rem !important;
+      min-height: 120px !important;
+    }
+
+    .contact-form-submit {
+      padding: 0.875rem 1rem !important;
+      font-size: 1rem !important;
+    }
+  }
+
+  /* General User Portal Mobile Improvements */
+  @media (max-width: 768px) {
+    /* Hero section titles across all sections */
+    .portal-hero-title {
+      font-size: 1.75rem !important;
+      line-height: 1.2 !important;
+      padding: 0 0.5rem !important;
+    }
+
+    .portal-hero-subtitle {
+      font-size: 0.875rem !important;
+      line-height: 1.4 !important;
+      padding: 0 0.5rem !important;
+    }
+
+    /* Wireframe borders mobile padding */
+    .wireframe-border {
+      padding: 1rem !important;
+      margin-bottom: 1rem !important;
+    }
+
+    /* Technical labels mobile sizing */
+    .technical-label {
+      font-size: 0.625rem !important;
+      letter-spacing: 0.5px !important;
+    }
+
+    /* Card content mobile optimization */
+    .card-content-mobile {
+      padding: 0.75rem !important;
+    }
+
+    .card-header-mobile {
+      padding: 0.75rem !important;
+    }
+
+    /* Button group mobile spacing */
+    .button-group-mobile {
+      gap: 0.5rem !important;
+      flex-direction: column !important;
+    }
+
+    .button-group-mobile .grid {
+      grid-template-columns: 1fr !important;
+      gap: 0.5rem !important;
+    }
+
+    /* Status indicators mobile */
+    .status-indicator-mobile {
+      padding: 0.25rem 0.5rem !important;
+      font-size: 0.625rem !important;
+    }
+
+    /* Progress bars mobile */
+    .progress-mobile {
+      height: 4px !important;
+    }
+
+    /* Metric values mobile */
+    .metric-value-mobile {
+      font-size: 1.25rem !important;
+      line-height: 1.2 !important;
+    }
+
+    /* Table mobile improvements */
+    .table-mobile {
+      font-size: 0.75rem !important;
+    }
+
+    .table-mobile th,
+    .table-mobile td {
+      padding: 0.5rem 0.25rem !important;
+    }
+
+    /* Modal and sheet mobile improvements */
+    .sheet-content-mobile {
+      padding: 1rem !important;
+    }
+
+    .modal-content-mobile {
+      margin: 1rem !important;
+      max-width: calc(100vw - 2rem) !important;
     }
   }
 
