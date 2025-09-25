@@ -1961,6 +1961,13 @@ export default function UserPortal() {
       });
     };
 
+    // Help section options for dropdown
+    const helpSectionOptions = [
+      { id: "guide", label: "AREA GUIDE", icon: Book },
+      { id: "help", label: "AREA HELP", icon: MessageCircle },
+      { id: "contact", label: "AREA CONTACT", icon: Phone }
+    ];
+
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
         {/* Work Section Style Header */}
@@ -1981,84 +1988,148 @@ export default function UserPortal() {
           </div>
         </div>
 
-        {/* Auth Page Style Tabs */}
+        {/* Navigation and Content */}
         <div className="max-w-7xl mx-auto mb-6 md:mb-8">
           <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-8">
-            <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
-              {/* Tab Navigation - Auth Page Style */}
-              <TabsList className="grid w-full grid-cols-3 mb-4 md:mb-6 bg-muted border-2 border-black h-10 md:h-12">
-                <TabsTrigger 
-                  value="guide" 
-                  className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
-                >
-                  AREA GUIDE
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="help" 
-                  className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
-                >
-                  AREA HELP
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="contact" 
-                  className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
-                >
-                  AREA CONTACT
-                </TabsTrigger>
-              </TabsList>
+            {/* Desktop: Tabs, Mobile: Dropdown */}
+            <div className="w-full">
+              {/* Desktop Navigation */}
+              <div className="hidden md:block">
+                <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-4 md:mb-6 bg-muted border-2 border-black h-10 md:h-12">
+                    <TabsTrigger 
+                      value="guide" 
+                      className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
+                    >
+                      AREA GUIDE
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="help" 
+                      className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
+                    >
+                      AREA HELP
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="contact" 
+                      className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
+                    >
+                      AREA CONTACT
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              {/* Mobile Navigation Dropdown */}
+              <div className="md:hidden mb-4">
+                <div className="w-full">
+                  <TechnicalLabel text="SELECT HELP SECTION" className="mb-2 font-black text-xs" />
+                  <select
+                    value={activeHelpTab}
+                    onChange={(e) => setActiveHelpTab(e.target.value)}
+                    className="w-full bg-white border-2 border-black px-4 py-3 text-sm font-black focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                    style={{
+                      backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23000' d='m0 1 2 2 2-2z'/></svg>")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 12px center',
+                      backgroundSize: '12px'
+                    }}
+                  >
+                    {helpSectionOptions.map((option) => (
+                      <option key={option.id} value={option.id} className="font-black">
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
               {/* Tab Content */}
               <div className="mt-4 md:mt-6">
-                {/* Area Guide - Single Blank Sheet with Q&A Notes */}
-                <TabsContent value="guide" className="mt-0">
-                  <div className="bg-white border-2 border-black p-4 md:p-8 min-h-[400px] md:min-h-[600px]">
-                    <div className="text-center mb-4 md:mb-8">
-                      <TechnicalLabel text="THORX SUPPORT GUIDE" className="mb-2 text-xs md:text-sm" />
-                      <h3 className="text-xl md:text-4xl lg:text-5xl font-black text-black mb-3 md:mb-4 tracking-tighter leading-tight">FREQUENTLY ASKED QUESTIONS</h3>
+                {/* Area Guide - FAQ Section Style */}
+                {activeHelpTab === "guide" && (
+                  <div className="mt-0">
+                    {/* Header */}
+                    <div className="mb-6">
+                      <div className="mb-4">
+                        <TechnicalLabel text="FAQ PROTOCOL v2.47" />
+                      </div>
+                      <h2 className="text-2xl md:text-4xl lg:text-5xl font-black tracking-tight text-primary leading-tight mb-4">
+                        Knowledge<br />Base<br />Access.
+                      </h2>
+                      <div className="space-y-2">
+                        <TechnicalLabel text="SYSTEM STATUS: OPERATIONAL" />
+                        <Barcode className="w-24 md:w-32 h-6 md:h-8 opacity-60" />
+                      </div>
                     </div>
 
-                    <div className="space-y-4 md:space-y-6 max-w-7xl mx-auto">
+                    {/* FAQ Items - Landing Page Style */}
+                    <div className="space-y-4 md:space-y-6">
                       {[
                         {
-                          q: "How do I start earning on THORX?",
-                          a: "Simply register your account, verify your email, navigate to the Work section, and start watching advertisements. Each completed ad earns you instant rewards."
+                          id: "001",
+                          protocol: "PLATFORM-INIT",
+                          question: "How do I start earning on THORX?",
+                          answer: "Simply register your account, verify your email, navigate to the Work section, and start watching advertisements. Each completed ad earns you instant rewards."
                         },
                         {
-                          q: "What is the minimum withdrawal amount?",
-                          a: "The minimum withdrawal is PKR 100.00. We charge a processing fee of PKR 15.00 for each transaction to cover payment gateway costs."
+                          id: "002",
+                          protocol: "PAYMENT-PROC",
+                          question: "What is the minimum withdrawal amount?",
+                          answer: "The minimum withdrawal is PKR 100.00. We charge a processing fee of PKR 15.00 for each transaction to cover payment gateway costs."
                         },
                         {
-                          q: "How long do withdrawals take to process?",
-                          a: "Standard withdrawals are processed within 24-48 hours. JazzCash and EasyPaisa transfers are usually completed within 2-4 hours during business days."
+                          id: "003",
+                          protocol: "SECURITY-VER",
+                          question: "How long do withdrawals take to process?",
+                          answer: "Standard withdrawals are processed within 24-48 hours. JazzCash and EasyPaisa transfers are usually completed within 2-4 hours during business days."
                         },
                         {
-                          q: "How does the referral system work?",
-                          a: "Share your unique referral code with friends. You earn 25% commission on all their earnings forever. There's no limit to how much you can earn through referrals."
+                          id: "004",
+                          protocol: "NETWORK-GROWTH",
+                          question: "How does the referral system work?",
+                          answer: "Share your unique referral code with friends. You earn 25% commission on all their earnings forever. There's no limit to how much you can earn through referrals."
                         },
                         {
-                          q: "Is my personal information secure?",
-                          a: "Yes, we use 256-bit encryption and follow international security standards. Your data is protected with bank-level security protocols."
+                          id: "005",
+                          protocol: "SECURITY-VER",
+                          question: "Is my personal information secure?",
+                          answer: "Yes, we use 256-bit encryption and follow international security standards. Your data is protected with bank-level security protocols."
                         },
                         {
-                          q: "Can I use THORX on mobile devices?",
-                          a: "Absolutely! THORX is fully responsive and optimized for smartphones and tablets. You can earn anywhere, anytime."
-                        },
-                        {
-                          q: "What payment methods are supported?",
-                          a: "We support JazzCash, EasyPaisa, and direct bank transfers for Pakistani users. More payment options are being added regularly."
-                        },
-                        {
-                          q: "How can I maximize my daily earnings?",
-                          a: "Watch all available ads daily, complete bonus tasks, refer active friends, and participate in our special promotional campaigns."
+                          id: "006",
+                          protocol: "PLATFORM-INIT",
+                          question: "Can I use THORX on mobile devices?",
+                          answer: "Absolutely! THORX is fully responsive and optimized for smartphones and tablets. You can earn anywhere, anytime."
                         }
-                      ].map((faq, index) => (
-                        <div key={index} className="border-l-4 border-primary pl-3 md:pl-6 py-3 md:py-4">
-                          <h4 className="faq-question text-sm md:text-2xl font-black text-black mb-2 md:mb-3">
-                            Q{index + 1}: {faq.q}
-                          </h4>
-                          <p className="faq-answer text-muted-foreground leading-relaxed text-xs md:text-base">
-                            {faq.a}
-                          </p>
+                      ].map((faq) => (
+                        <div
+                          key={faq.id}
+                          className="split-card bg-background relative group transition-all duration-500"
+                        >
+                          {/* Protocol Header */}
+                          <div className="px-4 md:px-8 py-3 md:py-4 bg-primary text-primary-foreground border-b-[3px] border-black">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 md:gap-4">
+                                <TechnicalLabel text={`FAQ-${faq.id}`} className="text-white text-xs md:text-sm" />
+                                <TechnicalLabel text={faq.protocol} className="text-white opacity-80 text-xs" />
+                              </div>
+                              <div className="w-12 md:w-16 h-3 md:h-4 opacity-60">
+                                <Barcode />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Protocol Content */}
+                          <div className="bg-background p-4 md:p-6">
+                            <div className="mb-3 md:mb-4">
+                              <h4 className="text-base md:text-xl lg:text-2xl font-bold text-foreground leading-tight">
+                                {faq.question}
+                              </h4>
+                            </div>
+                            <div className="text-foreground text-sm md:text-base leading-relaxed bg-muted p-3 md:p-6 border-l-4 border-primary">
+                              {faq.answer}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -2067,155 +2138,157 @@ export default function UserPortal() {
                       <TechnicalLabel text="NEED MORE HELP? USE AREA HELP FOR LIVE CHAT OR AREA CONTACT FOR DIRECT SUPPORT" className="text-muted-foreground text-xs md:text-sm" />
                     </div>
                   </div>
-                </TabsContent>
+                )}
 
                 {/* Area Help - Telegram/WhatsApp Style Chat */}
-                <TabsContent value="help" className="mt-0">
-                  <div className="bg-white border-2 border-black overflow-hidden">
-                    {/* Chat Messages - WhatsApp Style */}
-                    <div className="chat-container bg-[#f0f2f5] min-h-[300px] md:min-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3">
-                      {chatMessages.map((message) => (
-                        <div 
-                          key={message.id} 
-                          className={`flex items-end gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                          {message.sender === 'support' && (
-                            <div className="w-6 h-6 md:w-8 md:h-8 bg-primary text-black rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
-                              {message.avatar}
-                            </div>
-                          )}
-                          
+                {activeHelpTab === "help" && (
+                  <div className="mt-0">
+                    <div className="bg-white border-2 border-black overflow-hidden">
+                      {/* Chat Messages - WhatsApp Style */}
+                      <div className="chat-container bg-[#f0f2f5] min-h-[300px] md:min-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3">
+                        {chatMessages.map((message) => (
                           <div 
-                            className={`chat-message max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm ${
-                              message.sender === 'user' 
-                                ? 'bg-primary text-black ml-auto' 
-                                : 'bg-white text-black border border-gray-200'
-                            }`}
+                            key={message.id} 
+                            className={`flex items-end gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                           >
-                            <p className="text-xs md:text-sm font-medium mb-1">{message.text}</p>
-                            <p className={`text-xs ${message.sender === 'user' ? 'text-black/60' : 'text-gray-500'} text-right`}>
-                              {formatTime(message.timestamp)}
-                            </p>
-                          </div>
+                            {message.sender === 'support' && (
+                              <div className="w-6 h-6 md:w-8 md:h-8 bg-primary text-black rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
+                                {message.avatar}
+                              </div>
+                            )}
+                            
+                            <div 
+                              className={`chat-message max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm ${
+                                message.sender === 'user' 
+                                  ? 'bg-primary text-black ml-auto' 
+                                  : 'bg-white text-black border border-gray-200'
+                              }`}
+                            >
+                              <p className="text-xs md:text-sm font-medium mb-1">{message.text}</p>
+                              <p className={`text-xs ${message.sender === 'user' ? 'text-black/60' : 'text-gray-500'} text-right`}>
+                                {formatTime(message.timestamp)}
+                              </p>
+                            </div>
 
-                          {message.sender === 'user' && (
-                            <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
-                              {message.avatar}
+                            {message.sender === 'user' && (
+                              <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
+                                {message.avatar}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Chat Input - Modern Style */}
+                      <div className="bg-white border-t-2 border-black p-3 md:p-4">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="Type your message..."
+                            className="chat-input flex-1 bg-gray-100 border-2 border-gray-300 text-black px-3 md:px-4 py-2 md:py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium text-sm md:text-base"
+                            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                          />
+                          <Button
+                            onClick={sendMessage}
+                            className="chat-send-button bg-primary hover:bg-primary/90 text-black px-4 md:px-6 py-2 md:py-3 font-black border-2 border-black rounded-lg"
+                            disabled={!newMessage.trim()}
+                          >
+                            <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+                          </Button>
+                        </div>
+                        <div className="mt-2 text-center">
+                          <TechnicalLabel text="Press Enter to send • Our support team is standing by 24/7" className="text-gray-500 text-xs" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Area Contact - Registration Form Style */}
+                {activeHelpTab === "contact" && (
+                  <div className="mt-0">
+                    <div className="text-center mb-6">
+                      <TechnicalLabel text="DIRECT TEAM CONTACT" className="mb-2" />
+                      <h3 className="text-2xl md:text-3xl font-black text-black">SEND US A MESSAGE</h3>
+                    </div>
+
+                    <form onSubmit={handleContactSubmit} className="space-y-6 max-w-2xl mx-auto">
+                      <div>
+                        <TechnicalLabel text="FULL NAME" className="mb-3 font-black" />
+                        <div className="relative">
+                          <Input 
+                            type="text"
+                            required
+                            value={contactForm.name}
+                            onChange={(e) => setContactForm(prev => ({...prev, name: e.target.value}))}
+                            className="border-2 border-black text-lg py-3"
+                          />
+                          {!contactForm.name && (
+                            <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                              <AnimatedPlaceholder examples={['John Doe', 'Ahmed Khan', 'Sarah Wilson']} />
                             </div>
                           )}
                         </div>
-                      ))}
-                    </div>
+                      </div>
 
-                    {/* Chat Input - Modern Style */}
-                    <div className="bg-white border-t-2 border-black p-3 md:p-4">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <input
-                          type="text"
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Type your message..."
-                          className="chat-input flex-1 bg-gray-100 border-2 border-gray-300 text-black px-3 md:px-4 py-2 md:py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium text-sm md:text-base"
-                          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                        />
-                        <Button
-                          onClick={sendMessage}
-                          className="chat-send-button bg-primary hover:bg-primary/90 text-black px-4 md:px-6 py-2 md:py-3 font-black border-2 border-black rounded-lg"
-                          disabled={!newMessage.trim()}
-                        >
-                          <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
-                        </Button>
+                      <div>
+                        <TechnicalLabel text="EMAIL ADDRESS" className="mb-3 font-black" />
+                        <div className="relative">
+                          <Input 
+                            type="email"
+                            required
+                            value={contactForm.email}
+                            onChange={(e) => setContactForm(prev => ({...prev, email: e.target.value}))}
+                            className="border-2 border-black text-lg py-3"
+                          />
+                          {!contactForm.email && (
+                            <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                              <AnimatedPlaceholder examples={['your.email@gmail.com', 'contact@thorx.com', 'support@example.com']} />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="mt-2 text-center">
-                        <TechnicalLabel text="Press Enter to send • Our support team is standing by 24/7" className="text-gray-500 text-xs" />
+
+                      <div>
+                        <TechnicalLabel text="PROBLEM / DESCRIPTION" className="mb-3 font-black" />
+                        <div className="relative">
+                          <textarea
+                            required
+                            rows={6}
+                            value={contactForm.description}
+                            onChange={(e) => setContactForm(prev => ({...prev, description: e.target.value}))}
+                            className="flex w-full border-2 border-black bg-background px-3 py-3 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                            placeholder=""
+                          />
+                          {!contactForm.description && (
+                            <div className="absolute top-3 left-3 pointer-events-none text-muted-foreground">
+                              <AnimatedPlaceholder examples={['Describe your issue in detail...', 'Tell us what happened...', 'How can we help you today?']} />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
+
+                      <Button 
+                        type="submit"
+                        disabled={isContactSubmitting}
+                        className="w-full bg-black text-white text-xl font-black py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black disabled:opacity-50"
+                      >
+                        {isContactSubmitting ? (
+                          <>
+                            <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
+                            SENDING MESSAGE...
+                          </>
+                        ) : (
+                          "SEND MESSAGE TO TEAM →"
+                        )}
+                      </Button>
+                    </form>
                   </div>
-                </TabsContent>
-
-                {/* Area Contact - Registration Form Style */}
-                <TabsContent value="contact" className="mt-0">
-                  <div className="text-center mb-6">
-                    <TechnicalLabel text="DIRECT TEAM CONTACT" className="mb-2" />
-                    <h3 className="text-2xl md:text-3xl font-black text-black">SEND US A MESSAGE</h3>
-                  </div>
-
-                  <form onSubmit={handleContactSubmit} className="space-y-6 max-w-2xl mx-auto">
-                    <div>
-                      <TechnicalLabel text="FULL NAME" className="mb-3 font-black" />
-                      <div className="relative">
-                        <Input 
-                          type="text"
-                          required
-                          value={contactForm.name}
-                          onChange={(e) => setContactForm(prev => ({...prev, name: e.target.value}))}
-                          className="border-2 border-black text-lg py-3"
-                        />
-                        {!contactForm.name && (
-                          <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                            <AnimatedPlaceholder examples={['John Doe', 'Ahmed Khan', 'Sarah Wilson']} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <TechnicalLabel text="EMAIL ADDRESS" className="mb-3 font-black" />
-                      <div className="relative">
-                        <Input 
-                          type="email"
-                          required
-                          value={contactForm.email}
-                          onChange={(e) => setContactForm(prev => ({...prev, email: e.target.value}))}
-                          className="border-2 border-black text-lg py-3"
-                        />
-                        {!contactForm.email && (
-                          <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                            <AnimatedPlaceholder examples={['your.email@gmail.com', 'contact@thorx.com', 'support@example.com']} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <TechnicalLabel text="PROBLEM / DESCRIPTION" className="mb-3 font-black" />
-                      <div className="relative">
-                        <textarea
-                          required
-                          rows={6}
-                          value={contactForm.description}
-                          onChange={(e) => setContactForm(prev => ({...prev, description: e.target.value}))}
-                          className="flex w-full border-2 border-black bg-background px-3 py-3 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                          placeholder=""
-                        />
-                        {!contactForm.description && (
-                          <div className="absolute top-3 left-3 pointer-events-none text-muted-foreground">
-                            <AnimatedPlaceholder examples={['Describe your issue in detail...', 'Tell us what happened...', 'How can we help you today?']} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <Button 
-                      type="submit"
-                      disabled={isContactSubmitting}
-                      className="w-full bg-black text-white text-xl font-black py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black disabled:opacity-50"
-                    >
-                      {isContactSubmitting ? (
-                        <>
-                          <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
-                          SENDING MESSAGE...
-                        </>
-                      ) : (
-                        "SEND MESSAGE TO TEAM →"
-                      )}
-                    </Button>
-                  </form>
-
-                  
-                </TabsContent>
+                )}
               </div>
-            </Tabs>
+            </div>
           </div>
         </div>
       </div>
