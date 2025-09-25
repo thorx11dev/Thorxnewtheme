@@ -606,8 +606,8 @@ export default function UserPortal() {
         </div>
       </nav>
 
-      {/* Desktop Navigation Controls - Landing Page Style */}
-      <div className="arrow-keys-guide">
+      {/* Desktop Navigation Controls - Landing Page Style (Hidden on Mobile for User Portal) */}
+      <div className="arrow-keys-guide hidden md:flex">
         <div className="flex items-center gap-3">
           <button
             onClick={prevSection}
@@ -690,12 +690,12 @@ export default function UserPortal() {
               <Activity className="w-4 h-4 md:w-5 md:h-5" />
               <TechnicalLabel text="DASHBOARD PROTOCOL v4.12" className="text-white text-xs md:text-sm" />
             </div>
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-6 md:mb-8 tracking-tighter leading-tight px-2">
+            <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               ASSALAM U ALAYKUM,<br />
-              <span className="text-primary bg-primary/10 px-2 py-1 inline-block mt-2 text-xl md:text-4xl lg:text-5xl">{displayUser?.firstName || "GUEST"}</span>
+              <span className="text-primary bg-primary/10 px-1 md:px-2 py-1 inline-block mt-2 text-lg md:text-4xl lg:text-5xl">{displayUser?.firstName || "GUEST"}</span>
             </h1>
             <div className="max-w-3xl mx-auto mb-2">
-              <p className="text-sm md:text-lg text-muted-foreground leading-relaxed px-2">
+              <p className="text-xs md:text-lg text-muted-foreground leading-relaxed px-1 md:px-2">
                 Track your earnings • Monitor your progress in real-time
               </p>
             </div>
@@ -949,11 +949,11 @@ export default function UserPortal() {
               <Briefcase className="w-4 h-4 md:w-5 md:h-5" />
               <TechnicalLabel text="WORK PROTOCOL v3.21" className="text-white text-xs md:text-sm" />
             </div>
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight px-2">
+            <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               START <span className="text-primary">EARNING</span><br />
               WATCH & EARN REWARDS
             </h1>
-            <p className="text-sm md:text-lg lg:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed px-2">
+            <p className="text-xs md:text-lg lg:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
               Watch advertisements, complete tasks, and earn real money daily
             </p>
             <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />

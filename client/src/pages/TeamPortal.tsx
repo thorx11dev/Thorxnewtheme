@@ -346,11 +346,11 @@ export default function TeamPortal() {
               <Activity className="w-5 h-5" />
               <TechnicalLabel text="TEAM DASHBOARD PROTOCOL v5.03" className="text-white" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               TEAM <span className="text-primary">CONTROL</span><br />
               SYSTEM METRICS
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xs md:text-lg md:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
               Monitor team performance and user metrics in real-time
             </p>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
@@ -483,11 +483,11 @@ export default function TeamPortal() {
               <Mail className="w-5 h-5" />
               <TechnicalLabel text="INBOX PROTOCOL v3.01" className="text-white" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               TEAM <span className="text-primary">INBOX</span><br />
               MESSAGE CENTER
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xs md:text-lg md:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
               View and manage user messages with priority controls
             </p>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
@@ -747,11 +747,11 @@ export default function TeamPortal() {
               <Database className="w-5 h-5" />
               <TechnicalLabel text="DATA ACCESS PROTOCOL v3.67" className="text-white" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               USER <span className="text-primary">DATA</span><br />
               CREDENTIALS VIEW
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xs md:text-lg md:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
               Access and manage user credentials and account information
             </p>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
@@ -922,11 +922,11 @@ export default function TeamPortal() {
               <Key className="w-5 h-5" />
               <TechnicalLabel text="ACCESS PROTOCOL v4.91" className="text-white" />
             </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-foreground mb-4 tracking-tighter leading-tight">
+            <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               TEAM <span className="text-primary">KEYS</span><br />
               MEMBER ACCESS
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xs md:text-lg md:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
               Manage team member access keys and permissions
             </p>
             <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto opacity-60" />
