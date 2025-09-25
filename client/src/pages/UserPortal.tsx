@@ -2019,27 +2019,23 @@ export default function UserPortal() {
                 </Tabs>
               </div>
 
-              {/* Mobile Navigation Dropdown */}
+              {/* Mobile Navigation Dropdown - Industrial Style */}
               <div className="md:hidden mb-4 help-dropdown-container">
                 <div className="w-full">
-                  <TechnicalLabel text="SELECT HELP SECTION" className="mb-2 font-black text-xs" />
-                  <select
-                    value={activeHelpTab}
-                    onChange={(e) => setActiveHelpTab(e.target.value)}
-                    className="w-full bg-white border-2 border-black px-4 py-3 text-sm font-black focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23000' d='m0 1 2 2 2-2z'/></svg>")`,
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'right 12px center',
-                      backgroundSize: '12px'
-                    }}
-                  >
-                    {helpSectionOptions.map((option) => (
-                      <option key={option.id} value={option.id} className="font-black">
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <TechnicalLabel text="SELECT HELP SECTION" className="mb-3 font-black text-xs tracking-wider" />
+                  <div className="relative">
+                    <select
+                      value={activeHelpTab}
+                      onChange={(e) => setActiveHelpTab(e.target.value)}
+                      className="industrial-dropdown w-full px-4 py-3 text-sm appearance-none cursor-pointer"
+                    >
+                      {helpSectionOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -2144,34 +2140,34 @@ export default function UserPortal() {
                 {activeHelpTab === "help" && (
                   <div className="mt-0">
                     <div className="bg-white border-2 border-black overflow-hidden">
-                      {/* Chat Messages - WhatsApp Style */}
-                      <div className="chat-container bg-[#f0f2f5] min-h-[300px] md:min-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3 overflow-y-auto">
+                      {/* Chat Messages - Enhanced WhatsApp Style */}
+                      <div className="chat-container-enhanced">
                         {chatMessages.map((message) => (
                           <div 
                             key={message.id} 
-                            className={`flex items-end gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                            className={`flex items-end gap-2 mb-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                           >
                             {message.sender === 'support' && (
-                              <div className="w-6 h-6 md:w-8 md:h-8 bg-primary text-black rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
+                              <div className="w-8 h-8 bg-primary text-black rounded-full flex items-center justify-center text-sm font-black mb-1 flex-shrink-0">
                                 {message.avatar}
                               </div>
                             )}
                             
                             <div 
-                              className={`chat-message max-w-[80%] md:max-w-[70%] px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm ${
+                              className={`chat-message max-w-[85%] md:max-w-[70%] px-4 py-3 rounded-lg shadow-sm ${
                                 message.sender === 'user' 
                                   ? 'bg-primary text-black ml-auto' 
-                                  : 'bg-white text-black border border-gray-200'
+                                  : 'bg-white text-black border-2 border-gray-200'
                               }`}
                             >
-                              <p className="text-xs md:text-sm font-medium mb-1 break-words">{message.text}</p>
+                              <p className="text-sm font-medium mb-1 break-words leading-relaxed">{message.text}</p>
                               <p className={`text-xs ${message.sender === 'user' ? 'text-black/60' : 'text-gray-500'} text-right`}>
                                 {formatTime(message.timestamp)}
                               </p>
                             </div>
 
                             {message.sender === 'user' && (
-                              <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
+                              <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-sm font-black mb-1 flex-shrink-0">
                                 {message.avatar}
                               </div>
                             )}
@@ -2179,27 +2175,27 @@ export default function UserPortal() {
                         ))}
                       </div>
 
-                      {/* Chat Input - Modern Style with Enhanced Mobile Support */}
-                      <div className="chat-input-wrapper bg-white border-t-2 border-black p-3 md:p-4">
-                        <div className="chat-input-container flex items-center gap-2 md:gap-3">
+                      {/* Enhanced Chat Input Area */}
+                      <div className="chat-input-area-enhanced">
+                        <div className="chat-input-container-enhanced">
                           <input
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="Type your message..."
-                            className="chat-input flex-1 bg-gray-100 border-2 border-gray-300 text-black px-3 md:px-4 py-2 md:py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium text-sm md:text-base min-h-[44px]"
+                            className="chat-input-field-enhanced flex-1"
                             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                           />
-                          <Button
+                          <button
                             onClick={sendMessage}
-                            className="chat-send-button bg-primary hover:bg-primary/90 text-black px-3 md:px-6 py-2 md:py-3 font-black border-2 border-black rounded-lg min-w-[60px] min-h-[44px] flex-shrink-0"
+                            className="chat-send-button-enhanced"
                             disabled={!newMessage.trim()}
                           >
-                            <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
-                          </Button>
+                            <MessageCircle className="w-5 h-5" />
+                          </button>
                         </div>
-                        <div className="chat-input-help-text mt-2 text-center">
-                          <TechnicalLabel text="Press Enter to send • Our support team is standing by 24/7" className="text-gray-500 text-xs" />
+                        <div className="chat-help-text-enhanced">
+                          Press Enter to send • Our support team is standing by 24/7
                         </div>
                       </div>
                     </div>
