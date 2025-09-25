@@ -2145,7 +2145,7 @@ export default function UserPortal() {
                   <div className="mt-0">
                     <div className="bg-white border-2 border-black overflow-hidden">
                       {/* Chat Messages - WhatsApp Style */}
-                      <div className="chat-container bg-[#f0f2f5] min-h-[300px] md:min-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3">
+                      <div className="chat-container bg-[#f0f2f5] min-h-[300px] md:min-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3 overflow-y-auto">
                         {chatMessages.map((message) => (
                           <div 
                             key={message.id} 
@@ -2158,13 +2158,13 @@ export default function UserPortal() {
                             )}
                             
                             <div 
-                              className={`chat-message max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm ${
+                              className={`chat-message max-w-[80%] md:max-w-[70%] px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm ${
                                 message.sender === 'user' 
                                   ? 'bg-primary text-black ml-auto' 
                                   : 'bg-white text-black border border-gray-200'
                               }`}
                             >
-                              <p className="text-xs md:text-sm font-medium mb-1">{message.text}</p>
+                              <p className="text-xs md:text-sm font-medium mb-1 break-words">{message.text}</p>
                               <p className={`text-xs ${message.sender === 'user' ? 'text-black/60' : 'text-gray-500'} text-right`}>
                                 {formatTime(message.timestamp)}
                               </p>
@@ -2179,26 +2179,26 @@ export default function UserPortal() {
                         ))}
                       </div>
 
-                      {/* Chat Input - Modern Style */}
-                      <div className="bg-white border-t-2 border-black p-3 md:p-4">
-                        <div className="flex items-center gap-2 md:gap-3">
+                      {/* Chat Input - Modern Style with Enhanced Mobile Support */}
+                      <div className="chat-input-wrapper bg-white border-t-2 border-black p-3 md:p-4">
+                        <div className="chat-input-container flex items-center gap-2 md:gap-3">
                           <input
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="Type your message..."
-                            className="chat-input flex-1 bg-gray-100 border-2 border-gray-300 text-black px-3 md:px-4 py-2 md:py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium text-sm md:text-base"
+                            className="chat-input flex-1 bg-gray-100 border-2 border-gray-300 text-black px-3 md:px-4 py-2 md:py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium text-sm md:text-base min-h-[44px]"
                             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                           />
                           <Button
                             onClick={sendMessage}
-                            className="chat-send-button bg-primary hover:bg-primary/90 text-black px-4 md:px-6 py-2 md:py-3 font-black border-2 border-black rounded-lg"
+                            className="chat-send-button bg-primary hover:bg-primary/90 text-black px-3 md:px-6 py-2 md:py-3 font-black border-2 border-black rounded-lg min-w-[60px] min-h-[44px] flex-shrink-0"
                             disabled={!newMessage.trim()}
                           >
                             <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
                           </Button>
                         </div>
-                        <div className="mt-2 text-center">
+                        <div className="chat-input-help-text mt-2 text-center">
                           <TechnicalLabel text="Press Enter to send • Our support team is standing by 24/7" className="text-gray-500 text-xs" />
                         </div>
                       </div>
@@ -2214,77 +2214,79 @@ export default function UserPortal() {
                       <h3 className="text-2xl md:text-3xl font-black text-black">SEND US A MESSAGE</h3>
                     </div>
 
-                    <form onSubmit={handleContactSubmit} className="space-y-6 max-w-2xl mx-auto">
-                      <div>
-                        <TechnicalLabel text="FULL NAME" className="mb-3 font-black" />
-                        <div className="relative">
-                          <Input 
-                            type="text"
-                            required
-                            value={contactForm.name}
-                            onChange={(e) => setContactForm(prev => ({...prev, name: e.target.value}))}
-                            className="border-2 border-black text-lg py-3"
-                          />
-                          {!contactForm.name && (
-                            <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                              <AnimatedPlaceholder examples={['John Doe', 'Ahmed Khan', 'Sarah Wilson']} />
-                            </div>
-                          )}
+                    <div className="contact-form-container max-w-2xl mx-auto">
+                      <form onSubmit={handleContactSubmit} className="space-y-6">
+                        <div>
+                          <TechnicalLabel text="FULL NAME" className="mb-3 font-black" />
+                          <div className="relative">
+                            <Input 
+                              type="text"
+                              required
+                              value={contactForm.name}
+                              onChange={(e) => setContactForm(prev => ({...prev, name: e.target.value}))}
+                              className="contact-form-input border-2 border-black text-base md:text-lg py-3 md:py-3 min-h-[44px] rounded"
+                            />
+                            {!contactForm.name && (
+                              <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                <AnimatedPlaceholder examples={['John Doe', 'Ahmed Khan', 'Sarah Wilson']} />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      <div>
-                        <TechnicalLabel text="EMAIL ADDRESS" className="mb-3 font-black" />
-                        <div className="relative">
-                          <Input 
-                            type="email"
-                            required
-                            value={contactForm.email}
-                            onChange={(e) => setContactForm(prev => ({...prev, email: e.target.value}))}
-                            className="border-2 border-black text-lg py-3"
-                          />
-                          {!contactForm.email && (
-                            <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                              <AnimatedPlaceholder examples={['your.email@gmail.com', 'contact@thorx.com', 'support@example.com']} />
-                            </div>
-                          )}
+                        <div>
+                          <TechnicalLabel text="EMAIL ADDRESS" className="mb-3 font-black" />
+                          <div className="relative">
+                            <Input 
+                              type="email"
+                              required
+                              value={contactForm.email}
+                              onChange={(e) => setContactForm(prev => ({...prev, email: e.target.value}))}
+                              className="contact-form-input border-2 border-black text-base md:text-lg py-3 md:py-3 min-h-[44px] rounded"
+                            />
+                            {!contactForm.email && (
+                              <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                <AnimatedPlaceholder examples={['your.email@gmail.com', 'contact@thorx.com', 'support@example.com']} />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      <div>
-                        <TechnicalLabel text="PROBLEM / DESCRIPTION" className="mb-3 font-black" />
-                        <div className="relative">
-                          <textarea
-                            required
-                            rows={6}
-                            value={contactForm.description}
-                            onChange={(e) => setContactForm(prev => ({...prev, description: e.target.value}))}
-                            className="flex w-full border-2 border-black bg-background px-3 py-3 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                            placeholder=""
-                          />
-                          {!contactForm.description && (
-                            <div className="absolute top-3 left-3 pointer-events-none text-muted-foreground">
-                              <AnimatedPlaceholder examples={['Describe your issue in detail...', 'Tell us what happened...', 'How can we help you today?']} />
-                            </div>
-                          )}
+                        <div>
+                          <TechnicalLabel text="PROBLEM / DESCRIPTION" className="mb-3 font-black" />
+                          <div className="relative">
+                            <textarea
+                              required
+                              rows={isMobile ? 5 : 6}
+                              value={contactForm.description}
+                              onChange={(e) => setContactForm(prev => ({...prev, description: e.target.value}))}
+                              className="contact-form-textarea flex w-full border-2 border-black bg-background px-3 py-3 text-base md:text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-vertical rounded min-h-[140px] line-height-relaxed"
+                              placeholder=""
+                            />
+                            {!contactForm.description && (
+                              <div className="absolute top-3 left-3 pointer-events-none text-muted-foreground">
+                                <AnimatedPlaceholder examples={['Describe your issue in detail...', 'Tell us what happened...', 'How can we help you today?']} />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      <Button 
-                        type="submit"
-                        disabled={isContactSubmitting}
-                        className="w-full bg-black text-white text-xl font-black py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black disabled:opacity-50"
-                      >
-                        {isContactSubmitting ? (
-                          <>
-                            <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
-                            SENDING MESSAGE...
-                          </>
-                        ) : (
-                          "SEND MESSAGE TO TEAM →"
-                        )}
-                      </Button>
-                    </form>
+                        <Button 
+                          type="submit"
+                          disabled={isContactSubmitting}
+                          className="contact-form-submit w-full bg-black text-white text-base md:text-xl font-black py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black disabled:opacity-50 min-h-[50px] flex items-center justify-center rounded"
+                        >
+                          {isContactSubmitting ? (
+                            <span className="flex items-center justify-center">
+                              <RefreshCw className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 animate-spin" />
+                              <span className="text-sm md:text-base">SENDING MESSAGE...</span>
+                            </span>
+                          ) : (
+                            <span className="text-sm md:text-base">SEND MESSAGE TO TEAM →</span>
+                          )}
+                        </Button>
+                      </form>
+                    </div>
                   </div>
                 )}
               </div>
