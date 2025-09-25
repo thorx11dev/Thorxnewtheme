@@ -2019,23 +2019,17 @@ export default function UserPortal() {
                 </Tabs>
               </div>
 
-              {/* Mobile Navigation Dropdown */}
+              {/* Mobile Navigation Dropdown - Industrial Theme */}
               <div className="md:hidden mb-4 help-dropdown-container">
-                <div className="w-full">
-                  <TechnicalLabel text="SELECT HELP SECTION" className="mb-2 font-black text-xs" />
+                <div className="help-dropdown-wrapper">
+                  <TechnicalLabel text="SELECT HELP SECTION" className="help-dropdown-label" />
                   <select
                     value={activeHelpTab}
                     onChange={(e) => setActiveHelpTab(e.target.value)}
-                    className="w-full bg-white border-2 border-black px-4 py-3 text-sm font-black focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23000' d='m0 1 2 2 2-2z'/></svg>")`,
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'right 12px center',
-                      backgroundSize: '12px'
-                    }}
+                    className="help-dropdown-industrial"
                   >
                     {helpSectionOptions.map((option) => (
-                      <option key={option.id} value={option.id} className="font-black">
+                      <option key={option.id} value={option.id} className="font-black bg-white text-black">
                         {option.label}
                       </option>
                     ))}
@@ -2142,7 +2136,7 @@ export default function UserPortal() {
 
                 {/* Area Help - Telegram/WhatsApp Style Chat */}
                 {activeHelpTab === "help" && (
-                  <div className="mt-0">
+                  <div className="mt-0 chat-section-wrapper">
                     <div className="bg-white border-2 border-black overflow-hidden">
                       {/* Chat Messages - WhatsApp Style */}
                       <div className="chat-container bg-[#f0f2f5] min-h-[300px] md:min-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3 overflow-y-auto">
