@@ -185,8 +185,8 @@
     .cinematic-section {
       padding-top: 6rem;
       padding-bottom: 2rem;
-      padding-left: 1rem;
-      padding-right: 1rem;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
     }
   }
 
@@ -503,7 +503,6 @@
   }
 
   .leaderboard-item:hover {
-    background: linear-gradient(145deg, #f5f5f5, #e8e8e8);
     transform: translateX(4px);
     box-shadow: -4px 4px 0px #000;
   }
@@ -958,30 +957,6 @@
     .overflow-x-auto {
       -webkit-overflow-scrolling: touch;
       scrollbar-width: thin;
-    }
-
-    /* Mobile-specific spacing adjustments */
-    .space-y-6 > * + * {
-      margin-top: 1rem !important;
-    }
-
-    .space-y-4 > * + * {
-      margin-top: 0.75rem !important;
-    }
-
-    .space-y-3 > * + * {
-      margin-top: 0.5rem !important;
-    }
-
-    /* Mobile transaction history and list improvements */
-    .max-h-96 {
-      max-height: 16rem !important;
-    }
-
-    /* Mobile leaderboard and referral list optimization */
-    .wireframe-section {
-      padding: 0.75rem !important;
-      margin-bottom: 0.5rem !important;
     }
 
     /* Mobile-specific content width constraints */

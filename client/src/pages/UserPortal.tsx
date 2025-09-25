@@ -1990,7 +1990,7 @@ export default function UserPortal() {
 
         {/* Navigation and Content */}
         <div className="max-w-7xl mx-auto mb-6 md:mb-8">
-          <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-8">
+          <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-8 help-section-content">
             {/* Desktop: Tabs, Mobile: Dropdown */}
             <div className="w-full">
               {/* Desktop Navigation */}
@@ -2020,7 +2020,7 @@ export default function UserPortal() {
               </div>
 
               {/* Mobile Navigation Dropdown */}
-              <div className="md:hidden mb-4">
+              <div className="md:hidden mb-4 help-dropdown-container">
                 <div className="w-full">
                   <TechnicalLabel text="SELECT HELP SECTION" className="mb-2 font-black text-xs" />
                   <select
@@ -2044,7 +2044,7 @@ export default function UserPortal() {
               </div>
 
               {/* Tab Content */}
-              <div className="mt-4 md:mt-6">
+              <div className="mt-4 md:mt-6 help-main-content">
                 {/* Area Guide - FAQ Section Style */}
                 {activeHelpTab === "guide" && (
                   <div className="mt-0">
