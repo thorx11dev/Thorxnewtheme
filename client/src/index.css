@@ -1159,11 +1159,10 @@
       line-height: 1.4 !important;
     }
 
-    /* Chat interface mobile - Fixed height to prevent overflow */
+    /* Chat interface mobile */
     .chat-container {
-      min-height: 250px !important;
-      max-height: 300px !important;
-      margin-bottom: 1rem !important;
+      min-height: 300px !important;
+      max-height: 400px !important;
     }
 
     .chat-message {
@@ -1190,33 +1189,12 @@
     .contact-form-textarea {
       padding: 0.75rem !important;
       font-size: 1rem !important;
-      min-height: 100px !important;
-      max-height: 120px !important;
+      min-height: 120px !important;
     }
 
     .contact-form-submit {
       padding: 0.875rem 1rem !important;
       font-size: 1rem !important;
-    }
-
-    /* Help section content mobile padding - Add extra bottom padding */
-    .help-section-content {
-      padding-bottom: 6rem !important;
-      margin-bottom: 2rem !important;
-    }
-
-    .help-main-content {
-      padding-bottom: 4rem !important;
-    }
-
-    /* Chat interface bottom padding */
-    .chat-container + div {
-      margin-bottom: 2rem !important;
-    }
-
-    /* Contact form bottom spacing */
-    .contact-form {
-      padding-bottom: 4rem !important;
     }
   }
 

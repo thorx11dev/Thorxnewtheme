@@ -2145,7 +2145,7 @@ export default function UserPortal() {
                   <div className="mt-0">
                     <div className="bg-white border-2 border-black overflow-hidden">
                       {/* Chat Messages - WhatsApp Style */}
-                      <div className="chat-container bg-[#f0f2f5] min-h-[250px] md:min-h-[500px] max-h-[300px] md:max-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3 overflow-y-auto">
+                      <div className="chat-container bg-[#f0f2f5] min-h-[300px] md:min-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3">
                         {chatMessages.map((message) => (
                           <div 
                             key={message.id} 
@@ -2214,7 +2214,7 @@ export default function UserPortal() {
                       <h3 className="text-2xl md:text-3xl font-black text-black">SEND US A MESSAGE</h3>
                     </div>
 
-                    <form onSubmit={handleContactSubmit} className="space-y-6 max-w-2xl mx-auto contact-form pb-16 md:pb-0">
+                    <form onSubmit={handleContactSubmit} className="space-y-6 max-w-2xl mx-auto">
                       <div>
                         <TechnicalLabel text="FULL NAME" className="mb-3 font-black" />
                         <div className="relative">
@@ -2256,10 +2256,10 @@ export default function UserPortal() {
                         <div className="relative">
                           <textarea
                             required
-                            rows={isMobile ? 4 : 6}
+                            rows={6}
                             value={contactForm.description}
                             onChange={(e) => setContactForm(prev => ({...prev, description: e.target.value}))}
-                            className="flex w-full border-2 border-black bg-background px-3 py-3 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none contact-form-textarea"
+                            className="flex w-full border-2 border-black bg-background px-3 py-3 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                             placeholder=""
                           />
                           {!contactForm.description && (
