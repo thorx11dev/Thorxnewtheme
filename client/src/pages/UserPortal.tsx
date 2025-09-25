@@ -1808,51 +1808,7 @@ export default function UserPortal() {
             </Card>
           </div>
 
-          {/* Help Section */}
-          <Card className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 transition-all duration-300 hover:shadow-lg hover:shadow-muted-foreground/10">
-            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-muted-foreground/40 transition-colors">
-              <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="NEED HELP?" className="text-foreground group-hover:text-foreground/90 transition-colors" />
-                <div className="p-2 bg-muted-foreground/10 border border-muted-foreground/20 group-hover:bg-muted-foreground/20 transition-all duration-300">
-                  <HelpCircle className="w-4 h-4 text-foreground/80" />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <TechnicalLabel text="PROCESSING INFO" className="text-foreground font-black" />
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p>• Processing: 24-48 hours</p>
-                    <p>• Minimum: ₨ 100</p>
-                    <p>• Maximum daily: ₨ 50,000</p>
-                    <p>• Available 24/7</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <TechnicalLabel text="QUICK ACTIONS" className="text-foreground font-black" />
-                  <div className="grid gap-2">
-                    <Button variant="outline" size="sm" className="border-2 border-muted-foreground/30 text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all">
-                      <Book className="w-4 h-4 mr-2" />
-                      FAQ
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-2 border-muted-foreground/30 text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all">
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Support
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-2 border-muted-foreground/30 text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all">
-                      <Phone className="w-4 h-4 mr-2" />
-                      Call Support
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-2 border-muted-foreground/30 text-foreground hover:bg-primary hover:text-white hover:border-primary transition-all">
-                      <Mail className="w-4 h-4 mr-2" />
-                      Email Us
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          
         </div>
       </div>
     );
