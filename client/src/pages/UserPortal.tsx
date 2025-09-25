@@ -2042,19 +2042,7 @@ export default function UserPortal() {
                 {/* Area Guide - FAQ Section Style */}
                 {activeHelpTab === "guide" && (
                   <div className="mt-0">
-                    {/* Header */}
-                    <div className="mb-6">
-                      <div className="mb-4">
-                        <TechnicalLabel text="FAQ PROTOCOL v2.47" />
-                      </div>
-                      <h2 className="text-2xl md:text-4xl lg:text-5xl font-black tracking-tight text-primary leading-tight mb-4">
-                        Knowledge<br />Base<br />Access.
-                      </h2>
-                      <div className="space-y-2">
-                        <TechnicalLabel text="SYSTEM STATUS: OPERATIONAL" />
-                        <Barcode className="w-24 md:w-32 h-6 md:h-8 opacity-60" />
-                      </div>
-                    </div>
+                    
 
                     {/* FAQ Items - Landing Page Style */}
                     <div className="space-y-4 md:space-y-6">
