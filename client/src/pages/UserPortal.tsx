@@ -70,7 +70,8 @@ import {
   RefreshCw,
   Share2,
   Link2,
-  ExternalLink
+  ExternalLink,
+  X
 } from "lucide-react";
 import {
   LineChart,
@@ -1381,7 +1382,7 @@ export default function UserPortal() {
     );
   }
 
-  // Progressive Payout Section - Three-Part Flow
+  // Progressive Payout Section - Enhanced Desktop Layout
   function renderPayoutSection() {
     // Progressive flow state management
     const [currentStep, setCurrentStep] = useState(1); // 1: Amount, 2: Method, 3: Details
@@ -1529,273 +1530,381 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-4xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
-        {/* Progressive Payout Interface */}
-        <div className="wireframe-border bg-gradient-to-br from-background to-muted/20 p-4 md:p-8 min-h-[600px] relative">
-          {/* Header with Current Balance */}
-          <div className="text-center mb-6 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-3 py-2 border-2 border-black mb-4">
-              <Wallet className="w-4 h-4" />
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
+        {/* Enhanced Header - Consistent with other sections */}
+        <div className="wireframe-border p-3 md:p-8 mb-3 md:mb-8">
+          <div className="text-center mb-4 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-2 md:px-4 py-1 md:py-2 border-2 border-black mb-3 md:mb-4">
+              <Wallet className="w-3 h-3 md:w-5 md:h-5" />
               <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white text-xs" />
             </div>
-            
-            <div className="mb-4">
-              <TechnicalLabel text="CURRENT BALANCE" className="text-muted-foreground text-sm mb-2" />
-              <div className="text-2xl md:text-3xl font-black text-primary">
-                {formatCurrency(displayUser?.availableBalance || '0.00')}
-              </div>
-            </div>
+            <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
+              WITHDRAW <span className="text-primary">EARNINGS</span><br />
+              SECURE PAYMENTS
+            </h1>
+            <p className="text-xs md:text-lg lg:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
+              Fast, secure withdrawals with multiple payment options
+            </p>
+            <Barcode className="w-16 md:w-32 lg:w-48 h-4 md:h-8 lg:h-10 mx-auto opacity-60" />
+          </div>
+        </div>
 
-            {/* Step Indicator */}
-            <div className="flex items-center justify-center gap-4 mb-6">
-              {[1, 2, 3].map((step) => (
-                <div key={step} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black text-sm transition-all ${
-                    currentStep >= step ? 'bg-primary text-black' : 'bg-background text-foreground'
-                  }`}>
-                    {step}
+        {/* Main Content Area - Two Column Layout for Desktop */}
+        <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
+          {/* Main Payout Interface - Left Column (2/3 width) */}
+          <div className="lg:col-span-2">
+            <div className="wireframe-border bg-gradient-to-br from-background to-muted/20 p-4 md:p-8 relative">
+              {/* Current Balance Display */}
+              <div className="text-center mb-6 md:mb-8">
+                <div className="mb-4">
+                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-sm mb-2" />
+                  <div className="text-2xl md:text-4xl font-black text-primary">
+                    {formatCurrency(displayUser?.availableBalance || '0.00')}
                   </div>
-                  {step < 3 && (
-                    <div className={`w-8 h-0.5 mx-2 transition-all ${
-                      currentStep > step ? 'bg-primary' : 'bg-muted-foreground/30'
-                    }`} />
+                </div>
+
+                {/* Step Indicator */}
+                <div className="flex items-center justify-center gap-4 mb-6">
+                  {[1, 2, 3].map((step) => (
+                    <div key={step} className="flex items-center">
+                      <div className={`w-10 h-10 rounded-full border-2 border-black flex items-center justify-center font-black text-sm transition-all ${
+                        currentStep >= step ? 'bg-primary text-black' : 'bg-background text-foreground'
+                      }`}>
+                        {step}
+                      </div>
+                      {step < 3 && (
+                        <div className={`w-12 h-0.5 mx-2 transition-all ${
+                          currentStep > step ? 'bg-primary' : 'bg-muted-foreground/30'
+                        }`} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Step Labels */}
+                <div className="grid grid-cols-3 gap-4 text-xs font-black text-muted-foreground">
+                  <div className={currentStep === 1 ? 'text-primary' : ''}>AMOUNT</div>
+                  <div className={currentStep === 2 ? 'text-primary' : ''}>METHOD</div>
+                  <div className={currentStep === 3 ? 'text-primary' : ''}>DETAILS</div>
+                </div>
+              </div>
+
+              {/* Step Content Container */}
+              <div className="min-h-[400px] flex flex-col justify-center">
+                {/* Step 1: Amount Input with Numeric Keypad */}
+                {currentStep === 1 && (
+                  <div className="max-w-lg mx-auto w-full">
+                    <div className="text-center mb-8">
+                      <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-foreground mb-4 text-sm" />
+                      <div className="text-3xl md:text-5xl font-black text-foreground mb-4 min-h-[60px] flex items-center justify-center border-b-2 border-muted-foreground/30 pb-4">
+                        ₨ {withdrawAmount || "0.00"}
+                      </div>
+                    </div>
+
+                    {/* Enhanced Numeric Keypad */}
+                    <div className="grid grid-cols-3 gap-3 mb-6 max-w-sm mx-auto">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                        <button
+                          key={num}
+                          onClick={() => handleNumberInput(num.toString())}
+                          className="industrial-keypad-button h-14 md:h-16 bg-background border-2 border-black text-xl md:text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105"
+                        >
+                          {num}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => handleNumberInput("0")}
+                        className="industrial-keypad-button h-14 md:h-16 bg-background border-2 border-black text-xl md:text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105 col-span-2"
+                      >
+                        0
+                      </button>
+                      <button
+                        onClick={handleBackspace}
+                        className="industrial-keypad-button h-14 md:h-16 bg-destructive/10 border-2 border-destructive text-destructive hover:bg-destructive/20 transition-all duration-200 hover:transform hover:scale-105 flex items-center justify-center"
+                      >
+                        ⌫
+                      </button>
+                    </div>
+
+                    {/* Clear Button */}
+                    <div className="text-center mb-6">
+                      <button
+                        onClick={handleClear}
+                        className="border-2 border-black bg-background hover:bg-black hover:text-white px-6 py-2 text-sm font-black transition-colors"
+                      >
+                        CLEAR ALL
+                      </button>
+                    </div>
+
+                    {/* Minimum Amount Notice */}
+                    <div className="text-center text-sm text-muted-foreground">
+                      <TechnicalLabel text="MINIMUM WITHDRAWAL: ₨ 100" className="text-muted-foreground" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Payment Method Selection */}
+                {currentStep === 2 && (
+                  <div className="max-w-2xl mx-auto w-full">
+                    <div className="text-center mb-8">
+                      <TechnicalLabel text="SELECT PAYMENT METHOD" className="text-foreground mb-4 text-sm" />
+                      <div className="text-xl md:text-2xl font-black text-primary mb-2">
+                        Withdrawing {formatCurrency(withdrawAmount)}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 mb-6">
+                      {paymentMethods.map((method) => {
+                        const IconComponent = method.icon;
+                        const isSelected = selectedMethod === method.id;
+                        
+                        return (
+                          <button
+                            key={method.id}
+                            onClick={() => setSelectedMethod(method.id)}
+                            className={`payment-method-selection-card group flex items-center p-4 md:p-6 border-2 transition-all duration-300 w-full ${
+                              isSelected 
+                                ? 'border-primary bg-primary/10 transform scale-105 shadow-lg' 
+                                : 'border-black bg-background hover:bg-muted/50 hover:transform hover:scale-105'
+                            }`}
+                          >
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 ${
+                              isSelected ? 'bg-primary/30' : 'bg-muted'
+                            }`}>
+                              <IconComponent className={`w-6 h-6 ${
+                                isSelected ? 'text-primary' : 'text-muted-foreground'
+                              }`} />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <TechnicalLabel 
+                                text={method.name} 
+                                className={`font-black text-sm mb-1 ${
+                                  isSelected ? 'text-primary' : 'text-foreground'
+                                }`} 
+                              />
+                              <div className="text-xs text-muted-foreground">{method.description}</div>
+                              <div className="text-xs text-muted-foreground">Processing: {method.processing}</div>
+                            </div>
+                            {isSelected && (
+                              <CheckCircle2 className="w-6 h-6 text-primary" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Payment Details Input */}
+                {currentStep === 3 && (
+                  <div className="max-w-lg mx-auto w-full">
+                    <div className="text-center mb-8">
+                      <TechnicalLabel text="ENTER PAYMENT DETAILS" className="text-foreground mb-4 text-sm" />
+                      <div className="text-lg md:text-xl font-black text-primary mb-2">
+                        {paymentMethods.find(m => m.id === selectedMethod)?.name}
+                      </div>
+                      <div className="text-base md:text-lg text-foreground">
+                        {formatCurrency(withdrawAmount)}
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      {selectedMethod === 'bank' ? (
+                        <div>
+                          <TechnicalLabel text="BANK IBAN" className="text-foreground mb-3 text-sm font-black" />
+                          <Input
+                            type="text"
+                            value={paymentDetails.iban}
+                            onChange={(e) => setPaymentDetails(prev => ({...prev, iban: e.target.value}))}
+                            placeholder="PK36 SCBL 0000 0011 2345 6702"
+                            className="industrial-input h-14 text-base border-2 border-black"
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <TechnicalLabel text="FULL NAME" className="text-foreground mb-3 text-sm font-black" />
+                            <Input
+                              type="text"
+                              value={paymentDetails.name}
+                              onChange={(e) => setPaymentDetails(prev => ({...prev, name: e.target.value}))}
+                              placeholder="Enter Full Name"
+                              className="industrial-input h-14 text-base border-2 border-black"
+                            />
+                          </div>
+                          
+                          <div>
+                            <TechnicalLabel text="MOBILE NUMBER" className="text-foreground mb-3 text-sm font-black" />
+                            <Input
+                              type="text"
+                              value={paymentDetails.number}
+                              onChange={(e) => setPaymentDetails(prev => ({...prev, number: e.target.value}))}
+                              placeholder="03XXXXXXXXX"
+                              className="industrial-input h-14 text-base border-2 border-black"
+                            />
+                          </div>
+                          
+                          <div>
+                            <TechnicalLabel text="CNIC / ID NUMBER" className="text-foreground mb-3 text-sm font-black" />
+                            <Input
+                              type="text"
+                              value={paymentDetails.id}
+                              onChange={(e) => setPaymentDetails(prev => ({...prev, id: e.target.value}))}
+                              placeholder="XXXXX-XXXXXXX-X"
+                              className="industrial-input h-14 text-base border-2 border-black"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation Buttons - Fixed Position */}
+              <div className="border-t-2 border-black pt-6 mt-8 flex justify-between items-center">
+                <div className="flex gap-3">
+                  {currentStep > 1 && (
+                    <Button
+                      onClick={handleBack}
+                      variant="outline"
+                      className="border-2 border-black text-foreground hover:bg-black hover:text-white px-6 py-3 font-black"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      BACK
+                    </Button>
                   )}
                 </div>
-              ))}
+                
+                <Button
+                  onClick={handleNext}
+                  disabled={!canProceed() || isProcessing}
+                  className="bg-primary hover:bg-primary/80 text-black px-8 py-3 font-black border-2 border-black"
+                >
+                  {isProcessing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      PROCESSING...
+                    </>
+                  ) : currentStep === 3 ? (
+                    <>
+                      <Zap className="w-4 h-4 mr-2" />
+                      SUBMIT REQUEST
+                    </>
+                  ) : (
+                    <>
+                      CONTINUE
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Step 1: Amount Input with Numeric Keypad */}
-          {currentStep === 1 && (
-            <div className="max-w-md mx-auto">
-              <div className="text-center mb-8">
-                <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-foreground mb-4 text-sm" />
-                <div className="text-4xl md:text-6xl font-black text-foreground mb-2 min-h-[80px] flex items-center justify-center">
-                  ₨ {withdrawAmount || "0.00"}
-                </div>
-                <div className="w-full h-1 bg-muted-foreground/30 mb-6" />
-              </div>
-
-              {/* Numeric Keypad */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => handleNumberInput(num.toString())}
-                    className="industrial-keypad-button h-16 bg-background border-2 border-black text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105"
-                  >
-                    {num}
-                  </button>
-                ))}
-                <button
-                  onClick={() => handleNumberInput("0")}
-                  className="industrial-keypad-button h-16 bg-background border-2 border-black text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105 col-span-2"
-                >
-                  0
-                </button>
-                <button
-                  onClick={handleBackspace}
-                  className="industrial-keypad-button h-16 bg-destructive/10 border-2 border-destructive text-destructive hover:bg-destructive/20 transition-all duration-200 hover:transform hover:scale-105 flex items-center justify-center"
-                >
-                  ⌫
-                </button>
-              </div>
-
-              {/* Clear Button */}
-              <div className="text-center mb-6">
-                <button
-                  onClick={handleClear}
-                  className="industrial-button-secondary px-6 py-2 text-sm"
-                >
-                  CLEAR ALL
-                </button>
-              </div>
-
-              {/* Minimum Amount Notice */}
-              <div className="text-center text-sm text-muted-foreground">
-                <TechnicalLabel text="MINIMUM WITHDRAWAL: ₨ 100" className="text-muted-foreground" />
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Payment Method Selection */}
-          {currentStep === 2 && (
-            <div className="max-w-2xl mx-auto">
-              <div className="text-center mb-8">
-                <TechnicalLabel text="SELECT PAYMENT METHOD" className="text-foreground mb-4 text-sm" />
-                <div className="text-2xl font-black text-primary mb-2">
-                  Withdrawing {formatCurrency(withdrawAmount)}
-                </div>
-              </div>
-
-              <div className="grid gap-4 mb-6">
-                {paymentMethods.map((method) => {
-                  const IconComponent = method.icon;
-                  const isSelected = selectedMethod === method.id;
-                  
-                  return (
-                    <button
-                      key={method.id}
-                      onClick={() => setSelectedMethod(method.id)}
-                      className={`payment-method-selection-card group flex items-center p-4 md:p-6 border-2 transition-all duration-300 ${
-                        isSelected 
-                          ? 'border-primary bg-primary/10 transform scale-105 shadow-lg' 
-                          : 'border-black bg-background hover:bg-muted/50 hover:transform hover:scale-105'
-                      }`}
-                    >
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 ${
-                        isSelected ? 'bg-primary/30' : 'bg-muted'
-                      }`}>
-                        <IconComponent className={`w-6 h-6 ${
-                          isSelected ? 'text-primary' : 'text-muted-foreground'
-                        }`} />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <TechnicalLabel 
-                          text={method.name} 
-                          className={`font-black text-sm mb-1 ${
-                            isSelected ? 'text-primary' : 'text-foreground'
-                          }`} 
-                        />
-                        <div className="text-xs text-muted-foreground">{method.description}</div>
-                        <div className="text-xs text-muted-foreground">Processing: {method.processing}</div>
-                      </div>
-                      {isSelected && (
-                        <CheckCircle2 className="w-6 h-6 text-primary" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Payment Details Input */}
-          {currentStep === 3 && (
-            <div className="max-w-md mx-auto">
-              <div className="text-center mb-8">
-                <TechnicalLabel text="ENTER PAYMENT DETAILS" className="text-foreground mb-4 text-sm" />
-                <div className="text-xl font-black text-primary mb-2">
-                  {paymentMethods.find(m => m.id === selectedMethod)?.name}
-                </div>
-                <div className="text-lg text-foreground">
-                  {formatCurrency(withdrawAmount)}
-                </div>
-              </div>
-
+          {/* Side Panel - Right Column (1/3 width) */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Quick Stats */}
+            <div className="wireframe-border p-4 md:p-6">
+              <TechnicalLabel text="PAYOUT STATISTICS" className="text-foreground font-black text-sm mb-4" />
               <div className="space-y-4">
-                {selectedMethod === 'bank' ? (
-                  <div>
-                    <TechnicalLabel text="BANK IBAN" className="text-foreground mb-2 text-sm" />
-                    <Input
-                      type="text"
-                      value={paymentDetails.iban}
-                      onChange={(e) => setPaymentDetails(prev => ({...prev, iban: e.target.value}))}
-                      placeholder="Enter Bank IBAN"
-                      className="industrial-input h-12 text-base"
-                    />
+                <div className="text-center">
+                  <div className="text-lg md:text-xl font-black text-primary">
+                    {formatCurrency(displayUser?.totalEarnings || '0.00')}
                   </div>
-                ) : (
-                  <>
-                    <div>
-                      <TechnicalLabel text="FULL NAME" className="text-foreground mb-2 text-sm" />
-                      <Input
-                        type="text"
-                        value={paymentDetails.name}
-                        onChange={(e) => setPaymentDetails(prev => ({...prev, name: e.target.value}))}
-                        placeholder="Enter Full Name"
-                        className="industrial-input h-12 text-base"
-                      />
-                    </div>
-                    
-                    <div>
-                      <TechnicalLabel text="MOBILE NUMBER" className="text-foreground mb-2 text-sm" />
-                      <Input
-                        type="text"
-                        value={paymentDetails.number}
-                        onChange={(e) => setPaymentDetails(prev => ({...prev, number: e.target.value}))}
-                        placeholder="03XXXXXXXXX"
-                        className="industrial-input h-12 text-base"
-                      />
-                    </div>
-                    
-                    <div>
-                      <TechnicalLabel text="CNIC / ID NUMBER" className="text-foreground mb-2 text-sm" />
-                      <Input
-                        type="text"
-                        value={paymentDetails.id}
-                        onChange={(e) => setPaymentDetails(prev => ({...prev, id: e.target.value}))}
-                        placeholder="XXXXX-XXXXXXX-X"
-                        className="industrial-input h-12 text-base"
-                      />
-                    </div>
-                  </>
-                )}
+                  <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
+                </div>
+                <div className="text-center">
+                  <div className="text-lg md:text-xl font-black text-foreground">
+                    {formatCurrency(displayUser?.availableBalance || '0.00')}
+                  </div>
+                  <TechnicalLabel text="AVAILABLE NOW" className="text-muted-foreground text-xs" />
+                </div>
+                <div className="text-center">
+                  <div className="text-lg md:text-xl font-black text-muted-foreground">
+                    ₨ 15.00
+                  </div>
+                  <TechnicalLabel text="PROCESSING FEE" className="text-muted-foreground text-xs" />
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Navigation Buttons - Always Visible */}
-          <div className="absolute bottom-4 left-4 right-4 flex justify-between">
-            <Button
-              onClick={() => setShowHistory(!showHistory)}
-              variant="outline"
-              className="border-2 border-black text-foreground hover:bg-black hover:text-white px-6 py-3 font-black"
-            >
-              <History className="w-4 h-4 mr-2" />
-              HISTORY
-            </Button>
-            
-            <div className="flex gap-3">
-              {currentStep > 1 && (
-                <Button
-                  onClick={handleBack}
-                  variant="outline"
-                  className="border-2 border-black text-foreground hover:bg-black hover:text-white px-6 py-3 font-black"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  BACK
-                </Button>
-              )}
-              
+            {/* Professional History Button */}
+            <div className="wireframe-border p-4 md:p-6">
+              <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground font-black text-sm mb-4" />
               <Button
-                onClick={handleNext}
-                disabled={!canProceed() || isProcessing}
-                className="bg-primary hover:bg-primary/80 text-black px-6 py-3 font-black border-2 border-black"
+                onClick={() => setShowHistory(!showHistory)}
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black"
               >
-                {isProcessing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    PROCESSING...
-                  </>
-                ) : currentStep === 3 ? (
-                  <>
-                    <Zap className="w-4 h-4 mr-2" />
-                    SUBMIT
-                  </>
-                ) : (
-                  <>
-                    NEXT
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
+                <History className="w-4 h-4 mr-2" />
+                {showHistory ? 'HIDE HISTORY' : 'VIEW HISTORY'}
               </Button>
+              
+              {showHistory && (
+                <div className="mt-4 max-h-60 overflow-y-auto border-t-2 border-black pt-4">
+                  <div className="space-y-3">
+                    {staticHistoryItems.slice(0, 3).map((item) => (
+                      <div 
+                        key={item.id}
+                        className="p-3 border border-muted-foreground/20 bg-muted/10 hover:bg-muted/20 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <TechnicalLabel text={item.method} className="text-foreground font-black text-xs" />
+                          <div className={`w-2 h-2 rounded-full ${
+                            item.status === 'COMPLETED' ? 'bg-green-500' :
+                            item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
+                          }`} />
+                        </div>
+                        <div className="text-sm font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
+                        <div className="text-xs text-muted-foreground">{formatDate(item.date)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {staticHistoryItems.length > 3 && (
+                    <div className="text-center mt-3">
+                      <TechnicalLabel text={`+${staticHistoryItems.length - 3} MORE TRANSACTIONS`} className="text-muted-foreground text-xs" />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Help & Support */}
+            <div className="wireframe-border p-4 md:p-6">
+              <TechnicalLabel text="NEED HELP?" className="text-foreground font-black text-sm mb-4" />
+              <div className="space-y-3">
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  • Minimum withdrawal: ₨ 100<br />
+                  • Processing time: 2-48 hours<br />
+                  • Processing fee: ₨ 15.00<br />
+                  • 24/7 customer support
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-2 font-black text-xs"
+                  onClick={() => navigateToSection(4)} // Navigate to help section
+                >
+                  <HelpCircle className="w-3 h-3 mr-2" />
+                  GET SUPPORT
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Transaction History Modal/Panel */}
+        {/* Full Transaction History - Only show when history is expanded */}
         {showHistory && (
-          <div className="mt-6 wireframe-border bg-background p-4 md:p-6">
+          <div className="mt-8 wireframe-border bg-background p-4 md:p-6 lg:hidden">
             <div className="flex items-center justify-between mb-6">
-              <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground font-black text-lg" />
+              <TechnicalLabel text="COMPLETE TRANSACTION HISTORY" className="text-foreground font-black text-lg" />
               <Button
                 onClick={() => setShowHistory(false)}
                 variant="outline"
                 size="sm"
                 className="border-2 border-black"
               >
-                <X className="w-4 h-4" />
+                CLOSE
               </Button>
             </div>
             
