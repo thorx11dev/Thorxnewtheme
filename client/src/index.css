@@ -1239,6 +1239,89 @@
 
   /* COMPREHENSIVE MOBILE OPTIMIZATIONS FOR USER PORTAL SECTIONS */
 
+  /* Payout Section Mobile Optimizations - Fix Layout Issues */
+  @media (max-width: 768px) {
+    /* Prevent form expansion on mobile */
+    .wireframe-border {
+      min-height: auto !important;
+      max-height: none !important;
+    }
+
+    /* Fix payout grid layout */
+    .grid.lg\\:grid-cols-3,
+    .grid.lg\\:grid-cols-2 {
+      grid-template-columns: 1fr !important;
+      gap: 1rem !important;
+    }
+
+    /* Payout content container fixes */
+    .payout-step-container {
+      overflow: hidden !important;
+      min-height: 350px !important;
+      max-height: 500px !important;
+    }
+
+    /* Payment method cards mobile optimization */
+    .payment-method-selection-card {
+      padding: 0.75rem !important;
+      min-height: auto !important;
+      max-width: 100% !important;
+    }
+
+    /* Keypad button mobile sizing */
+    .industrial-keypad-button {
+      min-height: 48px !important;
+      max-height: 60px !important;
+      font-size: 1.125rem !important;
+    }
+
+    /* Input field mobile optimization */
+    .industrial-input {
+      min-height: 48px !important;
+      max-height: 56px !important;
+      font-size: 0.875rem !important;
+      padding: 0.75rem !important;
+    }
+
+    /* Step indicator mobile sizing */
+    .step-indicator-mobile {
+      width: 32px !important;
+      height: 32px !important;
+      font-size: 0.75rem !important;
+    }
+
+    /* Navigation buttons mobile */
+    .payout-nav-button {
+      padding: 0.5rem 1rem !important;
+      font-size: 0.75rem !important;
+      min-height: 40px !important;
+    }
+
+    /* Side panel hidden on mobile to prevent duplication */
+    .payout-side-panel {
+      display: none !important;
+    }
+
+    /* Prevent overflow in mobile containers */
+    .payout-container {
+      overflow-x: hidden !important;
+    }
+
+    /* History section mobile - prevent duplication */
+    .mobile-history-toggle {
+      margin-top: 1rem !important;
+      padding: 1rem !important;
+      background: linear-gradient(145deg, #ffffff, #f8f8f8) !important;
+      border: 2px solid #000 !important;
+    }
+
+    .mobile-history-content {
+      max-height: 300px !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+  }
+
   /* Referrals Section Mobile Optimizations */
   @media (max-width: 768px) {
     /* Referral hero section mobile improvements */

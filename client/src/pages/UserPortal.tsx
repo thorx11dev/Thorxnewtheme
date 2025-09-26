@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1028,7 +1027,7 @@ export default function UserPortal() {
         {/* Industrial Work Interface - Wireframe Style */}
           <div className="industrial-video-frame p-4 mb-8">
             <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
-              
+
               {WORK_TABS.map(tab => (
                 <TabsContent key={tab.id} value={tab.id} className="mt-0">
                   <div className="space-y-4">
@@ -1072,12 +1071,12 @@ export default function UserPortal() {
         isCurrentUser: false
       },
       {
-        id: "2", 
+        id: "2",
         rank: 2,
         name: "Saad Rauf",
         earnings: "1,890.50",
         referrals: 12,
-        status: "ACTIVE", 
+        status: "ACTIVE",
         tier: "GOLD",
         joinDate: "2024-02-03",
         isCurrentUser: false
@@ -1192,7 +1191,7 @@ export default function UserPortal() {
                 <Copy className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
                 COPY REFERRAL CODE
               </Button>
-              
+
               <div className="button-group-mobile grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                 <Button
                   variant="outline"
@@ -1284,7 +1283,7 @@ export default function UserPortal() {
                       </div>
                       {getRankIcon(leader.rank)}
                     </div>
-                    
+
                     <div className="min-w-0 flex-1">
                       <div className="text-sm md:text-lg font-black text-foreground mb-1">
                         {leader.name}
@@ -1342,7 +1341,7 @@ export default function UserPortal() {
             <div className="border-b-2 border-black pb-3 md:pb-4 mb-4 md:mb-6">
               <TechnicalLabel text="YOUR NETWORK" className="text-foreground text-sm md:text-lg font-black" />
             </div>
-            
+
             <div className="grid gap-3 md:gap-4">
               {referralsData.referrals.map((referral, index) => (
                 <div key={referral.id} className="referral-network-card wireframe-section p-3 md:p-4 hover:bg-white transition-colors" data-testid={`referral-${referral.id}`}>
@@ -1657,14 +1656,14 @@ export default function UserPortal() {
                       {paymentMethods.map((method) => {
                         const IconComponent = method.icon;
                         const isSelected = selectedMethod === method.id;
-                        
+
                         return (
                           <button
                             key={method.id}
                             onClick={() => setSelectedMethod(method.id)}
                             className={`payment-method-selection-card group flex items-center p-4 md:p-6 border-2 transition-all duration-300 w-full ${
-                              isSelected 
-                                ? 'border-primary bg-primary/10 transform scale-105 shadow-lg' 
+                              isSelected
+                                ? 'border-primary bg-primary/10 transform scale-105 shadow-lg'
                                 : 'border-black bg-background hover:bg-muted/50 hover:transform hover:scale-105'
                             }`}
                           >
@@ -1676,11 +1675,11 @@ export default function UserPortal() {
                               }`} />
                             </div>
                             <div className="flex-1 text-left">
-                              <TechnicalLabel 
-                                text={method.name} 
+                              <TechnicalLabel
+                                text={method.name}
                                 className={`font-black text-sm mb-1 ${
                                   isSelected ? 'text-primary' : 'text-foreground'
-                                }`} 
+                                }`}
                               />
                               <div className="text-xs text-muted-foreground">{method.description}</div>
                               <div className="text-xs text-muted-foreground">Processing: {method.processing}</div>
@@ -1732,7 +1731,7 @@ export default function UserPortal() {
                               className="industrial-input h-14 text-base border-2 border-black"
                             />
                           </div>
-                          
+
                           <div>
                             <TechnicalLabel text="MOBILE NUMBER" className="text-foreground mb-3 text-sm font-black" />
                             <Input
@@ -1743,7 +1742,7 @@ export default function UserPortal() {
                               className="industrial-input h-14 text-base border-2 border-black"
                             />
                           </div>
-                          
+
                           <div>
                             <TechnicalLabel text="CNIC / ID NUMBER" className="text-foreground mb-3 text-sm font-black" />
                             <Input
@@ -1775,7 +1774,7 @@ export default function UserPortal() {
                     </Button>
                   )}
                 </div>
-                
+
                 <Button
                   onClick={handleNext}
                   disabled={!canProceed() || isProcessing}
@@ -1840,12 +1839,12 @@ export default function UserPortal() {
                 <History className="w-4 h-4 mr-2" />
                 {showHistory ? 'HIDE HISTORY' : 'VIEW HISTORY'}
               </Button>
-              
+
               {showHistory && (
                 <div className="mt-4 max-h-60 overflow-y-auto border-t-2 border-black pt-4">
                   <div className="space-y-3">
                     {staticHistoryItems.slice(0, 3).map((item) => (
-                      <div 
+                      <div
                         key={item.id}
                         className="p-3 border border-muted-foreground/20 bg-muted/10 hover:bg-muted/20 transition-colors"
                       >
@@ -1907,10 +1906,10 @@ export default function UserPortal() {
                 CLOSE
               </Button>
             </div>
-            
+
             <div className="max-h-80 overflow-y-auto space-y-3">
               {staticHistoryItems.map((item) => (
-                <div 
+                <div
                   key={item.id}
                   className="p-4 border-2 border-black bg-muted/20 hover:bg-muted/40 transition-colors"
                 >
@@ -1956,7 +1955,7 @@ export default function UserPortal() {
     // Chat functionality with Telegram/WhatsApp style
     const sendMessage = () => {
       if (!newMessage.trim()) return;
-      
+
       const userMessage = {
         id: chatMessages.length + 1,
         text: newMessage,
@@ -1964,10 +1963,10 @@ export default function UserPortal() {
         timestamp: new Date().toISOString(),
         avatar: displayUser?.firstName?.charAt(0).toUpperCase() || "U"
       };
-      
+
       setChatMessages(prev => [...prev, userMessage]);
       setNewMessage("");
-      
+
       // Simulate support response with typing indicator
       setTimeout(() => {
         const responses = [
@@ -1977,7 +1976,7 @@ export default function UserPortal() {
           "I'm on it! Let me walk you through this step by step.",
           "Perfect! I can definitely help you resolve this issue."
         ];
-        
+
         const supportMessage = {
           id: chatMessages.length + 2,
           text: responses[Math.floor(Math.random() * responses.length)],
@@ -1985,7 +1984,7 @@ export default function UserPortal() {
           timestamp: new Date().toISOString(),
           avatar: "TS"
         };
-        
+
         setChatMessages(prev => [...prev, supportMessage]);
       }, 1500);
     };
@@ -1993,7 +1992,7 @@ export default function UserPortal() {
     // Contact form submission
     const handleContactSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      
+
       if (!contactForm.name || !contactForm.email || !contactForm.description) {
         toast({
           title: "Missing Information",
@@ -2007,7 +2006,7 @@ export default function UserPortal() {
 
       try {
         const response = await apiRequest("POST", "/api/contact", contactForm);
-        
+
         if (response.ok) {
           toast({
             title: "Message Sent Successfully!",
@@ -2072,20 +2071,20 @@ export default function UserPortal() {
               <div className="hidden md:block">
                 <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
                   <TabsList className="grid w-full grid-cols-3 mb-4 md:mb-6 bg-muted border-2 border-black h-10 md:h-12">
-                    <TabsTrigger 
-                      value="guide" 
+                    <TabsTrigger
+                      value="guide"
                       className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
                     >
                       AREA GUIDE
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="help" 
+                    <TabsTrigger
+                      value="help"
                       className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
                     >
                       AREA HELP
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="contact" 
+                    <TabsTrigger
+                      value="contact"
                       className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2"
                     >
                       AREA CONTACT
@@ -2117,8 +2116,6 @@ export default function UserPortal() {
                 {/* Area Guide - FAQ Section Style */}
                 {activeHelpTab === "guide" && (
                   <div className="mt-0">
-                    
-
                     {/* FAQ Items - Landing Page Style */}
                     <div className="space-y-4 md:space-y-6">
                       {[
@@ -2204,8 +2201,8 @@ export default function UserPortal() {
                       {/* Chat Messages - WhatsApp Style */}
                       <div className="chat-container bg-[#f0f2f5] min-h-[300px] md:min-h-[500px] p-3 md:p-4 space-y-2 md:space-y-3 overflow-y-auto">
                         {chatMessages.map((message) => (
-                          <div 
-                            key={message.id} 
+                          <div
+                            key={message.id}
                             className={`flex items-end gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                           >
                             {message.sender === 'support' && (
@@ -2213,11 +2210,11 @@ export default function UserPortal() {
                                 {message.avatar}
                               </div>
                             )}
-                            
-                            <div 
+
+                            <div
                               className={`chat-message max-w-[80%] md:max-w-[70%] px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm ${
-                                message.sender === 'user' 
-                                  ? 'bg-primary text-black ml-auto' 
+                                message.sender === 'user'
+                                  ? 'bg-primary text-black ml-auto'
                                   : 'bg-white text-black border border-gray-200'
                               }`}
                             >
@@ -2276,7 +2273,7 @@ export default function UserPortal() {
                         <div>
                           <TechnicalLabel text="FULL NAME" className="mb-3 font-black" />
                           <div className="relative">
-                            <Input 
+                            <Input
                               type="text"
                               required
                               value={contactForm.name}
@@ -2294,7 +2291,7 @@ export default function UserPortal() {
                         <div>
                           <TechnicalLabel text="EMAIL ADDRESS" className="mb-3 font-black" />
                           <div className="relative">
-                            <Input 
+                            <Input
                               type="email"
                               required
                               value={contactForm.email}
@@ -2328,7 +2325,7 @@ export default function UserPortal() {
                           </div>
                         </div>
 
-                        <Button 
+                        <Button
                           type="submit"
                           disabled={isContactSubmitting}
                           className="contact-form-submit w-full bg-black text-white text-base md:text-xl font-black py-4 hover:bg-primary hover:text-black transition-colors border-2 border-black disabled:opacity-50 min-h-[50px] flex items-center justify-center rounded"
