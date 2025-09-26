@@ -1531,292 +1531,313 @@ export default function UserPortal() {
     return (
       <div className="max-w-4xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
         {/* Progressive Payout Interface */}
-        <div className="wireframe-border bg-gradient-to-br from-background to-muted/20 p-4 md:p-8 min-h-[600px] relative">
-          {/* Header with Current Balance */}
-          <div className="text-center mb-6 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-3 py-2 border-2 border-black mb-4">
-              <Wallet className="w-4 h-4" />
-              <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white text-xs" />
-            </div>
-            
-            <div className="mb-4">
-              <TechnicalLabel text="CURRENT BALANCE" className="text-muted-foreground text-sm mb-2" />
-              <div className="text-2xl md:text-3xl font-black text-primary">
-                {formatCurrency(displayUser?.availableBalance || '0.00')}
+        <div className="payout-section-wrapper wireframe-border bg-gradient-to-br from-background to-muted/20">
+          <div className="payout-main-container">
+            {/* Header with Current Balance */}
+            <div className="text-center mb-6 md:mb-8 pt-4 md:pt-8">
+              <div className="inline-flex items-center gap-2 bg-black text-white px-3 py-2 border-2 border-black mb-4">
+                <Wallet className="w-4 h-4" />
+                <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white text-xs" />
               </div>
-            </div>
-
-            {/* Step Indicator */}
-            <div className="flex items-center justify-center gap-4 mb-6">
-              {[1, 2, 3].map((step) => (
-                <div key={step} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black text-sm transition-all ${
-                    currentStep >= step ? 'bg-primary text-black' : 'bg-background text-foreground'
-                  }`}>
-                    {step}
-                  </div>
-                  {step < 3 && (
-                    <div className={`w-8 h-0.5 mx-2 transition-all ${
-                      currentStep > step ? 'bg-primary' : 'bg-muted-foreground/30'
-                    }`} />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Step 1: Amount Input with Numeric Keypad */}
-          {currentStep === 1 && (
-            <div className="max-w-md mx-auto">
-              <div className="text-center mb-8">
-                <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-foreground mb-4 text-sm" />
-                <div className="text-4xl md:text-6xl font-black text-foreground mb-2 min-h-[80px] flex items-center justify-center">
-                  ₨ {withdrawAmount || "0.00"}
-                </div>
-                <div className="w-full h-1 bg-muted-foreground/30 mb-6" />
-              </div>
-
-              {/* Numeric Keypad */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => handleNumberInput(num.toString())}
-                    className="industrial-keypad-button h-16 bg-background border-2 border-black text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105"
-                  >
-                    {num}
-                  </button>
-                ))}
-                <button
-                  onClick={() => handleNumberInput("0")}
-                  className="industrial-keypad-button h-16 bg-background border-2 border-black text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105 col-span-2"
-                >
-                  0
-                </button>
-                <button
-                  onClick={handleBackspace}
-                  className="industrial-keypad-button h-16 bg-destructive/10 border-2 border-destructive text-destructive hover:bg-destructive/20 transition-all duration-200 hover:transform hover:scale-105 flex items-center justify-center"
-                >
-                  ⌫
-                </button>
-              </div>
-
-              {/* Clear Button */}
-              <div className="text-center mb-6">
-                <button
-                  onClick={handleClear}
-                  className="industrial-button-secondary px-6 py-2 text-sm"
-                >
-                  CLEAR ALL
-                </button>
-              </div>
-
-              {/* Minimum Amount Notice */}
-              <div className="text-center text-sm text-muted-foreground">
-                <TechnicalLabel text="MINIMUM WITHDRAWAL: ₨ 100" className="text-muted-foreground" />
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Payment Method Selection */}
-          {currentStep === 2 && (
-            <div className="max-w-2xl mx-auto">
-              <div className="text-center mb-8">
-                <TechnicalLabel text="SELECT PAYMENT METHOD" className="text-foreground mb-4 text-sm" />
-                <div className="text-2xl font-black text-primary mb-2">
-                  Withdrawing {formatCurrency(withdrawAmount)}
-                </div>
-              </div>
-
-              <div className="grid gap-4 mb-6">
-                {paymentMethods.map((method) => {
-                  const IconComponent = method.icon;
-                  const isSelected = selectedMethod === method.id;
-                  
-                  return (
-                    <button
-                      key={method.id}
-                      onClick={() => setSelectedMethod(method.id)}
-                      className={`payment-method-selection-card group flex items-center p-4 md:p-6 border-2 transition-all duration-300 ${
-                        isSelected 
-                          ? 'border-primary bg-primary/10 transform scale-105 shadow-lg' 
-                          : 'border-black bg-background hover:bg-muted/50 hover:transform hover:scale-105'
-                      }`}
-                    >
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 ${
-                        isSelected ? 'bg-primary/30' : 'bg-muted'
-                      }`}>
-                        <IconComponent className={`w-6 h-6 ${
-                          isSelected ? 'text-primary' : 'text-muted-foreground'
-                        }`} />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <TechnicalLabel 
-                          text={method.name} 
-                          className={`font-black text-sm mb-1 ${
-                            isSelected ? 'text-primary' : 'text-foreground'
-                          }`} 
-                        />
-                        <div className="text-xs text-muted-foreground">{method.description}</div>
-                        <div className="text-xs text-muted-foreground">Processing: {method.processing}</div>
-                      </div>
-                      {isSelected && (
-                        <CheckCircle2 className="w-6 h-6 text-primary" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Payment Details Input */}
-          {currentStep === 3 && (
-            <div className="max-w-md mx-auto">
-              <div className="text-center mb-8">
-                <TechnicalLabel text="ENTER PAYMENT DETAILS" className="text-foreground mb-4 text-sm" />
-                <div className="text-xl font-black text-primary mb-2">
-                  {paymentMethods.find(m => m.id === selectedMethod)?.name}
-                </div>
-                <div className="text-lg text-foreground">
-                  {formatCurrency(withdrawAmount)}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {selectedMethod === 'bank' ? (
-                  <div>
-                    <TechnicalLabel text="BANK IBAN" className="text-foreground mb-2 text-sm" />
-                    <Input
-                      type="text"
-                      value={paymentDetails.iban}
-                      onChange={(e) => setPaymentDetails(prev => ({...prev, iban: e.target.value}))}
-                      placeholder="Enter Bank IBAN"
-                      className="industrial-input h-12 text-base"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <div>
-                      <TechnicalLabel text="FULL NAME" className="text-foreground mb-2 text-sm" />
-                      <Input
-                        type="text"
-                        value={paymentDetails.name}
-                        onChange={(e) => setPaymentDetails(prev => ({...prev, name: e.target.value}))}
-                        placeholder="Enter Full Name"
-                        className="industrial-input h-12 text-base"
-                      />
-                    </div>
-                    
-                    <div>
-                      <TechnicalLabel text="MOBILE NUMBER" className="text-foreground mb-2 text-sm" />
-                      <Input
-                        type="text"
-                        value={paymentDetails.number}
-                        onChange={(e) => setPaymentDetails(prev => ({...prev, number: e.target.value}))}
-                        placeholder="03XXXXXXXXX"
-                        className="industrial-input h-12 text-base"
-                      />
-                    </div>
-                    
-                    <div>
-                      <TechnicalLabel text="CNIC / ID NUMBER" className="text-foreground mb-2 text-sm" />
-                      <Input
-                        type="text"
-                        value={paymentDetails.id}
-                        onChange={(e) => setPaymentDetails(prev => ({...prev, id: e.target.value}))}
-                        placeholder="XXXXX-XXXXXXX-X"
-                        className="industrial-input h-12 text-base"
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Navigation Buttons - Always Visible */}
-          <div className="absolute bottom-4 left-4 right-4 flex justify-between">
-            <Button
-              onClick={() => setShowHistory(!showHistory)}
-              variant="outline"
-              className="border-2 border-black text-foreground hover:bg-black hover:text-white px-6 py-3 font-black"
-            >
-              <History className="w-4 h-4 mr-2" />
-              HISTORY
-            </Button>
-            
-            <div className="flex gap-3">
-              {currentStep > 1 && (
-                <Button
-                  onClick={handleBack}
-                  variant="outline"
-                  className="border-2 border-black text-foreground hover:bg-black hover:text-white px-6 py-3 font-black"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  BACK
-                </Button>
-              )}
               
-              <Button
-                onClick={handleNext}
-                disabled={!canProceed() || isProcessing}
-                className="bg-primary hover:bg-primary/80 text-black px-6 py-3 font-black border-2 border-black"
-              >
-                {isProcessing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    PROCESSING...
-                  </>
-                ) : currentStep === 3 ? (
-                  <>
-                    <Zap className="w-4 h-4 mr-2" />
-                    SUBMIT
-                  </>
-                ) : (
-                  <>
-                    NEXT
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
+              <div className="mb-4">
+                <TechnicalLabel text="CURRENT BALANCE" className="text-muted-foreground text-sm mb-2" />
+                <div className="text-2xl md:text-3xl font-black text-primary">
+                  {formatCurrency(displayUser?.availableBalance || '0.00')}
+                </div>
+              </div>
+
+              {/* Step Indicator */}
+              <div className="flex items-center justify-center gap-4 mb-6">
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-black text-sm transition-all ${
+                      currentStep >= step ? 'bg-primary text-black' : 'bg-background text-foreground'
+                    }`}>
+                      {step}
+                    </div>
+                    {step < 3 && (
+                      <div className={`w-8 h-0.5 mx-2 transition-all ${
+                        currentStep > step ? 'bg-primary' : 'bg-muted-foreground/30'
+                      }`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="payout-step-content">
+              {/* Step 1: Amount Input with Numeric Keypad */}
+              {currentStep === 1 && (
+                <div className="payout-keypad-container">
+                  <div className="text-center mb-8">
+                    <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-foreground mb-4 text-sm md:text-base font-black" />
+                    <div className="payout-amount-display text-3xl md:text-5xl font-black text-foreground">
+                      ₨ {withdrawAmount || "0.00"}
+                    </div>
+                    <div className="w-full h-1 bg-muted-foreground/30 mt-4" />
+                  </div>
+
+                  {/* Enhanced Desktop Keypad */}
+                  <div className="payout-keypad-grid">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => handleNumberInput(num.toString())}
+                        className="payout-keypad-button"
+                      >
+                        {num}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => handleNumberInput("0")}
+                      className="payout-keypad-button col-span-2"
+                    >
+                      0
+                    </button>
+                    <button
+                      onClick={handleBackspace}
+                      className="payout-keypad-button bg-destructive/10 border-destructive text-destructive hover:bg-destructive/20 flex items-center justify-center text-xl"
+                    >
+                      ⌫
+                    </button>
+                  </div>
+
+                  {/* Clear Button */}
+                  <div className="text-center mb-6">
+                    <button
+                      onClick={handleClear}
+                      className="industrial-button-secondary px-6 py-3 text-sm font-black"
+                    >
+                      CLEAR ALL
+                    </button>
+                  </div>
+
+                  {/* Minimum Amount Notice */}
+                  <div className="text-center">
+                    <TechnicalLabel text="MINIMUM WITHDRAWAL: ₨ 100" className="text-muted-foreground text-sm" />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Payment Method Selection */}
+              {currentStep === 2 && (
+                <div className="max-w-2xl mx-auto">
+                  <div className="text-center mb-8">
+                    <TechnicalLabel text="SELECT PAYMENT METHOD" className="text-foreground mb-4 text-sm md:text-base font-black" />
+                    <div className="text-xl md:text-2xl font-black text-primary mb-2">
+                      Withdrawing {formatCurrency(withdrawAmount)}
+                    </div>
+                  </div>
+
+                  <div className="payout-method-grid">
+                    {paymentMethods.map((method) => {
+                      const IconComponent = method.icon;
+                      const isSelected = selectedMethod === method.id;
+                      
+                      return (
+                        <button
+                          key={method.id}
+                          onClick={() => setSelectedMethod(method.id)}
+                          className={`payout-method-card flex items-center ${
+                            isSelected ? 'selected' : ''
+                          }`}
+                        >
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 border-2 border-black ${
+                            isSelected ? 'bg-primary text-black' : 'bg-muted text-muted-foreground'
+                          }`}>
+                            <IconComponent className="w-6 h-6" />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <TechnicalLabel 
+                              text={method.name} 
+                              className={`font-black text-sm md:text-base mb-1 ${
+                                isSelected ? 'text-primary' : 'text-foreground'
+                              }`} 
+                            />
+                            <div className="text-xs md:text-sm text-muted-foreground">{method.description}</div>
+                            <div className="text-xs text-muted-foreground">Processing: {method.processing}</div>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2 className="w-6 h-6 text-primary" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Payment Details Input */}
+              {currentStep === 3 && (
+                <div className="payout-details-form">
+                  <div className="text-center mb-8">
+                    <TechnicalLabel text="ENTER PAYMENT DETAILS" className="text-foreground mb-4 text-sm md:text-base font-black" />
+                    <div className="text-lg md:text-xl font-black text-primary mb-2">
+                      {paymentMethods.find(m => m.id === selectedMethod)?.name}
+                    </div>
+                    <div className="text-base md:text-lg font-bold text-foreground">
+                      {formatCurrency(withdrawAmount)}
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    {selectedMethod === 'bank' ? (
+                      <div className="payout-form-field">
+                        <TechnicalLabel text="BANK IBAN" className="text-foreground mb-3 text-sm font-black" />
+                        <Input
+                          type="text"
+                          value={paymentDetails.iban}
+                          onChange={(e) => setPaymentDetails(prev => ({...prev, iban: e.target.value}))}
+                          placeholder="Enter Bank IBAN"
+                          className="payout-form-input"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="payout-form-field">
+                          <TechnicalLabel text="FULL NAME" className="text-foreground mb-3 text-sm font-black" />
+                          <Input
+                            type="text"
+                            value={paymentDetails.name}
+                            onChange={(e) => setPaymentDetails(prev => ({...prev, name: e.target.value}))}
+                            placeholder="Enter Full Name"
+                            className="payout-form-input"
+                          />
+                        </div>
+                        
+                        <div className="payout-form-field">
+                          <TechnicalLabel text="MOBILE NUMBER" className="text-foreground mb-3 text-sm font-black" />
+                          <Input
+                            type="text"
+                            value={paymentDetails.number}
+                            onChange={(e) => setPaymentDetails(prev => ({...prev, number: e.target.value}))}
+                            placeholder="03XXXXXXXXX"
+                            className="payout-form-input"
+                          />
+                        </div>
+                        
+                        <div className="payout-form-field">
+                          <TechnicalLabel text="CNIC / ID NUMBER" className="text-foreground mb-3 text-sm font-black" />
+                          <Input
+                            type="text"
+                            value={paymentDetails.id}
+                            onChange={(e) => setPaymentDetails(prev => ({...prev, id: e.target.value}))}
+                            placeholder="XXXXX-XXXXXXX-X"
+                            className="payout-form-input"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Enhanced Navigation Area */}
+            <div className="payout-navigation-area">
+              <div className="payout-button-group">
+                <Button
+                  onClick={() => setShowHistory(true)}
+                  variant="outline"
+                  className="border-3 border-black text-foreground hover:bg-black hover:text-white px-6 py-3 font-black text-sm md:text-base"
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  HISTORY
+                </Button>
+                
+                <div className="flex gap-3">
+                  {currentStep > 1 && (
+                    <Button
+                      onClick={handleBack}
+                      variant="outline"
+                      className="border-3 border-black text-foreground hover:bg-black hover:text-white px-6 py-3 font-black text-sm md:text-base"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      BACK
+                    </Button>
+                  )}
+                  
+                  <Button
+                    onClick={handleNext}
+                    disabled={!canProceed() || isProcessing}
+                    className="bg-primary hover:bg-primary/80 text-black px-6 py-3 font-black border-3 border-black text-sm md:text-base"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        PROCESSING...
+                      </>
+                    ) : currentStep === 3 ? (
+                      <>
+                        <Zap className="w-4 h-4 mr-2" />
+                        SUBMIT
+                      </>
+                    ) : (
+                      <>
+                        NEXT
+                        <ChevronRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Transaction History Modal/Panel */}
+        {/* Enhanced Transaction History Modal */}
         {showHistory && (
-          <div className="mt-6 wireframe-border bg-background p-4 md:p-6">
-            <div className="flex items-center justify-between mb-6">
-              <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground font-black text-lg" />
-              <Button
-                onClick={() => setShowHistory(false)}
-                variant="outline"
-                size="sm"
-                className="border-2 border-black"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <div className="max-h-80 overflow-y-auto space-y-3">
-              {staticHistoryItems.map((item) => (
-                <div 
-                  key={item.id}
-                  className="p-4 border-2 border-black bg-muted/20 hover:bg-muted/40 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <TechnicalLabel text={item.method} className="text-foreground font-black text-sm" />
-                    <div className={`w-3 h-3 rounded-full ${
-                      item.status === 'COMPLETED' ? 'bg-green-500' :
-                      item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
-                    }`} />
+          <div className="payout-history-modal" onClick={(e) => e.target === e.currentTarget && setShowHistory(false)}>
+            <div className="payout-history-content">
+              <div className="payout-history-header">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <History className="w-6 h-6 text-white" />
+                    <TechnicalLabel text="TRANSACTION HISTORY" className="text-white font-black text-lg" />
                   </div>
-                  <div className="text-lg font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
-                  <div className="text-sm text-muted-foreground mb-1">{formatDate(item.date)}</div>
-                  <div className="text-xs text-muted-foreground">#{item.transactionId}</div>
+                  <Button
+                    onClick={() => setShowHistory(false)}
+                    variant="outline"
+                    size="sm"
+                    className="border-2 border-white text-white hover:bg-white hover:text-black"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    CLOSE
+                  </Button>
                 </div>
-              ))}
+              </div>
+              
+              <div className="payout-history-body">
+                <div className="space-y-3">
+                  {staticHistoryItems.map((item) => (
+                    <div 
+                      key={item.id}
+                      className="payout-history-item"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <TechnicalLabel text={item.method} className="text-foreground font-black text-sm" />
+                        <div className={`w-3 h-3 rounded-full border border-black ${
+                          item.status === 'COMPLETED' ? 'bg-green-500' :
+                          item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
+                        }`} />
+                      </div>
+                      <div className="text-lg font-black text-primary mb-2">{formatCurrency(item.amount)}</div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">{formatDate(item.date)}</div>
+                        <TechnicalLabel text={`#${item.transactionId}`} className="text-muted-foreground text-xs" />
+                      </div>
+                      <div className={`inline-block px-2 py-1 text-xs font-black border mt-2 ${
+                        item.status === 'COMPLETED' ? 'bg-green-100 text-green-800 border-green-600' :
+                        item.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-800 border-yellow-600' :
+                        'bg-orange-100 text-orange-800 border-orange-600'
+                      }`}>
+                        {item.status}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
