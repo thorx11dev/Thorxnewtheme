@@ -1892,42 +1892,7 @@ export default function UserPortal() {
           </div>
         </div>
 
-        {/* Full Transaction History - Only show when history is expanded */}
-        {showHistory && (
-          <div className="mt-8 wireframe-border bg-background p-4 md:p-6 lg:hidden">
-            <div className="flex items-center justify-between mb-6">
-              <TechnicalLabel text="COMPLETE TRANSACTION HISTORY" className="text-foreground font-black text-lg" />
-              <Button
-                onClick={() => setShowHistory(false)}
-                variant="outline"
-                size="sm"
-                className="border-2 border-black"
-              >
-                CLOSE
-              </Button>
-            </div>
-
-            <div className="max-h-80 overflow-y-auto space-y-3">
-              {staticHistoryItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-4 border-2 border-black bg-muted/20 hover:bg-muted/40 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <TechnicalLabel text={item.method} className="text-foreground font-black text-sm" />
-                    <div className={`w-3 h-3 rounded-full ${
-                      item.status === 'COMPLETED' ? 'bg-green-500' :
-                      item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
-                    }`} />
-                  </div>
-                  <div className="text-lg font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
-                  <div className="text-sm text-muted-foreground mb-1">{formatDate(item.date)}</div>
-                  <div className="text-xs text-muted-foreground">#{item.transactionId}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        
       </div>
     );
   }
