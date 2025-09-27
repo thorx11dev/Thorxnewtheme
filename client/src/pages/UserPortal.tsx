@@ -1581,8 +1581,7 @@ export default function UserPortal() {
                 </div>
 
                 {/* Step Labels */}
-                <div className="grid grid-cols-3 gap-4 text-xs font-black text-muted-foreground">
-                  <div className={currentStep === 1 ? 'text-primary' : ''}>AMOUNT</div>
+                <div className="grid grid-cols-2 gap-4 text-xs font-black text-muted-foreground">
                   <div className={currentStep === 2 ? 'text-primary' : ''}>METHOD</div>
                   <div className={currentStep === 3 ? 'text-primary' : ''}>DETAILS</div>
                 </div>
