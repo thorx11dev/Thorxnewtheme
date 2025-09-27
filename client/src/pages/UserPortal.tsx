@@ -1566,13 +1566,13 @@ export default function UserPortal() {
                 <div className="flex items-center justify-center gap-2 md:gap-4 mb-4 md:mb-6">
                   {[1, 2, 3].map((step) => (
                     <div key={step} className="flex items-center">
-                      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-black flex items-center justify-center font-black text-xs md:text-sm transition-all ${
-                        currentStep >= step ? 'bg-primary text-black' : 'bg-background text-foreground'
+                      <div className={`step-indicator w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-black flex items-center justify-center font-black text-xs md:text-sm ${
+                        currentStep >= step ? 'bg-primary text-black active' : 'bg-background text-foreground'
                       }`}>
                         {step}
                       </div>
                       {step < 3 && (
-                        <div className={`w-6 md:w-12 h-0.5 mx-1 md:mx-2 transition-all ${
+                        <div className={`w-6 md:w-12 h-0.5 mx-1 md:mx-2 transition-all duration-300 ${
                           currentStep > step ? 'bg-primary' : 'bg-muted-foreground/30'
                         }`} />
                       )}
@@ -1654,10 +1654,10 @@ export default function UserPortal() {
                           <button
                             key={method.id}
                             onClick={() => setSelectedMethod(method.id)}
-                            className={`payment-method-selection-card group flex items-center p-3 md:p-4 lg:p-6 border-2 transition-all duration-300 w-full ${
+                            className={`payment-method-selection-card group flex items-center p-3 md:p-4 lg:p-6 border-2 w-full ${
                               isSelected
-                                ? 'border-primary bg-primary/10 transform scale-105 shadow-lg'
-                                : 'border-black bg-background hover:bg-muted/50 hover:transform hover:scale-105'
+                                ? 'border-primary bg-primary/10 selected'
+                                : 'border-black bg-background'
                             }`}
                           >
                             <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center mr-3 md:mr-4 ${
