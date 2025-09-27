@@ -1548,104 +1548,106 @@ export default function UserPortal() {
           </div>
         </div>
 
-        {/* Main Content Area - Single Column Layout for Mobile, Two Column for Desktop */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
-          {/* Main Payout Interface - Full Width on Mobile, 2/3 width on Desktop */}
+        {/* Main Content Area - Two Column Layout for Desktop */}
+        <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
+          {/* Main Payout Interface - Left Column (2/3 width) */}
           <div className="lg:col-span-2">
-            <div className="wireframe-border bg-gradient-to-br from-background to-muted/20 p-3 md:p-6 lg:p-8 relative">
+            <div className="wireframe-border bg-gradient-to-br from-background to-muted/20 p-4 md:p-8 relative">
               {/* Current Balance Display */}
-              <div className="text-center mb-4 md:mb-6 lg:mb-8">
-                <div className="mb-3 md:mb-4">
-                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-xs md:text-sm mb-2" />
-                  <div className="text-xl md:text-3xl lg:text-4xl font-black text-primary">
+              <div className="text-center mb-6 md:mb-8">
+                <div className="mb-4">
+                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-sm mb-2" />
+                  <div className="text-2xl md:text-4xl font-black text-primary">
                     {formatCurrency(displayUser?.availableBalance || '0.00')}
                   </div>
                 </div>
 
-                {/* Step Indicator - Mobile Optimized */}
-                <div className="flex items-center justify-center gap-2 md:gap-4 mb-4 md:mb-6">
+                {/* Step Indicator */}
+                <div className="flex items-center justify-center gap-4 mb-6">
                   {[1, 2, 3].map((step) => (
                     <div key={step} className="flex items-center">
-                      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-black flex items-center justify-center font-black text-xs md:text-sm transition-all ${
+                      <div className={`w-10 h-10 rounded-full border-2 border-black flex items-center justify-center font-black text-sm transition-all ${
                         currentStep >= step ? 'bg-primary text-black' : 'bg-background text-foreground'
                       }`}>
                         {step}
                       </div>
                       {step < 3 && (
-                        <div className={`w-6 md:w-12 h-0.5 mx-1 md:mx-2 transition-all ${
+                        <div className={`w-12 h-0.5 mx-2 transition-all ${
                           currentStep > step ? 'bg-primary' : 'bg-muted-foreground/30'
                         }`} />
                       )}
                     </div>
                   ))}
                 </div>
+
+                
               </div>
 
-              {/* Step Content Container - Mobile Optimized */}
-              <div className="min-h-[300px] md:min-h-[400px] flex flex-col justify-center overflow-hidden">
-                {/* Step 1: Amount Input with Numeric Keypad - Mobile Optimized */}
+              {/* Step Content Container */}
+              <div className="min-h-[400px] flex flex-col justify-center">
+                {/* Step 1: Amount Input with Numeric Keypad */}
                 {currentStep === 1 && (
-                  <div className="w-full max-w-sm md:max-w-lg mx-auto px-2 md:px-0">
-                    <div className="text-center mb-4 md:mb-8">
-                      <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-foreground mb-3 md:mb-4 text-xs md:text-sm" />
-                      <div className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 min-h-[40px] md:min-h-[60px] flex items-center justify-center border-b-2 border-muted-foreground/30 pb-2 md:pb-4">
+                  <div className="max-w-lg mx-auto w-full">
+                    <div className="text-center mb-8">
+                      <TechnicalLabel text="WITHDRAWAL AMOUNT" className="text-foreground mb-4 text-sm" />
+                      <div className="text-3xl md:text-5xl font-black text-foreground mb-4 min-h-[60px] flex items-center justify-center border-b-2 border-muted-foreground/30 pb-4">
                         ₨ {withdrawAmount || "0.00"}
                       </div>
                     </div>
 
-                    {/* Enhanced Numeric Keypad - Mobile Responsive */}
-                    <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-6 max-w-xs md:max-w-sm mx-auto">
+                    {/* Enhanced Numeric Keypad */}
+                    <div className="grid grid-cols-3 gap-3 mb-6 max-w-sm mx-auto">
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                         <button
                           key={num}
                           onClick={() => handleNumberInput(num.toString())}
-                          className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-background border-2 border-black text-lg md:text-xl lg:text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105"
+                          className="industrial-keypad-button h-14 md:h-16 bg-background border-2 border-black text-xl md:text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105"
                         >
                           {num}
                         </button>
                       ))}
                       <button
                         onClick={() => handleNumberInput("0")}
-                        className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-background border-2 border-black text-lg md:text-xl lg:text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105 col-span-2"
+                        className="industrial-keypad-button h-14 md:h-16 bg-background border-2 border-black text-xl md:text-2xl font-black text-foreground hover:bg-muted transition-all duration-200 hover:transform hover:scale-105 col-span-2"
                       >
                         0
                       </button>
                       <button
                         onClick={handleBackspace}
-                        className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-destructive/10 border-2 border-destructive text-destructive hover:bg-destructive/20 transition-all duration-200 hover:transform hover:scale-105 flex items-center justify-center"
+                        className="industrial-keypad-button h-14 md:h-16 bg-destructive/10 border-2 border-destructive text-destructive hover:bg-destructive/20 transition-all duration-200 hover:transform hover:scale-105 flex items-center justify-center"
                       >
                         ⌫
                       </button>
                     </div>
 
-                    {/* Clear Button - Mobile Optimized */}
-                    <div className="text-center mb-4 md:mb-6">
+                    {/* Clear Button */}
+                    <div className="text-center mb-6">
                       <button
                         onClick={handleClear}
-                        className="border-2 border-black bg-background hover:bg-black hover:text-white px-4 md:px-6 py-2 text-xs md:text-sm font-black transition-colors"
+                        className="border-2 border-black bg-background hover:bg-black hover:text-white px-6 py-2 text-sm font-black transition-colors"
                       >
                         CLEAR ALL
                       </button>
                     </div>
 
                     {/* Minimum Amount Notice */}
-                    <div className="text-center text-xs md:text-sm text-muted-foreground">
+                    <div className="text-center text-sm text-muted-foreground">
                       <TechnicalLabel text="MINIMUM WITHDRAWAL: ₨ 100" className="text-muted-foreground" />
                     </div>
                   </div>
                 )}
 
-                {/* Step 2: Payment Method Selection - Mobile Optimized */}
+                {/* Step 2: Payment Method Selection */}
                 {currentStep === 2 && (
-                  <div className="w-full max-w-lg md:max-w-2xl mx-auto px-2 md:px-0">
-                    <div className="text-center mb-4 md:mb-8">
-                      <TechnicalLabel text="SELECT PAYMENT METHOD" className="text-foreground mb-3 md:mb-4 text-xs md:text-sm" />
-                      <div className="text-lg md:text-xl lg:text-2xl font-black text-primary mb-2">
+                  <div className="max-w-2xl mx-auto w-full">
+                    <div className="text-center mb-8">
+                      <TechnicalLabel text="SELECT PAYMENT METHOD" className="text-foreground mb-4 text-sm" />
+                      <div className="text-xl md:text-2xl font-black text-primary mb-2">
                         Withdrawing {formatCurrency(withdrawAmount)}
                       </div>
                     </div>
 
-                    <div className="grid gap-3 md:gap-4 mb-4 md:mb-6">
+                    <div className="grid gap-4 mb-6">
                       {paymentMethods.map((method) => {
                         const IconComponent = method.icon;
                         const isSelected = selectedMethod === method.id;
@@ -1654,23 +1656,23 @@ export default function UserPortal() {
                           <button
                             key={method.id}
                             onClick={() => setSelectedMethod(method.id)}
-                            className={`payment-method-selection-card group flex items-center p-3 md:p-4 lg:p-6 border-2 transition-all duration-300 w-full ${
+                            className={`payment-method-selection-card group flex items-center p-4 md:p-6 border-2 transition-all duration-300 w-full ${
                               isSelected
                                 ? 'border-primary bg-primary/10 transform scale-105 shadow-lg'
                                 : 'border-black bg-background hover:bg-muted/50 hover:transform hover:scale-105'
                             }`}
                           >
-                            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center mr-3 md:mr-4 ${
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-4 ${
                               isSelected ? 'bg-primary/30' : 'bg-muted'
                             }`}>
-                              <IconComponent className={`w-5 h-5 md:w-6 md:h-6 ${
+                              <IconComponent className={`w-6 h-6 ${
                                 isSelected ? 'text-primary' : 'text-muted-foreground'
                               }`} />
                             </div>
                             <div className="flex-1 text-left">
                               <TechnicalLabel
                                 text={method.name}
-                                className={`font-black text-xs md:text-sm mb-1 ${
+                                className={`font-black text-sm mb-1 ${
                                   isSelected ? 'text-primary' : 'text-foreground'
                                 }`}
                               />
@@ -1678,7 +1680,7 @@ export default function UserPortal() {
                               <div className="text-xs text-muted-foreground">Processing: {method.processing}</div>
                             </div>
                             {isSelected && (
-                              <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                              <CheckCircle2 className="w-6 h-6 text-primary" />
                             )}
                           </button>
                         );
@@ -1687,63 +1689,63 @@ export default function UserPortal() {
                   </div>
                 )}
 
-                {/* Step 3: Payment Details Input - Mobile Optimized */}
+                {/* Step 3: Payment Details Input */}
                 {currentStep === 3 && (
-                  <div className="w-full max-w-sm md:max-w-lg mx-auto px-2 md:px-0">
-                    <div className="text-center mb-4 md:mb-8">
-                      <TechnicalLabel text="ENTER PAYMENT DETAILS" className="text-foreground mb-3 md:mb-4 text-xs md:text-sm" />
-                      <div className="text-base md:text-lg lg:text-xl font-black text-primary mb-2">
+                  <div className="max-w-lg mx-auto w-full">
+                    <div className="text-center mb-8">
+                      <TechnicalLabel text="ENTER PAYMENT DETAILS" className="text-foreground mb-4 text-sm" />
+                      <div className="text-lg md:text-xl font-black text-primary mb-2">
                         {paymentMethods.find(m => m.id === selectedMethod)?.name}
                       </div>
-                      <div className="text-sm md:text-base lg:text-lg text-foreground">
+                      <div className="text-base md:text-lg text-foreground">
                         {formatCurrency(withdrawAmount)}
                       </div>
                     </div>
 
-                    <div className="space-y-4 md:space-y-6">
+                    <div className="space-y-6">
                       {selectedMethod === 'bank' ? (
                         <div>
-                          <TechnicalLabel text="BANK IBAN" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                          <TechnicalLabel text="BANK IBAN" className="text-foreground mb-3 text-sm font-black" />
                           <Input
                             type="text"
                             value={paymentDetails.iban}
                             onChange={(e) => setPaymentDetails(prev => ({...prev, iban: e.target.value}))}
                             placeholder="PK36 SCBL 0000 0011 2345 6702"
-                            className="industrial-input h-12 md:h-14 text-sm md:text-base border-2 border-black"
+                            className="industrial-input h-14 text-base border-2 border-black"
                           />
                         </div>
                       ) : (
                         <>
                           <div>
-                            <TechnicalLabel text="FULL NAME" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                            <TechnicalLabel text="FULL NAME" className="text-foreground mb-3 text-sm font-black" />
                             <Input
                               type="text"
                               value={paymentDetails.name}
                               onChange={(e) => setPaymentDetails(prev => ({...prev, name: e.target.value}))}
                               placeholder="Enter Full Name"
-                              className="industrial-input h-12 md:h-14 text-sm md:text-base border-2 border-black"
+                              className="industrial-input h-14 text-base border-2 border-black"
                             />
                           </div>
 
                           <div>
-                            <TechnicalLabel text="MOBILE NUMBER" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                            <TechnicalLabel text="MOBILE NUMBER" className="text-foreground mb-3 text-sm font-black" />
                             <Input
                               type="text"
                               value={paymentDetails.number}
                               onChange={(e) => setPaymentDetails(prev => ({...prev, number: e.target.value}))}
                               placeholder="03XXXXXXXXX"
-                              className="industrial-input h-12 md:h-14 text-sm md:text-base border-2 border-black"
+                              className="industrial-input h-14 text-base border-2 border-black"
                             />
                           </div>
 
                           <div>
-                            <TechnicalLabel text="CNIC / ID NUMBER" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                            <TechnicalLabel text="CNIC / ID NUMBER" className="text-foreground mb-3 text-sm font-black" />
                             <Input
                               type="text"
                               value={paymentDetails.id}
                               onChange={(e) => setPaymentDetails(prev => ({...prev, id: e.target.value}))}
                               placeholder="XXXXX-XXXXXXX-X"
-                              className="industrial-input h-12 md:h-14 text-sm md:text-base border-2 border-black"
+                              className="industrial-input h-14 text-base border-2 border-black"
                             />
                           </div>
                         </>
@@ -1753,51 +1755,49 @@ export default function UserPortal() {
                 )}
               </div>
 
-              {/* Navigation Buttons - Mobile Optimized */}
-              <div className="border-t-2 border-black pt-4 md:pt-6 mt-4 md:mt-8">
-                <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 md:gap-0">
-                  <div className="flex gap-2 md:gap-3 justify-center md:justify-start">
-                    {currentStep > 1 && (
-                      <Button
-                        onClick={handleBack}
-                        variant="outline"
-                        className="border-2 border-black text-foreground hover:bg-black hover:text-white px-4 md:px-6 py-2 md:py-3 font-black text-sm md:text-base"
-                      >
-                        <ChevronLeft className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
-                        BACK
-                      </Button>
-                    )}
-                  </div>
-
-                  <Button
-                    onClick={handleNext}
-                    disabled={!canProceed() || isProcessing}
-                    className="bg-primary hover:bg-primary/80 text-black px-6 md:px-8 py-2 md:py-3 font-black border-2 border-black text-sm md:text-base"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <RefreshCw className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 animate-spin" />
-                        <span className="text-xs md:text-base">PROCESSING...</span>
-                      </>
-                    ) : currentStep === 3 ? (
-                      <>
-                        <Zap className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
-                        <span className="text-xs md:text-base">SUBMIT REQUEST</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-xs md:text-base">CONTINUE</span>
-                        <ChevronRight className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
-                      </>
-                    )}
-                  </Button>
+              {/* Navigation Buttons - Fixed Position */}
+              <div className="border-t-2 border-black pt-6 mt-8 flex justify-between items-center">
+                <div className="flex gap-3">
+                  {currentStep > 1 && (
+                    <Button
+                      onClick={handleBack}
+                      variant="outline"
+                      className="border-2 border-black text-foreground hover:bg-black hover:text-white px-6 py-3 font-black"
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      BACK
+                    </Button>
+                  )}
                 </div>
+
+                <Button
+                  onClick={handleNext}
+                  disabled={!canProceed() || isProcessing}
+                  className="bg-primary hover:bg-primary/80 text-black px-8 py-3 font-black border-2 border-black"
+                >
+                  {isProcessing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      PROCESSING...
+                    </>
+                  ) : currentStep === 3 ? (
+                    <>
+                      <Zap className="w-4 h-4 mr-2" />
+                      SUBMIT REQUEST
+                    </>
+                  ) : (
+                    <>
+                      CONTINUE
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </div>
 
-          {/* Side Panel - Hidden on Mobile, Visible on Desktop */}
-          <div className="hidden lg:block lg:col-span-1 space-y-6">
+          {/* Side Panel - Right Column (1/3 width) */}
+          <div className="lg:col-span-1 space-y-6">
             {/* Quick Stats */}
             <div className="wireframe-border p-4 md:p-6">
               <TechnicalLabel text="PAYOUT STATISTICS" className="text-foreground font-black text-sm mb-4" />
@@ -1887,44 +1887,7 @@ export default function UserPortal() {
           </div>
         </div>
 
-        {/* Mobile Transaction History - Show Below Main Interface */}
-        <div className="lg:hidden mt-6">
-          <div className="wireframe-border p-3 md:p-4">
-            <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground font-black text-sm mb-4" />
-            <Button
-              onClick={() => setShowHistory(!showHistory)}
-              variant="outline"
-              className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-2 md:py-3 font-black text-sm"
-            >
-              <History className="w-3 h-3 md:w-4 md:h-4 mr-2" />
-              {showHistory ? 'HIDE HISTORY' : 'VIEW HISTORY'}
-            </Button>
-
-            {showHistory && (
-              <div className="mt-4 max-h-64 overflow-y-auto border-t-2 border-black pt-4">
-                <div className="space-y-3">
-                  {staticHistoryItems.slice(0, 5).map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-3 border border-muted-foreground/20 bg-muted/10 hover:bg-muted/20 transition-colors"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <TechnicalLabel text={item.method} className="text-foreground font-black text-xs" />
-                        <div className={`w-2 h-2 rounded-full ${
-                          item.status === 'COMPLETED' ? 'bg-green-500' :
-                          item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
-                        }`} />
-                      </div>
-                      <div className="text-sm font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
-                      <div className="text-xs text-muted-foreground">{formatDate(item.date)}</div>
-                      <div className="text-xs text-muted-foreground">#{item.transactionId}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        
       </div>
     );
   }
