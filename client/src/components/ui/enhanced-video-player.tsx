@@ -186,18 +186,15 @@ export default function EnhancedVideoPlayer({
           {/* Video Content Background */}
           <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-gray-900/90 to-black/80" />
 
-          {/* Central Play Button - Wireframe Style Blue Triangle */}
+          {/* Minimal Clean Play Button */}
           <div className="relative z-10 flex items-center justify-center">
             {!isPlaying ? (
               <button
                 onClick={handlePlay}
-                className="relative transition-all duration-300 hover:scale-110"
+                className="group relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-full w-16 h-16 flex items-center justify-center transition-all duration-300 hover:bg-white/20 hover:scale-105 hover:border-white/40"
                 data-testid="button-play"
               >
-                {/* Blue Triangle Play Button - Matching Wireframe */}
-                <div className="w-20 h-20 bg-blue-600 border-2 border-black flex items-center justify-center">
-                  <div className="w-0 h-0 border-l-[12px] border-l-white border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent ml-1"></div>
-                </div>
+                <PlayCircle className="w-8 h-8 text-white group-hover:text-white/90 transition-colors" />
               </button>
             ) : (
               <div className="text-center text-white">
