@@ -88,7 +88,20 @@ export default function EnhancedVideoPlayer({
         (document as any).mozFullScreenElement ||
         (document as any).msFullscreenElement
       );
-      setIsFullscreen(isCurrentlyFullscreen);
+      
+      // Only update state if it's not a mobile manual fullscreen
+      if (!isMobileDevice || isCurrentlyFullscreen === isFullscreen) {
+        setIsFullscreen(isCurrentlyFullscreen);
+      }
+      
+      // Handle body classes for mobile
+      if (isMobileDevice) {
+        if (isCurrentlyFullscreen || isFullscreen) {
+          document.body.classList.add('video-fullscreen-active');
+        } else {
+          document.body.classList.remove('video-fullscreen-active');
+        }
+      }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -101,8 +114,12 @@ export default function EnhancedVideoPlayer({
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+      
+      // Cleanup body classes
+      document.body.classList.remove('video-fullscreen-active');
+      document.body.classList.remove('cinematic-mode');
     };
-  }, []);
+  }, [isMobileDevice, isFullscreen]);
 
   // Main timer for video progress
   useEffect(() => {
@@ -160,22 +177,42 @@ export default function EnhancedVideoPlayer({
     if (!isFullscreen) {
       // Enter fullscreen
       try {
-        if (playerRef.current) {
-          if (isMobileDevice) {
-            // Mobile fullscreen with orientation lock
-            if (document.documentElement.requestFullscreen) {
-              await document.documentElement.requestFullscreen();
+        if (isMobileDevice) {
+          // Mobile-specific fullscreen behavior
+          setIsFullscreen(true);
+          
+          // Add body class to prevent scrolling
+          document.body.classList.add('cinematic-mode');
+          document.documentElement.style.overflow = 'hidden';
+          
+          // Request fullscreen on the entire document for mobile
+          if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+          } else if ((document.documentElement as any).webkitRequestFullscreen) {
+            await (document.documentElement as any).webkitRequestFullscreen();
+          } else if ((document.documentElement as any).mozRequestFullScreen) {
+            await (document.documentElement as any).mozRequestFullScreen();
+          }
+          
+          // Try to lock orientation to landscape on mobile for video content
+          if (screen.orientation && screen.orientation.lock) {
+            try {
+              await screen.orientation.lock('landscape');
+            } catch (err) {
+              // Fallback: at least request landscape through CSS
+              console.log('Orientation lock not available, using CSS rotation');
             }
-            // Try to lock orientation to landscape on mobile
-            if (screen.orientation && screen.orientation.lock) {
-              try {
-                await screen.orientation.lock('landscape');
-              } catch (err) {
-                console.log('Orientation lock not supported');
-              }
-            }
-          } else {
-            // Desktop fullscreen
+          }
+          
+          // Force landscape viewport meta for better mobile experience
+          const viewport = document.querySelector('meta[name="viewport"]');
+          if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1, orientation=landscape');
+          }
+          
+        } else {
+          // Desktop fullscreen on the player container
+          if (playerRef.current) {
             if (playerRef.current.requestFullscreen) {
               await playerRef.current.requestFullscreen();
             } else if ((playerRef.current as any).webkitRequestFullscreen) {
@@ -186,35 +223,71 @@ export default function EnhancedVideoPlayer({
               await (playerRef.current as any).msRequestFullscreen();
             }
           }
+          setIsFullscreen(true);
         }
-        setIsFullscreen(true);
       } catch (error) {
         console.error('Failed to enter fullscreen:', error);
+        // Fallback for mobile when fullscreen API fails
+        if (isMobileDevice) {
+          setIsFullscreen(true);
+          document.body.classList.add('cinematic-mode');
+          document.documentElement.style.overflow = 'hidden';
+        }
       }
     } else {
       // Exit fullscreen
       try {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-        } else if ((document as any).webkitExitFullscreen) {
-          await (document as any).webkitExitFullscreen();
-        } else if ((document as any).mozCancelFullScreen) {
-          await (document as any).mozCancelFullScreen();
-        } else if ((document as any).msExitFullscreen) {
-          await (document as any).msExitFullscreen();
-        }
-        
-        // Unlock orientation on mobile
-        if (isMobileDevice && screen.orientation && screen.orientation.unlock) {
-          try {
-            screen.orientation.unlock();
-          } catch (err) {
-            console.log('Orientation unlock not supported');
+        if (isMobileDevice) {
+          // Mobile exit fullscreen
+          setIsFullscreen(false);
+          
+          // Remove body restrictions
+          document.body.classList.remove('cinematic-mode');
+          document.documentElement.style.overflow = '';
+          
+          // Exit browser fullscreen
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if ((document as any).webkitExitFullscreen) {
+            await (document as any).webkitExitFullscreen();
+          } else if ((document as any).mozCancelFullScreen) {
+            await (document as any).mozCancelFullScreen();
           }
+          
+          // Unlock orientation
+          if (screen.orientation && screen.orientation.unlock) {
+            try {
+              screen.orientation.unlock();
+            } catch (err) {
+              console.log('Orientation unlock not available');
+            }
+          }
+          
+          // Reset viewport meta
+          const viewport = document.querySelector('meta[name="viewport"]');
+          if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1');
+          }
+          
+        } else {
+          // Desktop exit fullscreen
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if ((document as any).webkitExitFullscreen) {
+            await (document as any).webkitExitFullscreen();
+          } else if ((document as any).mozCancelFullScreen) {
+            await (document as any).mozCancelFullScreen();
+          } else if ((document as any).msExitFullscreen) {
+            await (document as any).msExitFullscreen();
+          }
+          setIsFullscreen(false);
         }
-        setIsFullscreen(false);
       } catch (error) {
         console.error('Failed to exit fullscreen:', error);
+        // Ensure cleanup even if API calls fail
+        setIsFullscreen(false);
+        document.body.classList.remove('cinematic-mode');
+        document.documentElement.style.overflow = '';
       }
     }
   };
@@ -232,13 +305,17 @@ export default function EnhancedVideoPlayer({
   return (
     <div className={`w-full transition-all duration-300 ${
       isFullscreen 
-        ? 'fixed inset-0 z-50 bg-black' 
+        ? isMobileDevice 
+          ? 'fixed inset-0 z-50 bg-black video-player-fullscreen-mobile' 
+          : 'fixed inset-0 z-50 bg-black video-player-fullscreen'
         : ''
     }`}>
       {/* Industrial Frame Container */}
       <div className={`bg-black border-4 border-white transition-all duration-300 ${
         isFullscreen 
-          ? 'h-screen w-screen p-4' 
+          ? isMobileDevice
+            ? 'h-screen w-screen p-2 mobile-fullscreen-container'
+            : 'h-screen w-screen p-4' 
           : 'p-2'
       }`}>
         {/* Top Navigation Bar - Wireframe Style */}
@@ -275,7 +352,9 @@ export default function EnhancedVideoPlayer({
           ref={playerRef}
           className={`relative bg-gray-200 border-2 border-black flex items-center justify-center overflow-hidden transition-all duration-300 ${
             isFullscreen 
-              ? 'h-[calc(100vh-200px)] w-full' 
+              ? isMobileDevice
+                ? 'h-[calc(100vh-120px)] w-full mobile-video-area'
+                : 'h-[calc(100vh-200px)] w-full' 
               : 'aspect-video'
           }`}
           data-testid={`video-player-${tab.id}`}
