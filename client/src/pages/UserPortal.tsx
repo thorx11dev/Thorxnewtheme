@@ -961,17 +961,17 @@ export default function UserPortal() {
         </div>
 
         {/* Key Metrics Cards - Consistent with other sections */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-6 md:mb-10">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-10">
           {/* Ads Watched */}
           <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-3 md:p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/20" data-testid="card-work-ads-watched">
-            <div className="flex items-start justify-between mb-2 md:mb-3">
+            <div className="flex items-start justify-between mb-3">
               <Eye className="w-6 h-6 md:w-8 md:h-8 text-primary group-hover:text-primary/80 transition-colors" />
               <TechnicalLabel text="ADS WATCHED" className="text-muted-foreground text-xs leading-tight" />
             </div>
-            <p className="metric-value-mobile text-lg md:text-3xl font-black text-primary mb-1 md:mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-ads-watched">
+            <p className="metric-value-mobile text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-ads-watched">
               {todayAdViews?.count || 0}
             </p>
-            <div className="flex items-center gap-1 md:gap-2">
+            <div className="flex items-center gap-2">
               <TrendingUp className="w-3 h-3 text-green-500" />
               <TechnicalLabel text="+12% TODAY" className="text-green-500 text-xs leading-tight" />
             </div>
@@ -979,14 +979,14 @@ export default function UserPortal() {
 
           {/* Remaining Ads */}
           <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-3 md:p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10" data-testid="card-work-remaining-ads">
-            <div className="flex items-start justify-between mb-2 md:mb-3">
+            <div className="flex items-start justify-between mb-3">
               <Target className="w-6 h-6 md:w-8 md:h-8 text-foreground/80 group-hover:text-primary transition-colors" />
               <TechnicalLabel text="REMAINING ADS" className="text-muted-foreground text-xs leading-tight" />
             </div>
-            <p className="metric-value-mobile text-lg md:text-3xl font-black text-foreground mb-1 md:mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-remaining-ads">
+            <p className="metric-value-mobile text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-remaining-ads">
               {remainingAds}
             </p>
-            <div className="flex items-center gap-1 md:gap-2">
+            <div className="flex items-center gap-2">
               <Target className="w-3 h-3 text-muted-foreground" />
               <TechnicalLabel text="DAILY QUOTA LEFT" className="text-muted-foreground text-xs leading-tight" />
             </div>
@@ -994,14 +994,14 @@ export default function UserPortal() {
 
           {/* Today's Earnings */}
           <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-3 md:p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-work-today-earnings">
-            <div className="flex items-start justify-between mb-2 md:mb-3">
+            <div className="flex items-start justify-between mb-3">
               <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
               <TechnicalLabel text="TODAY'S EARNINGS" className="text-muted-foreground text-xs leading-tight" />
             </div>
-            <p className="metric-value-mobile text-lg md:text-3xl font-black text-foreground mb-1 md:mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-work-today-earnings">
+            <p className="metric-value-mobile text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-work-today-earnings">
               {formatCurrency((completedAds.size * 2.5))}
             </p>
-            <div className="flex items-center gap-1 md:gap-2">
+            <div className="flex items-center gap-2">
               <TrendingUp className="w-3 h-3 text-green-500" />
               <TechnicalLabel text="+₨2.50 SESSION" className="text-green-500 text-xs leading-tight" />
             </div>
@@ -1009,14 +1009,14 @@ export default function UserPortal() {
 
           {/* Daily Goal */}
           <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-3 md:p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10" data-testid="card-work-daily-goal">
-            <div className="flex items-start justify-between mb-2 md:mb-3">
+            <div className="flex items-start justify-between mb-3">
               <Award className="w-6 h-6 md:w-8 md:h-8 text-primary group-hover:text-primary/80 transition-colors" />
               <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs leading-tight" />
             </div>
-            <p className="metric-value-mobile text-lg md:text-3xl font-black text-primary mb-1 md:mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-daily-goal">
+            <p className="metric-value-mobile text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-daily-goal">
               {Math.round((completedAds.size / dailyLimit) * 100)}%
             </p>
-            <div className="flex items-center gap-1 md:gap-2">
+            <div className="flex items-center gap-2">
               <TrendingUp className="w-3 h-3 text-green-500" />
               <TechnicalLabel text="+15% PROGRESS" className="text-green-500 text-xs leading-tight" />
             </div>
@@ -1121,43 +1121,43 @@ export default function UserPortal() {
               <UserCheck className="w-4 h-4 md:w-5 md:h-5" />
               <TechnicalLabel text="REFERRAL PROTOCOL v3.14" className="text-white text-xs md:text-sm" />
             </div>
-            <h1 className="referrals-hero-title text-xl md:text-4xl lg:text-6xl xl:text-8xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
+            <h1 className="referrals-hero-title text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               BUILD YOUR <span className="text-primary">NETWORK</span><br />
               EARN MORE TOGETHER
             </h1>
             <p className="portal-hero-subtitle text-xs md:text-lg lg:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
               Invite friends, earn together, and build a passive income stream through referrals
             </p>
-            <Barcode className="w-16 md:w-32 lg:w-48 h-4 md:h-8 lg:h-10 mx-auto opacity-60" />
+            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
         {/* Top Metrics Section - 4 Cards as per wireframe */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-6 md:mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-10">
           {/* Total Referrals */}
           <div className="wireframe-section p-3 md:p-6 text-center">
-            <Users className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <div className="metric-value-mobile text-lg md:text-3xl font-black mb-1 md:mb-2 text-foreground">{referralsData?.stats.count || 0}</div>
+            <Users className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-3 text-primary" />
+            <div className="metric-value-mobile text-2xl md:text-3xl font-black mb-2 text-foreground">{referralsData?.stats.count || 0}</div>
             <TechnicalLabel text="TOTAL REFERRALS" className="text-muted-foreground text-xs leading-tight" />
           </div>
 
           {/* Referral Earnings */}
           <div className="p-3 md:p-6 text-center text-white bg-black border-2 border-black">
-            <DollarSign className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-white" />
-            <div className="metric-value-mobile text-lg md:text-3xl font-black mb-1 md:mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
+            <DollarSign className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-3 text-white" />
+            <div className="metric-value-mobile text-2xl md:text-3xl font-black mb-2 text-white">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</div>
             <TechnicalLabel text="REFERRAL EARNINGS" className="text-white/80 text-xs leading-tight" />
           </div>
 
           {/* Commission Rate */}
           <div className="wireframe-section p-3 md:p-6 text-center">
-            <TrendingUp className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <div className="metric-value-mobile text-lg md:text-3xl font-black mb-1 md:mb-2 text-foreground">25%</div>
+            <TrendingUp className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-3 text-primary" />
+            <div className="metric-value-mobile text-2xl md:text-3xl font-black mb-2 text-foreground">25%</div>
             <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs leading-tight" />
           </div>
 
           {/* Service Info */}
           <div className="wireframe-section p-3 md:p-6 text-center bg-[#e8e5d9]">
-            <RefreshCw className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-2 md:mb-3 text-primary" />
-            <div className="metric-value-mobile text-lg md:text-3xl font-black mb-1 md:mb-2 text-foreground">∞</div>
+            <RefreshCw className="w-6 h-6 md:w-8 md:h-8 mx-auto mb-3 text-primary" />
+            <div className="metric-value-mobile text-2xl md:text-3xl font-black mb-2 text-foreground">∞</div>
             <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs leading-tight" />
           </div>
         </div>
@@ -2058,7 +2058,7 @@ export default function UserPortal() {
             <p className="portal-hero-subtitle text-xs md:text-lg lg:text-xl text-muted-foreground mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-1 md:px-2">
               Professional support, instant solutions, comprehensive guidance
             </p>
-            <Barcode className="w-16 md:w-32 lg:w-48 h-4 md:h-8 lg:h-10 mx-auto opacity-60" />
+            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
 
