@@ -1113,13 +1113,13 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
-        <div className="wireframe-border p-3 md:p-8 mb-3 md:mb-8">
-          <div className="text-center mb-4 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-2 md:px-4 py-1 md:py-2 border-2 border-black mb-3 md:mb-4">
-              <UserCheck className="w-3 h-3 md:w-5 md:h-5" />
-              <TechnicalLabel text="REFERRAL PROTOCOL v3.14" className="text-white text-xs" />
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+          <div className="text-center mb-6 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
+              <UserCheck className="w-4 h-4 md:w-5 md:h-5" />
+              <TechnicalLabel text="REFERRAL PROTOCOL v3.14" className="text-white text-xs md:text-sm" />
             </div>
             <h1 className="referrals-hero-title text-xl md:text-4xl lg:text-6xl xl:text-8xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               BUILD YOUR <span className="text-primary">NETWORK</span><br />
@@ -1529,13 +1529,13 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Enhanced Header - Consistent with other sections */}
-        <div className="wireframe-border p-3 md:p-8 mb-3 md:mb-8">
-          <div className="text-center mb-4 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-2 md:px-4 py-1 md:py-2 border-2 border-black mb-3 md:mb-4">
-              <Wallet className="w-3 h-3 md:w-5 md:h-5" />
-              <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white text-xs" />
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+          <div className="text-center mb-6 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
+              <Wallet className="w-4 h-4 md:w-5 md:h-5" />
+              <TechnicalLabel text="PAYOUT PROTOCOL v4.2" className="text-white text-xs md:text-sm" />
             </div>
             <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               WITHDRAW <span className="text-primary">EARNINGS</span><br />
@@ -2043,13 +2043,13 @@ export default function UserPortal() {
     ];
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Work Section Style Header */}
-        <div className="wireframe-border p-3 md:p-8 mb-3 md:mb-8">
-          <div className="text-center mb-4 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-2 md:px-4 py-1 md:py-2 border-2 border-black mb-3 md:mb-4">
-              <LifeBuoy className="w-3 h-3 md:w-5 md:h-5" />
-              <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white text-xs" />
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+          <div className="text-center mb-6 md:mb-8">
+            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
+              <LifeBuoy className="w-4 h-4 md:w-5 md:h-5" />
+              <TechnicalLabel text="HELP PROTOCOL v3.21" className="text-white text-xs md:text-sm" />
             </div>
             <h1 className="help-hero-title text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               GET <span className="text-primary">SUPPORT</span><br />
