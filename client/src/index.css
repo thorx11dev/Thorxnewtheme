@@ -1943,7 +1943,7 @@
     background: #000 !important;
   }
 
-  /* Mobile Fullscreen Video Player - YouTube Style */
+  /* Mobile Fullscreen Video Player - No Rotation Style */
   .video-player-fullscreen-mobile {
     position: fixed !important;
     top: 0 !important;
@@ -1952,68 +1952,6 @@
     height: 100vh !important;
     z-index: 9999 !important;
     background: #000 !important;
-    transform-origin: center center !important;
-  }
-
-  /* Mobile fullscreen container optimizations */
-  .mobile-fullscreen-container {
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100vh !important;
-    width: 100vw !important;
-    padding: 0.5rem !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Mobile video area specific styling */
-  .mobile-video-area {
-    flex: 1 !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-  }
-
-  /* Landscape orientation optimizations for mobile */
-  @media screen and (orientation: landscape) and (max-height: 500px) {
-    .video-player-fullscreen-mobile {
-      height: 100vh !important;
-      width: 100vw !important;
-    }
-    
-    .mobile-fullscreen-container {
-      padding: 0.25rem !important;
-      gap: 0.25rem !important;
-    }
-    
-    .video-player-fullscreen-mobile .mobile-video-area {
-      height: calc(100vh - 100px) !important;
-      flex: 1 !important;
-    }
-    
-    .video-player-fullscreen-mobile .bg-white {
-      padding: 0.5rem !important;
-    }
-  }
-
-  /* Portrait orientation mobile fullscreen */
-  @media screen and (orientation: portrait) and (max-width: 768px) {
-    .video-player-fullscreen-mobile {
-      transform: rotate(90deg) !important;
-      transform-origin: center center !important;
-      width: 100vh !important;
-      height: 100vw !important;
-      position: fixed !important;
-      top: 50% !important;
-      left: 50% !important;
-      margin-left: -50vh !important;
-      margin-top: -50vw !important;
-    }
-    
-    .mobile-fullscreen-container {
-      width: 100vh !important;
-      height: 100vw !important;
-      transform: none !important;
-    }
   }
 
   /* Smooth transitions for fullscreen */
@@ -2035,22 +1973,23 @@
 
   /* Enhanced mobile viewport handling */
   @media (max-width: 768px) {
-    .video-player-fullscreen,
-    .video-player-fullscreen-mobile {
+    .video-player-fullscreen {
       position: fixed !important;
       z-index: 10000 !important;
       background: #000 !important;
+      width: 100vw !important;
+      height: 100vh !important;
     }
     
     /* Ensure proper touch handling in fullscreen */
-    .video-player-fullscreen-mobile * {
+    .video-player-fullscreen * {
       -webkit-user-select: none !important;
       -webkit-touch-callout: none !important;
       -webkit-tap-highlight-color: transparent !important;
     }
     
     /* Mobile fullscreen button improvements */
-    .video-player-fullscreen-mobile button {
+    .video-player-fullscreen button {
       touch-action: manipulation !important;
       -webkit-tap-highlight-color: transparent !important;
     }
@@ -2067,19 +2006,10 @@
 
   /* iOS Safari specific optimizations */
   @supports (-webkit-touch-callout: none) {
-    .video-player-fullscreen-mobile {
+    .video-player-fullscreen {
       /* iOS Safari viewport fix */
       height: 100vh !important;
       height: -webkit-fill-available !important;
-    }
-    
-    @media screen and (orientation: portrait) and (max-width: 768px) {
-      .video-player-fullscreen-mobile {
-        width: 100vh !important;
-        width: -webkit-fill-available !important;
-        height: 100vw !important;
-        height: -webkit-fill-available !important;
-      }
     }
   }
 
