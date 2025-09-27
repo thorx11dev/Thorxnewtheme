@@ -348,48 +348,6 @@ export default function UserPortal() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [nextSection, prevSection, setLocation]);
 
-  // Touch/swipe support
-  useEffect(() => {
-    let startX = 0;
-    let endX = 0;
-    let startY = 0;
-    let endY = 0;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      endX = e.touches[0].clientX;
-      endY = e.touches[0].clientY;
-    };
-
-    const handleTouchEnd = () => {
-      const deltaX = startX - endX;
-      const deltaY = Math.abs(startY - endY);
-
-      // Only trigger if horizontal swipe is longer than vertical
-      if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 50) {
-        if (deltaX > 0) {
-          nextSection();
-        } else {
-          prevSection();
-        }
-      }
-    };
-
-    window.addEventListener("touchstart", handleTouchStart);
-    window.addEventListener("touchmove", handleTouchMove);
-    window.addEventListener("touchend", handleTouchEnd);
-
-    return () => {
-      window.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
-    };
-  }, [nextSection, prevSection]);
-
   // Ad watching timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
