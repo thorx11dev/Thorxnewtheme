@@ -211,14 +211,14 @@ export default function EnhancedVideoPlayer({
             )}
           </div>
 
-          {/* Skip Button - Bottom Right Corner (Wireframe Style) */}
+          {/* Skip Button - Clearly Visible */}
           {showSkip && canSkip && !isCompleted && (
             <button
               onClick={handleSkip}
-              className="absolute bottom-4 right-4 bg-white text-black px-4 py-2 border-2 border-black hover:bg-gray-100 transition-all duration-200"
+              className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-black px-3 py-2 border border-black/20 rounded-md hover:bg-white hover:border-black/40 transition-all duration-200 shadow-lg z-20"
               data-testid="button-skip"
             >
-              <TechnicalLabel text="SKIP" className="text-black text-sm" />
+              <TechnicalLabel text="SKIP AD" className="text-black text-xs font-medium" />
             </button>
           )}
 
