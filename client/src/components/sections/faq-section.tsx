@@ -215,18 +215,18 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
 
             {/* Load More Button - Desktop */}
             {!showAll && (
-              <div className="flex justify-center pt-8">
+              <div className="flex justify-center pt-6">
                 <button
                   onClick={handleLoadMore}
                   disabled={isAnimating}
-                  className="group flex items-center gap-4 px-8 py-4 bg-primary text-primary-foreground border-2 border-black hover:bg-background hover:text-primary transition-all duration-300 disabled:opacity-50"
+                  className="group flex items-center gap-3 px-6 py-3 bg-primary text-primary-foreground border-2 border-black hover:bg-background hover:text-primary transition-all duration-300 disabled:opacity-50"
                   data-testid="load-more-desktop"
                 >
-                  <TechnicalLabel text="LOAD MORE PROTOCOLS" className="text-current font-bold" />
+                  <TechnicalLabel text="LOAD MORE" className="text-current font-bold text-sm" />
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-current rounded-full pulse-glow"></div>
+                    <div className="w-2 h-2 bg-current rounded-full pulse-glow"></div>
                     <ChevronDown 
-                      className={`w-6 h-6 transition-transform duration-300 ${
+                      className={`w-5 h-5 transition-transform duration-300 ${
                         isAnimating ? 'animate-spin' : 'group-hover:translate-y-1'
                       }`} 
                     />
