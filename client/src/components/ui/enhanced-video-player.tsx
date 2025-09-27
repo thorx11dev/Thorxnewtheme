@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import TechnicalLabel from "@/components/ui/technical-label";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   PlayCircle, 
   PauseCircle, 
@@ -41,6 +42,7 @@ export default function EnhancedVideoPlayer({
   autoplay = false,
   isMobile = false 
 }: EnhancedVideoPlayerProps) {
+  const isMobileDevice = useIsMobile();
   // Core player state
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -76,6 +78,31 @@ export default function EnhancedVideoPlayer({
   const formatCurrency = (amount: string) => {
     return `$${parseFloat(amount).toFixed(2)}`;
   };
+
+  // Fullscreen change event listeners
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
 
   // Main timer for video progress
   useEffect(() => {
@@ -129,8 +156,67 @@ export default function EnhancedVideoPlayer({
     }
   };
 
-  const handleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+  const handleFullscreen = async () => {
+    if (!isFullscreen) {
+      // Enter fullscreen
+      try {
+        if (playerRef.current) {
+          if (isMobileDevice) {
+            // Mobile fullscreen with orientation lock
+            if (document.documentElement.requestFullscreen) {
+              await document.documentElement.requestFullscreen();
+            }
+            // Try to lock orientation to landscape on mobile
+            if (screen.orientation && screen.orientation.lock) {
+              try {
+                await screen.orientation.lock('landscape');
+              } catch (err) {
+                console.log('Orientation lock not supported');
+              }
+            }
+          } else {
+            // Desktop fullscreen
+            if (playerRef.current.requestFullscreen) {
+              await playerRef.current.requestFullscreen();
+            } else if ((playerRef.current as any).webkitRequestFullscreen) {
+              await (playerRef.current as any).webkitRequestFullscreen();
+            } else if ((playerRef.current as any).mozRequestFullScreen) {
+              await (playerRef.current as any).mozRequestFullScreen();
+            } else if ((playerRef.current as any).msRequestFullscreen) {
+              await (playerRef.current as any).msRequestFullscreen();
+            }
+          }
+        }
+        setIsFullscreen(true);
+      } catch (error) {
+        console.error('Failed to enter fullscreen:', error);
+      }
+    } else {
+      // Exit fullscreen
+      try {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          await (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen();
+        }
+        
+        // Unlock orientation on mobile
+        if (isMobileDevice && screen.orientation && screen.orientation.unlock) {
+          try {
+            screen.orientation.unlock();
+          } catch (err) {
+            console.log('Orientation unlock not supported');
+          }
+        }
+        setIsFullscreen(false);
+      } catch (error) {
+        console.error('Failed to exit fullscreen:', error);
+      }
+    }
   };
 
   const handleVolumeToggle = () => {
@@ -144,38 +230,54 @@ export default function EnhancedVideoPlayer({
   };
 
   return (
-    <div className={`w-full ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
+    <div className={`w-full transition-all duration-300 ${
+      isFullscreen 
+        ? 'fixed inset-0 z-50 bg-black' 
+        : ''
+    }`}>
       {/* Industrial Frame Container */}
-      <div className="bg-black border-4 border-white p-2">
+      <div className={`bg-black border-4 border-white transition-all duration-300 ${
+        isFullscreen 
+          ? 'h-screen w-screen p-4' 
+          : 'p-2'
+      }`}>
         {/* Top Navigation Bar - Wireframe Style */}
-        <div className="bg-white border-2 border-black mb-2">
-          <div className="flex items-center justify-between p-2">
+        <div className={`bg-white border-2 border-black mb-2 transition-all duration-300 ${
+          isFullscreen ? 'mb-4' : 'mb-2'
+        }`}>
+          <div className={`flex items-center justify-between transition-all duration-300 ${
+            isFullscreen ? 'p-4' : 'p-2'
+          }`}>
             {/* Area Tabs - Left Side */}
             <div className="flex items-center gap-1">
               {areaTabs.map((areaTab) => (
                 <button
                   key={areaTab.id}
                   onClick={() => setActiveAreaTab(areaTab.id)}
-                  className={`px-3 py-1 text-xs border border-black transition-all duration-200 ${
+                  className={`px-3 py-1 border border-black transition-all duration-200 ${
+                    isFullscreen ? 'text-sm px-4 py-2' : 'text-xs'
+                  } ${
                     activeAreaTab === areaTab.id
                       ? 'bg-black text-white'
                       : 'bg-white text-black hover:bg-gray-100'
                   }`}
                   data-testid={`area-tab-${areaTab.id}`}
                 >
-                  <TechnicalLabel text={areaTab.label} className="text-xs" />
+                  <TechnicalLabel text={areaTab.label} className={isFullscreen ? "text-sm" : "text-xs"} />
                 </button>
               ))}
             </div>
-
-            
           </div>
         </div>
 
         {/* Main Video Content Area */}
         <div 
           ref={playerRef}
-          className="relative bg-gray-200 border-2 border-black aspect-video flex items-center justify-center overflow-hidden"
+          className={`relative bg-gray-200 border-2 border-black flex items-center justify-center overflow-hidden transition-all duration-300 ${
+            isFullscreen 
+              ? 'h-[calc(100vh-200px)] w-full' 
+              : 'aspect-video'
+          }`}
           data-testid={`video-player-${tab.id}`}
         >
           {/* Industrial Grid Pattern */}
@@ -191,20 +293,34 @@ export default function EnhancedVideoPlayer({
             {!isPlaying ? (
               <button
                 onClick={handlePlay}
-                className="group relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-full w-16 h-16 flex items-center justify-center transition-all duration-300 hover:bg-white/20 hover:scale-105 hover:border-white/40"
+                className={`group relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center transition-all duration-300 hover:bg-white/20 hover:scale-105 hover:border-white/40 ${
+                  isFullscreen ? 'w-24 h-24' : 'w-16 h-16'
+                }`}
                 data-testid="button-play"
               >
-                <PlayCircle className="w-8 h-8 text-white group-hover:text-white/90 transition-colors" />
+                <PlayCircle className={`text-white group-hover:text-white/90 transition-colors ${
+                  isFullscreen ? 'w-12 h-12' : 'w-8 h-8'
+                }`} />
               </button>
             ) : (
               <div className="text-center text-white">
-                <div className="text-4xl mb-2">{tab.icon}</div>
-                <TechnicalLabel text={tab.title} className="text-white text-lg mb-1" />
-                <p className="text-white/80 text-sm">{tab.description}</p>
+                <div className={`mb-2 ${isFullscreen ? 'text-6xl mb-4' : 'text-4xl'}`}>{tab.icon}</div>
+                <TechnicalLabel 
+                  text={tab.title} 
+                  className={`text-white mb-1 ${isFullscreen ? 'text-2xl mb-2' : 'text-lg'}`} 
+                />
+                <p className={`text-white/80 ${isFullscreen ? 'text-lg' : 'text-sm'}`}>{tab.description}</p>
                 {isCompleted && (
-                  <div className="mt-4 p-3 bg-green-600/20 border border-green-400">
-                    <TechnicalLabel text="AD COMPLETED" className="text-green-400" />
-                    <p className="text-white mt-1">You earned {formatCurrency(tab.reward)}</p>
+                  <div className={`mt-4 bg-green-600/20 border border-green-400 ${
+                    isFullscreen ? 'p-4 mt-6' : 'p-3'
+                  }`}>
+                    <TechnicalLabel 
+                      text="AD COMPLETED" 
+                      className={`text-green-400 ${isFullscreen ? 'text-lg' : ''}`} 
+                    />
+                    <p className={`text-white mt-1 ${isFullscreen ? 'text-lg mt-2' : ''}`}>
+                      You earned {formatCurrency(tab.reward)}
+                    </p>
                   </div>
                 )}
               </div>
@@ -215,22 +331,31 @@ export default function EnhancedVideoPlayer({
           {showSkip && canSkip && !isCompleted && (
             <button
               onClick={handleSkip}
-              className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-black px-3 py-2 border border-black/20 rounded-md hover:bg-white hover:border-black/40 transition-all duration-200 shadow-lg z-20"
+              className={`absolute bg-white/90 backdrop-blur-sm text-black border border-black/20 rounded-md hover:bg-white hover:border-black/40 transition-all duration-200 shadow-lg z-20 ${
+                isFullscreen 
+                  ? 'top-6 right-6 px-4 py-3' 
+                  : 'top-4 right-4 px-3 py-2'
+              }`}
               data-testid="button-skip"
             >
-              <TechnicalLabel text="SKIP AD" className="text-black text-xs font-medium" />
+              <TechnicalLabel 
+                text="SKIP AD" 
+                className={`text-black font-medium ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
+              />
             </button>
           )}
 
           {/* Progress Bar - Industrial Style */}
-          <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-3">
-            <div className="flex items-center justify-between mb-2">
+          <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
+            isFullscreen ? 'p-4' : 'p-3'
+          }`}>
+            <div className={`flex items-center justify-between ${isFullscreen ? 'mb-3' : 'mb-2'}`}>
               <TechnicalLabel 
                 text={`EARN ${formatCurrency(tab.reward)}`} 
-                className="text-white text-xs" 
+                className={`text-white ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
               />
-              <div className="flex items-center gap-2">
-                <span className="text-white/60 text-xs">
+              <div className="flex items-center gap-3">
+                <span className={`text-white/60 ${isFullscreen ? 'text-sm' : 'text-xs'}`}>
                   {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
                 </span>
                 <button
@@ -239,8 +364,8 @@ export default function EnhancedVideoPlayer({
                   data-testid="button-volume"
                 >
                   {isMuted || volume === 0 ? 
-                    <VolumeX className="w-4 h-4" /> : 
-                    <Volume2 className="w-4 h-4" />
+                    <VolumeX className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
+                    <Volume2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
                   }
                 </button>
                 <button
@@ -249,15 +374,17 @@ export default function EnhancedVideoPlayer({
                   data-testid="button-fullscreen"
                 >
                   {isFullscreen ? 
-                    <Minimize2 className="w-4 h-4" /> : 
-                    <Maximize2 className="w-4 h-4" />
+                    <Minimize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
+                    <Maximize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
                   }
                 </button>
               </div>
             </div>
             
             {/* Progress Bar with Industrial Styling */}
-            <div className="w-full bg-gray-600 border border-white/20 h-2">
+            <div className={`w-full bg-gray-600 border border-white/20 transition-all duration-300 ${
+              isFullscreen ? 'h-3' : 'h-2'
+            }`}>
               <div 
                 className="h-full bg-primary border-r border-white/40 transition-all duration-500"
                 style={{ width: `${adProgress}%` }}
@@ -273,25 +400,31 @@ export default function EnhancedVideoPlayer({
         </div>
 
         {/* Industrial Status Bar */}
-        <div className="bg-white border-2 border-black mt-2 p-2">
+        <div className={`bg-white border-2 border-black transition-all duration-300 ${
+          isFullscreen ? 'mt-4 p-4' : 'mt-2 p-2'
+        }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <TechnicalLabel 
                 text={`ACTIVE: ${activeAreaTab}`} 
-                className="text-black text-xs" 
+                className={`text-black ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
               />
               <TechnicalLabel 
                 text={`STATUS: ${isPlaying ? 'PLAYING' : isCompleted ? 'COMPLETE' : 'READY'}`} 
-                className="text-black text-xs" 
+                className={`text-black ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
               />
             </div>
             <div className="flex items-center gap-2">
               <TechnicalLabel 
                 text={`PROGRESS: ${Math.round(adProgress)}%`} 
-                className="text-black text-xs" 
+                className={`text-black ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
               />
-              <div className="w-4 h-4 bg-black border border-gray-400">
-                <div className="w-2 h-2 bg-primary m-0.5" />
+              <div className={`bg-black border border-gray-400 ${
+                isFullscreen ? 'w-5 h-5' : 'w-4 h-4'
+              }`}>
+                <div className={`bg-primary ${
+                  isFullscreen ? 'w-2.5 h-2.5 m-0.5' : 'w-2 h-2 m-0.5'
+                }`} />
               </div>
             </div>
           </div>
