@@ -287,28 +287,34 @@ export default function EnhancedVideoPlayer({
         : ''
     }`}>
       {/* Industrial Frame Container */}
-      <div className={`bg-black border-4 border-white transition-all duration-300 ${
+      <div className={`bg-black transition-all duration-300 ${
         isFullscreen 
           ? isMobileDevice
             ? 'h-screen w-screen p-1'
             : 'h-screen w-screen p-4' 
-          : 'p-2'
+          : isMobileDevice 
+            ? 'border-2 border-white p-1' 
+            : 'border-4 border-white p-2'
       }`}>
-        {/* Top Navigation Bar - Wireframe Style */}
-        <div className={`bg-white border-2 border-black mb-2 transition-all duration-300 ${
-          isFullscreen ? 'mb-4' : 'mb-2'
+        {/* Top Navigation Bar - Wireframe Style - Simplified for Mobile */}
+        <div className={`bg-white transition-all duration-300 ${
+          isFullscreen ? 'mb-4 border-2 border-black' : isMobileDevice ? 'mb-1 border border-black' : 'border-2 border-black mb-2'
         }`}>
           <div className={`flex items-center justify-between transition-all duration-300 ${
-            isFullscreen ? 'p-4' : 'p-2'
+            isFullscreen ? 'p-4' : isMobileDevice ? 'p-1.5' : 'p-2'
           }`}>
-            {/* Area Tabs - Left Side */}
-            <div className="flex items-center gap-1">
+            {/* Area Tabs - Left Side - Simplified for Mobile */}
+            <div className={`flex items-center ${isMobileDevice ? 'gap-0.5' : 'gap-1'}`}>
               {areaTabs.map((areaTab) => (
                 <button
                   key={areaTab.id}
                   onClick={() => setActiveAreaTab(areaTab.id)}
-                  className={`px-3 py-1 border border-black transition-all duration-200 ${
-                    isFullscreen ? 'text-sm px-4 py-2' : 'text-xs'
+                  className={`border border-black transition-all duration-200 ${
+                    isFullscreen 
+                      ? 'text-sm px-4 py-2' 
+                      : isMobileDevice 
+                        ? 'text-xs px-2 py-1' 
+                        : 'text-xs px-3 py-1'
                   } ${
                     activeAreaTab === areaTab.id
                       ? 'bg-black text-white'
@@ -316,7 +322,10 @@ export default function EnhancedVideoPlayer({
                   }`}
                   data-testid={`area-tab-${areaTab.id}`}
                 >
-                  <TechnicalLabel text={areaTab.label} className={isFullscreen ? "text-sm" : "text-xs"} />
+                  <TechnicalLabel 
+                    text={areaTab.label} 
+                    className={isFullscreen ? "text-sm" : isMobileDevice ? "text-xs" : "text-xs"} 
+                  />
                 </button>
               ))}
             </div>
@@ -326,17 +335,19 @@ export default function EnhancedVideoPlayer({
         {/* Main Video Content Area */}
         <div 
           ref={playerRef}
-          className={`relative bg-gray-200 border-2 border-black flex items-center justify-center overflow-hidden transition-all duration-300 ${
+          className={`relative bg-gray-200 flex items-center justify-center overflow-hidden transition-all duration-300 ${
             isFullscreen 
               ? isMobileDevice
-                ? 'h-[calc(100vh-100px)] w-full'
-                : 'h-[calc(100vh-200px)] w-full' 
-              : 'aspect-video'
+                ? 'h-[calc(100vh-80px)] w-full border border-black'
+                : 'h-[calc(100vh-200px)] w-full border-2 border-black' 
+              : isMobileDevice
+                ? 'aspect-video border border-black'
+                : 'aspect-video border-2 border-black'
           }`}
           data-testid={`video-player-${tab.id}`}
         >
-          {/* Industrial Grid Pattern */}
-          <div className="absolute inset-0 opacity-10">
+          {/* Industrial Grid Pattern - Hidden on Mobile for Cleaner Look */}
+          <div className={`absolute inset-0 ${isMobileDevice ? 'hidden' : 'opacity-10'}`}>
             <div className="industrial-grid" />
           </div>
 
@@ -400,17 +411,39 @@ export default function EnhancedVideoPlayer({
             </button>
           )}
 
-          {/* Progress Bar - Industrial Style */}
+          {/* Progress Bar - Simplified for Mobile */}
           <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
-            isFullscreen ? 'p-4' : 'p-3'
+            isFullscreen 
+              ? 'p-4' 
+              : isMobileDevice 
+                ? 'p-2' 
+                : 'p-3'
           }`}>
-            <div className={`flex items-center justify-between ${isFullscreen ? 'mb-3' : 'mb-2'}`}>
+            <div className={`flex items-center justify-between ${
+              isFullscreen 
+                ? 'mb-3' 
+                : isMobileDevice 
+                  ? 'mb-1' 
+                  : 'mb-2'
+            }`}>
               <TechnicalLabel 
                 text={`EARN ${formatCurrency(tab.reward)}`} 
-                className={`text-white ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
+                className={`text-white ${
+                  isFullscreen 
+                    ? 'text-sm' 
+                    : isMobileDevice 
+                      ? 'text-xs' 
+                      : 'text-xs'
+                }`} 
               />
-              <div className="flex items-center gap-3">
-                <span className={`text-white/60 ${isFullscreen ? 'text-sm' : 'text-xs'}`}>
+              <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-3'}`}>
+                <span className={`text-white/60 ${
+                  isFullscreen 
+                    ? 'text-sm' 
+                    : isMobileDevice 
+                      ? 'text-xs' 
+                      : 'text-xs'
+                }`}>
                   {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
                 </span>
                 <button
@@ -419,8 +452,20 @@ export default function EnhancedVideoPlayer({
                   data-testid="button-volume"
                 >
                   {isMuted || volume === 0 ? 
-                    <VolumeX className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
-                    <Volume2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
+                    <VolumeX className={
+                      isFullscreen 
+                        ? 'w-5 h-5' 
+                        : isMobileDevice 
+                          ? 'w-4 h-4' 
+                          : 'w-4 h-4'
+                    } /> : 
+                    <Volume2 className={
+                      isFullscreen 
+                        ? 'w-5 h-5' 
+                        : isMobileDevice 
+                          ? 'w-4 h-4' 
+                          : 'w-4 h-4'
+                    } />
                   }
                 </button>
                 <button
@@ -429,56 +474,108 @@ export default function EnhancedVideoPlayer({
                   data-testid="button-fullscreen"
                 >
                   {isFullscreen ? 
-                    <Minimize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
-                    <Maximize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
+                    <Minimize2 className={
+                      isFullscreen 
+                        ? 'w-5 h-5' 
+                        : isMobileDevice 
+                          ? 'w-4 h-4' 
+                          : 'w-4 h-4'
+                    } /> : 
+                    <Maximize2 className={
+                      isFullscreen 
+                        ? 'w-5 h-5' 
+                        : isMobileDevice 
+                          ? 'w-4 h-4' 
+                          : 'w-4 h-4'
+                    } />
                   }
                 </button>
               </div>
             </div>
             
-            {/* Progress Bar with Industrial Styling */}
-            <div className={`w-full bg-gray-600 border border-white/20 transition-all duration-300 ${
-              isFullscreen ? 'h-3' : 'h-2'
+            {/* Progress Bar with Simplified Mobile Styling */}
+            <div className={`w-full bg-gray-600 transition-all duration-300 ${
+              isFullscreen 
+                ? 'h-3 border border-white/20' 
+                : isMobileDevice 
+                  ? 'h-2 border-none rounded-sm' 
+                  : 'h-2 border border-white/20'
             }`}>
               <div 
-                className="h-full bg-primary border-r border-white/40 transition-all duration-500"
+                className={`h-full bg-primary transition-all duration-500 ${
+                  isMobileDevice ? 'rounded-sm' : 'border-r border-white/40'
+                }`}
                 style={{ width: `${adProgress}%` }}
               />
             </div>
           </div>
 
-          {/* Industrial Corner Accents */}
-          <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-white/40" />
-          <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-white/40" />
-          <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-white/40" />
-          <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-white/40" />
+          {/* Industrial Corner Accents - Simplified for Mobile */}
+          {!isMobileDevice && (
+            <>
+              <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-white/40" />
+              <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-white/40" />
+              <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-white/40" />
+              <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-white/40" />
+            </>
+          )}
         </div>
 
-        {/* Industrial Status Bar */}
-        <div className={`bg-white border-2 border-black transition-all duration-300 ${
-          isFullscreen ? 'mt-4 p-4' : 'mt-2 p-2'
+        {/* Industrial Status Bar - Simplified for Mobile */}
+        <div className={`bg-white transition-all duration-300 ${
+          isFullscreen 
+            ? 'mt-4 p-4 border-2 border-black' 
+            : isMobileDevice 
+              ? 'mt-1 p-1.5 border border-black' 
+              : 'mt-2 p-2 border-2 border-black'
         }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className={`flex items-center justify-between ${isMobileDevice ? 'text-xs' : ''}`}>
+            <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-4'}`}>
               <TechnicalLabel 
                 text={`ACTIVE: ${activeAreaTab}`} 
-                className={`text-black ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
+                className={`text-black ${
+                  isFullscreen 
+                    ? 'text-sm' 
+                    : isMobileDevice 
+                      ? 'text-xs' 
+                      : 'text-xs'
+                }`} 
               />
               <TechnicalLabel 
                 text={`STATUS: ${isPlaying ? 'PLAYING' : isCompleted ? 'COMPLETE' : 'READY'}`} 
-                className={`text-black ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
+                className={`text-black ${
+                  isFullscreen 
+                    ? 'text-sm' 
+                    : isMobileDevice 
+                      ? 'text-xs' 
+                      : 'text-xs'
+                }`} 
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className={`flex items-center ${isMobileDevice ? 'gap-1' : 'gap-2'}`}>
               <TechnicalLabel 
-                text={`PROGRESS: ${Math.round(adProgress)}%`} 
-                className={`text-black ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
+                text={`${Math.round(adProgress)}%`} 
+                className={`text-black ${
+                  isFullscreen 
+                    ? 'text-sm' 
+                    : isMobileDevice 
+                      ? 'text-xs' 
+                      : 'text-xs'
+                }`} 
               />
-              <div className={`bg-black border border-gray-400 ${
-                isFullscreen ? 'w-5 h-5' : 'w-4 h-4'
+              <div className={`bg-black ${
+                isFullscreen 
+                  ? 'w-5 h-5 border border-gray-400' 
+                  : isMobileDevice 
+                    ? 'w-3 h-3' 
+                    : 'w-4 h-4 border border-gray-400'
               }`}>
                 <div className={`bg-primary ${
-                  isFullscreen ? 'w-2.5 h-2.5 m-0.5' : 'w-2 h-2 m-0.5'
+                  isFullscreen 
+                    ? 'w-2.5 h-2.5 m-0.5' 
+                    : isMobileDevice 
+                      ? 'w-1.5 h-1.5 m-0.25' 
+                      : 'w-2 h-2 m-0.5'
                 }`} />
               </div>
             </div>
