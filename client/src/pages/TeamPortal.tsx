@@ -40,7 +40,8 @@ import {
   ChevronRight,
   TrendingUp,
   Bell,
-  Clock
+  Clock,
+  RefreshCw
 } from "lucide-react";
 
 
