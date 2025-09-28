@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import EnhancedVideoPlayer from "@/components/ui/enhanced-video-player";
 import IndustrialTabs, { WORK_TABS } from "@/components/ui/industrial-tabs";
 import MetricsCards from "@/components/ui/metrics-cards";
+import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
 import { useLocation } from "wouter";
 import {
   LogOut,
@@ -1478,7 +1479,7 @@ export default function UserPortal() {
       {
         id: 'jazzcash',
         name: 'JAZZ CASH',
-        icon: Phone,
+        LogoComponent: JazzCashLogo,
         description: 'Mobile Wallet Transfer',
         color: 'bg-gradient-to-r from-red-600 to-red-700',
         processing: '2-4 hours'
@@ -1486,7 +1487,7 @@ export default function UserPortal() {
       {
         id: 'easypaisa',
         name: 'EASY PAISA',
-        icon: CreditCard,
+        LogoComponent: EasyPaisaLogo,
         description: 'Digital Wallet Service',
         color: 'bg-gradient-to-r from-green-600 to-green-700',
         processing: '2-4 hours'
@@ -1494,7 +1495,7 @@ export default function UserPortal() {
       {
         id: 'bank',
         name: 'BANK TRANSFER',
-        icon: Home,
+        LogoComponent: BankTransferLogo,
         description: 'Direct Bank Account',
         color: 'bg-gradient-to-r from-blue-600 to-blue-700',
         processing: '24-48 hours'
@@ -1633,7 +1634,7 @@ export default function UserPortal() {
 
                     <div className="grid gap-3 md:gap-4 mb-4 md:mb-6">
                       {paymentMethods.map((method) => {
-                        const IconComponent = method.icon;
+                        const LogoComponent = method.LogoComponent;
                         const isSelected = selectedMethod === method.id;
 
                         return (
@@ -1647,11 +1648,9 @@ export default function UserPortal() {
                             }`}
                           >
                             <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center mr-3 md:mr-4 ${
-                              isSelected ? 'bg-primary/30' : 'bg-muted'
+                              isSelected ? 'bg-white' : 'bg-white'
                             }`}>
-                              <IconComponent className={`w-5 h-5 md:w-6 md:h-6 ${
-                                isSelected ? 'text-primary' : 'text-muted-foreground'
-                              }`} />
+                              <LogoComponent className="w-6 h-6 md:w-8 md:h-8" />
                             </div>
                             <div className="flex-1 text-left">
                               <TechnicalLabel
