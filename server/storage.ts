@@ -84,7 +84,7 @@ export interface IStorage {
   deleteUserCredential(credentialId: string): Promise<void>;
   
   // Team-specific user methods
-  getUsersByRole(role: 'user' | 'team'): Promise<User[]>;
+  getUsersByRole(role: 'user' | 'team' | 'founder'): Promise<User[]>;
   getTotalUsersCount(): Promise<number>;
   getActiveUsersCount(): Promise<number>;
   getTotalEarningsSum(): Promise<string>;
@@ -458,7 +458,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Team-specific user methods
-  async getUsersByRole(role: 'user' | 'team'): Promise<User[]> {
+  async getUsersByRole(role: 'user' | 'team' | 'founder'): Promise<User[]> {
     return await db
       .select()
       .from(users)
@@ -559,7 +559,7 @@ export class MemStorage implements IStorage {
   async getAllUserCredentials(): Promise<Array<UserCredential & { user: User }>> { throw new Error("Not implemented in MemStorage"); }
   async updateUserCredential(credentialId: string, updates: Partial<InsertUserCredential>): Promise<UserCredential | undefined> { throw new Error("Not implemented in MemStorage"); }
   async deleteUserCredential(credentialId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
-  async getUsersByRole(role: 'user' | 'team'): Promise<User[]> { throw new Error("Not implemented in MemStorage"); }
+  async getUsersByRole(role: 'user' | 'team' | 'founder'): Promise<User[]> { throw new Error("Not implemented in MemStorage"); }
   async getTotalUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
   async getActiveUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
   async getTotalEarningsSum(): Promise<string> { throw new Error("Not implemented in MemStorage"); }

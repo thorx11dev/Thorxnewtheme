@@ -4,6 +4,7 @@ import { ProtectedRoute, PublicOnlyRoute } from "./auth/ProtectedRoute";
 import Home from "@/pages/home";
 import Auth from "@/pages/auth";
 import UserPortal from "@/pages/UserPortal";
+import TeamPortal from "@/pages/TeamPortal";
 import NotFound from "@/pages/not-found";
 
 export default function Router() {
@@ -23,6 +24,13 @@ export default function Router() {
       <Route path="/portal">
         <ProtectedRoute>
           <UserPortal />
+        </ProtectedRoute>
+      </Route>
+
+      {/* Team Portal - only accessible to team members */}
+      <Route path="/team">
+        <ProtectedRoute>
+          <TeamPortal />
         </ProtectedRoute>
       </Route>
       

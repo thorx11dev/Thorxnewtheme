@@ -39,6 +39,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: any; // Supabase user object
+      userProfile?: any; // Local user profile with role
       anonymousUser?: any; // Anonymous user object for iframe environments
     }
   }
@@ -67,8 +68,18 @@ export const requireSupabaseAuth = async (req: Request, res: Response, next: Nex
       });
     }
 
-    // Attach user to request for downstream use
+    // Get user profile from local database including role
+    const userProfile = await storage.getUserById(user.id);
+    if (!userProfile) {
+      return res.status(404).json({
+        message: "User profile not found",
+        error: "USER_NOT_FOUND"
+      });
+    }
+
+    // Attach both Supabase user and local profile to request
     req.user = user;
+    req.userProfile = userProfile;
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
@@ -77,6 +88,21 @@ export const requireSupabaseAuth = async (req: Request, res: Response, next: Nex
       error: "UNAUTHORIZED"
     });
   }
+};
+
+// Team role enforcement middleware (requires Supabase auth)
+export const requireTeamRole = async (req: Request, res: Response, next: NextFunction) => {
+  // First ensure Supabase authentication
+  await requireSupabaseAuth(req, res, () => {
+    // Check if user has team or founder role
+    if (req.userProfile?.role !== 'team' && req.userProfile?.role !== 'founder') {
+      return res.status(403).json({
+        message: "Access denied. Team or founder role required.",
+        error: "FORBIDDEN"
+      });
+    }
+    next();
+  });
 };
 
 // Legacy session-based authentication middleware (for gradual migration)
@@ -127,7 +153,8 @@ const registerSchema = z.object({
   password: z.string()
     .min(8, "Password must be at least 8 characters")
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
-  referralCode: z.string().optional()
+  referralCode: z.string().optional(),
+  role: z.enum(["user", "team", "founder"]).default("user")
 });
 
 const loginSchema = z.object({
@@ -212,6 +239,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // SECURITY FIX: Server-side role assignment to prevent privilege escalation
+      // Ignore client-supplied role and assign based on email
+      const serverAssignedRole = validatedData.email === 'thorx11dev@gmail.com' ? 'founder' : 'user';
+      
       // Create user data for local database
       const userData = {
         id: authData.user.id, // Use Supabase user ID
@@ -223,6 +254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passwordHash: 'supabase_managed', // Password managed by Supabase
         referralCode: "", // Will be generated in storage layer
         referredBy,
+        role: serverAssignedRole, // SECURITY: Server-assigned role only
       };
 
       const user = await storage.createUser(userData);
@@ -281,19 +313,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Supabase get current user endpoint
+  // Supabase get current user endpoint (legacy, keeping for compatibility)
   app.get("/api/auth/user", requireSupabaseAuth, async (req, res) => {
     try {
-      const supabaseUser = req.user;
-      const user = await storage.getUserById(supabaseUser.id);
+      const user = req.userProfile;
       
-      if (!user) {
-        return res.status(404).json({
-          message: "User not found",
-          error: "USER_NOT_FOUND"
-        });
-      }
-
       res.json({
         id: user.id,
         firstName: user.firstName,
@@ -312,6 +336,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Get Supabase user error:", error);
       res.status(500).json({
         message: "Failed to fetch user data",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Unified current user endpoint (recommended)
+  app.get("/api/auth/me", requireSupabaseAuth, async (req, res) => {
+    try {
+      const user = req.userProfile;
+      
+      res.json({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        identity: user.identity,
+        phone: user.phone,
+        referralCode: user.referralCode,
+        totalEarnings: user.totalEarnings,
+        availableBalance: user.availableBalance,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        role: user.role || 'user',
+        // Additional metadata for frontend
+        isTeamMember: user.role === 'team',
+        permissions: user.role === 'team' ? ['team_access', 'metrics_view', 'data_view'] : ['user_access']
+      });
+    } catch (error) {
+      console.error("Get current user error:", error);
+      res.status(500).json({
+        message: "Failed to fetch current user",
         error: "INTERNAL_ERROR"
       });
     }
@@ -763,7 +818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supabase configuration endpoint for automatic frontend reconnection
   app.get("/api/config/supabase", (req, res) => {
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
     
     if (!supabaseUrl || !supabaseAnonKey) {
       return res.status(500).json({
@@ -779,15 +834,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Team dashboard metrics endpoints (protected for team members only)
-  app.get("/api/team/metrics", requireAuth, async (req, res) => {
+  app.get("/api/team/metrics", requireTeamRole, async (req, res) => {
     try {
-      // Check if user has team role
-      if (req.session.user?.role !== 'team') {
-        return res.status(403).json({
-          message: "Access denied. Team role required.",
-          error: "FORBIDDEN"
-        });
-      }
 
       const [totalUsers, activeUsers, totalEarnings] = await Promise.all([
         storage.getTotalUsersCount(),
@@ -817,22 +865,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send team email
-  app.post("/api/team/emails", requireAuth, async (req, res) => {
+  app.post("/api/team/emails", requireTeamRole, async (req, res) => {
     try {
-      // Check if user has team role
-      if (req.session.user?.role !== 'team') {
-        return res.status(403).json({
-          message: "Access denied. Team role required.",
-          error: "FORBIDDEN"
-        });
-      }
 
       const { recipient, subject, message } = teamEmailSchema.parse(req.body);
 
       const emailData = {
-        fromUserId: req.session.userId!,
+        fromUserId: req.userProfile!.id,
         toEmail: recipient,
-        fromEmail: req.session.user!.email,
+        fromEmail: req.userProfile!.email,
         subject,
         content: message,
         type: 'outbound' as const
@@ -862,15 +903,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get team emails (received messages)
-  app.get("/api/team/emails", requireAuth, async (req, res) => {
+  app.get("/api/team/emails", requireTeamRole, async (req, res) => {
     try {
-      // Check if user has team role
-      if (req.session.user?.role !== 'team') {
-        return res.status(403).json({
-          message: "Access denied. Team role required.",
-          error: "FORBIDDEN"
-        });
-      }
 
       const type = req.query.type as 'inbound' | 'outbound' | undefined;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
@@ -891,15 +925,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user credentials (for team data management)
-  app.get("/api/team/credentials", requireAuth, async (req, res) => {
+  app.get("/api/team/credentials", requireTeamRole, async (req, res) => {
     try {
-      // Check if user has team role
-      if (req.session.user?.role !== 'team') {
-        return res.status(403).json({
-          message: "Access denied. Team role required.",
-          error: "FORBIDDEN"
-        });
-      }
 
       const credentials = await storage.getAllUserCredentials();
 
@@ -937,18 +964,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add team member
-  app.post("/api/team/members", requireAuth, async (req, res) => {
+  app.post("/api/team/members", requireTeamRole, async (req, res) => {
     try {
-      // Check if user has team role AND admin access level
-      if (req.session.user?.role !== 'team') {
-        return res.status(403).json({
-          message: "Access denied. Team role required.",
-          error: "FORBIDDEN"
-        });
-      }
 
       // Get current user's team key to check admin permissions
-      const currentUserTeamKeys = await storage.getTeamKeysByUser(req.session.userId!);
+      const currentUserTeamKeys = await storage.getTeamKeysByUser(req.userProfile!.id);
       const hasAdminAccess = currentUserTeamKeys.some(key => 
         key.accessLevel === 'founder' || key.accessLevel === 'admin'
       );
@@ -1027,18 +1047,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update team member
-  app.patch("/api/team/members/:id", requireAuth, async (req, res) => {
+  app.patch("/api/team/members/:id", requireTeamRole, async (req, res) => {
     try {
-      // Check if user has team role AND admin access level
-      if (req.session.user?.role !== 'team') {
-        return res.status(403).json({
-          message: "Access denied. Team role required.",
-          error: "FORBIDDEN"
-        });
-      }
 
       // Get current user's team key to check admin permissions
-      const currentUserTeamKeys = await storage.getTeamKeysByUser(req.session.userId!);
+      const currentUserTeamKeys = await storage.getTeamKeysByUser(req.userProfile!.id);
       const hasAdminAccess = currentUserTeamKeys.some(key => 
         key.accessLevel === 'founder' || key.accessLevel === 'admin'
       );
@@ -1119,18 +1132,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete team member
-  app.delete("/api/team/members/:id", requireAuth, async (req, res) => {
+  app.delete("/api/team/members/:id", requireTeamRole, async (req, res) => {
     try {
-      // Check if user has team role AND admin access level
-      if (req.session.user?.role !== 'team') {
-        return res.status(403).json({
-          message: "Access denied. Team role required.",
-          error: "FORBIDDEN"
-        });
-      }
 
       // Get current user's team key to check admin permissions
-      const currentUserTeamKeys = await storage.getTeamKeysByUser(req.session.userId!);
+      const currentUserTeamKeys = await storage.getTeamKeysByUser(req.userProfile!.id);
       const hasAdminAccess = currentUserTeamKeys.some(key => 
         key.accessLevel === 'founder' || key.accessLevel === 'admin'
       );
@@ -1145,7 +1151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const memberId = req.params.id;
 
       // Prevent self-deletion
-      if (memberId === req.session.userId) {
+      if (memberId === req.userProfile!.id) {
         return res.status(400).json({
           message: "Cannot delete your own account",
           error: "SELF_DELETE_FORBIDDEN"
@@ -1180,15 +1186,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get team members
-  app.get("/api/team/members", requireAuth, async (req, res) => {
+  app.get("/api/team/members", requireTeamRole, async (req, res) => {
     try {
-      // Check if user has team role
-      if (req.session.user?.role !== 'team') {
-        return res.status(403).json({
-          message: "Access denied. Team role required.",
-          error: "FORBIDDEN"
-        });
-      }
 
       const members = await storage.getTeamMembers();
 

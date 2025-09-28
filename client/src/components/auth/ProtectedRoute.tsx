@@ -1,4 +1,4 @@
-import { useAuth } from "@/hooks/useAuth";
+import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
 import { useLocation } from "wouter";
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useSupabaseAuthWithQuery();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -47,7 +47,7 @@ interface PublicOnlyRouteProps {
 }
 
 export function PublicOnlyRoute({ children, redirectTo = "/" }: PublicOnlyRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useSupabaseAuthWithQuery();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -83,7 +83,7 @@ interface TeamProtectedRouteProps {
 }
 
 export function TeamProtectedRoute({ children, fallback }: TeamProtectedRouteProps) {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useSupabaseAuthWithQuery();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -95,8 +95,8 @@ export function TeamProtectedRoute({ children, fallback }: TeamProtectedRoutePro
         return;
       }
       
-      if (user?.role !== 'team') {
-        // Authenticated but not team role, redirect to appropriate portal
+      if (user?.role !== 'team' && user?.role !== 'founder') {
+        // Authenticated but not team or founder role, redirect to appropriate portal
         toast({
           title: "Access Denied",
           description: "You don't have permission to access the team portal.",
@@ -122,8 +122,8 @@ export function TeamProtectedRoute({ children, fallback }: TeamProtectedRoutePro
     );
   }
 
-  // Don't render children if not authenticated or not team member (will redirect in useEffect)
-  if (!isAuthenticated || user?.role !== 'team') {
+  // Don't render children if not authenticated or not team/founder member (will redirect in useEffect)
+  if (!isAuthenticated || (user?.role !== 'team' && user?.role !== 'founder')) {
     return null;
   }
 

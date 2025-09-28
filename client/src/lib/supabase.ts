@@ -62,29 +62,17 @@ export async function getSupabaseClient(): Promise<SupabaseClient> {
   return supabaseClientCache;
 }
 
-// Create a default client that tries environment variables first
-// Falls back to server config if needed
+// Create a default client using environment variables
 function createDefaultClient(): SupabaseClient {
-  // Try environment variables first
   const envUrl = import.meta.env.VITE_SUPABASE_URL;
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   
-  if (envUrl && envKey) {
-    return createClient(envUrl, envKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true
-      }
-    });
+  if (!envUrl || !envKey) {
+    throw new Error('Missing Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required');
   }
   
-  // If no environment variables, return a minimal client that will be replaced
-  // This prevents immediate errors during app initialization
-  console.warn('Supabase environment variables not available, will attempt server configuration');
-  
-  // Use placeholder values that won't work but won't crash the app
-  return createClient('https://placeholder.supabase.co', 'placeholder-key', {
+  console.log('Initializing Supabase client with environment variables');
+  return createClient(envUrl, envKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,

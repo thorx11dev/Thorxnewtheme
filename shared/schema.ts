@@ -23,7 +23,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   referralCode: text("referral_code").notNull().unique(),
   referredBy: varchar("referred_by"),
-  role: text("role").default("user"), // 'user' or 'team'
+  role: text("role").default("user"), // 'user', 'team', or 'founder'
   totalEarnings: decimal("total_earnings", { precision: 10, scale: 2 }).default("0.00"),
   availableBalance: decimal("available_balance", { precision: 10, scale: 2 }).default("0.00"),
   isActive: boolean("is_active").default(true),

@@ -5,7 +5,7 @@ async function setupFounder() {
   try {
     const response = await axios.post('http://localhost:5000/api/bootstrap-founder', {
       firstName: 'Aon',
-      lastName: 'Imram',
+      lastName: 'Imran',
       email: 'thorx11dev@gmail.com',
       password: 'Thorxdidi9426!'
     });

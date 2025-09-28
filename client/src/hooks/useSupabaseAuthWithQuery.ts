@@ -68,6 +68,7 @@ export function useSupabaseAuthWithQuery() {
       email: string;
       password: string;
       referralCode?: string;
+      role?: string;
     }) => {
       const response = await fetch("/api/auth/register", {
         method: "POST",

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -77,16 +77,21 @@ const teamSections = [
 ];
 
 export default function TeamPortal() {
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading } = useSupabaseAuthWithQuery();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Current section state
+  // ALL STATE HOOKS MOVED TO TOP - FIXES REACT HOOKS ERROR
   const [currentSection, setCurrentSection] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingMember, setEditingMember] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [messagePriorities, setMessagePriorities] = useState<{[key: string]: 'low' | 'medium' | 'high'}>({});
 
-  // Mobile detection
+  // Mobile detection effect
   useEffect(() => {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -96,58 +101,30 @@ export default function TeamPortal() {
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center">
-          <div className="text-2xl font-black mb-2">THORX TEAM</div>
-          <div className="text-sm">LOADING...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Navigation function
-  const navigateToSection = (sectionIndex: number) => {
-    if (sectionIndex === currentSection || isTransitioning) return;
-    
-    setIsTransitioning(true);
-    setCurrentSection(sectionIndex);
-    
-    // Clear transition state after animation
-    setTimeout(() => {
-      setIsTransitioning(false);
-    }, 300);
-  };
-
-  // Team metrics query
+  // FIXED: Team metrics query - Enable for both team and founder roles
   const { data: teamMetrics, isLoading: metricsLoading, error: metricsError } = useQuery({
     queryKey: ['/api/team/metrics'],
-    enabled: !!user && user.role === 'team',
+    enabled: !!user && (user.role === 'team' || user.role === 'founder'),
   });
 
-  // Team emails query (received messages) with auto-refresh
+  // FIXED: Team emails query - Enable for both team and founder roles
   const { data: emailsData, isLoading: emailsLoading, error: emailsError } = useQuery({
     queryKey: ['/api/team/emails'],
-    enabled: !!user && user.role === 'team',
+    enabled: !!user && (user.role === 'team' || user.role === 'founder'),
     refetchInterval: 10000, // Refresh every 10 seconds
     refetchIntervalInBackground: true,
   });
 
-  // User credentials query (for data section)
+  // FIXED: User credentials query - Enable for both team and founder roles
   const { data: credentialsData, isLoading: credentialsLoading, error: credentialsError } = useQuery({
     queryKey: ['/api/team/credentials'],
-    enabled: !!user && user.role === 'team',
+    enabled: !!user && (user.role === 'team' || user.role === 'founder'),
   });
 
-  // Search state for credentials
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Team members query
+  // FIXED: Team members query - Enable for both team and founder roles
   const { data: teamMembersData, isLoading: membersLoading, error: membersError } = useQuery({
     queryKey: ['/api/team/members'],
-    enabled: !!user && user.role === 'team',
+    enabled: !!user && (user.role === 'team' || user.role === 'founder'),
   });
 
   // Team member form
@@ -165,13 +142,7 @@ export default function TeamPortal() {
   // Add team member mutation
   const addTeamMemberMutation = useMutation({
     mutationFn: async (data: TeamMemberFormData) => {
-      return await apiRequest('/api/team/members', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      return await apiRequest('POST', '/api/team/members', data);
     },
     onSuccess: () => {
       toast({
@@ -196,9 +167,7 @@ export default function TeamPortal() {
     addTeamMemberMutation.mutate(data);
   };
 
-  // Edit team member state and form
-  const [editingMember, setEditingMember] = useState<any>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
+  // Form configurations moved after queries
 
   const editMemberForm = useForm<TeamMemberUpdateData>({
     resolver: zodResolver(teamMemberUpdateSchema),
@@ -213,13 +182,7 @@ export default function TeamPortal() {
   // Update team member mutation
   const updateTeamMemberMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: TeamMemberUpdateData }) => {
-      return await apiRequest(`/api/team/members/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      return await apiRequest('PATCH', `/api/team/members/${id}`, data);
     },
     onSuccess: () => {
       toast({
@@ -244,9 +207,7 @@ export default function TeamPortal() {
   // Delete team member mutation
   const deleteTeamMemberMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/team/members/${id}`, {
-        method: 'DELETE',
-      });
+      return await apiRequest('DELETE', `/api/team/members/${id}`);
     },
     onSuccess: () => {
       toast({
@@ -440,9 +401,30 @@ export default function TeamPortal() {
     );
   }
 
-  // Selected message state
-  const [selectedMessage, setSelectedMessage] = useState<any>(null);
-  const [messagePriorities, setMessagePriorities] = useState<{[key: string]: 'low' | 'medium' | 'high'}>({});
+  // Navigation function
+  const navigateToSection = (sectionIndex: number) => {
+    if (sectionIndex === currentSection || isTransitioning) return;
+    
+    setIsTransitioning(true);
+    setCurrentSection(sectionIndex);
+    
+    // Clear transition state after animation
+    setTimeout(() => {
+      setIsTransitioning(false);
+    }, 300);
+  };
+
+  // CONDITIONAL RENDERING FOR LOADING STATE - FIXES REACT HOOKS ERROR
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <div className="text-2xl font-black mb-2">THORX TEAM</div>
+          <div className="text-sm">LOADING...</div>
+        </div>
+      </div>
+    );
+  }
 
   // Copy email to clipboard
   const copyEmailToClipboard = (email: string) => {

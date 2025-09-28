@@ -10,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
 import { apiRequest } from "@/lib/queryClient";
 import { Delete, Eye, EyeOff } from "lucide-react";
 
@@ -64,7 +65,8 @@ const registerSchema = z.object({
     .min(8, "Password must be at least 8 characters")
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
   confirmPassword: z.string(),
-  referralCode: z.string().optional()
+  referralCode: z.string().optional(),
+  role: z.enum(["user", "team", "founder"]).default("user")
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"]
@@ -85,7 +87,7 @@ export default function Auth() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [generatedIdentity, setGeneratedIdentity] = useState<string>('');
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { register, login, isRegistering, isLoggingIn, isAuthenticated, user } = useSupabaseAuthWithQuery();
 
   // Identity generation function
   const generateThorxIdentity = (firstName: string, lastName: string): string => {
@@ -125,7 +127,8 @@ export default function Auth() {
       email: "",
       password: "",
       confirmPassword: "",
-      referralCode: ""
+      referralCode: "",
+      role: "user" as const
     }
   });
 
@@ -149,65 +152,36 @@ export default function Auth() {
     }
   }, [firstName, lastName, registerForm]);
 
-  const registerMutation = useMutation({
-    mutationFn: (data: RegisterForm) => apiRequest("POST", "/api/register", data),
-    onSuccess: () => {
-      // Invalidate auth queries to refresh user state
-      queryClient.invalidateQueries({ queryKey: ["auth"] });
-      
-      toast({
-        title: "Registration Successful",
-        description: "Welcome to THORX! Your earning journey begins now.",
-      });
-      
-      // Add delay to ensure session is established before navigation
-      setTimeout(() => {
+  // Redirect if already authenticated based on user role
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // FIXED: Redirect team members and founders to /team (not /team-portal)
+      if (user.role === 'team' || user.role === 'founder') {
+        setLocation("/team");
+      } else {
         setLocation("/");
-      }, 500);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Registration Failed",
-        description: error.message || "Please try again.",
-        variant: "destructive"
-      });
+      }
     }
-  });
-
-  const loginMutation = useMutation({
-    mutationFn: (data: LoginForm) => apiRequest("POST", "/api/login", data),
-    onSuccess: () => {
-      // Invalidate auth queries to refresh user state
-      queryClient.invalidateQueries({ queryKey: ["auth"] });
-      
-      toast({
-        title: "Login Successful",
-        description: "Welcome back to THORX!",
-      });
-      
-      // Add delay to ensure session is established before navigation
-      setTimeout(() => {
-        setLocation("/");
-      }, 500);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Login Failed",
-        description: error.message || "Invalid credentials.",
-        variant: "destructive"
-      });
-    }
-  });
+  }, [isAuthenticated, user, setLocation]);
 
   const onRegisterSubmit = (data: RegisterForm) => {
-    registerMutation.mutate(data);
+    register({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      identity: data.identity,
+      phone: data.phone,
+      email: data.email,
+      password: data.password,
+      referralCode: data.referralCode,
+      role: data.role
+    });
   };
 
   const onLoginSubmit = (data: LoginForm) => {
-    loginMutation.mutate(data);
+    login(data);
   };
 
-  // Anonymous login mutation
+  // Keep anonymous login for guest access (separate from Supabase auth)
   const anonymousLoginMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/anonymous-login", {}),
     onSuccess: async (response) => {
@@ -224,17 +198,7 @@ export default function Auth() {
         description: "You can now explore the earning dashboard.",
       });
       
-      // Invalidate and refetch auth queries to refresh user state
-      await queryClient.invalidateQueries({ queryKey: ["auth"] });
-      
-      // Refetch the auth query to ensure user state is updated
-      try {
-        await queryClient.refetchQueries({ queryKey: ["auth"] });
-      } catch (error) {
-        console.log("Auth refetch completed with expected error for guest users");
-      }
-      
-      // Navigate after ensuring auth state is refreshed
+      // Navigate to dashboard
       setTimeout(() => {
         setLocation("/");
       }, 200);
@@ -573,13 +537,39 @@ export default function Auth() {
                         )}
                       />
 
+                      {/* Role Selection (for testing) */}
+                      <FormField
+                        control={registerForm.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="technical-label">ACCOUNT TYPE</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-register-role">
+                              <FormControl>
+                                <SelectTrigger className="border-2 border-black text-base md:text-lg py-2 md:py-3">
+                                  <SelectValue placeholder="Select account type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="user">Regular User</SelectItem>
+                                <SelectItem value="team">Team Member</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              <TechnicalLabel text="Team members get access to team portal features" className="text-xs" />
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
                       <Button 
                         type="submit" 
-                        disabled={registerMutation.isPending}
+                        disabled={isRegistering}
                         className="w-full bg-black text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-primary transition-colors border-2 border-black"
                         data-testid="button-register-submit"
                       >
-                        {registerMutation.isPending ? "PROCESSING..." : "REGISTER NOW →"}
+                        {isRegistering ? "PROCESSING..." : "REGISTER NOW →"}
                       </Button>
                     </form>
                   </Form>
@@ -688,11 +678,11 @@ export default function Auth() {
 
                       <Button 
                         type="submit" 
-                        disabled={loginMutation.isPending}
+                        disabled={isLoggingIn}
                         className="w-full bg-primary text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-black transition-colors border-2 border-black"
                         data-testid="button-login-submit"
                       >
-                        {loginMutation.isPending ? "VERIFYING..." : "LOGIN →"}
+                        {isLoggingIn ? "VERIFYING..." : "LOGIN →"}
                       </Button>
                     </form>
                   </Form>
