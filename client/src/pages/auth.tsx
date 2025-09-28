@@ -210,7 +210,15 @@ export default function Auth() {
   // Anonymous login mutation
   const anonymousLoginMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/anonymous-login", {}),
-    onSuccess: async () => {
+    onSuccess: async (response) => {
+      const responseData = await response.json();
+      
+      // Store anonymous token for iframe environments where session cookies don't work
+      if (responseData.token) {
+        localStorage.setItem('anonymousToken', responseData.token);
+        console.log('Anonymous token stored for iframe authentication');
+      }
+      
       toast({
         title: "Welcome to THORX!",
         description: "You can now explore the earning dashboard.",

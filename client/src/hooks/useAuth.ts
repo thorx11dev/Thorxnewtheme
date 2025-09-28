@@ -21,20 +21,16 @@ export function useAuth() {
   const { data: user, isLoading, error } = useQuery({
     queryKey: ["auth"],
     queryFn: async () => {
-      const response = await fetch("/api/user", {
-        credentials: "include",
-      });
-      
-      // Handle 401 without throwing an error - user is simply not logged in
-      if (response.status === 401) {
-        return null;
+      try {
+        const response = await apiRequest("GET", "/api/user");
+        return await response.json();
+      } catch (error: any) {
+        // Handle 401 without throwing an error - user is simply not logged in
+        if (error.message?.includes('401')) {
+          return null;
+        }
+        throw error;
       }
-      
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.json();
     },
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes

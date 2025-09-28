@@ -18,8 +18,18 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
       };
     }
   } catch (error) {
-    console.warn('Failed to get auth headers:', error);
+    console.warn('Failed to get Supabase auth headers:', error);
   }
+  
+  // Fallback to anonymous token for iframe environments where session cookies don't work
+  const anonymousToken = localStorage.getItem('anonymousToken');
+  if (anonymousToken) {
+    console.log('Using anonymous token for authentication');
+    return {
+      'Authorization': `Bearer ${anonymousToken}`,
+    };
+  }
+  
   return {};
 }
 

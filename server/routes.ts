@@ -34,11 +34,12 @@ declare module "express-session" {
   }
 }
 
-// Extend Express Request to include Supabase user
+// Extend Express Request to include Supabase user and anonymous user
 declare global {
   namespace Express {
     interface Request {
       user?: any; // Supabase user object
+      anonymousUser?: any; // Anonymous user object for iframe environments
     }
   }
 }
@@ -80,13 +81,40 @@ export const requireSupabaseAuth = async (req: Request, res: Response, next: Nex
 
 // Legacy session-based authentication middleware (for gradual migration)
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      message: "Authentication required",
-      error: "UNAUTHORIZED"
-    });
+  // Debug session data
+  console.log("Session check:", {
+    sessionExists: !!req.session,
+    sessionId: req.session?.id,
+    userId: req.session?.userId,
+    cookieHeader: req.headers.cookie,
+    authHeader: req.headers.authorization,
+    origin: req.headers.origin,
+    referer: req.headers.referer
+  });
+
+  // Check session first (for regular browsers)
+  if (req.session.userId) {
+    return next();
   }
-  next();
+
+  // Fallback: Check for anonymous token (for iframe environments)
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer anon_')) {
+    const token = authHeader.substring(7);
+    const anonymousTokens = req.app.get('anonymousTokens');
+    if (anonymousTokens && anonymousTokens.has(token)) {
+      const anonymousUser = anonymousTokens.get(token);
+      // Add anonymous user data to request for downstream use
+      req.anonymousUser = anonymousUser;
+      console.log("Anonymous token authentication successful for:", anonymousUser.id);
+      return next();
+    }
+  }
+
+  return res.status(401).json({
+    message: "Authentication required",
+    error: "UNAUTHORIZED"
+  });
 };
 
 // Registration/Login schemas for validation
@@ -112,7 +140,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
 
-  app.use(session({
+  // Detect if we're running in Replit environment
+  const isReplit = process.env.REPL_ID !== undefined || process.env.REPLIT_DB_URL !== undefined;
+  
+  // Debug: Log environment detection
+  console.log("Environment detection:", {
+    NODE_ENV: process.env.NODE_ENV,
+    REPL_ID: !!process.env.REPL_ID,
+    REPLIT_DB_URL: !!process.env.REPLIT_DB_URL,
+    isReplit
+  });
+
+  // Configure session with proper cookie settings for iframe environments
+  const sessionConfig = {
     store: new pgStore({
       conString: process.env.DATABASE_URL,
       createTableIfMissing: true,
@@ -120,15 +160,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }),
     secret: process.env.SESSION_SECRET || "thorx-secret-key-dev-only",
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true, // Allow saving uninitialized sessions for anonymous users
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      // For iframe environments, we need secure cookies with sameSite none
+      secure: isReplit || process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
-      // Allow cookies to work in iframe environments (Replit preview)
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "none",
+      sameSite: isReplit ? "none" as const : (process.env.NODE_ENV === "production" ? "strict" as const : "lax" as const),
+      // Ensure domain is not set for iframe compatibility
+      domain: undefined,
     },
-  }));
+  };
+
+  console.log("Session cookie config:", sessionConfig.cookie);
+  
+  app.use(session(sessionConfig));
 
   // Supabase user registration endpoint
   app.post("/api/auth/register", async (req, res) => {
@@ -353,6 +399,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // In-memory storage for anonymous tokens (in production, use Redis or database)
+  const anonymousTokens = new Map<string, any>();
+  
+  // Make anonymous tokens accessible to middleware
+  app.set('anonymousTokens', anonymousTokens);
+
   // Anonymous login endpoint (no authentication required)
   app.post("/api/anonymous-login", async (req, res) => {
     try {
@@ -372,7 +424,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: new Date().toISOString(),
       };
 
-      // Set session data
+      // Create simple token for iframe environments where session cookies don't work
+      const anonymousToken = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
+      
+      // Store user data with the token
+      anonymousTokens.set(anonymousToken, anonymousUser);
+
+      // Set session data (for regular browser environments)
       req.session.userId = anonymousUserId;
       req.session.user = {
         id: anonymousUserId,
@@ -397,9 +455,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
 
+      console.log("Anonymous token created:", anonymousToken, "for user:", anonymousUserId);
+
       res.json({
         success: true,
         user: anonymousUser,
+        // Return token for iframe environments
+        token: anonymousToken,
         message: "Anonymous login successful"
       });
     } catch (error) {
@@ -495,11 +557,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Legacy get current user endpoint (session-based)
   app.get("/api/user", requireAuth, async (req, res) => {
     try {
-      // Check if it's an anonymous user
-      if (req.session.userId!.startsWith('anonymous_')) {
+      // Check if authenticated via anonymous token (iframe environment)
+      if (req.anonymousUser) {
+        return res.json(req.anonymousUser);
+      }
+
+      // Check if it's an anonymous user via session (regular browser)
+      if (req.session.userId && req.session.userId.startsWith('anonymous_')) {
         // Return the anonymous user data from session
         const anonymousUser = req.session.anonymousUserData || {
-          id: req.session.userId!,
+          id: req.session.userId,
           firstName: req.session.user!.firstName,
           lastName: req.session.user!.lastName,
           email: req.session.user!.email,
@@ -515,6 +582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(anonymousUser);
       }
 
+      // Regular authenticated user
       const user = await storage.getUserById(req.session.userId!);
       if (!user) {
         return res.status(404).json({
