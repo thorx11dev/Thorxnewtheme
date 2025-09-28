@@ -384,96 +384,146 @@ export default function TeamPortal() {
           </div>
         </div>
 
-        {/* Six Detailed Metrics Cards - Matching Main Metrics */}
+        {/* Six Detailed Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {/* Total Users - New Registrations */}
+          {/* New User Registrations */}
           <Card className="group split-card bg-gradient-to-br from-blue-500/10 to-blue-500/5 hover:from-blue-500/20 hover:to-blue-500/10 border-2 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
             <CardHeader className="border-b border-blue-500/20 group-hover:border-blue-500/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="NEW REGISTRATIONS" className="text-foreground group-hover:text-blue-500/90 transition-colors" />
                 <div className="p-2 bg-blue-500/10 border border-blue-500/20 group-hover:bg-blue-500/20 transition-all duration-300">
-                  <Users className="w-4 h-4 text-blue-500" />
+                  <UserCheck className="w-4 h-4 text-blue-500" />
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-3xl font-black text-blue-500" data-testid="metric-new-registrations">
-                  {metricsLoading ? '---' : metricsError ? 'ERR' : '1'}
+                  {metricsLoading ? '---' : metricsError ? 'ERR' : '5'}
                 </div>
                 <div className="text-xs text-green-500 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
-                  +50%
+                  +15%
                 </div>
               </div>
               <TechnicalLabel text="TODAY" className="text-blue-500/70 text-sm" />
-              <TechnicalLabel text="Contributing to total user count" className="text-muted-foreground text-xs mt-1" />
+              <TechnicalLabel text="New users joined the platform" className="text-muted-foreground text-xs mt-1" />
             </CardContent>
           </Card>
 
-          {/* Total Users - User Growth */}
-          <Card className="group split-card bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 hover:from-indigo-500/20 hover:to-indigo-500/10 border-2 border-indigo-500/20 hover:border-indigo-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10">
-            <CardHeader className="border-b border-indigo-500/20 group-hover:border-indigo-500/30 transition-colors">
-              <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="USER GROWTH RATE" className="text-foreground group-hover:text-indigo-500/90 transition-colors" />
-                <div className="p-2 bg-indigo-500/10 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-all duration-300">
-                  <TrendingUp className="w-4 h-4 text-indigo-500" />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-3xl font-black text-indigo-500" data-testid="metric-user-growth">
-                  +12%
-                </div>
-                <div className="text-xs text-green-500 flex items-center gap-1">
-                  <Users className="w-3 h-3" />
-                  GROWING
-                </div>
-              </div>
-              <TechnicalLabel text="MONTHLY GROWTH" className="text-indigo-500/70 text-sm" />
-              <TechnicalLabel text="Rate of total user increase" className="text-muted-foreground text-xs mt-1" />
-            </CardContent>
-          </Card>
-
-          {/* Active Users - Online Now */}
+          {/* Platform Uptime */}
           <Card className="group split-card bg-gradient-to-br from-green-500/10 to-green-500/5 hover:from-green-500/20 hover:to-green-500/10 border-2 border-green-500/20 hover:border-green-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/10">
             <CardHeader className="border-b border-green-500/20 group-hover:border-green-500/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="ONLINE NOW" className="text-foreground group-hover:text-green-500/90 transition-colors" />
+                <TechnicalLabel text="PLATFORM UPTIME" className="text-foreground group-hover:text-green-500/90 transition-colors" />
                 <div className="p-2 bg-green-500/10 border border-green-500/20 group-hover:bg-green-500/20 transition-all duration-300">
-                  <Activity className="w-4 h-4 text-green-500" />
+                  <Shield className="w-4 h-4 text-green-500" />
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-3xl font-black text-green-500" data-testid="metric-online-users">
-                  {metricsLoading ? '---' : metricsError ? 'ERR' : '1'}
+                <div className="text-3xl font-black text-green-500" data-testid="metric-uptime">
+                  99.9%
                 </div>
                 <div className="text-xs text-green-500 flex items-center gap-1">
-                  <UserCheck className="w-3 h-3" />
-                  LIVE
+                  <Activity className="w-3 h-3" />
+                  STABLE
                 </div>
               </div>
-              <TechnicalLabel text="REAL-TIME COUNT" className="text-green-500/70 text-sm" />
-              <TechnicalLabel text="Currently active users online" className="text-muted-foreground text-xs mt-1" />
+              <TechnicalLabel text="LAST 30 DAYS" className="text-green-500/70 text-sm" />
+              <TechnicalLabel text="System availability and performance" className="text-muted-foreground text-xs mt-1" />
             </CardContent>
           </Card>
 
-          {/* Active Users - Session Activity */}
-          <Card className="group split-card bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 hover:from-emerald-500/20 hover:to-emerald-500/10 border-2 border-emerald-500/20 hover:border-emerald-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10">
-            <CardHeader className="border-b border-emerald-500/20 group-hover:border-emerald-500/30 transition-colors">
+          {/* Total Credentials Stored */}
+          <Card className="group split-card bg-gradient-to-br from-purple-500/10 to-purple-500/5 hover:from-purple-500/20 hover:to-purple-500/10 border-2 border-purple-500/20 hover:border-purple-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10">
+            <CardHeader className="border-b border-purple-500/20 group-hover:border-purple-500/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="AVG SESSION TIME" className="text-foreground group-hover:text-emerald-500/90 transition-colors" />
-                <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-all duration-300">
-                  <Clock className="w-4 h-4 text-emerald-500" />
+                <TechnicalLabel text="STORED CREDENTIALS" className="text-foreground group-hover:text-purple-500/90 transition-colors" />
+                <div className="p-2 bg-purple-500/10 border border-purple-500/20 group-hover:bg-purple-500/20 transition-all duration-300">
+                  <Database className="w-4 h-4 text-purple-500" />
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-3xl font-black text-emerald-500" data-testid="metric-session-time">
+                <div className="text-3xl font-black text-purple-500" data-testid="metric-credentials">
+                  {credentialsLoading ? '---' : credentialsError ? 'ERR' : (credentialsData?.total || '0')}
+                </div>
+                <div className="text-xs text-blue-500 flex items-center gap-1">
+                  <Key className="w-3 h-3" />
+                  SECURE
+                </div>
+              </div>
+              <TechnicalLabel text="TOTAL COUNT" className="text-purple-500/70 text-sm" />
+              <TechnicalLabel text="User credentials safely stored" className="text-muted-foreground text-xs mt-1" />
+            </CardContent>
+          </Card>
+
+          {/* Team Members */}
+          <Card className="group split-card bg-gradient-to-br from-orange-500/10 to-orange-500/5 hover:from-orange-500/20 hover:to-orange-500/10 border-2 border-orange-500/20 hover:border-orange-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/10">
+            <CardHeader className="border-b border-orange-500/20 group-hover:border-orange-500/30 transition-colors">
+              <CardTitle className="flex items-center justify-between">
+                <TechnicalLabel text="TEAM MEMBERS" className="text-foreground group-hover:text-orange-500/90 transition-colors" />
+                <div className="p-2 bg-orange-500/10 border border-orange-500/20 group-hover:bg-orange-500/20 transition-all duration-300">
+                  <Users className="w-4 h-4 text-orange-500" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-3xl font-black text-orange-500" data-testid="metric-team-members">
+                  {membersLoading ? '---' : membersError ? 'ERR' : (teamMembersData?.total || '0')}
+                </div>
+                <div className="text-xs text-green-500 flex items-center gap-1">
+                  <UserCheck className="w-3 h-3" />
+                  ACTIVE
+                </div>
+              </div>
+              <TechnicalLabel text="ACCESS GRANTED" className="text-orange-500/70 text-sm" />
+              <TechnicalLabel text="Members with platform access" className="text-muted-foreground text-xs mt-1" />
+            </CardContent>
+          </Card>
+
+          {/* Unread Messages */}
+          <Card className="group split-card bg-gradient-to-br from-red-500/10 to-red-500/5 hover:from-red-500/20 hover:to-red-500/10 border-2 border-red-500/20 hover:border-red-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-red-500/10">
+            <CardHeader className="border-b border-red-500/20 group-hover:border-red-500/30 transition-colors">
+              <CardTitle className="flex items-center justify-between">
+                <TechnicalLabel text="UNREAD MESSAGES" className="text-foreground group-hover:text-red-500/90 transition-colors" />
+                <div className="p-2 bg-red-500/10 border border-red-500/20 group-hover:bg-red-500/20 transition-all duration-300">
+                  <Mail className="w-4 h-4 text-red-500" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-3xl font-black text-red-500" data-testid="metric-unread-messages">
+                  {emailsLoading ? '---' : emailsError ? 'ERR' : (emailsData?.total || '0')}
+                </div>
+                <div className="text-xs text-yellow-500 flex items-center gap-1">
+                  <Bell className="w-3 h-3" />
+                  PENDING
+                </div>
+              </div>
+              <TechnicalLabel text="INBOX COUNT" className="text-red-500/70 text-sm" />
+              <TechnicalLabel text="Messages requiring attention" className="text-muted-foreground text-xs mt-1" />
+            </CardContent>
+          </Card>
+
+          {/* Average Session Time */}
+          <Card className="group split-card bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 hover:from-cyan-500/20 hover:to-cyan-500/10 border-2 border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10">
+            <CardHeader className="border-b border-cyan-500/20 group-hover:border-cyan-500/30 transition-colors">
+              <CardTitle className="flex items-center justify-between">
+                <TechnicalLabel text="AVG SESSION TIME" className="text-foreground group-hover:text-cyan-500/90 transition-colors" />
+                <div className="p-2 bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-all duration-300">
+                  <Clock className="w-4 h-4 text-cyan-500" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-3xl font-black text-cyan-500" data-testid="metric-session-time">
                   24m
                 </div>
                 <div className="text-xs text-green-500 flex items-center gap-1">
@@ -481,58 +531,8 @@ export default function TeamPortal() {
                   +8%
                 </div>
               </div>
-              <TechnicalLabel text="ACTIVE USERS" className="text-emerald-500/70 text-sm" />
-              <TechnicalLabel text="Time spent by active users" className="text-muted-foreground text-xs mt-1" />
-            </CardContent>
-          </Card>
-
-          {/* Total Earnings - Daily Revenue */}
-          <Card className="group split-card bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 hover:from-yellow-500/20 hover:to-yellow-500/10 border-2 border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-yellow-500/10">
-            <CardHeader className="border-b border-yellow-500/20 group-hover:border-yellow-500/30 transition-colors">
-              <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="TODAY'S REVENUE" className="text-foreground group-hover:text-yellow-500/90 transition-colors" />
-                <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 group-hover:bg-yellow-500/20 transition-all duration-300">
-                  <DollarSign className="w-4 h-4 text-yellow-500" />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-3xl font-black text-yellow-500" data-testid="metric-daily-revenue">
-                  ₨0.00
-                </div>
-                <div className="text-xs text-orange-500 flex items-center gap-1">
-                  <Activity className="w-3 h-3" />
-                  NEW
-                </div>
-              </div>
-              <TechnicalLabel text="24H EARNINGS" className="text-yellow-500/70 text-sm" />
-              <TechnicalLabel text="Contributing to total earnings" className="text-muted-foreground text-xs mt-1" />
-            </CardContent>
-          </Card>
-
-          {/* Total Earnings - Revenue Growth */}
-          <Card className="group split-card bg-gradient-to-br from-orange-500/10 to-orange-500/5 hover:from-orange-500/20 hover:to-orange-500/10 border-2 border-orange-500/20 hover:border-orange-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/10">
-            <CardHeader className="border-b border-orange-500/20 group-hover:border-orange-500/30 transition-colors">
-              <CardTitle className="flex items-center justify-between">
-                <TechnicalLabel text="REVENUE GROWTH" className="text-foreground group-hover:text-orange-500/90 transition-colors" />
-                <div className="p-2 bg-orange-500/10 border border-orange-500/20 group-hover:bg-orange-500/20 transition-all duration-300">
-                  <TrendingUp className="w-4 h-4 text-orange-500" />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-3xl font-black text-orange-500" data-testid="metric-revenue-growth">
-                  +0%
-                </div>
-                <div className="text-xs text-blue-500 flex items-center gap-1">
-                  <DollarSign className="w-3 h-3" />
-                  STARTING
-                </div>
-              </div>
-              <TechnicalLabel text="MONTHLY GROWTH" className="text-orange-500/70 text-sm" />
-              <TechnicalLabel text="Rate of earnings increase" className="text-muted-foreground text-xs mt-1" />
+              <TechnicalLabel text="USER ENGAGEMENT" className="text-cyan-500/70 text-sm" />
+              <TechnicalLabel text="Time spent on platform" className="text-muted-foreground text-xs mt-1" />
             </CardContent>
           </Card>
         </div>
