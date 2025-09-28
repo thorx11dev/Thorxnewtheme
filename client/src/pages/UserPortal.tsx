@@ -72,7 +72,6 @@ import {
   ExternalLink,
   X
 } from "lucide-react";
-import { JazzCashIcon, EasyPaisaIcon, BankTransferIcon, MobileWalletIcon } from "@/components/ui/payment-icons";
 import {
   LineChart,
   Line,
@@ -1479,7 +1478,7 @@ export default function UserPortal() {
       {
         id: 'jazzcash',
         name: 'JAZZ CASH',
-        icon: JazzCashIcon,
+        icon: Phone,
         description: 'Mobile Wallet Transfer',
         color: 'bg-gradient-to-r from-red-600 to-red-700',
         processing: '2-4 hours'
@@ -1487,7 +1486,7 @@ export default function UserPortal() {
       {
         id: 'easypaisa',
         name: 'EASY PAISA',
-        icon: EasyPaisaIcon,
+        icon: CreditCard,
         description: 'Digital Wallet Service',
         color: 'bg-gradient-to-r from-green-600 to-green-700',
         processing: '2-4 hours'
@@ -1495,7 +1494,7 @@ export default function UserPortal() {
       {
         id: 'bank',
         name: 'BANK TRANSFER',
-        icon: BankTransferIcon,
+        icon: Home,
         description: 'Direct Bank Account',
         color: 'bg-gradient-to-r from-blue-600 to-blue-700',
         processing: '24-48 hours'
@@ -1648,10 +1647,10 @@ export default function UserPortal() {
                             }`}
                           >
                             <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center mr-3 md:mr-4 ${
-                              isSelected ? 'bg-white/90 border-2 border-primary shadow-lg' : 'bg-white/50 border border-muted-foreground/20'
+                              isSelected ? 'bg-primary/30' : 'bg-muted'
                             }`}>
-                              <IconComponent className={`w-6 h-6 md:w-8 md:h-8 transition-all duration-300 ${
-                                isSelected ? 'scale-110' : 'scale-100'
+                              <IconComponent className={`w-5 h-5 md:w-6 md:h-6 ${
+                                isSelected ? 'text-primary' : 'text-muted-foreground'
                               }`} />
                             </div>
                             <div className="flex-1 text-left">
