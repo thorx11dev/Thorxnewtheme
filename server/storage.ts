@@ -35,7 +35,7 @@ export interface IStorage {
   // Legacy registration methods (keeping for backward compatibility)
   createRegistration(registration: InsertRegistration): Promise<Registration>;
   getRegistrationByEmail(email: string): Promise<Registration | undefined>;
-  
+
   // User management methods
   createUser(user: InsertUser & { id?: string }): Promise<User>; // Allow external ID (from Supabase)
   getUserById(id: string): Promise<User | undefined>;
@@ -43,51 +43,52 @@ export interface IStorage {
   getUserByReferralCode(referralCode: string): Promise<User | undefined>;
   validateUserPassword(email: string, password: string): Promise<User | undefined>;
   updateUserEarnings(userId: string, amount: string): Promise<void>;
-  
+
   // Earnings methods
   createEarning(earning: InsertEarning): Promise<Earning>;
   getUserEarnings(userId: string, limit?: number): Promise<Earning[]>;
   getUserTotalEarnings(userId: string): Promise<string>;
-  
+
   // Ad views methods
   createAdView(adView: InsertAdView): Promise<AdView>;
   getUserAdViews(userId: string, limit?: number): Promise<AdView[]>;
   getTodayAdViews(userId: string): Promise<number>;
-  
+
   // Referrals methods
   createReferral(referral: InsertReferral): Promise<Referral>;
   getUserReferrals(userId: string): Promise<Array<Referral & { referred: User }>>;
   getReferralStats(userId: string): Promise<{ count: number; totalEarned: string }>;
-  
+
   // Daily tasks methods
   createDailyTask(task: InsertDailyTask): Promise<DailyTask>;
   getUserTodayTasks(userId: string): Promise<DailyTask[]>;
   markTaskComplete(taskId: string, earnedAmount: string): Promise<void>;
-  
+
   // Team functionality methods
   // Team emails for inbox functionality
   createTeamEmail(teamEmail: InsertTeamEmail): Promise<TeamEmail>;
   getTeamEmails(type?: 'inbound' | 'outbound', limit?: number): Promise<TeamEmail[]>;
   getTeamEmailsByUser(userId: string, limit?: number): Promise<TeamEmail[]>;
-  
+
   // Team keys for managing team member access
   createTeamKey(teamKey: InsertTeamKey): Promise<TeamKey>;
   getTeamKeysByUser(userId: string): Promise<TeamKey[]>;
   updateTeamKey(keyId: string, updates: Partial<InsertTeamKey>): Promise<TeamKey | undefined>;
   getTeamMembers(): Promise<Array<User & { teamKey: TeamKey | null }>>;
-  
+
   // User credentials storage for team data management
   createUserCredential(credential: InsertUserCredential): Promise<UserCredential>;
   getUserCredentials(userId: string): Promise<UserCredential[]>;
   getAllUserCredentials(): Promise<Array<UserCredential & { user: User }>>;
   updateUserCredential(credentialId: string, updates: Partial<InsertUserCredential>): Promise<UserCredential | undefined>;
   deleteUserCredential(credentialId: string): Promise<void>;
-  
+
   // Team-specific user methods
   getUsersByRole(role: 'user' | 'team' | 'founder'): Promise<User[]>;
   getTotalUsersCount(): Promise<number>;
   getActiveUsersCount(): Promise<number>;
   getTotalEarningsSum(): Promise<string>;
+  getAllUsers(): Promise<User[]>; // Added method to fetch all users
 }
 
 export class DatabaseStorage implements IStorage {
@@ -115,7 +116,7 @@ export class DatabaseStorage implements IStorage {
       ? 'supabase_managed' // Don't hash if managed by Supabase
       : await bcrypt.hash(insertUser.passwordHash, 12);
     const referralCode = this.generateReferralCode();
-    
+
     const userData = {
       ...insertUser,
       passwordHash: hashedPassword,
@@ -128,7 +129,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const [user] = await db.insert(users).values(userData).returning();
-    
+
     // If user was referred, create referral record
     if (insertUser.referredBy) {
       await this.createReferral({
@@ -136,7 +137,7 @@ export class DatabaseStorage implements IStorage {
         referredId: user.id,
       });
     }
-    
+
     return user;
   }
 
@@ -158,7 +159,7 @@ export class DatabaseStorage implements IStorage {
   async validateUserPassword(email: string, password: string): Promise<User | undefined> {
     const user = await this.getUserByEmail(email);
     if (!user) return undefined;
-    
+
     const isValid = await bcrypt.compare(password, user.passwordHash);
     return isValid ? user : undefined;
   }
@@ -177,10 +178,10 @@ export class DatabaseStorage implements IStorage {
   // Earnings methods
   async createEarning(insertEarning: InsertEarning): Promise<Earning> {
     const [earning] = await db.insert(earnings).values(insertEarning).returning();
-    
+
     // Update user's total earnings
     await this.updateUserEarnings(insertEarning.userId, insertEarning.amount);
-    
+
     return earning;
   }
 
@@ -198,14 +199,14 @@ export class DatabaseStorage implements IStorage {
       .select({ total: sql<string>`COALESCE(SUM(${earnings.amount}), '0.00')` })
       .from(earnings)
       .where(eq(earnings.userId, userId));
-    
+
     return result?.total || "0.00";
   }
 
   // Ad views methods
   async createAdView(insertAdView: InsertAdView): Promise<AdView> {
     const [adView] = await db.insert(adViews).values(insertAdView).returning();
-    
+
     // Create corresponding earning record
     if (insertAdView.completed && insertAdView.earnedAmount) {
       await this.createEarning({
@@ -216,7 +217,7 @@ export class DatabaseStorage implements IStorage {
         status: "completed",
       });
     }
-    
+
     return adView;
   }
 
@@ -232,7 +233,7 @@ export class DatabaseStorage implements IStorage {
   async getTodayAdViews(userId: string): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const [result] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(adViews)
@@ -243,7 +244,7 @@ export class DatabaseStorage implements IStorage {
           eq(adViews.completed, true)
         )
       );
-    
+
     return result?.count || 0;
   }
 
@@ -278,7 +279,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(referrals)
       .where(eq(referrals.referrerId, userId));
-    
+
     return {
       count: result?.count || 0,
       totalEarned: result?.totalEarned || "0.00",
@@ -294,7 +295,7 @@ export class DatabaseStorage implements IStorage {
   async getUserTodayTasks(userId: string): Promise<DailyTask[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     return await db
       .select()
       .from(dailyTasks)
@@ -421,25 +422,66 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUserCredentials(): Promise<Array<UserCredential & { user: User }>> {
-    return await db
-      .select({
-        id: userCredentials.id,
-        userId: userCredentials.userId,
-        platform: userCredentials.platform,
-        username: userCredentials.username,
-        email: userCredentials.email,
-        encryptedPassword: userCredentials.encryptedPassword,
-        notes: userCredentials.notes,
-        isActive: userCredentials.isActive,
-        lastUpdated: userCredentials.lastUpdated,
-        createdAt: userCredentials.createdAt,
-        user: users,
-      })
-      .from(userCredentials)
-      .innerJoin(users, eq(userCredentials.userId, users.id))
-      .where(eq(userCredentials.isActive, true))
-      .orderBy(desc(userCredentials.createdAt));
+    try {
+      const result = await db
+        .select({
+          id: userCredentials.id,
+          userId: userCredentials.userId,
+          platform: userCredentials.platform,
+          username: userCredentials.username,
+          email: userCredentials.email,
+          notes: userCredentials.notes,
+          isActive: userCredentials.isActive,
+          lastUpdated: userCredentials.lastUpdated,
+          createdAt: userCredentials.createdAt,
+          // Include user information
+          user: {
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            email: users.email,
+          }
+        })
+        .from(userCredentials)
+        .leftJoin(users, eq(userCredentials.userId, users.id))
+        .orderBy(desc(userCredentials.createdAt));
+
+      return result;
+    } catch (error) {
+      console.error("Error fetching user credentials:", error);
+      throw error;
+    }
   }
+
+  // Get all users for team data management
+  async getAllUsers() {
+    try {
+      const result = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          identity: users.identity,
+          phone: users.phone,
+          referralCode: users.referralCode,
+          totalEarnings: users.totalEarnings,
+          availableBalance: users.availableBalance,
+          isActive: users.isActive,
+          role: users.role,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt
+        })
+        .from(users)
+        .orderBy(desc(users.createdAt));
+
+      return result;
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      throw error;
+    }
+  }
+
 
   async updateUserCredential(credentialId: string, updates: Partial<InsertUserCredential>): Promise<UserCredential | undefined> {
     const [updatedCredential] = await db
@@ -471,7 +513,7 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`COUNT(*)` })
       .from(users)
       .where(eq(users.role, 'user'));
-    
+
     return result?.count || 0;
   }
 
@@ -480,7 +522,7 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`COUNT(*)` })
       .from(users)
       .where(and(eq(users.role, 'user'), eq(users.isActive, true)));
-    
+
     return result?.count || 0;
   }
 
@@ -489,7 +531,7 @@ export class DatabaseStorage implements IStorage {
       .select({ total: sql<string>`COALESCE(SUM(${users.totalEarnings}), '0.00')` })
       .from(users)
       .where(eq(users.role, 'user'));
-    
+
     return result?.total || "0.00";
   }
 
@@ -545,7 +587,7 @@ export class MemStorage implements IStorage {
   async createDailyTask(task: InsertDailyTask): Promise<DailyTask> { throw new Error("Not implemented in MemStorage"); }
   async getUserTodayTasks(userId: string): Promise<DailyTask[]> { throw new Error("Not implemented in MemStorage"); }
   async markTaskComplete(taskId: string, earnedAmount: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
-  
+
   // Team functionality stub implementations
   async createTeamEmail(teamEmail: InsertTeamEmail): Promise<TeamEmail> { throw new Error("Not implemented in MemStorage"); }
   async getTeamEmails(type?: 'inbound' | 'outbound', limit?: number): Promise<TeamEmail[]> { throw new Error("Not implemented in MemStorage"); }
@@ -563,6 +605,7 @@ export class MemStorage implements IStorage {
   async getTotalUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
   async getActiveUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
   async getTotalEarningsSum(): Promise<string> { throw new Error("Not implemented in MemStorage"); }
+  async getAllUsers(): Promise<User[]> { throw new Error("Not implemented in MemStorage"); } // Added for MemStorage
 
   private generateReferralCode(): string {
     const prefix = "THORX";

@@ -943,6 +943,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all users accounts (for team data management)
+  app.get("/api/team/users", requireTeamRole, async (req, res) => {
+    try {
+
+      const users = await storage.getAllUsers();
+
+      // Return safe user data (no passwords or sensitive info)
+      const safeUsers = users.map((user: any) => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        identity: user.identity,
+        phone: user.phone,
+        referralCode: user.referralCode,
+        totalEarnings: user.totalEarnings,
+        availableBalance: user.availableBalance,
+        isActive: user.isActive,
+        role: user.role || 'user',
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }));
+
+      res.json({
+        users: safeUsers,
+        total: safeUsers.length
+      });
+    } catch (error) {
+      console.error("Get all users error:", error);
+      res.status(500).json({
+        message: "Failed to fetch users data",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
   // Team member management endpoints
   const teamMemberSchema = z.object({
     memberName: z.string().min(1, "Member name is required"),

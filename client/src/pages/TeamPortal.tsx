@@ -124,6 +124,14 @@ export default function TeamPortal() {
     enabled: !!user && (user.role === 'team' || user.role === 'founder'),
   });
 
+  // FIXED: All users data query - Enable for both team and founder roles
+  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
+    queryKey: ['/api/team/users'],
+    enabled: !!user && (user.role === 'team' || user.role === 'founder'),
+    refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
+    refetchIntervalInBackground: true,
+  });
+
   // FIXED: Team members query - Enable for both team and founder roles
   const { data: teamMembersData, isLoading: membersLoading, error: membersError } = useQuery({
     queryKey: ['/api/team/members'],
@@ -907,18 +915,18 @@ export default function TeamPortal() {
           </CardContent>
         </Card>
 
-        {/* User Credentials List */}
+        {/* All Users Accounts List */}
         <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
           <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
             <CardTitle className="flex items-center justify-between">
-              <TechnicalLabel text="USER CREDENTIALS" className="text-foreground group-hover:text-primary/90 transition-colors" />
+              <TechnicalLabel text="ALL USERS ACCOUNTS" className="text-foreground group-hover:text-primary/90 transition-colors" />
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                  <Shield className="w-4 h-4 text-primary" />
+                  <Users className="w-4 h-4 text-primary" />
                 </div>
-                {credentialsData?.credentials && (
+                {teamMetrics && (
                   <div className="px-2 py-1 bg-primary/20 border border-primary/30">
-                    <TechnicalLabel text={`${credentialsData.credentials.length}`} className="text-primary text-sm font-black" />
+                    <TechnicalLabel text={`${teamMetrics.totalUsers || '0'}`} className="text-primary text-sm font-black" />
                   </div>
                 )}
               </div>
@@ -928,10 +936,10 @@ export default function TeamPortal() {
             {/* Real-time Status Indicator */}
             <div className="flex items-center justify-between mb-4 p-3 bg-muted/30 border border-muted-foreground/20">
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${credentialsLoading ? 'bg-yellow-500 animate-pulse' : credentialsError ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${usersLoading ? 'bg-yellow-500 animate-pulse' : usersError ? 'bg-red-500' : 'bg-green-500'}`}></div>
                 <TechnicalLabel 
-                  text={credentialsLoading ? 'SYNCING...' : credentialsError ? 'CONNECTION ERROR' : 'LIVE DATA'} 
-                  className={`text-sm ${credentialsLoading ? 'text-yellow-600' : credentialsError ? 'text-red-600' : 'text-green-600'}`} 
+                  text={usersLoading ? 'SYNCING...' : usersError ? 'CONNECTION ERROR' : 'LIVE DATA'} 
+                  className={`text-sm ${usersLoading ? 'text-yellow-600' : usersError ? 'text-red-600' : 'text-green-600'}`} 
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -940,190 +948,192 @@ export default function TeamPortal() {
               </div>
             </div>
 
-            {credentialsLoading ? (
+            {usersLoading ? (
               <div className="text-center p-12">
                 <div className="w-16 h-16 mx-auto mb-4 animate-spin border-4 border-primary border-t-transparent rounded-full"></div>
-                <TechnicalLabel text="LOADING CREDENTIALS..." className="text-primary text-xl" />
+                <TechnicalLabel text="LOADING USER ACCOUNTS..." className="text-primary text-xl" />
                 <TechnicalLabel text="Fetching real-time data..." className="text-muted-foreground text-sm mt-2" />
               </div>
-            ) : credentialsError ? (
+            ) : usersError ? (
               <div className="text-center p-12">
-                <Shield className="w-16 h-16 mx-auto mb-4 text-red-500" />
-                <TechnicalLabel text="ERROR LOADING CREDENTIALS" className="text-red-500 text-xl" />
+                <Users className="w-16 h-16 mx-auto mb-4 text-red-500" />
+                <TechnicalLabel text="ERROR LOADING USER ACCOUNTS" className="text-red-500 text-xl" />
                 <TechnicalLabel text="Unable to fetch real-time data" className="text-muted-foreground" />
                 <Button 
                   className="mt-4 bg-red-500/10 border border-red-500/30 text-red-600 hover:bg-red-500/20"
                   onClick={() => window.location.reload()}
                 >
-                  <Shield className="w-4 h-4 mr-2" />
+                  <Users className="w-4 h-4 mr-2" />
                   RETRY CONNECTION
                 </Button>
               </div>
             ) : (() => {
-              const credentials = credentialsData?.credentials || [];
-              const filteredCredentials = credentials.filter((cred: any) => 
+              const users = usersData?.users || [];
+              const filteredUsers = users.filter((user: any) => 
                 !searchTerm || 
-                cred.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                cred.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                cred.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                cred.platform?.toLowerCase().includes(searchTerm.toLowerCase())
+                user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.identity?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.referralCode?.toLowerCase().includes(searchTerm.toLowerCase())
               );
 
-              return !credentials.length ? (
+              return !users.length ? (
                 <div className="text-center p-12">
-                  <Shield className="w-16 h-16 mx-auto mb-4 text-primary" />
-                  <TechnicalLabel text="NO CREDENTIALS STORED" className="text-primary text-2xl" />
-                  <TechnicalLabel text="Users haven't stored any platform credentials yet" className="text-muted-foreground mb-4" />
+                  <Users className="w-16 h-16 mx-auto mb-4 text-primary" />
+                  <TechnicalLabel text="NO USERS REGISTERED" className="text-primary text-2xl" />
+                  <TechnicalLabel text="No user accounts found in the system" className="text-muted-foreground mb-4" />
                   
                   {/* Live Statistics */}
                   <div className="grid grid-cols-3 gap-4 mt-6 p-4 bg-muted/20 border border-muted-foreground/20">
                     <div className="text-center">
-                      <div className="text-2xl font-black text-primary" data-testid="total-users-with-credentials">
-                        {teamMetrics?.totalUsers || '0'}
+                      <div className="text-2xl font-black text-primary" data-testid="total-registered-users">
+                        0
                       </div>
                       <TechnicalLabel text="TOTAL USERS" className="text-muted-foreground text-xs" />
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-black text-orange-500">
+                      <div className="text-2xl font-black text-green-500">
                         0
                       </div>
-                      <TechnicalLabel text="WITH CREDENTIALS" className="text-muted-foreground text-xs" />
+                      <TechnicalLabel text="ACTIVE USERS" className="text-muted-foreground text-xs" />
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-black text-green-500">
-                        0%
+                      <div className="text-2xl font-black text-orange-500">
+                        ₨0.00
                       </div>
-                      <TechnicalLabel text="ADOPTION RATE" className="text-muted-foreground text-xs" />
+                      <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4" data-testid="credentials-list">
+                <div className="space-y-4" data-testid="users-accounts-list">
                   {/* Enhanced Statistics Header */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/20 border border-muted-foreground/20">
                     <div className="text-center">
                       <div className="text-xl font-black text-primary">
-                        {credentials.length}
+                        {users.length}
                       </div>
-                      <TechnicalLabel text="TOTAL STORED" className="text-muted-foreground text-xs" />
+                      <TechnicalLabel text="TOTAL USERS" className="text-muted-foreground text-xs" />
                     </div>
                     <div className="text-center">
                       <div className="text-xl font-black text-green-500">
-                        {credentials.filter((c: any) => c.isActive).length}
+                        {users.filter((u: any) => u.isActive).length}
                       </div>
                       <TechnicalLabel text="ACTIVE" className="text-muted-foreground text-xs" />
                     </div>
                     <div className="text-center">
-                      <div className="text-xl font-black text-blue-500">
-                        {[...new Set(credentials.map((c: any) => c.platform))].length}
+                      <div className="text-xl font-black text-red-500">
+                        {users.filter((u: any) => !u.isActive).length}
                       </div>
-                      <TechnicalLabel text="PLATFORMS" className="text-muted-foreground text-xs" />
+                      <TechnicalLabel text="INACTIVE" className="text-muted-foreground text-xs" />
                     </div>
                     <div className="text-center">
                       <div className="text-xl font-black text-orange-500">
-                        {Math.round((credentials.length / (teamMetrics?.totalUsers || 1)) * 100)}%
+                        ₨{users.reduce((sum: number, u: any) => sum + parseFloat(u.totalEarnings || '0'), 0).toFixed(2)}
                       </div>
-                      <TechnicalLabel text="USER ADOPTION" className="text-muted-foreground text-xs" />
+                      <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
                     </div>
                   </div>
 
                   {searchTerm && (
                     <div className="mb-4 text-center p-2 bg-primary/10 border border-primary/20">
                       <TechnicalLabel 
-                        text={`SHOWING ${filteredCredentials.length} OF ${credentials.length} CREDENTIALS`} 
+                        text={`SHOWING ${filteredUsers.length} OF ${users.length} USERS`} 
                         className="text-primary" 
                       />
                     </div>
                   )}
                   
-                  {filteredCredentials.length === 0 && searchTerm ? (
+                  {filteredUsers.length === 0 && searchTerm ? (
                     <div className="text-center p-8">
                       <Search className="w-12 h-12 mx-auto mb-4 text-primary" />
-                      <TechnicalLabel text="NO MATCHING CREDENTIALS" className="text-primary text-xl" />
+                      <TechnicalLabel text="NO MATCHING USERS" className="text-primary text-xl" />
                       <TechnicalLabel text={`No results found for "${searchTerm}"`} className="text-muted-foreground" />
                     </div>
                   ) : (
-                    filteredCredentials.map((credential: any, index: number) => (
+                    filteredUsers.map((user: any, index: number) => (
                       <div 
-                        key={credential.id || index} 
+                        key={user.id || index} 
                         className="border-2 border-muted-foreground/20 bg-background hover:bg-primary/5 p-4 transition-colors"
-                        data-testid={`credential-item-${index}`}
+                        data-testid={`user-account-${index}`}
                       >
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
-                            <div className="mb-2 flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${credential.isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <div className="mb-3 flex items-center gap-2">
+                              <div className={`w-3 h-3 rounded-full ${user.isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
                               <TechnicalLabel 
-                                text={`USER: ${credential.user?.firstName || 'N/A'} ${credential.user?.lastName || ''}`} 
-                                className="text-primary font-semibold" 
+                                text={`${user.firstName || 'N/A'} ${user.lastName || ''}`} 
+                                className="text-primary font-semibold text-lg" 
                               />
-                            </div>
-                            <div className="mb-2">
-                              <TechnicalLabel 
-                                text={`EMAIL: ${credential.user?.email || 'N/A'}`} 
-                                className="text-muted-foreground text-sm" 
-                              />
-                            </div>
-                            <div className="mb-2">
-                              <TechnicalLabel 
-                                text={`PLATFORM: ${credential.platform || 'N/A'}`} 
-                                className="text-foreground" 
-                              />
-                            </div>
-                            <div className="mb-2">
                               <span className={`px-2 py-1 text-xs border ${
-                                credential.isActive 
-                                  ? 'border-green-500 text-green-500 bg-green-500/10' 
-                                  : 'border-red-500 text-red-500 bg-red-500/10'
+                                user.role === 'founder' 
+                                  ? 'border-purple-500 text-purple-500 bg-purple-500/10' 
+                                  : user.role === 'team'
+                                  ? 'border-blue-500 text-blue-500 bg-blue-500/10'
+                                  : 'border-gray-500 text-gray-500 bg-gray-500/10'
                               }`}>
-                                {credential.isActive ? 'ACTIVE' : 'INACTIVE'}
+                                {(user.role || 'user').toUpperCase()}
                               </span>
+                            </div>
+                            <div className="space-y-2">
+                              <div>
+                                <TechnicalLabel text="EMAIL:" className="text-muted-foreground text-sm" />
+                                <TechnicalLabel text={user.email || 'N/A'} className="text-foreground text-sm ml-2" />
+                              </div>
+                              <div>
+                                <TechnicalLabel text="IDENTITY:" className="text-muted-foreground text-sm" />
+                                <TechnicalLabel text={user.identity || 'N/A'} className="text-foreground text-sm ml-2 font-mono" />
+                              </div>
+                              <div>
+                                <TechnicalLabel text="PHONE:" className="text-muted-foreground text-sm" />
+                                <TechnicalLabel text={user.phone || 'N/A'} className="text-foreground text-sm ml-2" />
+                              </div>
+                              <div>
+                                <TechnicalLabel text="REFERRAL CODE:" className="text-muted-foreground text-sm" />
+                                <TechnicalLabel text={user.referralCode || 'N/A'} className="text-primary text-sm ml-2 font-mono font-bold" />
+                              </div>
                             </div>
                           </div>
                           <div>
-                            <div className="mb-2">
-                              <TechnicalLabel 
-                                text={`USERNAME: ${credential.username || 'N/A'}`} 
-                                className="text-muted-foreground text-sm" 
-                              />
-                            </div>
-                            <div className="mb-2">
-                              <TechnicalLabel 
-                                text={`CREDENTIAL EMAIL: ${credential.email || 'N/A'}`} 
-                                className="text-muted-foreground text-sm" 
-                              />
-                            </div>
-                            <div className="mb-2 flex items-center gap-2">
-                              <TechnicalLabel 
-                                text="PASSWORD:" 
-                                className="text-muted-foreground text-sm" 
-                              />
-                              <span className="font-mono text-sm bg-muted border border-muted-foreground/30 px-2 py-1">
-                                ••••••••
-                              </span>
-                              <Button
-                                size="sm"
-                                className="h-6 w-6 p-0 bg-transparent border border-muted-foreground/30 hover:bg-primary/10"
-                                data-testid={`toggle-password-${index}`}
-                              >
-                                <Eye className="w-3 h-3 text-primary" />
-                              </Button>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              <TechnicalLabel 
-                                text={`ADDED: ${credential.createdAt ? new Date(credential.createdAt).toLocaleDateString() : 'N/A'}`} 
-                                className="text-muted-foreground text-xs block" 
-                              />
-                              <TechnicalLabel 
-                                text={`UPDATED: ${credential.lastUpdated ? new Date(credential.lastUpdated).toLocaleDateString() : 'N/A'}`} 
-                                className="text-muted-foreground text-xs block" 
-                              />
-                              {credential.notes && (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="text-center p-3 bg-green-50 border border-green-200">
+                                  <div className="text-lg font-black text-green-600">
+                                    ₨{parseFloat(user.totalEarnings || '0').toFixed(2)}
+                                  </div>
+                                  <TechnicalLabel text="TOTAL EARNINGS" className="text-green-600 text-xs" />
+                                </div>
+                                <div className="text-center p-3 bg-blue-50 border border-blue-200">
+                                  <div className="text-lg font-black text-blue-600">
+                                    ₨{parseFloat(user.availableBalance || '0').toFixed(2)}
+                                  </div>
+                                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-blue-600 text-xs" />
+                                </div>
+                              </div>
+                              <div className="mt-3">
+                                <span className={`px-3 py-1 text-sm border-2 block text-center ${
+                                  user.isActive 
+                                    ? 'border-green-500 text-green-500 bg-green-500/10' 
+                                    : 'border-red-500 text-red-500 bg-red-500/10'
+                                }`}>
+                                  {user.isActive ? 'ACTIVE ACCOUNT' : 'INACTIVE ACCOUNT'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-3 space-y-1">
                                 <TechnicalLabel 
-                                  text={`NOTES: ${credential.notes}`} 
-                                  className="text-blue-400 text-xs block mt-1" 
+                                  text={`USER ID: ${user.id}`} 
+                                  className="text-muted-foreground text-xs block font-mono" 
                                 />
-                              )}
+                                <TechnicalLabel 
+                                  text={`JOINED: ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}`} 
+                                  className="text-muted-foreground text-xs block" 
+                                />
+                                <TechnicalLabel 
+                                  text={`LAST ACTIVE: ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}`} 
+                                  className="text-muted-foreground text-xs block" 
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
