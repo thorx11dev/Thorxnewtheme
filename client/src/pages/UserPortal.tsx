@@ -1244,10 +1244,7 @@ export default function UserPortal() {
                       <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
                     </div>
 
-                    {/* Revision (Tier Badge) */}
-                    <div className="status-indicator-mobile px-2 md:px-3 py-1 text-xs font-black border-2 border-black text-white bg-[#000000] flex-shrink-0">
-                      {leader.tier}
-                    </div>
+                    {/* Revision (Tier Badge) removed */}
                   </div>
                 </div>
 
