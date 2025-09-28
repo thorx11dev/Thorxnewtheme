@@ -2081,7 +2081,6 @@ export default function UserPortal() {
               {/* Mobile Navigation Dropdown - Industrial Theme */}
               <div className="md:hidden mb-4 help-dropdown-container">
                 <div className="help-dropdown-wrapper">
-                  <TechnicalLabel text="SELECT HELP SECTION" className="help-dropdown-label" />
                   <select
                     value={activeHelpTab}
                     onChange={(e) => setActiveHelpTab(e.target.value)}
