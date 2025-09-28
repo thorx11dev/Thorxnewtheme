@@ -1428,7 +1428,40 @@
       letter-spacing: 1px !important;
     }
 
-    /* Leaderboard mobile improvements */
+    /* Mobile Leaderboard Optimizations */
+    .mobile-leaderboard-list {
+      max-height: 70vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: hsl(var(--primary)) transparent;
+    }
+
+    .mobile-leaderboard-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .mobile-leaderboard-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .mobile-leaderboard-list::-webkit-scrollbar-thumb {
+      background: hsl(var(--primary));
+      border-radius: 2px;
+    }
+
+    .mobile-leaderboard-card {
+      border-radius: 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+    }
+
+    .mobile-leaderboard-card:active {
+      transform: scale(0.98);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Leaderboard legacy mobile improvements */
     .leaderboard-item {
       padding: 0.75rem !important;
       flex-direction: column !important;

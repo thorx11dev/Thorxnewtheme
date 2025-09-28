@@ -1226,53 +1226,93 @@ export default function UserPortal() {
             </div>
           </div>
 
-          {/* Leaderboard Items */}
-          <div className="space-y-3 md:space-y-4">
+          {/* Mobile Optimized Leaderboard List */}
+          <div className="mobile-leaderboard-list space-y-2 md:space-y-4">
             {leaderboardData.map((leader, index) => (
-              <div key={leader.id} className="leaderboard-item wireframe-section p-3 md:p-4 hover:bg-white transition-colors duration-200">
-                <div className="flex items-start md:items-center justify-between flex-col md:flex-row gap-3 md:gap-0">
-                  {/* Left Side - Rank and Name */}
-                  <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
+              <div key={leader.id} className="mobile-leaderboard-card bg-white border-2 border-black hover:bg-primary/5 transition-all duration-200 overflow-hidden">
+                {/* Mobile Card Layout */}
+                <div className="block md:hidden">
+                  {/* Top Row - Rank, Icon, Name */}
+                  <div className="flex items-center gap-3 p-3 border-b border-muted-foreground/20">
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white font-black text-sm md:text-lg flex items-center justify-center border border-black">
+                      <div className="w-8 h-8 bg-black text-white font-black text-lg flex items-center justify-center border border-black">
                         {leader.rank}
                       </div>
                       {getRankIcon(leader.rank)}
                     </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm md:text-lg font-black text-foreground mb-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-lg font-black text-foreground truncate">
                         {leader.name}
                       </div>
-                      <div className="flex items-center gap-1 md:gap-2 flex-wrap">
-                        <TechnicalLabel text={`${leader.referrals} REFERRALS`} className="text-muted-foreground text-xs" />
-                        <div className="w-1 h-1 bg-muted-foreground rounded-full hidden md:block"></div>
-                        <TechnicalLabel text={`JOINED ${new Date(leader.joinDate).toLocaleDateString()}`} className="text-muted-foreground text-xs" />
-                      </div>
+                      <TechnicalLabel text={`${leader.referrals} REFERRALS`} className="text-muted-foreground text-xs" />
                     </div>
                   </div>
 
-                  {/* Right Side - Rank Info and Revision */}
-                  <div className="flex items-center justify-between md:justify-end gap-3 md:gap-4 w-full md:w-auto">
-                    {/* Rank Info */}
-                    <div className="text-left md:text-right">
-                      <div className="text-base md:text-lg font-black text-primary mb-1">
+                  {/* Middle Row - Earnings and Status */}
+                  <div className="flex items-center justify-between p-3 border-b border-muted-foreground/20">
+                    <div className="text-center">
+                      <div className="text-xl font-black text-primary mb-1">
                         {formatCurrency(leader.earnings)}
                       </div>
                       <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
                     </div>
+                    <div className="text-center">
+                      <div className="flex items-center gap-2 justify-center mb-1">
+                        <div className={`w-3 h-3 rounded-full ${leader.status === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                        <TechnicalLabel text={leader.status} className={`text-xs font-black ${leader.status === 'ACTIVE' ? 'text-green-600' : 'text-gray-600'}`} />
+                      </div>
+                      <TechnicalLabel text="STATUS" className="text-muted-foreground text-xs" />
+                    </div>
+                  </div>
 
-                    {/* Revision (Tier Badge) removed */}
+                  {/* Bottom Row - Additional Info */}
+                  <div className="flex items-center justify-between p-3 text-xs">
+                    <TechnicalLabel text={`JOINED ${new Date(leader.joinDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`} className="text-muted-foreground" />
+                    <TechnicalLabel text={`RANK #${leader.rank} OF 500+`} className="text-muted-foreground font-black" />
                   </div>
                 </div>
 
-                {/* Status Indicator */}
-                <div className="mt-2 md:mt-3 flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${leader.status === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                    <TechnicalLabel text={`STATUS: ${leader.status}`} className="text-muted-foreground text-xs" />
+                {/* Desktop Layout (Unchanged) */}
+                <div className="hidden md:block p-4">
+                  <div className="flex items-center justify-between">
+                    {/* Left Side - Rank and Name */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="w-8 h-8 bg-black text-white font-black text-lg flex items-center justify-center border border-black">
+                          {leader.rank}
+                        </div>
+                        {getRankIcon(leader.rank)}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="text-lg font-black text-foreground mb-1">
+                          {leader.name}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <TechnicalLabel text={`${leader.referrals} REFERRALS`} className="text-muted-foreground text-xs" />
+                          <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                          <TechnicalLabel text={`JOINED ${new Date(leader.joinDate).toLocaleDateString()}`} className="text-muted-foreground text-xs" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Side - Rank Info */}
+                    <div className="text-right">
+                      <div className="text-lg font-black text-primary mb-1">
+                        {formatCurrency(leader.earnings)}
+                      </div>
+                      <TechnicalLabel text="TOTAL EARNED" className="text-muted-foreground text-xs" />
+                    </div>
                   </div>
-                  <TechnicalLabel text={`RANK #${leader.rank} OF 500+ USERS`} className="text-muted-foreground text-xs" />
+
+                  {/* Status Indicator */}
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${leader.status === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                      <TechnicalLabel text={`STATUS: ${leader.status}`} className="text-muted-foreground text-xs" />
+                    </div>
+                    <TechnicalLabel text={`RANK #${leader.rank} OF 500+ USERS`} className="text-muted-foreground text-xs" />
+                  </div>
                 </div>
               </div>
             ))}
