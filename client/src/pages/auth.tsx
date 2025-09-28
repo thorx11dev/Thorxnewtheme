@@ -210,19 +210,26 @@ export default function Auth() {
   // Anonymous login mutation
   const anonymousLoginMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/anonymous-login", {}),
-    onSuccess: () => {
-      // Invalidate auth queries to refresh user state
-      queryClient.invalidateQueries({ queryKey: ["auth"] });
-      
+    onSuccess: async () => {
       toast({
         title: "Welcome to THORX!",
         description: "You can now explore the earning dashboard.",
       });
       
-      // Add delay to ensure session is established before navigation
+      // Invalidate and refetch auth queries to refresh user state
+      await queryClient.invalidateQueries({ queryKey: ["auth"] });
+      
+      // Refetch the auth query to ensure user state is updated
+      try {
+        await queryClient.refetchQueries({ queryKey: ["auth"] });
+      } catch (error) {
+        console.log("Auth refetch completed with expected error for guest users");
+      }
+      
+      // Navigate after ensuring auth state is refreshed
       setTimeout(() => {
         setLocation("/");
-      }, 500);
+      }, 200);
     },
     onError: (error: any) => {
       toast({
