@@ -912,22 +912,52 @@ export default function TeamPortal() {
           <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
             <CardTitle className="flex items-center justify-between">
               <TechnicalLabel text="USER CREDENTIALS" className="text-foreground group-hover:text-primary/90 transition-colors" />
-              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                <Shield className="w-4 h-4 text-primary" />
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                  <Shield className="w-4 h-4 text-primary" />
+                </div>
+                {credentialsData?.credentials && (
+                  <div className="px-2 py-1 bg-primary/20 border border-primary/30">
+                    <TechnicalLabel text={`${credentialsData.credentials.length}`} className="text-primary text-sm font-black" />
+                  </div>
+                )}
               </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
+            {/* Real-time Status Indicator */}
+            <div className="flex items-center justify-between mb-4 p-3 bg-muted/30 border border-muted-foreground/20">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${credentialsLoading ? 'bg-yellow-500 animate-pulse' : credentialsError ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                <TechnicalLabel 
+                  text={credentialsLoading ? 'SYNCING...' : credentialsError ? 'CONNECTION ERROR' : 'LIVE DATA'} 
+                  className={`text-sm ${credentialsLoading ? 'text-yellow-600' : credentialsError ? 'text-red-600' : 'text-green-600'}`} 
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <TechnicalLabel text="LAST UPDATE:" className="text-muted-foreground text-xs" />
+                <TechnicalLabel text={new Date().toLocaleTimeString()} className="text-foreground text-xs font-mono" />
+              </div>
+            </div>
+
             {credentialsLoading ? (
               <div className="text-center p-12">
                 <div className="w-16 h-16 mx-auto mb-4 animate-spin border-4 border-primary border-t-transparent rounded-full"></div>
                 <TechnicalLabel text="LOADING CREDENTIALS..." className="text-primary text-xl" />
+                <TechnicalLabel text="Fetching real-time data..." className="text-muted-foreground text-sm mt-2" />
               </div>
             ) : credentialsError ? (
               <div className="text-center p-12">
                 <Shield className="w-16 h-16 mx-auto mb-4 text-red-500" />
                 <TechnicalLabel text="ERROR LOADING CREDENTIALS" className="text-red-500 text-xl" />
-                <TechnicalLabel text="Please try refreshing the page" className="text-muted-foreground" />
+                <TechnicalLabel text="Unable to fetch real-time data" className="text-muted-foreground" />
+                <Button 
+                  className="mt-4 bg-red-500/10 border border-red-500/30 text-red-600 hover:bg-red-500/20"
+                  onClick={() => window.location.reload()}
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  RETRY CONNECTION
+                </Button>
               </div>
             ) : (() => {
               const credentials = credentialsData?.credentials || [];
@@ -942,19 +972,70 @@ export default function TeamPortal() {
               return !credentials.length ? (
                 <div className="text-center p-12">
                   <Shield className="w-16 h-16 mx-auto mb-4 text-primary" />
-                  <TechnicalLabel text="NO CREDENTIALS FOUND" className="text-primary text-2xl" />
-                  <TechnicalLabel text="User credentials will appear here when available" className="text-muted-foreground" />
+                  <TechnicalLabel text="NO CREDENTIALS STORED" className="text-primary text-2xl" />
+                  <TechnicalLabel text="Users haven't stored any platform credentials yet" className="text-muted-foreground mb-4" />
+                  
+                  {/* Live Statistics */}
+                  <div className="grid grid-cols-3 gap-4 mt-6 p-4 bg-muted/20 border border-muted-foreground/20">
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-primary" data-testid="total-users-with-credentials">
+                        {teamMetrics?.totalUsers || '0'}
+                      </div>
+                      <TechnicalLabel text="TOTAL USERS" className="text-muted-foreground text-xs" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-orange-500">
+                        0
+                      </div>
+                      <TechnicalLabel text="WITH CREDENTIALS" className="text-muted-foreground text-xs" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-black text-green-500">
+                        0%
+                      </div>
+                      <TechnicalLabel text="ADOPTION RATE" className="text-muted-foreground text-xs" />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4" data-testid="credentials-list">
+                  {/* Enhanced Statistics Header */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/20 border border-muted-foreground/20">
+                    <div className="text-center">
+                      <div className="text-xl font-black text-primary">
+                        {credentials.length}
+                      </div>
+                      <TechnicalLabel text="TOTAL STORED" className="text-muted-foreground text-xs" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-black text-green-500">
+                        {credentials.filter((c: any) => c.isActive).length}
+                      </div>
+                      <TechnicalLabel text="ACTIVE" className="text-muted-foreground text-xs" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-black text-blue-500">
+                        {[...new Set(credentials.map((c: any) => c.platform))].length}
+                      </div>
+                      <TechnicalLabel text="PLATFORMS" className="text-muted-foreground text-xs" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-black text-orange-500">
+                        {Math.round((credentials.length / (teamMetrics?.totalUsers || 1)) * 100)}%
+                      </div>
+                      <TechnicalLabel text="USER ADOPTION" className="text-muted-foreground text-xs" />
+                    </div>
+                  </div>
+
                   {searchTerm && (
-                    <div className="mb-4 text-center">
+                    <div className="mb-4 text-center p-2 bg-primary/10 border border-primary/20">
                       <TechnicalLabel 
                         text={`SHOWING ${filteredCredentials.length} OF ${credentials.length} CREDENTIALS`} 
                         className="text-primary" 
                       />
                     </div>
                   )}
+                  
                   {filteredCredentials.length === 0 && searchTerm ? (
                     <div className="text-center p-8">
                       <Search className="w-12 h-12 mx-auto mb-4 text-primary" />
@@ -970,7 +1051,8 @@ export default function TeamPortal() {
                       >
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
-                            <div className="mb-2">
+                            <div className="mb-2 flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${credential.isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>
                               <TechnicalLabel 
                                 text={`USER: ${credential.user?.firstName || 'N/A'} ${credential.user?.lastName || ''}`} 
                                 className="text-primary font-semibold" 
@@ -988,11 +1070,26 @@ export default function TeamPortal() {
                                 className="text-foreground" 
                               />
                             </div>
+                            <div className="mb-2">
+                              <span className={`px-2 py-1 text-xs border ${
+                                credential.isActive 
+                                  ? 'border-green-500 text-green-500 bg-green-500/10' 
+                                  : 'border-red-500 text-red-500 bg-red-500/10'
+                              }`}>
+                                {credential.isActive ? 'ACTIVE' : 'INACTIVE'}
+                              </span>
+                            </div>
                           </div>
                           <div>
                             <div className="mb-2">
                               <TechnicalLabel 
                                 text={`USERNAME: ${credential.username || 'N/A'}`} 
+                                className="text-muted-foreground text-sm" 
+                              />
+                            </div>
+                            <div className="mb-2">
+                              <TechnicalLabel 
+                                text={`CREDENTIAL EMAIL: ${credential.email || 'N/A'}`} 
                                 className="text-muted-foreground text-sm" 
                               />
                             </div>
@@ -1012,11 +1109,21 @@ export default function TeamPortal() {
                                 <Eye className="w-3 h-3 text-primary" />
                               </Button>
                             </div>
-                            <div>
+                            <div className="text-xs text-muted-foreground">
                               <TechnicalLabel 
                                 text={`ADDED: ${credential.createdAt ? new Date(credential.createdAt).toLocaleDateString() : 'N/A'}`} 
-                                className="text-muted-foreground text-xs" 
+                                className="text-muted-foreground text-xs block" 
                               />
+                              <TechnicalLabel 
+                                text={`UPDATED: ${credential.lastUpdated ? new Date(credential.lastUpdated).toLocaleDateString() : 'N/A'}`} 
+                                className="text-muted-foreground text-xs block" 
+                              />
+                              {credential.notes && (
+                                <TechnicalLabel 
+                                  text={`NOTES: ${credential.notes}`} 
+                                  className="text-blue-400 text-xs block mt-1" 
+                                />
+                              )}
                             </div>
                           </div>
                         </div>
