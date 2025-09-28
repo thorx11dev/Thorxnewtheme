@@ -2100,6 +2100,14 @@ export default function UserPortal() {
                 {/* Area Guide - FAQ Section Style */}
                 {activeHelpTab === "guide" && (
                   <div className="mt-0">
+                    {/* Section Heading */}
+                    <div className="text-center mb-6 md:mb-8">
+                      <h3 className="text-lg md:text-2xl lg:text-3xl font-black text-foreground tracking-tight">
+                        FREQUENTLY ASKED <span className="text-primary">QUESTIONS</span>
+                      </h3>
+                      <TechnicalLabel text="INSTANT ANSWERS TO YOUR THORX QUERIES" className="text-muted-foreground text-xs md:text-sm mt-2" />
+                    </div>
+
                     {/* FAQ Items - Landing Page Style */}
                     <div className="space-y-4 md:space-y-6">
                       {[
