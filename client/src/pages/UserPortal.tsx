@@ -1263,15 +1263,6 @@ export default function UserPortal() {
             ))}
           </div>
 
-          {/* View More Button */}
-          <div className="mt-4 md:mt-6 text-center">
-            <Button
-              variant="outline"
-              className="border-2 border-primary text-primary hover:bg-primary hover:text-white px-4 md:px-8 py-2 md:py-3 font-black text-sm md:text-base"
-            >
-              VIEW COMPLETE LEADERBOARD
-            </Button>
-          </div>
         </div>
         {/* Your Referrals Section */}
         {referralsData?.referrals && referralsData.referrals.length > 0 && (
