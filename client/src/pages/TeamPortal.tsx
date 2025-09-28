@@ -384,7 +384,7 @@ export default function TeamPortal() {
           </div>
         </div>
 
-        {/* Six Detailed Metrics Cards - Aligned with Main Summary Cards */}
+        {/* Six Detailed Metrics Cards - Real-time Data */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {/* Total Users - New Registrations */}
           <Card className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
@@ -399,11 +399,11 @@ export default function TeamPortal() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-3xl font-black text-primary" data-testid="metric-new-registrations">
-                  {metricsLoading ? '---' : metricsError ? 'ERR' : '1'}
+                  {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.newRegistrationsToday || '0')}
                 </div>
                 <div className="text-xs text-green-500 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
-                  +33%
+                  {metricsLoading ? '0%' : `+${teamMetrics?.registrationGrowthPercent || '0'}%`}
                 </div>
               </div>
               <TechnicalLabel text="TODAY" className="text-primary/70 text-sm" />
@@ -424,11 +424,11 @@ export default function TeamPortal() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-3xl font-black text-primary" data-testid="metric-registration-trend">
-                  {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.totalUsers?.toLocaleString() || '3')}
+                  {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.totalUsers?.toLocaleString() || '0')}
                 </div>
                 <div className="text-xs text-green-500 flex items-center gap-1">
                   <Activity className="w-3 h-3" />
-                  GROWTH
+                  {teamMetrics?.registrationTrend || 'STABLE'}
                 </div>
               </div>
               <TechnicalLabel text="TOTAL ACCOUNTS" className="text-primary/70 text-sm" />
@@ -449,7 +449,7 @@ export default function TeamPortal() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-3xl font-black text-primary" data-testid="metric-current-sessions">
-                  {metricsLoading ? '---' : metricsError ? 'ERR' : '2'}
+                  {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.currentSessions || '0')}
                 </div>
                 <div className="text-xs text-green-500 flex items-center gap-1">
                   <Activity className="w-3 h-3" />
@@ -474,7 +474,7 @@ export default function TeamPortal() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-3xl font-black text-primary" data-testid="metric-monthly-active">
-                  {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.activeUsers?.toLocaleString() || '3')}
+                  {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.activeUsers?.toLocaleString() || '0')}
                 </div>
                 <div className="text-xs text-blue-500 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
@@ -524,7 +524,7 @@ export default function TeamPortal() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-3xl font-black text-foreground" data-testid="metric-monthly-revenue">
-                  ₨0.00
+                  {metricsLoading ? '---' : metricsError ? 'ERR' : `₨${parseFloat(teamMetrics?.monthlyEarnings || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 </div>
                 <div className="text-xs text-yellow-500 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
