@@ -125,6 +125,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
+      // Allow cookies to work in iframe environments (Replit preview)
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "none",
     },
   }));
 
