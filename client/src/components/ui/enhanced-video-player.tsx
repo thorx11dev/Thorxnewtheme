@@ -89,20 +89,8 @@ export default function EnhancedVideoPlayer({
         (document as any).msFullscreenElement
       );
       
-      // For desktop, always sync with browser fullscreen state
-      if (!isMobileDevice) {
-        setIsFullscreen(isCurrentlyFullscreen);
-      } else {
-        // For mobile, be more selective about when to sync state
-        // Only sync if browser actually changes fullscreen state
-        if (isCurrentlyFullscreen !== isFullscreen) {
-          // Only update if we're not in the middle of a manual exit operation
-          const isManualExit = !isCurrentlyFullscreen && isFullscreen;
-          if (!isManualExit) {
-            setIsFullscreen(isCurrentlyFullscreen);
-          }
-        }
-      }
+      // Always sync with browser fullscreen state for both desktop and mobile
+      setIsFullscreen(isCurrentlyFullscreen);
       
       // Handle body classes - always sync with actual browser state
       if (isMobileDevice) {
@@ -129,7 +117,7 @@ export default function EnhancedVideoPlayer({
       document.body.classList.remove('video-fullscreen-active');
       document.body.classList.remove('cinematic-mode');
     };
-  }, [isMobileDevice, isFullscreen]);
+  }, [isMobileDevice]);
 
   // Main timer for video progress
   useEffect(() => {
