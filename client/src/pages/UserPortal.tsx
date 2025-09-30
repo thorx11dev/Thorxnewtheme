@@ -1,3 +1,4 @@
+replit_final_file>
 import { useState, useEffect, useCallback } from "react";
 import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -89,6 +90,142 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
+
+// Share Modal Component
+function ShareModal({ isOpen, onClose, referralCode, userName }: { isOpen: boolean; onClose: () => void; referralCode: string; userName: string }) {
+  if (!isOpen) return null;
+
+  const shareUrl = `${window.location.origin}/?ref=${referralCode}`;
+  const shareMessage = `Hey ${userName}! Check out THORX and start earning. Use my code: ${referralCode}`;
+
+  const handleShare = async (platform: string) => {
+    try {
+      if (platform === 'copy') {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({ title: "Link Copied!", description: "Referral link copied to clipboard." });
+      } else if (platform === 'whatsapp') {
+        window.open(`https://wa.me/?text=${encodeURIComponent(`${shareMessage} ${shareUrl}`)}`);
+      } else if (platform === 'telegram') {
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${shareMessage}`)}`);
+      } else if (platform === 'messenger') {
+        window.open(`fb-messenger://share?link=${encodeURIComponent(shareUrl)}&app_id=${encodeURIComponent(shareUrl)}`); // Note: Messenger sharing might require specific app integration or browser behavior. This is a common approach.
+      } else if (platform === 'instagram') {
+        // Instagram sharing is typically done via the app, direct link sharing in stories/posts is limited.
+        // This might open the Instagram app for sharing to stories if configured.
+        window.open(`https://www.instagram.com/create/?text=${encodeURIComponent(`${shareMessage}`)}&url=${encodeURIComponent(shareUrl)}`);
+      } else if (platform === 'tiktok') {
+        // TikTok sharing is also primarily app-based. This might open the app.
+        window.open(`https://www.tiktok.com/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${shareMessage}`)}`);
+      } else if (platform === 'facebook') {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareMessage)}`);
+      } else if (platform === 'gmail') {
+        window.open(`mailto:?subject=${encodeURIComponent('Invitation to Join THORX!')}&body=${encodeURIComponent(`${shareMessage}\n\nClick here to join: ${shareUrl}`)}`);
+      }
+      onClose();
+    } catch (error) {
+      console.error("Sharing error:", error);
+      toast({ title: "Sharing Failed", description: "Could not share via this platform. Please try again." });
+    }
+  };
+
+  // Thorx Design Standards: Minimal, visually attractive, responsive, clear hierarchy
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm transition-opacity duration-300">
+      <div className="relative bg-background border-2 border-black p-6 md:p-8 shadow-xl shadow-primary/20 w-full max-w-md md:max-w-lg mx-4 rounded-lg">
+        {/* Close Button */}
+        <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors">
+          <X className="w-5 h-5 text-primary" />
+        </button>
+
+        {/* Modal Header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 bg-black text-white px-3 py-1 border-2 border-black mb-3">
+            <Gift className="w-4 h-4" />
+            <TechnicalLabel text="INVITE & EARN" className="text-white text-sm font-black" />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-black text-foreground leading-tight">
+            SHARE THORX WITH FRIENDS
+          </h2>
+          <p className="text-muted-foreground text-xs mt-2">
+            Grow your network and earn together!
+          </p>
+        </div>
+
+        {/* Referral Code Display */}
+        <div className="bg-black text-white p-4 mb-6 border-2 border-primary text-center">
+          <TechnicalLabel text="YOUR UNIQUE REFERRAL CODE" className="text-primary mb-3 text-xs font-black uppercase" />
+          <div className="referral-code-display bg-primary text-black px-3 py-2 text-xl md:text-2xl font-black tracking-widest border-2 border-white rounded">
+            {referralCode}
+          </div>
+        </div>
+
+        {/* Sharing Options */}
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
+          {/* Copy Link */}
+          <button onClick={() => handleShare('copy')} className="share-button group">
+            <Copy className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            <TechnicalLabel text="Copy Link" className="text-xs group-hover:text-primary" />
+          </button>
+          {/* WhatsApp */}
+          <button onClick={() => handleShare('whatsapp')} className="share-button group">
+            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom WhatsApp Icon */}
+              <path d="M1.732 1.732C2.245 1.22 2.882 1 3.571 1h13.286c.689 0 1.326.22 1.732.732C19.245 2.245 19.5 2.882 19.5 3.571v13.286c0 .689-.22 1.326-.732 1.732-1.017 1.017-2.673 1.017-3.69 0L10.286 14H4.429c-.689 0-1.326-.22-1.732-.732C1.22 12.755 1 12.118 1 11.429V3.571c0-.689.22-1.326.732-1.732zm16.778 2.143a12.458 12.458 0 00-2.057-1.821c-1.326-1.326-3.69-1.326-5.016 0L16.778 4.429l2.143 2.143c.365-.365.732-.732 1.098-.732.366 0 .732.366 1.098.732l2.143-2.143a12.458 12.458 0 00-2.057-1.821zM18.5 7.857a1.071 1.071 0 11-2.143 0 1.071 1.071 0 012.143 0z"></path>
+            </svg>
+            <TechnicalLabel text="WhatsApp" className="text-xs group-hover:text-primary" />
+          </button>
+          {/* Telegram */}
+          <button onClick={() => handleShare('telegram')} className="share-button group">
+            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Telegram Icon */}
+              <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm-2.707-9.707l1.414 1.414 4.293 2.586 6.293-6.293-7.707-4.293zM7 11.5l3.293 1.976 1.586 1.024 3.414-7.707L7 11.5z"></path>
+            </svg>
+            <TechnicalLabel text="Telegram" className="text-xs group-hover:text-primary" />
+          </button>
+          {/* Messenger */}
+          <button onClick={() => handleShare('messenger')} className="share-button group">
+            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Messenger Icon */}
+              <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm-3.414-7.586l1.414 1.414-3.414 3.414 3.414 3.414 1.414-1.414-2-2 2-2z"></path>
+            </svg>
+            <TechnicalLabel text="Messenger" className="text-xs group-hover:text-primary" />
+          </button>
+          {/* Instagram */}
+          <button onClick={() => handleShare('instagram')} className="share-button group">
+            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Instagram Icon */}
+              <path d="M7.8 2h8.4c2.538 0 4.6 2.062 4.6 4.6v8.4c0 2.538-2.062 4.6-4.6 4.6H7.8c-2.538 0-4.6-2.062-4.6-4.6V6.6c0-2.538 2.062-4.6 4.6-4.6zm4.2 14.2c-2.275 0-4.1-1.825-4.1-4.1s1.825-4.1 4.1-4.1 4.1 1.825 4.1 4.1-1.825 4.1-4.1 4.1zm2.8-7.7c0-.772-.628-1.4-1.4-1.4s-1.4.628-1.4 1.4.628 1.4 1.4 1.4 1.4-.628 1.4-1.4zM18 10.4c0-.552-.448-1-1-1s-1 .448-1 1 .448 1 1 1 1-.448 1-1z"></path>
+            </svg>
+            <TechnicalLabel text="Instagram" className="text-xs group-hover:text-primary" />
+          </button>
+          {/* TikTok */}
+          <button onClick={() => handleShare('tiktok')} className="share-button group">
+            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom TikTok Icon */}
+              <path d="M18.374 2.243a1.375 1.375 0 00-1.25.783L15.374 7h-4.422a8.028 8.028 0 00-1.573.155L5.859 2.5a1.375 1.375 0 00-1.25-.783H2.5v19.243h2.617a1.375 1.375 0 001.25-.783l1.656-3.643h5.017l1.656 3.643a1.375 1.375 0 001.25.783h2.617V2.243zm-2.443 14.977h-4.859a6.684 6.684 0 01-1.328-.134l-1.974 4.356H4.469l2.422-5.328a6.684 6.684 0 011.328.134h4.859a6.684 6.684 0 011.328-.134l1.974-4.356h.617l-2.422 5.328zM19.75 8.375a1.375 1.375 0 100-2.75 1.375 1.375 0 000 2.75z"></path>
+            </svg>
+            <TechnicalLabel text="TikTok" className="text-xs group-hover:text-primary" />
+          </button>
+          {/* Facebook */}
+          <button onClick={() => handleShare('facebook')} className="share-button group">
+            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Facebook Icon */}
+              <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm1-10h-1.5a.5.5 0 00-.5.5v2h2a.5.5 0 00.5-.5v-2zM10 14h-1.5a.5.5 0 00-.5.5v2h2a.5.5 0 00.5-.5v-2zM8.5 10H10V8h-1.5a.5.5 0 00-.5.5v2a.5.5 0 00.5.5zM14 8h1.5a.5.5 0 00.5-.5v-2a.5.5 0 00-.5-.5H14v3z"></path>
+            </svg>
+            <TechnicalLabel text="Facebook" className="text-xs group-hover:text-primary" />
+          </button>
+          {/* Gmail */}
+          <button onClick={() => handleShare('gmail')} className="share-button group">
+            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Gmail Icon */}
+              <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zm-7 7.5l-7-4.5 7-4.5 7 4.5-7 4.5z"></path>
+            </svg>
+            <TechnicalLabel text="Gmail" className="text-xs group-hover:text-primary" />
+          </button>
+        </div>
+
+        {/* Footer Note */}
+        <div className="mt-6 text-center text-xs text-muted-foreground">
+          <TechnicalLabel text="Share your code and invite friends to earn more together!" className="text-muted-foreground" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // Animated Placeholder Component for Contact Form
 function AnimatedPlaceholder({ examples }: { examples: string[] }) {
@@ -224,6 +361,9 @@ export default function UserPortal() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Share Modal State
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Current section state
   const [currentSection, setCurrentSection] = useState(0);
@@ -634,6 +774,15 @@ export default function UserPortal() {
             {index === 4 && renderHelpSection()}
           </section>
         ))}
+      </div>
+
+        {/* Share Modal */}
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          referralCode={displayUser?.referralCode || 'GUEST-CODE'}
+          userName={displayUser?.firstName || 'Guest'}
+        />
       </div>
     </div>
   );
@@ -1123,17 +1272,18 @@ export default function UserPortal() {
             {/* Action Buttons */}
             <div className="space-y-2 md:space-y-3">
               <Button
-                onClick={copyReferralCode}
+                onClick={() => setShowShareModal(true)}
                 className="w-full bg-primary hover:bg-primary/90 text-black px-4 md:px-6 py-3 md:py-4 text-sm md:text-lg font-black border-2 border-black"
                 data-testid="button-copy-referral"
               >
-                <Copy className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
-                COPY REFERRAL CODE
+                <Share2 className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
+                SHARE INVITE
               </Button>
 
               <div className="button-group-mobile grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                 <Button
                   variant="outline"
+                  onClick={() => setShowShareModal(true)}
                   className="referral-action-button border-2 border-black text-foreground hover:bg-black hover:text-white py-2 md:py-3 font-black text-xs md:text-sm"
                 >
                   <Link2 className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
@@ -1141,6 +1291,7 @@ export default function UserPortal() {
                 </Button>
                 <Button
                   variant="outline"
+                  onClick={() => setShowShareModal(true)}
                   className="referral-action-button border-2 border-black text-foreground hover:bg-black hover:text-white py-2 md:py-3 font-black text-xs md:text-sm"
                 >
                   <ExternalLink className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
@@ -2340,3 +2491,4 @@ export default function UserPortal() {
     );
   }
 }
+</replit_final_file>
