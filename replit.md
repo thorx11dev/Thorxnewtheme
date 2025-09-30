@@ -5,20 +5,23 @@ THORX is a modern full-stack web application that serves as an "earning system" 
 ## Setup Status (September 30, 2025)
 
 ✅ **Completed:**
-- PostgreSQL database provisioned and configured
-- Database schema migrated (users, earnings, ad_views, referrals, daily_tasks, team tables)
-- Express backend running on port 5000
+- PostgreSQL database provisioned and configured via Replit
+- Database schema migrated successfully (users, earnings, ad_views, referrals, daily_tasks, team tables)
+- Express backend running on port 5000 with proper host configuration (0.0.0.0)
 - React frontend configured with Vite
+- Vite dev server configured with `allowedHosts: true` for iframe compatibility
 - Session management with PostgreSQL storage
-- Development workflow configured
+- Development workflow configured with webview output on port 5000
+- Deployment configuration set up (autoscale with build and start commands)
+- Application successfully running and accessible
 
-⚠️ **Requires Configuration:**
-- **Supabase credentials** needed for full authentication features:
+⚠️ **Optional Configuration:**
+- **Supabase credentials** for full authentication features:
   - `VITE_SUPABASE_URL` - Your Supabase project URL
   - `VITE_SUPABASE_ANON_KEY` - Your Supabase anonymous key
   - `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key (server-side)
 
-The app currently runs with placeholder Supabase values, allowing the landing page to display. To enable user authentication and registration, add the Supabase credentials as secrets in the Replit environment.
+The app currently runs with placeholder Supabase values, allowing the landing page to display fully. To enable user authentication and registration with Supabase, add these credentials as secrets in the Replit environment. The app also supports session-based authentication as a fallback.
 
 # User Preferences
 
