@@ -446,50 +446,47 @@ export default function EnhancedVideoPlayer({
                 }`}>
                   {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
                 </span>
-                <button
-                  onClick={handleVolumeToggle}
-                  className="text-white hover:text-primary transition-colors p-1"
-                  data-testid="button-volume"
-                >
-                  {isMuted || volume === 0 ? 
-                    <VolumeX className={
-                      isFullscreen 
-                        ? 'w-5 h-5' 
-                        : isMobileDevice 
-                          ? 'w-4 h-4' 
-                          : 'w-4 h-4'
-                    } /> : 
-                    <Volume2 className={
-                      isFullscreen 
-                        ? 'w-5 h-5' 
-                        : isMobileDevice 
-                          ? 'w-4 h-4' 
-                          : 'w-4 h-4'
-                    } />
-                  }
-                </button>
-                <button
-                  onClick={handleFullscreen}
-                  className="text-white hover:text-primary transition-colors p-1"
-                  data-testid="button-fullscreen"
-                >
-                  {isFullscreen ? 
-                    <Minimize2 className={
-                      isFullscreen 
-                        ? 'w-5 h-5' 
-                        : isMobileDevice 
-                          ? 'w-4 h-4' 
-                          : 'w-4 h-4'
-                    } /> : 
-                    <Maximize2 className={
-                      isFullscreen 
-                        ? 'w-5 h-5' 
-                        : isMobileDevice 
-                          ? 'w-4 h-4' 
-                          : 'w-4 h-4'
-                    } />
-                  }
-                </button>
+                {/* Hide control buttons on mobile - they're relocated to status bar */}
+                {!isMobileDevice && (
+                  <>
+                    <button
+                      onClick={handleVolumeToggle}
+                      className="text-white hover:text-primary transition-colors p-1"
+                      data-testid="button-volume"
+                    >
+                      {isMuted || volume === 0 ? 
+                        <VolumeX className={
+                          isFullscreen 
+                            ? 'w-5 h-5' 
+                            : 'w-4 h-4'
+                        } /> : 
+                        <Volume2 className={
+                          isFullscreen 
+                            ? 'w-5 h-5' 
+                            : 'w-4 h-4'
+                        } />
+                      }
+                    </button>
+                    <button
+                      onClick={handleFullscreen}
+                      className="text-white hover:text-primary transition-colors p-1"
+                      data-testid="button-fullscreen"
+                    >
+                      {isFullscreen ? 
+                        <Minimize2 className={
+                          isFullscreen 
+                            ? 'w-5 h-5' 
+                            : 'w-4 h-4'
+                        } /> : 
+                        <Maximize2 className={
+                          isFullscreen 
+                            ? 'w-5 h-5' 
+                            : 'w-4 h-4'
+                        } />
+                      }
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             
@@ -521,7 +518,7 @@ export default function EnhancedVideoPlayer({
           )}
         </div>
 
-        {/* Industrial Status Bar - Simplified for Mobile */}
+        {/* Industrial Status Bar - Mobile Controls Relocated */}
         <div className={`bg-white transition-all duration-300 ${
           isFullscreen 
             ? 'mt-4 p-4 border-2 border-black' 
@@ -531,26 +528,61 @@ export default function EnhancedVideoPlayer({
         }`}>
           <div className={`flex items-center justify-between ${isMobileDevice ? 'text-xs' : ''}`}>
             <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-4'}`}>
-              <TechnicalLabel 
-                text={`ACTIVE: ${activeAreaTab}`} 
-                className={`text-black ${
-                  isFullscreen 
-                    ? 'text-sm' 
-                    : isMobileDevice 
-                      ? 'text-xs' 
+              {/* Mobile: Replace ACTIVE label with video controls */}
+              {isMobileDevice ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleVolumeToggle}
+                    className="text-black hover:text-primary transition-colors p-1 bg-gray-100 border border-black hover:bg-gray-200"
+                    data-testid="button-volume-status"
+                  >
+                    {isMuted || volume === 0 ? 
+                      <VolumeX className="w-4 h-4" /> : 
+                      <Volume2 className="w-4 h-4" />
+                    }
+                  </button>
+                  <button
+                    onClick={handleFullscreen}
+                    className="text-black hover:text-primary transition-colors p-1 bg-gray-100 border border-black hover:bg-gray-200"
+                    data-testid="button-fullscreen-status"
+                  >
+                    {isFullscreen ? 
+                      <Minimize2 className="w-4 h-4" /> : 
+                      <Maximize2 className="w-4 h-4" />
+                    }
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <TechnicalLabel 
+                    text={`ACTIVE: ${activeAreaTab}`} 
+                    className={`text-black ${
+                      isFullscreen 
+                        ? 'text-sm' 
+                        : 'text-xs'
+                    }`} 
+                  />
+                  <TechnicalLabel 
+                    text={`STATUS: ${isPlaying ? 'PLAYING' : isCompleted ? 'COMPLETE' : 'READY'}`} 
+                    className={`text-black ${
+                      isFullscreen 
+                        ? 'text-sm' 
+                        : 'text-xs'
+                    }`} 
+                  />
+                </>
+              )}
+              {/* Desktop keeps original layout */}
+              {!isMobileDevice && (
+                <TechnicalLabel 
+                  text={`STATUS: ${isPlaying ? 'PLAYING' : isCompleted ? 'COMPLETE' : 'READY'}`} 
+                  className={`text-black ${
+                    isFullscreen 
+                      ? 'text-sm' 
                       : 'text-xs'
-                }`} 
-              />
-              <TechnicalLabel 
-                text={`STATUS: ${isPlaying ? 'PLAYING' : isCompleted ? 'COMPLETE' : 'READY'}`} 
-                className={`text-black ${
-                  isFullscreen 
-                    ? 'text-sm' 
-                    : isMobileDevice 
-                      ? 'text-xs' 
-                      : 'text-xs'
-                }`} 
-              />
+                  }`} 
+                />
+              )}
             </div>
             <div className={`flex items-center ${isMobileDevice ? 'gap-1' : 'gap-2'}`}>
               <TechnicalLabel 
