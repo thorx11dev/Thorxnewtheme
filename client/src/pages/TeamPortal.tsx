@@ -1216,102 +1216,149 @@ export default function TeamPortal() {
           </div>
         </div>
 
-        {/* Add New Member */}
-        <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 mb-8">
-          <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
-            <CardTitle className="flex items-center justify-between">
-              <TechnicalLabel text="ADD TEAM MEMBER" className="text-foreground group-hover:text-primary/90 transition-colors" />
-              <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
-                <Plus className="w-4 h-4 text-primary" />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <form onSubmit={teamMemberForm.handleSubmit(handleAddTeamMember)} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
+        {/* Add Team Member Section - Enhanced with Help Section Animation Style */}
+        <div className="group team-keys-add-member-container bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-500 hover:shadow-xl hover:shadow-primary/15 mb-8 relative overflow-hidden">
+          {/* Animated Background Pattern */}
+          <div className="absolute inset-0 opacity-5 bg-grid-pattern transition-opacity duration-500 group-hover:opacity-10"></div>
+          
+          {/* Sliding Border Animation */}
+          <div className="absolute inset-0 border-2 border-transparent bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700 transform -translate-x-full group-hover:translate-x-full"></div>
+          
+          {/* Header with Enhanced Animation */}
+          <div className="border-b border-muted-foreground/20 group-hover:border-primary/40 transition-all duration-500 bg-gradient-to-r from-background to-background/80 relative">
+            <div className="flex items-center justify-between p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 border-2 border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/40 transition-all duration-500 transform group-hover:scale-110 group-hover:rotate-3">
+                  <Plus className="w-6 h-6 text-primary transition-transform duration-500 group-hover:rotate-90" />
+                </div>
                 <div>
-                  <TechnicalLabel text="MEMBER NAME" className="text-foreground mb-2" />
-                  <input
-                    type="text"
-                    placeholder="Team member name"
-                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                    data-testid="input-member-name"
-                    {...teamMemberForm.register("memberName")}
-                  />
+                  <TechnicalLabel text="ADD TEAM MEMBER" className="text-foreground group-hover:text-primary/90 transition-colors duration-500 text-xl font-black" />
+                  <TechnicalLabel text="AREA CONTACT MANAGEMENT PROTOCOL" className="text-muted-foreground text-sm mt-1 opacity-0 group-hover:opacity-100 transition-all duration-700 transform translate-y-2 group-hover:translate-y-0" />
+                </div>
+              </div>
+              
+              {/* Status Indicator */}
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-primary border border-black animate-pulse group-hover:animate-none group-hover:bg-green-500 transition-colors duration-500"></div>
+                <TechnicalLabel text="READY" className="text-primary text-sm font-black opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-x-4 group-hover:translate-x-0" />
+              </div>
+            </div>
+          </div>
+
+          {/* Form Content with Enhanced Animation */}
+          <div className="p-8 relative z-10">
+            <form onSubmit={teamMemberForm.handleSubmit(handleAddTeamMember)} className="space-y-8">
+              {/* Input Fields Grid with Staggered Animation */}
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Name Input - Animated Container */}
+                <div className="team-keys-input-container group/input relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover/input:opacity-100 transition-opacity duration-300"></div>
+                  <TechnicalLabel text="MEMBER NAME" className="text-foreground mb-3 block relative z-10 transition-colors duration-300 group-hover/input:text-primary" />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Team member full name"
+                      className="w-full bg-background border-3 border-muted-foreground/30 text-foreground px-6 py-4 text-lg font-semibold focus:outline-none focus:border-primary transition-all duration-300 hover:border-primary/50 hover:transform hover:translateY-[-2px] hover:shadow-lg focus:shadow-xl focus:transform focus:translateY-[-3px] placeholder:text-muted-foreground/50"
+                      data-testid="input-member-name"
+                      {...teamMemberForm.register("memberName")}
+                    />
+                    <div className="absolute bottom-0 left-0 w-0 h-1 bg-primary transition-all duration-500 group-hover/input:w-full"></div>
+                  </div>
                   {teamMemberForm.formState.errors.memberName && (
-                    <p className="text-red-500 text-sm mt-1">{teamMemberForm.formState.errors.memberName.message}</p>
+                    <p className="text-red-500 text-sm mt-2 font-medium animate-pulse">{teamMemberForm.formState.errors.memberName.message}</p>
                   )}
                 </div>
-                <div>
-                  <TechnicalLabel text="EMAIL ADDRESS" className="text-foreground mb-2" />
-                  <input
-                    type="email"
-                    placeholder="member@company.com"
-                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                    data-testid="input-member-email"
-                    {...teamMemberForm.register("email")}
-                  />
+
+                {/* Email Input - Animated Container */}
+                <div className="team-keys-input-container group/input relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover/input:opacity-100 transition-opacity duration-300"></div>
+                  <TechnicalLabel text="EMAIL ADDRESS" className="text-foreground mb-3 block relative z-10 transition-colors duration-300 group-hover/input:text-primary" />
+                  <div className="relative">
+                    <input
+                      type="email"
+                      placeholder="member@company.com"
+                      className="w-full bg-background border-3 border-muted-foreground/30 text-foreground px-6 py-4 text-lg font-semibold focus:outline-none focus:border-primary transition-all duration-300 hover:border-primary/50 hover:transform hover:translateY-[-2px] hover:shadow-lg focus:shadow-xl focus:transform focus:translateY-[-3px] placeholder:text-muted-foreground/50"
+                      data-testid="input-member-email"
+                      {...teamMemberForm.register("email")}
+                    />
+                    <div className="absolute bottom-0 left-0 w-0 h-1 bg-primary transition-all duration-500 group-hover/input:w-full"></div>
+                  </div>
                   {teamMemberForm.formState.errors.email && (
-                    <p className="text-red-500 text-sm mt-1">{teamMemberForm.formState.errors.email.message}</p>
+                    <p className="text-red-500 text-sm mt-2 font-medium animate-pulse">{teamMemberForm.formState.errors.email.message}</p>
                   )}
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <TechnicalLabel text="ACCESS LEVEL" className="text-foreground mb-2" />
-                  <select 
-                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                    data-testid="select-access-level"
-                    {...teamMemberForm.register("accessLevel")}
-                  >
-                    <option value="">SELECT LEVEL</option>
-                    <option value="founder">FOUNDER</option>
-                    <option value="admin">ADMIN</option>
-                    <option value="member">MEMBER</option>
-                  </select>
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Access Level Dropdown - Enhanced Animation */}
+                <div className="team-keys-input-container group/input relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover/input:opacity-100 transition-opacity duration-300"></div>
+                  <TechnicalLabel text="ACCESS LEVEL" className="text-foreground mb-3 block relative z-10 transition-colors duration-300 group-hover/input:text-primary" />
+                  <div className="relative">
+                    <select 
+                      className="w-full bg-background border-3 border-muted-foreground/30 text-foreground px-6 py-4 text-lg font-semibold focus:outline-none focus:border-primary transition-all duration-300 hover:border-primary/50 hover:transform hover:translateY-[-2px] hover:shadow-lg focus:shadow-xl focus:transform focus:translateY-[-3px] appearance-none cursor-pointer bg-no-repeat bg-right bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xIDEuNUw2IDYuNUwxMSAxLjUiIHN0cm9rZT0iIzY2NjY2NiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K')] pr-12"
+                      data-testid="select-access-level"
+                      {...teamMemberForm.register("accessLevel")}
+                    >
+                      <option value="" disabled>SELECT ACCESS LEVEL</option>
+                      <option value="admin">ADMIN - Full Administrative Access</option>
+                      <option value="member">MEMBER - Standard Team Access</option>
+                    </select>
+                    <div className="absolute bottom-0 left-0 w-0 h-1 bg-primary transition-all duration-500 group-hover/input:w-full"></div>
+                  </div>
                   {teamMemberForm.formState.errors.accessLevel && (
-                    <p className="text-red-500 text-sm mt-1">{teamMemberForm.formState.errors.accessLevel.message}</p>
+                    <p className="text-red-500 text-sm mt-2 font-medium animate-pulse">{teamMemberForm.formState.errors.accessLevel.message}</p>
                   )}
                 </div>
-                <div>
-                  <TechnicalLabel text="INITIAL PASSWORD" className="text-foreground mb-2" />
-                  <input
-                    type="password"
-                    placeholder="Set initial password"
-                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-lg focus:outline-none focus:border-primary"
-                    data-testid="input-member-password"
-                    {...teamMemberForm.register("password")}
-                  />
+
+                {/* Password Input - Animated Container */}
+                <div className="team-keys-input-container group/input relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover/input:opacity-100 transition-opacity duration-300"></div>
+                  <TechnicalLabel text="INITIAL PASSWORD" className="text-foreground mb-3 block relative z-10 transition-colors duration-300 group-hover/input:text-primary" />
+                  <div className="relative">
+                    <input
+                      type="password"
+                      placeholder="Set secure initial password"
+                      className="w-full bg-background border-3 border-muted-foreground/30 text-foreground px-6 py-4 text-lg font-semibold focus:outline-none focus:border-primary transition-all duration-300 hover:border-primary/50 hover:transform hover:translateY-[-2px] hover:shadow-lg focus:shadow-xl focus:transform focus:translateY-[-3px] placeholder:text-muted-foreground/50"
+                      data-testid="input-member-password"
+                      {...teamMemberForm.register("password")}
+                    />
+                    <div className="absolute bottom-0 left-0 w-0 h-1 bg-primary transition-all duration-500 group-hover/input:w-full"></div>
+                  </div>
                   {teamMemberForm.formState.errors.password && (
-                    <p className="text-red-500 text-sm mt-1">{teamMemberForm.formState.errors.password.message}</p>
+                    <p className="text-red-500 text-sm mt-2 font-medium animate-pulse">{teamMemberForm.formState.errors.password.message}</p>
                   )}
                 </div>
               </div>
 
-              <div className="text-center">
-                <Button
-                  type="submit"
-                  disabled={addTeamMemberMutation.isPending}
-                  className="bg-primary hover:bg-primary/90 text-black px-12 py-4 text-lg font-black border-2 border-black disabled:opacity-50"
-                  data-testid="button-add-member"
-                >
-                  {addTeamMemberMutation.isPending ? (
-                    <>
-                      <div className="w-5 h-5 mr-3 animate-spin border-2 border-black border-t-transparent rounded-full"></div>
-                      ADDING...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-5 h-5 mr-3" />
-                      ADD MEMBER
-                    </>
-                  )}
-                </Button>
+              {/* Submit Button with Enhanced Animation */}
+              <div className="text-center pt-4">
+                <div className="inline-block relative group/button">
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/80 to-primary opacity-75 blur-lg scale-110 group-hover/button:opacity-100 group-hover/button:scale-125 transition-all duration-500"></div>
+                  <Button
+                    type="submit"
+                    disabled={addTeamMemberMutation.isPending}
+                    className="relative bg-primary hover:bg-primary/90 text-black px-16 py-5 text-xl font-black border-3 border-black disabled:opacity-50 transition-all duration-500 transform hover:scale-105 hover:shadow-2xl active:scale-95 overflow-hidden group/submit"
+                    data-testid="button-add-member"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover/submit:opacity-100 transform -translate-x-full group-hover/submit:translate-x-full transition-all duration-700"></div>
+                    {addTeamMemberMutation.isPending ? (
+                      <div className="flex items-center relative z-10">
+                        <div className="w-6 h-6 mr-4 animate-spin border-3 border-black border-t-transparent rounded-full"></div>
+                        <TechnicalLabel text="PROCESSING ACCESS..." className="text-black" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center relative z-10">
+                        <Plus className="w-6 h-6 mr-4 transition-transform duration-300 group-hover/submit:rotate-90" />
+                        <TechnicalLabel text="ADD TEAM MEMBER" className="text-black" />
+                      </div>
+                    )}
+                  </Button>
+                </div>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Team Members List */}
         <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
