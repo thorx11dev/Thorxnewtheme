@@ -62,7 +62,7 @@ type TeamMemberFormData = z.infer<typeof teamMemberFormSchema>;
 // Team member update schema  
 const teamMemberUpdateSchema = z.object({
   memberName: z.string().min(1, "Member name is required").optional(),
-  accessLevel: z.enum(["founder", "admin", "member"], {
+  accessLevel: z.enum(["admin", "member"], {
     errorMap: () => ({ message: "Please select an access level" })
   }).optional(),
   permissions: z.array(z.string()).optional(),
@@ -971,7 +971,7 @@ export default function TeamPortal() {
               </div>
             </CardTitle>
           </CardHeader>
-          
+
           <CardContent className="p-0">
             {/* Status Bar */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 md:p-4 bg-muted/10 border-b border-muted-foreground/20 gap-2">
@@ -1014,7 +1014,7 @@ export default function TeamPortal() {
                   <Users className="w-8 h-8 text-primary" />
                 </div>
                 <TechnicalLabel text="NO USER ACCOUNTS FOUND" className="text-primary text-xl font-black mb-6" />
-                
+
                 {/* Summary Stats */}
                 <div className="max-w-md mx-auto border-2 border-black bg-background">
                   <div className="grid grid-cols-3 divide-x-2 divide-black">
@@ -1472,7 +1472,6 @@ export default function TeamPortal() {
                     {...editMemberForm.register("accessLevel")}
                   >
                     <option value="">SELECT LEVEL</option>
-                    <option value="founder">FOUNDER</option>
                     <option value="admin">ADMIN</option>
                     <option value="member">MEMBER</option>
                   </select>
