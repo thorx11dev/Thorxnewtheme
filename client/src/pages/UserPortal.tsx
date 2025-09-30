@@ -1,4 +1,3 @@
-replit_final_file>
 import { useState, useEffect, useCallback } from "react";
 import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -776,14 +775,13 @@ export default function UserPortal() {
         ))}
       </div>
 
-        {/* Share Modal */}
-        <ShareModal
-          isOpen={showShareModal}
-          onClose={() => setShowShareModal(false)}
-          referralCode={displayUser?.referralCode || 'GUEST-CODE'}
-          userName={displayUser?.firstName || 'Guest'}
-        />
-      </div>
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        referralCode={displayUser?.referralCode || 'GUEST-CODE'}
+        userName={displayUser?.firstName || 'Guest'}
+      />
     </div>
   );
 
@@ -2491,4 +2489,3 @@ export default function UserPortal() {
     );
   }
 }
-</replit_final_file>
