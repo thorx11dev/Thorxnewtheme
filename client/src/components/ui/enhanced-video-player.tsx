@@ -89,14 +89,21 @@ export default function EnhancedVideoPlayer({
         (document as any).msFullscreenElement
       );
       
-      // Only update state if it's not a mobile manual fullscreen
-      if (!isMobileDevice || isCurrentlyFullscreen === isFullscreen) {
+      // For desktop, always sync with browser fullscreen state
+      // For mobile, only sync if browser actually entered fullscreen (not manual state changes)
+      if (!isMobileDevice) {
         setIsFullscreen(isCurrentlyFullscreen);
+      } else {
+        // On mobile, only update if browser fullscreen state changed AND we're not in a manual exit
+        if (isCurrentlyFullscreen && !isFullscreen) {
+          // Browser entered fullscreen, sync our state
+          setIsFullscreen(true);
+        }
       }
       
-      // Handle body classes for mobile
+      // Handle body classes for mobile - always sync with actual browser state
       if (isMobileDevice) {
-        if (isCurrentlyFullscreen || isFullscreen) {
+        if (isCurrentlyFullscreen) {
           document.body.classList.add('video-fullscreen-active');
         } else {
           document.body.classList.remove('video-fullscreen-active');
@@ -231,21 +238,29 @@ export default function EnhancedVideoPlayer({
       // Exit fullscreen
       try {
         if (isMobileDevice) {
-          // Mobile exit fullscreen
+          // Mobile exit fullscreen - immediate visual state update
           setIsFullscreen(false);
           
-          // Remove body restrictions
+          // Immediate DOM cleanup for visual feedback
           document.body.classList.remove('video-fullscreen-active');
           document.documentElement.style.overflow = '';
           
-          // Exit browser fullscreen
-          if (document.exitFullscreen) {
-            await document.exitFullscreen();
-          } else if ((document as any).webkitExitFullscreen) {
-            await (document as any).webkitExitFullscreen();
-          } else if ((document as any).mozCancelFullScreen) {
-            await (document as any).mozCancelFullScreen();
-          }
+          // Exit browser fullscreen in background
+          // Use setTimeout to ensure state update renders first
+          setTimeout(async () => {
+            try {
+              if (document.exitFullscreen && document.fullscreenElement) {
+                await document.exitFullscreen();
+              } else if ((document as any).webkitExitFullscreen && (document as any).webkitFullscreenElement) {
+                await (document as any).webkitExitFullscreen();
+              } else if ((document as any).mozCancelFullScreen && (document as any).mozFullScreenElement) {
+                await (document as any).mozCancelFullScreen();
+              }
+            } catch (apiError) {
+              // Browser API failed, but visual state is already correct
+              console.log('Fullscreen exit API failed, but state updated correctly');
+            }
+          }, 0);
           
         } else {
           // Desktop exit fullscreen
