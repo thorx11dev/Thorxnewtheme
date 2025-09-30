@@ -51,38 +51,28 @@ function Router() {
         </PublicOnlyRoute>
       </Route>
 
-      {/* Protected routes - only for authenticated users */}
+      {/* User Portal - now publicly accessible */}
       <Route path="/portal">
-        <ProtectedRoute>
-          <UserPortal />
-        </ProtectedRoute>
+        <UserPortal />
       </Route>
 
-      {/* Team routes - for team members and founders */}
+      {/* Team Portal - now publicly accessible */}
       <Route path="/team">
-        <TeamProtectedRoute>
-          <TeamPortal />
-        </TeamProtectedRoute>
+        <TeamPortal />
       </Route>
       
       {/* Legacy team-portal route - redirect to /team */}
       <Route path="/team-portal">
-        <TeamProtectedRoute>
-          <TeamPortal />
-        </TeamProtectedRoute>
+        <TeamPortal />
       </Route>
 
-      {/* Legacy routes - redirect to root for authenticated users */}
+      {/* Legacy routes - now publicly accessible */}
       <Route path="/dashboard">
-        <ProtectedRoute>
-          <UserPortal />
-        </ProtectedRoute>
+        <UserPortal />
       </Route>
 
       <Route path="/work">
-        <ProtectedRoute>
-          <UserPortal />
-        </ProtectedRoute>
+        <UserPortal />
       </Route>
 
       {/* 404 page */}

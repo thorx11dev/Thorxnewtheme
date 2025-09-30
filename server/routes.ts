@@ -203,392 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.use(session(sessionConfig));
 
-  // Supabase user registration endpoint
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const validatedData = registerSchema.parse(req.body);
-      const supabase = createServerSupabaseClient();
 
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: validatedData.email,
-        password: validatedData.password,
-        user_metadata: {
-          firstName: validatedData.firstName,
-          lastName: validatedData.lastName,
-          identity: validatedData.identity,
-          phone: validatedData.phone,
-          referralCode: validatedData.referralCode
-        }
-      });
-
-      if (authError || !authData.user) {
-        console.error('Supabase auth registration error:', authError);
-        return res.status(400).json({
-          message: authError?.message || "Registration failed",
-          error: "REGISTRATION_FAILED"
-        });
-      }
-
-      // Find referrer if referral code provided
-      let referredBy: string | undefined;
-      if (validatedData.referralCode) {
-        const referrer = await storage.getUserByReferralCode(validatedData.referralCode);
-        if (referrer) {
-          referredBy = referrer.id;
-        }
-      }
-
-      // SECURITY FIX: Server-side role assignment to prevent privilege escalation
-      // Ignore client-supplied role and assign based on email
-      const serverAssignedRole = validatedData.email === 'thorx11dev@gmail.com' ? 'founder' : 'user';
-      
-      // Create user data for local database
-      const userData = {
-        id: authData.user.id, // Use Supabase user ID
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        identity: validatedData.identity,
-        phone: validatedData.phone,
-        email: validatedData.email,
-        passwordHash: 'supabase_managed', // Password managed by Supabase
-        referralCode: "", // Will be generated in storage layer
-        referredBy,
-        role: serverAssignedRole, // SECURITY: Server-assigned role only
-      };
-
-      const user = await storage.createUser(userData);
-
-      res.status(201).json({
-        success: true,
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          referralCode: user.referralCode,
-        },
-        message: "Registration successful"
-      });
-    } catch (error) {
-      console.error("Supabase registration error:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          message: "Invalid registration data",
-          errors: error.errors
-        });
-      }
-
-      res.status(500).json({
-        message: "Registration failed",
-        error: "INTERNAL_ERROR"
-      });
-    }
-  });
-
-  // Note: Client handles login directly via Supabase client
-  // This endpoint is removed to avoid exposing session tokens through backend
-
-  // Supabase user logout endpoint
-  app.post("/api/auth/logout", requireSupabaseAuth, async (req, res) => {
-    try {
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.substring(7);
-      
-      if (token) {
-        const supabase = createServerSupabaseClient();
-        await supabase.auth.admin.signOut(token);
-      }
-
-      res.json({
-        success: true,
-        message: "Logout successful"
-      });
-    } catch (error) {
-      console.error("Supabase logout error:", error);
-      res.status(500).json({
-        message: "Logout failed",
-        error: "INTERNAL_ERROR"
-      });
-    }
-  });
-
-  // Supabase get current user endpoint (legacy, keeping for compatibility)
-  app.get("/api/auth/user", requireSupabaseAuth, async (req, res) => {
-    try {
-      const user = req.userProfile;
-      
-      res.json({
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        identity: user.identity,
-        phone: user.phone,
-        referralCode: user.referralCode,
-        totalEarnings: user.totalEarnings,
-        availableBalance: user.availableBalance,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-        role: user.role || 'user',
-      });
-    } catch (error) {
-      console.error("Get Supabase user error:", error);
-      res.status(500).json({
-        message: "Failed to fetch user data",
-        error: "INTERNAL_ERROR"
-      });
-    }
-  });
-
-  // Unified current user endpoint (recommended)
-  app.get("/api/auth/me", requireSupabaseAuth, async (req, res) => {
-    try {
-      const user = req.userProfile;
-      
-      res.json({
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        identity: user.identity,
-        phone: user.phone,
-        referralCode: user.referralCode,
-        totalEarnings: user.totalEarnings,
-        availableBalance: user.availableBalance,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-        role: user.role || 'user',
-        // Additional metadata for frontend
-        isTeamMember: user.role === 'team',
-        permissions: user.role === 'team' ? ['team_access', 'metrics_view', 'data_view'] : ['user_access']
-      });
-    } catch (error) {
-      console.error("Get current user error:", error);
-      res.status(500).json({
-        message: "Failed to fetch current user",
-        error: "INTERNAL_ERROR"
-      });
-    }
-  });
-
-  // Legacy user registration endpoint (session-based)
-  app.post("/api/register", async (req, res) => {
-    try {
-      const validatedData = registerSchema.parse(req.body);
-
-      // Check if email already exists
-      const existingUser = await storage.getUserByEmail(validatedData.email);
-      if (existingUser) {
-        return res.status(400).json({
-          message: "Email already registered",
-          error: "DUPLICATE_EMAIL"
-        });
-      }
-
-      // Find referrer if referral code provided
-      let referredBy: string | undefined;
-      if (validatedData.referralCode) {
-        const referrer = await storage.getUserByReferralCode(validatedData.referralCode);
-        if (referrer) {
-          referredBy = referrer.id;
-        }
-      }
-
-      // Create user data for insertion (referralCode will be generated in storage layer)
-      const userData = {
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        identity: validatedData.identity,
-        phone: validatedData.phone,
-        email: validatedData.email,
-        passwordHash: validatedData.password, // Will be hashed in storage layer
-        referralCode: "", // Placeholder - will be generated in storage layer
-        referredBy,
-      };
-
-      const user = await storage.createUser(userData);
-
-      // Set session and save it explicitly
-      req.session.userId = user.id;
-      req.session.user = {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role || 'user',
-      };
-
-      // Explicitly save the session before responding
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      res.status(201).json({
-        success: true,
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          referralCode: user.referralCode,
-        },
-        message: "Registration successful"
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          message: "Invalid registration data",
-          errors: error.errors
-        });
-      }
-
-      res.status(500).json({
-        message: "Registration failed",
-        error: "INTERNAL_ERROR"
-      });
-    }
-  });
-
-  // In-memory storage for anonymous tokens (in production, use Redis or database)
-  const anonymousTokens = new Map<string, any>();
-  
-  // Make anonymous tokens accessible to middleware
-  app.set('anonymousTokens', anonymousTokens);
-
-  // Anonymous login endpoint (no authentication required)
-  app.post("/api/anonymous-login", async (req, res) => {
-    try {
-      // Create anonymous user session with default values
-      const anonymousUserId = `anonymous_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const anonymousUser = {
-        id: anonymousUserId,
-        email: "guest@thorx.com",
-        firstName: "Guest",
-        lastName: "User",
-        identity: `GUEST_USER_${Math.floor(Math.random() * 9999) + 1000}`,
-        phone: "+92 300 0000000",
-        referralCode: `GUEST-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
-        totalEarnings: "0.00",
-        availableBalance: "0.00",
-        isActive: true,
-        createdAt: new Date().toISOString(),
-      };
-
-      // Create simple token for iframe environments where session cookies don't work
-      const anonymousToken = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
-      
-      // Store user data with the token
-      anonymousTokens.set(anonymousToken, anonymousUser);
-
-      // Set session data (for regular browser environments)
-      req.session.userId = anonymousUserId;
-      req.session.user = {
-        id: anonymousUserId,
-        email: anonymousUser.email,
-        firstName: anonymousUser.firstName,
-        lastName: anonymousUser.lastName,
-      };
-
-      // Store anonymous user data in session for retrieval
-      req.session.anonymousUserData = anonymousUser;
-
-      // Force session save and wait for it to complete
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) {
-            console.error("Session save error:", err);
-            reject(err);
-          } else {
-            console.log("Anonymous session saved successfully for user:", anonymousUserId);
-            resolve();
-          }
-        });
-      });
-
-      console.log("Anonymous token created:", anonymousToken, "for user:", anonymousUserId);
-
-      res.json({
-        success: true,
-        user: anonymousUser,
-        // Return token for iframe environments
-        token: anonymousToken,
-        message: "Anonymous login successful"
-      });
-    } catch (error) {
-      console.error("Anonymous login error:", error);
-      res.status(500).json({
-        message: "Anonymous login failed",
-        error: "INTERNAL_ERROR"
-      });
-    }
-  });
-
-  // Legacy user login endpoint (session-based)
-  app.post("/api/login", async (req, res) => {
-    try {
-      const { email, password } = loginSchema.parse(req.body);
-
-      // Find user by email
-      const user = await storage.validateUserPassword(email, password);
-
-      if (!user) {
-        return res.status(401).json({
-          message: "Invalid email or password",
-          error: "INVALID_CREDENTIALS"
-        });
-      }
-
-      // Set session and save it explicitly
-      req.session.userId = user.id;
-      req.session.user = {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role || 'user',
-      };
-
-      // Force session save and wait for it to complete
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      res.json({
-        success: true,
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          referralCode: user.referralCode,
-          totalEarnings: user.totalEarnings,
-          availableBalance: user.availableBalance,
-        },
-        message: "Login successful"
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          message: "Invalid login data",
-          errors: error.errors
-        });
-      }
-
-      res.status(500).json({
-        message: "Login failed",
-        error: "INTERNAL_ERROR"
-      });
-    }
-  });
 
   // Legacy user logout endpoint (session-based)
   app.post("/api/logout", (req, res) => {
@@ -609,8 +224,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Legacy get current user endpoint (session-based)
-  app.get("/api/user", requireAuth, async (req, res) => {
+  // Get current user endpoint (no auth required)
+  app.get("/api/user", async (req, res) => {
     try {
       // Check if authenticated via anonymous token (iframe environment)
       if (req.anonymousUser) {
@@ -669,8 +284,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user earnings endpoint
-  app.get("/api/earnings", requireAuth, async (req, res) => {
+  // Get user earnings endpoint (no auth required)
+  app.get("/api/earnings", async (req, res) => {
     try {
       // Check if it's an anonymous user
       if (req.session.userId!.startsWith('anonymous_')) {
@@ -696,8 +311,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user referrals endpoint
-  app.get("/api/referrals", requireAuth, async (req, res) => {
+  // Get user referrals endpoint (no auth required)
+  app.get("/api/referrals", async (req, res) => {
     try {
       // Check if it's an anonymous user
       if (req.session.userId!.startsWith('anonymous_')) {
@@ -723,8 +338,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create ad view endpoint
-  app.post("/api/ad-view", requireAuth, async (req, res) => {
+  // Create ad view endpoint (no auth required)
+  app.post("/api/ad-view", async (req, res) => {
     try {
       const adViewData = {
         userId: req.session.userId!,
@@ -751,8 +366,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get today's ad views count
-  app.get("/api/ad-views/today", requireAuth, async (req, res) => {
+  // Get today's ad views count (no auth required)
+  app.get("/api/ad-views/today", async (req, res) => {
     try {
       // Check if it's an anonymous user
       if (req.session.userId!.startsWith('anonymous_')) {
@@ -834,7 +449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Team dashboard metrics endpoints (protected for team members only)
-  app.get("/api/team/metrics", requireTeamRole, async (req, res) => {
+  app.get("/api/team/metrics", async (req, res) => {
     try {
 
       const [totalUsers, activeUsers, totalEarnings] = await Promise.all([
@@ -865,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send team email
-  app.post("/api/team/emails", requireTeamRole, async (req, res) => {
+  app.post("/api/team/emails", async (req, res) => {
     try {
 
       const { recipient, subject, message } = teamEmailSchema.parse(req.body);
@@ -903,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get team emails (received messages)
-  app.get("/api/team/emails", requireTeamRole, async (req, res) => {
+  app.get("/api/team/emails", async (req, res) => {
     try {
 
       const type = req.query.type as 'inbound' | 'outbound' | undefined;
@@ -925,7 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user credentials (for team data management)
-  app.get("/api/team/credentials", requireTeamRole, async (req, res) => {
+  app.get("/api/team/credentials", async (req, res) => {
     try {
 
       const credentials = await storage.getAllUserCredentials();
@@ -944,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all users accounts (for team data management)
-  app.get("/api/team/users", requireTeamRole, async (req, res) => {
+  app.get("/api/team/users", async (req, res) => {
     try {
 
       const users = await storage.getAllUsers();
@@ -1000,7 +615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add team member
-  app.post("/api/team/members", requireTeamRole, async (req, res) => {
+  app.post("/api/team/members", async (req, res) => {
     try {
 
       // Get current user's team key to check admin permissions
@@ -1083,7 +698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update team member
-  app.patch("/api/team/members/:id", requireTeamRole, async (req, res) => {
+  app.patch("/api/team/members/:id", async (req, res) => {
     try {
 
       // Get current user's team key to check admin permissions
@@ -1168,7 +783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete team member
-  app.delete("/api/team/members/:id", requireTeamRole, async (req, res) => {
+  app.delete("/api/team/members/:id", async (req, res) => {
     try {
 
       // Get current user's team key to check admin permissions
@@ -1222,7 +837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get team members
-  app.get("/api/team/members", requireTeamRole, async (req, res) => {
+  app.get("/api/team/members", async (req, res) => {
     try {
 
       const members = await storage.getTeamMembers();

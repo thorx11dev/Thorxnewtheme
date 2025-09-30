@@ -10,10 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
-import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
-import { apiRequest } from "@/lib/queryClient";
 import { Delete, Eye, EyeOff } from "lucide-react";
 
 // Animated Placeholder Component
@@ -87,7 +84,6 @@ export default function Auth() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [generatedIdentity, setGeneratedIdentity] = useState<string>('');
   const { toast } = useToast();
-  const { register, login, isRegistering, isLoggingIn, isAuthenticated, user } = useSupabaseAuthWithQuery();
 
   // Identity generation function
   const generateThorxIdentity = (firstName: string, lastName: string): string => {
@@ -152,68 +148,20 @@ export default function Auth() {
     }
   }, [firstName, lastName, registerForm]);
 
-  // Redirect if already authenticated based on user role
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      // FIXED: Redirect team members and founders to /team (not /team-portal)
-      if (user.role === 'team' || user.role === 'founder') {
-        setLocation("/team");
-      } else {
-        setLocation("/");
-      }
-    }
-  }, [isAuthenticated, user, setLocation]);
-
   const onRegisterSubmit = (data: RegisterForm) => {
-    register({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      identity: data.identity,
-      phone: data.phone,
-      email: data.email,
-      password: data.password,
-      referralCode: data.referralCode,
-      role: data.role
+    toast({
+      title: "Registration Disabled",
+      description: "Registration is currently disabled. Use portal navigation buttons below.",
+      variant: "destructive"
     });
   };
 
   const onLoginSubmit = (data: LoginForm) => {
-    login(data);
-  };
-
-  // Keep anonymous login for guest access (separate from Supabase auth)
-  const anonymousLoginMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/anonymous-login", {}),
-    onSuccess: async (response) => {
-      const responseData = await response.json();
-      
-      // Store anonymous token for iframe environments where session cookies don't work
-      if (responseData.token) {
-        localStorage.setItem('anonymousToken', responseData.token);
-        console.log('Anonymous token stored for iframe authentication');
-      }
-      
-      toast({
-        title: "Welcome to THORX!",
-        description: "You can now explore the earning dashboard.",
-      });
-      
-      // Navigate to dashboard
-      setTimeout(() => {
-        setLocation("/");
-      }, 200);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Access Failed",
-        description: error.message || "Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  const handleAnonymousLogin = () => {
-    anonymousLoginMutation.mutate();
+    toast({
+      title: "Login Disabled",
+      description: "Login is currently disabled. Use portal navigation buttons below.",
+      variant: "destructive"
+    });
   };
 
   return (
@@ -565,28 +513,37 @@ export default function Auth() {
 
                       <Button 
                         type="submit" 
-                        disabled={isRegistering}
-                        className="w-full bg-black text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-primary transition-colors border-2 border-black"
+                        disabled={true}
+                        className="w-full bg-black text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-primary transition-colors border-2 border-black opacity-50 cursor-not-allowed"
                         data-testid="button-register-submit"
                       >
-                        {isRegistering ? "PROCESSING..." : "REGISTER NOW →"}
+                        REGISTER NOW →
                       </Button>
                     </form>
                   </Form>
 
-                  {/* Anonymous Access Option */}
+                  {/* Direct Portal Access */}
                   <div className="mt-6 pt-6 border-t-2 border-black">
                     <div className="text-center space-y-4">
-                      <TechnicalLabel text="OR ACCESS WITHOUT REGISTRATION" className="text-muted-foreground" />
-                      <Button
-                        onClick={handleAnonymousLogin}
-                        disabled={anonymousLoginMutation.isPending}
-                        variant="outline"
-                        className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-lg font-black py-3"
-                        data-testid="button-anonymous-register"
-                      >
-                        {anonymousLoginMutation.isPending ? "ACCESSING..." : "EXPLORE AS GUEST →"}
-                      </Button>
+                      <TechnicalLabel text="OR NAVIGATE TO PORTAL" className="text-muted-foreground" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Button
+                          onClick={() => setLocation("/portal")}
+                          variant="outline"
+                          className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-lg font-black py-3"
+                          data-testid="button-user-portal"
+                        >
+                          USER PORTAL →
+                        </Button>
+                        <Button
+                          onClick={() => setLocation("/team")}
+                          variant="outline"
+                          className="w-full border-2 border-black text-black hover:bg-black hover:text-white text-lg font-black py-3"
+                          data-testid="button-team-portal"
+                        >
+                          TEAM PORTAL →
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
@@ -678,28 +635,37 @@ export default function Auth() {
 
                       <Button 
                         type="submit" 
-                        disabled={isLoggingIn}
-                        className="w-full bg-primary text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-black transition-colors border-2 border-black"
+                        disabled={true}
+                        className="w-full bg-primary text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-black transition-colors border-2 border-black opacity-50 cursor-not-allowed"
                         data-testid="button-login-submit"
                       >
-                        {isLoggingIn ? "VERIFYING..." : "LOGIN →"}
+                        LOGIN →
                       </Button>
                     </form>
                   </Form>
 
-                  {/* Anonymous Access Option */}
+                  {/* Direct Portal Access */}
                   <div className="mt-6 pt-6 border-t-2 border-black">
                     <div className="text-center space-y-4">
-                      <TechnicalLabel text="OR ACCESS WITHOUT LOGIN" className="text-muted-foreground" />
-                      <Button
-                        onClick={handleAnonymousLogin}
-                        disabled={anonymousLoginMutation.isPending}
-                        variant="outline"
-                        className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-lg font-black py-3"
-                        data-testid="button-anonymous-login"
-                      >
-                        {anonymousLoginMutation.isPending ? "ACCESSING..." : "EXPLORE AS GUEST →"}
-                      </Button>
+                      <TechnicalLabel text="OR NAVIGATE TO PORTAL" className="text-muted-foreground" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Button
+                          onClick={() => setLocation("/portal")}
+                          variant="outline"
+                          className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-lg font-black py-3"
+                          data-testid="button-user-portal"
+                        >
+                          USER PORTAL →
+                        </Button>
+                        <Button
+                          onClick={() => setLocation("/team")}
+                          variant="outline"
+                          className="w-full border-2 border-black text-black hover:bg-black hover:text-white text-lg font-black py-3"
+                          data-testid="button-team-portal"
+                        >
+                          TEAM PORTAL →
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </TabsContent>

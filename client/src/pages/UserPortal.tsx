@@ -1647,10 +1647,8 @@ export default function UserPortal() {
                                 : 'border-black bg-background'
                             }`}
                           >
-                            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center mr-3 md:mr-4 ${
-                              isSelected ? 'bg-white' : 'bg-white'
-                            }`}>
-                              <LogoComponent className="w-6 h-6 md:w-8 md:h-8" />
+                            <div className="mr-3 md:mr-4 lg:mr-6">
+                              <LogoComponent className="w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20" />
                             </div>
                             <div className="flex-1 text-left">
                               <TechnicalLabel
