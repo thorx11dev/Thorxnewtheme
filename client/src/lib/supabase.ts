@@ -68,7 +68,21 @@ function createDefaultClient(): SupabaseClient {
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   
   if (!envUrl || !envKey) {
-    throw new Error('Missing Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are required');
+    console.error('Missing Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+    console.error('Please configure these secrets in the Replit environment to enable authentication.');
+    // Create a dummy client with placeholder values to prevent crashes
+    // This allows the app to load, but auth features will not work
+    return createClient(
+      'https://placeholder.supabase.co',
+      'placeholder-anon-key',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false
+        }
+      }
+    );
   }
   
   console.log('Initializing Supabase client with environment variables');

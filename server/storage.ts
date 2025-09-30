@@ -430,23 +430,19 @@ export class DatabaseStorage implements IStorage {
           platform: userCredentials.platform,
           username: userCredentials.username,
           email: userCredentials.email,
+          encryptedPassword: userCredentials.encryptedPassword,
           notes: userCredentials.notes,
           isActive: userCredentials.isActive,
           lastUpdated: userCredentials.lastUpdated,
           createdAt: userCredentials.createdAt,
           // Include user information
-          user: {
-            id: users.id,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            email: users.email,
-          }
+          user: users
         })
         .from(userCredentials)
         .leftJoin(users, eq(userCredentials.userId, users.id))
         .orderBy(desc(userCredentials.createdAt));
 
-      return result;
+      return result as Array<UserCredential & { user: User }>;
     } catch (error) {
       console.error("Error fetching user credentials:", error);
       throw error;
@@ -464,7 +460,9 @@ export class DatabaseStorage implements IStorage {
           email: users.email,
           identity: users.identity,
           phone: users.phone,
+          passwordHash: users.passwordHash,
           referralCode: users.referralCode,
+          referredBy: users.referredBy,
           totalEarnings: users.totalEarnings,
           availableBalance: users.availableBalance,
           isActive: users.isActive,

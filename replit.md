@@ -1,6 +1,24 @@
 # Overview
 
-THORX is a modern full-stack web application that serves as an "earning system" or rewards platform. The application appears to be designed as a landing page with a registration system where users can sign up to earn money through various methods like watching ads, making referrals, and completing daily tasks. The project features a cinematic, industrial-themed user interface with animated sections and real-time statistics.
+THORX is a modern full-stack web application that serves as an "earning system" or rewards platform. The application is designed as a landing page with a registration system where users can sign up to earn money through various methods like watching ads, making referrals, and completing daily tasks. The project features a cinematic, industrial-themed user interface with animated sections and real-time statistics.
+
+## Setup Status (September 30, 2025)
+
+✅ **Completed:**
+- PostgreSQL database provisioned and configured
+- Database schema migrated (users, earnings, ad_views, referrals, daily_tasks, team tables)
+- Express backend running on port 5000
+- React frontend configured with Vite
+- Session management with PostgreSQL storage
+- Development workflow configured
+
+⚠️ **Requires Configuration:**
+- **Supabase credentials** needed for full authentication features:
+  - `VITE_SUPABASE_URL` - Your Supabase project URL
+  - `VITE_SUPABASE_ANON_KEY` - Your Supabase anonymous key
+  - `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key (server-side)
+
+The app currently runs with placeholder Supabase values, allowing the landing page to display. To enable user authentication and registration, add the Supabase credentials as secrets in the Replit environment.
 
 # User Preferences
 
@@ -35,22 +53,36 @@ The server includes middleware for request logging, error handling, and developm
 
 ## Data Storage Solutions
 
-The application is architected for **PostgreSQL** database integration:
+The application uses **PostgreSQL** database with full schema:
 
 - **ORM**: **Drizzle ORM** with PostgreSQL dialect configured
-- **Schema**: Defined in `shared/schema.ts` with a `registrations` table containing user phone, email, and referral codes
-- **Database Provider**: **Neon Database** (@neondatabase/serverless) for serverless PostgreSQL
-- **Migrations**: Drizzle Kit for schema migrations and database management
-- **Current State**: Uses temporary in-memory storage with interface-based design for seamless database migration
+- **Schema**: Comprehensive schema in `shared/schema.ts` with tables for users, earnings, ad views, referrals, daily tasks, team emails, team keys, and user credentials
+- **Database Provider**: Replit PostgreSQL database (provisioned)
+- **Migrations**: Drizzle Kit for schema migrations (`npm run db:push`)
+- **Current State**: Fully migrated and operational with DatabaseStorage implementation
 
 ## Authentication and Authorization Mechanisms
 
-The current implementation focuses on user registration rather than full authentication:
+The application supports dual authentication systems:
 
-- **Registration System**: Email-based registration with duplicate prevention
-- **Referral Codes**: Auto-generated unique referral codes (format: "THORX-XXXX")
-- **Session Management**: Basic session setup with `connect-pg-simple` for PostgreSQL session storage
-- **Validation**: Server-side input validation using shared Zod schemas
+**Supabase Authentication (Primary):**
+- Server-side user creation via Supabase Admin API
+- JWT-based authentication with bearer tokens
+- Client-side authentication via Supabase client
+- Role-based access control (user, team, founder)
+- Requires Supabase credentials to be configured
+
+**Legacy Session-Based Authentication:**
+- Express session management with PostgreSQL storage
+- Anonymous login support for preview/demo mode
+- Password hashing with bcrypt
+- Session cookies with secure settings for iframe compatibility
+
+**Additional Features:**
+- Email-based registration with duplicate prevention
+- Auto-generated unique referral codes (format: "THORX-XXXX")
+- Server-side input validation using shared Zod schemas
+- Protected routes with role-based authorization middleware
 
 ## External Dependencies
 
