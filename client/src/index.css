@@ -2046,28 +2046,6 @@
     }
   }
 
-  /* Mobile video controls touch optimization */
-  @media (max-width: 768px) {
-    .video-player-fullscreen button[data-testid*="mobile"],
-    .video-player-fullscreen .touch-manipulation {
-      -webkit-tap-highlight-color: transparent !important;
-      -webkit-touch-callout: none !important;
-      -webkit-user-select: none !important;
-      touch-action: manipulation !important;
-      pointer-events: auto !important;
-      position: relative !important;
-      z-index: 9999 !important;
-    }
-
-    /* Ensure mobile controls are always accessible */
-    button[data-testid*="mobile"] {
-      min-width: 44px !important;
-      min-height: 44px !important;
-      touch-action: manipulation !important;
-      -webkit-tap-highlight-color: transparent !important;
-    }
-  }
-
   .industrial-tab-button {
     background: linear-gradient(145deg, #ffffff, #f5f5f5);
     border: 2px solid #000;

@@ -411,36 +411,6 @@ export default function EnhancedVideoPlayer({
             </button>
           )}
 
-          {/* Mobile Control Buttons - Always Accessible on Mobile */}
-          {isMobileDevice && (
-            <div className={`absolute top-4 right-4 flex items-center gap-2 z-30 ${
-              isFullscreen ? 'top-6 right-6' : ''
-            }`}>
-              <button
-                onClick={handleVolumeToggle}
-                className="bg-black/60 backdrop-blur-sm text-white border border-white/20 rounded-md p-2 hover:bg-black/80 transition-all duration-200 shadow-lg touch-manipulation"
-                data-testid="button-volume-mobile"
-                style={{ touchAction: 'manipulation' }}
-              >
-                {isMuted || volume === 0 ? 
-                  <VolumeX className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
-                  <Volume2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
-                }
-              </button>
-              <button
-                onClick={handleFullscreen}
-                className="bg-black/60 backdrop-blur-sm text-white border border-white/20 rounded-md p-2 hover:bg-black/80 transition-all duration-200 shadow-lg touch-manipulation"
-                data-testid="button-fullscreen-mobile"
-                style={{ touchAction: 'manipulation' }}
-              >
-                {isFullscreen ? 
-                  <Minimize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
-                  <Maximize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
-                }
-              </button>
-            </div>
-          )}
-
           {/* Progress Bar - Simplified for Mobile */}
           <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
             isFullscreen 
@@ -476,47 +446,50 @@ export default function EnhancedVideoPlayer({
                 }`}>
                   {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
                 </span>
-                {/* Desktop Controls - Hidden on Mobile */}
-                {!isMobileDevice && (
-                  <>
-                    <button
-                      onClick={handleVolumeToggle}
-                      className="text-white hover:text-primary transition-colors p-1"
-                      data-testid="button-volume"
-                    >
-                      {isMuted || volume === 0 ? 
-                        <VolumeX className={
-                          isFullscreen 
-                            ? 'w-5 h-5' 
-                            : 'w-4 h-4'
-                        } /> : 
-                        <Volume2 className={
-                          isFullscreen 
-                            ? 'w-5 h-5' 
-                            : 'w-4 h-4'
-                        } />
-                      }
-                    </button>
-                    <button
-                      onClick={handleFullscreen}
-                      className="text-white hover:text-primary transition-colors p-1"
-                      data-testid="button-fullscreen"
-                    >
-                      {isFullscreen ? 
-                        <Minimize2 className={
-                          isFullscreen 
-                            ? 'w-5 h-5' 
-                            : 'w-4 h-4'
-                        } /> : 
-                        <Maximize2 className={
-                          isFullscreen 
-                            ? 'w-5 h-5' 
-                            : 'w-4 h-4'
-                        } />
-                      }
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={handleVolumeToggle}
+                  className="text-white hover:text-primary transition-colors p-1"
+                  data-testid="button-volume"
+                >
+                  {isMuted || volume === 0 ? 
+                    <VolumeX className={
+                      isFullscreen 
+                        ? 'w-5 h-5' 
+                        : isMobileDevice 
+                          ? 'w-4 h-4' 
+                          : 'w-4 h-4'
+                    } /> : 
+                    <Volume2 className={
+                      isFullscreen 
+                        ? 'w-5 h-5' 
+                        : isMobileDevice 
+                          ? 'w-4 h-4' 
+                          : 'w-4 h-4'
+                    } />
+                  }
+                </button>
+                <button
+                  onClick={handleFullscreen}
+                  className="text-white hover:text-primary transition-colors p-1"
+                  data-testid="button-fullscreen"
+                >
+                  {isFullscreen ? 
+                    <Minimize2 className={
+                      isFullscreen 
+                        ? 'w-5 h-5' 
+                        : isMobileDevice 
+                          ? 'w-4 h-4' 
+                          : 'w-4 h-4'
+                    } /> : 
+                    <Maximize2 className={
+                      isFullscreen 
+                        ? 'w-5 h-5' 
+                        : isMobileDevice 
+                          ? 'w-4 h-4' 
+                          : 'w-4 h-4'
+                    } />
+                  }
+                </button>
               </div>
             </div>
             
