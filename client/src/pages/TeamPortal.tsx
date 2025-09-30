@@ -912,8 +912,8 @@ export default function TeamPortal() {
 
         {/* Search and Filters */}
         <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 mb-8">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
+          <CardContent className="p-4 md:p-6">
+            <div className="flex flex-col gap-4">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary w-5 h-5" />
@@ -922,30 +922,30 @@ export default function TeamPortal() {
                     placeholder="Search individual users..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground pl-12 pr-4 py-3 text-lg focus:outline-none focus:border-primary"
+                    className="w-full bg-background border-2 border-muted-foreground/30 text-foreground pl-12 pr-4 py-3 text-base md:text-lg focus:outline-none focus:border-primary transition-all duration-200"
                     data-testid="input-search-users"
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   onClick={handleManualRefresh}
                   disabled={usersLoading}
-                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 text-lg font-black border-2 border-green-600 disabled:opacity-50"
+                  className="bg-primary hover:bg-primary/90 text-black px-4 md:px-6 py-2 md:py-3 text-base md:text-lg font-black border-2 border-black disabled:opacity-50 transition-all duration-200"
                   data-testid="button-refresh-data"
                 >
                   {usersLoading ? (
-                    <div className="w-5 h-5 mr-2 animate-spin border-2 border-white border-t-transparent rounded-full" />
+                    <div className="w-4 h-4 md:w-5 md:h-5 mr-2 animate-spin border-2 border-black border-t-transparent rounded-full" />
                   ) : (
-                    <RefreshCw className="w-5 h-5 mr-2" />
+                    <RefreshCw className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                   )}
                   REFRESH
                 </Button>
                 <Button
-                  className="bg-primary hover:bg-primary/90 text-black px-6 py-3 text-lg font-black border-2 border-black"
+                  className="bg-foreground hover:bg-foreground/90 text-background px-4 md:px-6 py-2 md:py-3 text-base md:text-lg font-black border-2 border-black transition-all duration-200"
                   data-testid="button-export-data"
                 >
-                  <Download className="w-5 h-5 mr-2" />
+                  <Download className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                   EXPORT
                 </Button>
               </div>
@@ -974,11 +974,12 @@ export default function TeamPortal() {
           
           <CardContent className="p-0">
             {/* Status Bar */}
-            <div className="flex items-center justify-between p-4 bg-muted/10 border-b border-muted-foreground/20">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 md:p-4 bg-muted/10 border-b border-muted-foreground/20 gap-2">
               <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 border border-black ${usersLoading ? 'bg-primary animate-pulse' : usersError ? 'bg-red-500' : 'bg-primary'}`}></div>
                 <TechnicalLabel 
                   text={usersLoading ? 'SYNCING DATA...' : usersError ? 'CONNECTION ERROR' : 'LIVE DATA STREAM'} 
-                  className={`text-sm font-black ${usersLoading ? 'text-yellow-600' : usersError ? 'text-red-600' : 'text-green-600'}`} 
+                  className={`text-xs md:text-sm font-black ${usersLoading ? 'text-primary' : usersError ? 'text-red-500' : 'text-primary'}`} 
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -1001,7 +1002,7 @@ export default function TeamPortal() {
                 <TechnicalLabel text="DATABASE CONNECTION ERROR" className="text-red-500 text-xl font-black mb-4" />
                 <Button 
                   onClick={handleManualRefresh}
-                  className="bg-red-500 text-white px-6 py-3 border-2 border-black font-black hover:bg-red-600"
+                  className="bg-primary text-black px-4 md:px-6 py-2 md:py-3 border-2 border-black font-black hover:bg-primary/90 transition-all duration-200"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   RETRY CONNECTION
@@ -1017,16 +1018,16 @@ export default function TeamPortal() {
                 {/* Summary Stats */}
                 <div className="max-w-md mx-auto border-2 border-black bg-background">
                   <div className="grid grid-cols-3 divide-x-2 divide-black">
-                    <div className="p-4 text-center">
-                      <div className="text-2xl font-black text-primary mb-1" data-testid="total-individual-users">0</div>
+                    <div className="p-3 md:p-4 text-center">
+                      <div className="text-xl md:text-2xl font-black text-primary mb-1" data-testid="total-individual-users">0</div>
                       <TechnicalLabel text="TOTAL" className="text-muted-foreground text-xs" />
                     </div>
-                    <div className="p-4 text-center">
-                      <div className="text-2xl font-black text-green-500 mb-1">0</div>
+                    <div className="p-3 md:p-4 text-center">
+                      <div className="text-xl md:text-2xl font-black text-primary mb-1">0</div>
                       <TechnicalLabel text="ACTIVE" className="text-muted-foreground text-xs" />
                     </div>
-                    <div className="p-4 text-center">
-                      <div className="text-2xl font-black text-orange-500 mb-1">₨0</div>
+                    <div className="p-3 md:p-4 text-center">
+                      <div className="text-xl md:text-2xl font-black text-foreground mb-1">₨0</div>
                       <TechnicalLabel text="EARNINGS" className="text-muted-foreground text-xs" />
                     </div>
                   </div>
@@ -1037,20 +1038,20 @@ export default function TeamPortal() {
                 {/* Summary Statistics */}
                 <div className="border-b-2 border-black bg-background">
                   <div className="grid grid-cols-2 md:grid-cols-4 divide-x-2 divide-black">
-                    <div className="p-4 text-center">
-                      <div className="text-xl font-black text-primary mb-1">{individualUsers.length}</div>
+                    <div className="p-3 md:p-4 text-center">
+                      <div className="text-lg md:text-xl font-black text-primary mb-1">{individualUsers.length}</div>
                       <TechnicalLabel text="TOTAL USERS" className="text-muted-foreground text-xs" />
                     </div>
-                    <div className="p-4 text-center">
-                      <div className="text-xl font-black text-green-500 mb-1">{individualUsers.filter((u: any) => u.isActive).length}</div>
+                    <div className="p-3 md:p-4 text-center">
+                      <div className="text-lg md:text-xl font-black text-primary mb-1">{individualUsers.filter((u: any) => u.isActive).length}</div>
                       <TechnicalLabel text="ACTIVE" className="text-muted-foreground text-xs" />
                     </div>
-                    <div className="p-4 text-center">
-                      <div className="text-xl font-black text-red-500 mb-1">{individualUsers.filter((u: any) => !u.isActive).length}</div>
+                    <div className="p-3 md:p-4 text-center">
+                      <div className="text-lg md:text-xl font-black text-muted-foreground mb-1">{individualUsers.filter((u: any) => !u.isActive).length}</div>
                       <TechnicalLabel text="INACTIVE" className="text-muted-foreground text-xs" />
                     </div>
-                    <div className="p-4 text-center">
-                      <div className="text-xl font-black text-orange-500 mb-1">
+                    <div className="p-3 md:p-4 text-center">
+                      <div className="text-lg md:text-xl font-black text-foreground mb-1">
                         ₨{individualUsers.reduce((sum: number, u: any) => sum + parseFloat(u.totalEarnings || '0'), 0).toFixed(2)}
                       </div>
                       <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
@@ -1086,28 +1087,28 @@ export default function TeamPortal() {
                         data-testid={`user-account-${index}`}
                       >
                         {/* User Header */}
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
                           <div className="flex items-center gap-4">
-                            <div className={`w-4 h-4 ${user.isActive ? 'bg-green-500' : 'bg-red-500'} border border-black`}></div>
+                            <div className={`w-4 h-4 ${user.isActive ? 'bg-primary' : 'bg-muted-foreground'} border border-black`}></div>
                             <div>
                               <TechnicalLabel 
                                 text={`${user.firstName || 'UNKNOWN'} ${user.lastName || 'USER'}`} 
-                                className="text-foreground font-black text-lg mb-1" 
+                                className="text-foreground font-black text-base md:text-lg mb-1" 
                               />
                               <TechnicalLabel text="INDIVIDUAL ACCOUNT" className="text-muted-foreground text-xs" />
                             </div>
                           </div>
                           <div className={`px-3 py-1 text-xs font-black border-2 ${
                             user.isActive 
-                              ? 'border-green-500 text-green-500 bg-green-50' 
-                              : 'border-red-500 text-red-500 bg-red-50'
+                              ? 'border-primary text-primary bg-primary/10' 
+                              : 'border-muted-foreground text-muted-foreground bg-muted/20'
                           }`}>
                             {user.isActive ? 'ACTIVE' : 'INACTIVE'}
                           </div>
                         </div>
 
                         {/* User Details Grid */}
-                        <div className="grid md:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
                           {/* Contact Information */}
                           <div className="space-y-4">
                             <TechnicalLabel text="CONTACT INFORMATION" className="text-foreground font-black text-sm border-b border-black pb-1" />
@@ -1131,27 +1132,27 @@ export default function TeamPortal() {
                           <div className="space-y-4">
                             <TechnicalLabel text="FINANCIAL OVERVIEW" className="text-foreground font-black text-sm border-b border-black pb-1" />
                             <div className="space-y-3">
-                              <div className="border border-green-500 bg-green-50 p-3">
+                              <div className="border-2 border-primary bg-primary/10 p-3">
                                 <div className="flex justify-between items-center">
-                                  <TechnicalLabel text="TOTAL EARNINGS" className="text-green-700 text-xs font-bold" />
+                                  <TechnicalLabel text="TOTAL EARNINGS" className="text-primary text-xs font-bold" />
                                   <TechnicalLabel 
                                     text={`₨${parseFloat(user.totalEarnings || '0').toFixed(2)}`} 
-                                    className="text-green-700 font-black text-sm"
+                                    className="text-primary font-black text-sm"
                                   />
                                 </div>
                               </div>
-                              <div className="border border-blue-500 bg-blue-50 p-3">
+                              <div className="border-2 border-foreground bg-muted/20 p-3">
                                 <div className="flex justify-between items-center">
-                                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-blue-700 text-xs font-bold" />
+                                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-foreground text-xs font-bold" />
                                   <TechnicalLabel 
                                     text={`₨${parseFloat(user.availableBalance || '0').toFixed(2)}`} 
-                                    className="text-blue-700 font-black text-sm"
+                                    className="text-foreground font-black text-sm"
                                   />
                                 </div>
                               </div>
                               <div>
                                 <TechnicalLabel text="REFERRAL CODE" className="text-muted-foreground text-xs font-bold mb-1" />
-                                <TechnicalLabel text={user.referralCode || 'NOT ASSIGNED'} className="text-primary text-sm font-mono font-black" />
+                                <TechnicalLabel text={user.referralCode || 'NOT ASSIGNED'} className="text-primary text-sm font-mono font-black break-all" />
                               </div>
                             </div>
                           </div>
