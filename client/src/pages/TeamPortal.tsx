@@ -331,7 +331,7 @@ export default function TeamPortal() {
 
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-12">
-          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-black hover:border-primary p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-black/10">
+          <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10">
             <div className="flex items-start justify-between mb-3">
               <Users className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
               <TechnicalLabel text="TOTAL USERS" className="text-muted-foreground text-xs" />
@@ -351,7 +351,7 @@ export default function TeamPortal() {
             </div>
           </div>
 
-          <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-black hover:border-primary p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-black/10">
+          <div className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/20">
             <div className="flex items-start justify-between mb-3">
               <UserCheck className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
               <TechnicalLabel text="ACTIVE USERS" className="text-muted-foreground text-xs" />
@@ -371,7 +371,7 @@ export default function TeamPortal() {
             </div>
           </div>
 
-          <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-black hover:border-primary p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-black/10">
+          <div className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-muted-foreground/10">
             <div className="flex items-start justify-between mb-3">
               <DollarSign className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
               <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
@@ -395,11 +395,11 @@ export default function TeamPortal() {
         {/* Six Detailed Metrics Cards - Real-time Data */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {/* Total Users - New Registrations */}
-          <Card className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-black hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-black/10">
-            <CardHeader className="border-b border-black group-hover:border-primary transition-colors">
+          <Card className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="NEW REGISTRATIONS" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                <div className="p-2 bg-primary/10 border border-black group-hover:bg-primary/20 transition-all duration-300">
+                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
                   <Users className="w-4 h-4 text-primary" />
                 </div>
               </CardTitle>
@@ -409,7 +409,7 @@ export default function TeamPortal() {
                 <div className="text-3xl font-black text-primary" data-testid="metric-new-registrations">
                   {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.newRegistrationsToday || '0')}
                 </div>
-                <div className="text-xs text-primary flex items-center gap-1">
+                <div className="text-xs text-green-500 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
                   {metricsLoading ? '0%' : `+${teamMetrics?.registrationGrowthPercent || '0'}%`}
                 </div>
@@ -420,11 +420,11 @@ export default function TeamPortal() {
           </Card>
 
           {/* Total Users - Registration Trend */}
-          <Card className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-black hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-black/10">
-            <CardHeader className="border-b border-black group-hover:border-primary transition-colors">
+          <Card className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="REGISTRATION TREND" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                <div className="p-2 bg-primary/10 border border-black group-hover:bg-primary/20 transition-all duration-300">
+                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
                   <Users className="w-4 h-4 text-primary" />
                 </div>
               </CardTitle>
@@ -434,7 +434,7 @@ export default function TeamPortal() {
                 <div className="text-3xl font-black text-primary" data-testid="metric-registration-trend">
                   {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.totalUsers?.toLocaleString() || '0')}
                 </div>
-                <div className="text-xs text-foreground flex items-center gap-1">
+                <div className="text-xs text-green-500 flex items-center gap-1">
                   <Activity className="w-3 h-3" />
                   {teamMetrics?.registrationTrend || 'STABLE'}
                 </div>
@@ -445,11 +445,11 @@ export default function TeamPortal() {
           </Card>
 
           {/* Active Users - Current Session */}
-          <Card className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-black hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-black/10">
-            <CardHeader className="border-b border-black group-hover:border-primary transition-colors">
+          <Card className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+            <CardHeader className="border-b border-primary/20 group-hover:border-primary/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="CURRENT SESSIONS" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                <div className="p-2 bg-primary/10 border border-black group-hover:bg-primary/20 transition-all duration-300">
+                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
                   <UserCheck className="w-4 h-4 text-primary" />
                 </div>
               </CardTitle>
@@ -459,7 +459,7 @@ export default function TeamPortal() {
                 <div className="text-3xl font-black text-primary" data-testid="metric-current-sessions">
                   {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.currentSessions || '0')}
                 </div>
-                <div className="text-xs text-primary flex items-center gap-1">
+                <div className="text-xs text-green-500 flex items-center gap-1">
                   <Activity className="w-3 h-3" />
                   LIVE
                 </div>
@@ -470,11 +470,11 @@ export default function TeamPortal() {
           </Card>
 
           {/* Active Users - Monthly Active */}
-          <Card className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-black hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-black/10">
-            <CardHeader className="border-b border-black group-hover:border-primary transition-colors">
+          <Card className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
+            <CardHeader className="border-b border-primary/20 group-hover:border-primary/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="MONTHLY ACTIVE" className="text-foreground group-hover:text-primary/90 transition-colors" />
-                <div className="p-2 bg-primary/10 border border-black group-hover:bg-primary/20 transition-all duration-300">
+                <div className="p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
                   <UserCheck className="w-4 h-4 text-primary" />
                 </div>
               </CardTitle>
@@ -484,7 +484,7 @@ export default function TeamPortal() {
                 <div className="text-3xl font-black text-primary" data-testid="metric-monthly-active">
                   {metricsLoading ? '---' : metricsError ? 'ERR' : (teamMetrics?.activeUsers?.toLocaleString() || '0')}
                 </div>
-                <div className="text-xs text-foreground flex items-center gap-1">
+                <div className="text-xs text-blue-500 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   30D
                 </div>
@@ -495,11 +495,11 @@ export default function TeamPortal() {
           </Card>
 
           {/* Total Earnings - Revenue */}
-          <Card className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-black hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-black/10">
-            <CardHeader className="border-b border-black group-hover:border-primary transition-colors">
+          <Card className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 transition-all duration-300 hover:shadow-lg hover:shadow-muted-foreground/10">
+            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-muted-foreground/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="PLATFORM REVENUE" className="text-foreground group-hover:text-foreground/90 transition-colors" />
-                <div className="p-2 bg-foreground/10 border border-black group-hover:bg-foreground/20 transition-all duration-300">
+                <div className="p-2 bg-foreground/10 border border-muted-foreground/20 group-hover:bg-foreground/20 transition-all duration-300">
                   <DollarSign className="w-4 h-4 text-foreground/80" />
                 </div>
               </CardTitle>
@@ -520,11 +520,11 @@ export default function TeamPortal() {
           </Card>
 
           {/* Total Earnings - Monthly Revenue */}
-          <Card className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-black hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-black/10">
-            <CardHeader className="border-b border-black group-hover:border-primary transition-colors">
+          <Card className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 transition-all duration-300 hover:shadow-lg hover:shadow-muted-foreground/10">
+            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-muted-foreground/30 transition-colors">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="MONTHLY REVENUE" className="text-foreground group-hover:text-foreground/90 transition-colors" />
-                <div className="p-2 bg-foreground/10 border border-black group-hover:bg-foreground/20 transition-all duration-300">
+                <div className="p-2 bg-foreground/10 border border-muted-foreground/20 group-hover:bg-foreground/20 transition-all duration-300">
                   <DollarSign className="w-4 h-4 text-foreground/80" />
                 </div>
               </CardTitle>
@@ -534,7 +534,7 @@ export default function TeamPortal() {
                 <div className="text-3xl font-black text-foreground" data-testid="metric-monthly-revenue">
                   {metricsLoading ? '---' : metricsError ? 'ERR' : `₨${parseFloat(teamMetrics?.monthlyEarnings || '0').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <div className="text-xs text-yellow-500 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   THIS MONTH
                 </div>
@@ -1042,15 +1042,15 @@ export default function TeamPortal() {
                       <TechnicalLabel text="TOTAL USERS" className="text-muted-foreground text-xs" />
                     </div>
                     <div className="p-4 text-center">
-                      <div className="text-xl font-black text-primary mb-1">{individualUsers.filter((u: any) => u.isActive).length}</div>
+                      <div className="text-xl font-black text-green-500 mb-1">{individualUsers.filter((u: any) => u.isActive).length}</div>
                       <TechnicalLabel text="ACTIVE" className="text-muted-foreground text-xs" />
                     </div>
                     <div className="p-4 text-center">
-                      <div className="text-xl font-black text-foreground mb-1">{individualUsers.filter((u: any) => !u.isActive).length}</div>
+                      <div className="text-xl font-black text-red-500 mb-1">{individualUsers.filter((u: any) => !u.isActive).length}</div>
                       <TechnicalLabel text="INACTIVE" className="text-muted-foreground text-xs" />
                     </div>
                     <div className="p-4 text-center">
-                      <div className="text-xl font-black text-primary mb-1">
+                      <div className="text-xl font-black text-orange-500 mb-1">
                         ₨{individualUsers.reduce((sum: number, u: any) => sum + parseFloat(u.totalEarnings || '0'), 0).toFixed(2)}
                       </div>
                       <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
@@ -1088,7 +1088,7 @@ export default function TeamPortal() {
                         {/* User Header */}
                         <div className="flex items-center justify-between mb-6">
                           <div className="flex items-center gap-4">
-                            <div className={`w-4 h-4 ${user.isActive ? 'bg-primary' : 'bg-foreground'} border border-black`}></div>
+                            <div className={`w-4 h-4 ${user.isActive ? 'bg-green-500' : 'bg-red-500'} border border-black`}></div>
                             <div>
                               <TechnicalLabel 
                                 text={`${user.firstName || 'UNKNOWN'} ${user.lastName || 'USER'}`} 
@@ -1099,8 +1099,8 @@ export default function TeamPortal() {
                           </div>
                           <div className={`px-3 py-1 text-xs font-black border-2 ${
                             user.isActive 
-                              ? 'border-primary text-primary bg-primary/10' 
-                              : 'border-foreground text-foreground bg-foreground/10'
+                              ? 'border-green-500 text-green-500 bg-green-50' 
+                              : 'border-red-500 text-red-500 bg-red-50'
                           }`}>
                             {user.isActive ? 'ACTIVE' : 'INACTIVE'}
                           </div>
@@ -1131,21 +1131,21 @@ export default function TeamPortal() {
                           <div className="space-y-4">
                             <TechnicalLabel text="FINANCIAL OVERVIEW" className="text-foreground font-black text-sm border-b border-black pb-1" />
                             <div className="space-y-3">
-                              <div className="border border-primary bg-primary/10 p-3">
+                              <div className="border border-green-500 bg-green-50 p-3">
                                 <div className="flex justify-between items-center">
-                                  <TechnicalLabel text="TOTAL EARNINGS" className="text-primary text-xs font-bold" />
+                                  <TechnicalLabel text="TOTAL EARNINGS" className="text-green-700 text-xs font-bold" />
                                   <TechnicalLabel 
                                     text={`₨${parseFloat(user.totalEarnings || '0').toFixed(2)}`} 
-                                    className="text-primary font-black text-sm"
+                                    className="text-green-700 font-black text-sm"
                                   />
                                 </div>
                               </div>
-                              <div className="border border-foreground bg-foreground/10 p-3">
+                              <div className="border border-blue-500 bg-blue-50 p-3">
                                 <div className="flex justify-between items-center">
-                                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-foreground text-xs font-bold" />
+                                  <TechnicalLabel text="AVAILABLE BALANCE" className="text-blue-700 text-xs font-bold" />
                                   <TechnicalLabel 
                                     text={`₨${parseFloat(user.availableBalance || '0').toFixed(2)}`} 
-                                    className="text-foreground font-black text-sm"
+                                    className="text-blue-700 font-black text-sm"
                                   />
                                 </div>
                               </div>
