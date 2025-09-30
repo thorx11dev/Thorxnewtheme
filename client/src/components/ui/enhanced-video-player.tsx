@@ -231,20 +231,25 @@ export default function EnhancedVideoPlayer({
       // Exit fullscreen
       try {
         if (isMobileDevice) {
-          // Mobile exit fullscreen
+          // Mobile exit fullscreen - Set state first for immediate visual update
           setIsFullscreen(false);
           
-          // Remove body restrictions
+          // Remove body restrictions immediately
           document.body.classList.remove('video-fullscreen-active');
           document.documentElement.style.overflow = '';
           
-          // Exit browser fullscreen
-          if (document.exitFullscreen) {
-            await document.exitFullscreen();
-          } else if ((document as any).webkitExitFullscreen) {
-            await (document as any).webkitExitFullscreen();
-          } else if ((document as any).mozCancelFullScreen) {
-            await (document as any).mozCancelFullScreen();
+          // Then exit browser fullscreen
+          try {
+            if (document.exitFullscreen) {
+              await document.exitFullscreen();
+            } else if ((document as any).webkitExitFullscreen) {
+              await (document as any).webkitExitFullscreen();
+            } else if ((document as any).mozCancelFullScreen) {
+              await (document as any).mozCancelFullScreen();
+            }
+          } catch (exitError) {
+            // Ignore fullscreen API errors on mobile as state is already updated
+            console.log('Fullscreen API exit failed, but visual state updated');
           }
           
         } else {
