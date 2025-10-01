@@ -1270,12 +1270,12 @@ export default function UserPortal() {
             {/* Action Buttons */}
             <div className="space-y-2 md:space-y-3">
               <Button
-                onClick={() => setShowShareModal(true)}
+                onClick={copyReferralCode}
                 className="w-full bg-primary hover:bg-primary/90 text-black px-4 md:px-6 py-3 md:py-4 text-sm md:text-lg font-black border-2 border-black"
                 data-testid="button-copy-referral"
               >
-                <Share2 className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
-                SHARE INVITE
+                <Copy className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
+                COPY REFERRAL CODE
               </Button>
 
               <div className="button-group-mobile grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
