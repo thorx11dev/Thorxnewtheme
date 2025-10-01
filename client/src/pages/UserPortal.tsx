@@ -1458,7 +1458,6 @@ export default function UserPortal() {
                   {/* Status Indicator */}
                   <div className="mt-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${leader.status === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                       <TechnicalLabel text={`STATUS: ${leader.status}`} className="text-muted-foreground text-xs" />
                     </div>
                     <TechnicalLabel text={`RANK #${leader.rank} OF 500+ USERS`} className="text-muted-foreground text-xs" />
