@@ -289,7 +289,7 @@ export default function Auth() {
                                   <Input 
                                     {...field}
                                     readOnly
-                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3 bg-muted cursor-not-allowed"
+                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3 bg-black text-white cursor-not-allowed"
                                     data-testid="input-register-identity"
                                   />
                                   {!field.value && (
