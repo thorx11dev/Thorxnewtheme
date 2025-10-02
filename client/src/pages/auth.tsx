@@ -250,63 +250,66 @@ export default function Auth() {
 
                   <Form {...registerForm}>
                     <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-3 md:space-y-4">
-                      {/* Name Field */}
-                      <FormField
-                        control={registerForm.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="technical-label">NAME</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input 
-                                  {...field}
-                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3"
-                                  data-testid="input-register-name"
-                                />
-                                {!field.value && (
-                                  <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                                    <AnimatedPlaceholder examples={['John Khan', 'Ahmed Shah', 'Ali Malik', 'Hassan Ahmed']} />
-                                  </div>
-                                )}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Identity Field - Auto Generated */}
-                      <FormField
-                        control={registerForm.control}
-                        name="identity"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="technical-label">THORX IDENTITY</FormLabel>
-                            <div className="space-y-2">
+                      {/* Name and Identity Fields - Side by Side */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                        {/* Name Field */}
+                        <FormField
+                          control={registerForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="technical-label">NAME</FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input 
                                     {...field}
-                                    readOnly
-                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3 bg-black text-white cursor-not-allowed"
-                                    data-testid="input-register-identity"
+                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
+                                    data-testid="input-register-name"
                                   />
                                   {!field.value && (
                                     <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                                      <AnimatedPlaceholder examples={['THORX_JD_MASTER_4521', 'ALPHA_AK_BUILDER_7832', 'CORE_HS_GENIUS_2941']} />
+                                      <AnimatedPlaceholder examples={['John Khan', 'Ahmed Shah', 'Ali Malik', 'Hassan Ahmed']} />
                                     </div>
                                   )}
                                 </div>
                               </FormControl>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                <TechnicalLabel text="AUTO-GENERATED • UNIQUE • NON-EDITABLE" className="text-xs" />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Identity Field - Auto Generated */}
+                        <FormField
+                          control={registerForm.control}
+                          name="identity"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="technical-label">THORX IDENTITY</FormLabel>
+                              <div className="space-y-2">
+                                <FormControl>
+                                  <div className="relative">
+                                    <Input 
+                                      {...field}
+                                      readOnly
+                                      className="border-2 border-black text-base md:text-lg py-2 md:py-3 bg-black text-white cursor-not-allowed"
+                                      data-testid="input-register-identity"
+                                    />
+                                    {!field.value && (
+                                      <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                        <AnimatedPlaceholder examples={['THORX_JD_MASTER_4521', 'ALPHA_AK_BUILDER_7832', 'CORE_HS_GENIUS_2941']} />
+                                      </div>
+                                    )}
+                                  </div>
+                                </FormControl>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  <TechnicalLabel text="AUTO-GENERATED • UNIQUE • NON-EDITABLE" className="text-xs" />
+                                </div>
                               </div>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       {/* Contact Information */}
                       <div className="grid md:grid-cols-2 gap-3 md:gap-4">
