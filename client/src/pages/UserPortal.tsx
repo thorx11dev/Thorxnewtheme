@@ -1282,7 +1282,7 @@ export default function UserPortal() {
                 data-testid="button-copy-referral"
               >
                 <Copy className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
-                COPY REFERRAL CODE
+                Copy
               </Button>
 
               <div className="button-group-mobile grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
