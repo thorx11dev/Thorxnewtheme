@@ -311,58 +311,31 @@ export default function Auth() {
                         />
                       </div>
 
-                      {/* Contact Information */}
-                      <div className="grid md:grid-cols-2 gap-3 md:gap-4">
-                        <FormField
-                          control={registerForm.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="technical-label">PHONE NUMBER</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input 
-                                    {...field}
-                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
-                                    data-testid="input-register-phone"
-                                  />
-                                  {!field.value && (
-                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                                      <AnimatedPlaceholder examples={['+92 300 1234567', '+92 321 9876543', '+92 333 5551234']} />
-                                    </div>
-                                  )}
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={registerForm.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="technical-label">EMAIL ADDRESS</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input 
-                                    {...field}
-                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
-                                    data-testid="input-register-email"
-                                  />
-                                  {!field.value && (
-                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                                      <AnimatedPlaceholder examples={['your.email@gmail.com', 'user@thorx.com', 'john.doe@outlook.com']} />
-                                    </div>
-                                  )}
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      {/* Email Field */}
+                      <FormField
+                        control={registerForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="technical-label">EMAIL ADDRESS</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  {...field}
+                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3"
+                                  data-testid="input-register-email"
+                                />
+                                {!field.value && (
+                                  <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                    <AnimatedPlaceholder examples={['your.email@gmail.com', 'user@thorx.com', 'john.doe@outlook.com']} />
+                                  </div>
+                                )}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       {/* Password Fields */}
                       <div className="grid md:grid-cols-2 gap-3 md:gap-4">
