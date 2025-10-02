@@ -434,32 +434,6 @@ export default function Auth() {
                         )}
                       />
 
-                      {/* Role Selection (for testing) */}
-                      <FormField
-                        control={registerForm.control}
-                        name="role"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="technical-label">ACCOUNT TYPE</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-register-role">
-                              <FormControl>
-                                <SelectTrigger className="border-2 border-black text-base md:text-lg py-2 md:py-3">
-                                  <SelectValue placeholder="Select account type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="user">Regular User</SelectItem>
-                                <SelectItem value="team">Team Member</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              <TechnicalLabel text="Team members get access to team portal features" className="text-xs" />
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
                       <Button 
                         type="submit" 
                         disabled={true}
