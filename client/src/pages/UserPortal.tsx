@@ -596,12 +596,54 @@ export default function UserPortal() {
     { date: 'Sun', earnings: 9.25, ads: 14, tasks: 3 }
   ];
 
-  const earningTypesData = [
-    { name: 'Ad Views', value: 65, color: 'hsl(var(--primary))' },
-    { name: 'Referrals', value: 25, color: 'hsl(var(--secondary))' },
-    { name: 'Daily Tasks', value: 7, color: 'hsl(var(--chart-3))' },
-    { name: 'Bonuses', value: 3, color: 'hsl(var(--chart-4))' }
-  ];
+  // Calculate real-time earnings breakdown from actual data
+  const calculateEarningsBreakdown = () => {
+    const adViewsEarnings = (todayAdViews?.count || 0) * 2.5;
+    const referralEarnings = parseFloat(referralsData?.stats.totalEarned || '0');
+    const totalEarnings = parseFloat(displayUser?.totalEarnings || '0');
+    
+    // Calculate remaining from other sources
+    const otherEarnings = totalEarnings - adViewsEarnings - referralEarnings;
+    const dailyTasksEarnings = Math.max(0, otherEarnings * 0.7);
+    const bonusesEarnings = Math.max(0, otherEarnings * 0.3);
+    
+    const total = adViewsEarnings + referralEarnings + dailyTasksEarnings + bonusesEarnings;
+    
+    // Calculate percentages
+    if (total === 0) {
+      return [
+        { name: 'Ad Views', value: 65, color: 'hsl(var(--primary))' },
+        { name: 'Referrals', value: 25, color: 'hsl(var(--secondary))' },
+        { name: 'Daily Tasks', value: 7, color: 'hsl(var(--chart-3))' },
+        { name: 'Bonuses', value: 3, color: 'hsl(var(--chart-4))' }
+      ];
+    }
+    
+    return [
+      { 
+        name: 'Ad Views', 
+        value: Math.round((adViewsEarnings / total) * 100), 
+        color: 'hsl(var(--primary))' 
+      },
+      { 
+        name: 'Referrals', 
+        value: Math.round((referralEarnings / total) * 100), 
+        color: 'hsl(var(--secondary))' 
+      },
+      { 
+        name: 'Daily Tasks', 
+        value: Math.round((dailyTasksEarnings / total) * 100), 
+        color: 'hsl(var(--chart-3))' 
+      },
+      { 
+        name: 'Bonuses', 
+        value: Math.round((bonusesEarnings / total) * 100), 
+        color: 'hsl(var(--chart-4))' 
+      }
+    ];
+  };
+  
+  const earningTypesData = calculateEarningsBreakdown();
 
   const dailyGoal = 50;
   const currentProgress = parseFloat(displayUser?.totalEarnings || '0.00');
@@ -939,20 +981,6 @@ export default function UserPortal() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value, name) => [`${value}%`, name]}
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '2px solid hsl(var(--primary))',
-                      borderRadius: '4px',
-                      color: 'hsl(var(--primary))',
-                      fontFamily: 'var(--font-sans)',
-                      fontSize: isMobile ? '10px' : '12px',
-                      fontWeight: 'bold',
-                      boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
-                    }}
-                    labelStyle={{ color: 'hsl(var(--primary))' }}
-                  />
                 </RechartsPieChart>
               </ResponsiveContainer>
             </CardContent>
