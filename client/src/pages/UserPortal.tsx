@@ -89,6 +89,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
+import { SiWhatsapp, SiTelegram, SiMessenger, SiInstagram, SiTiktok, SiFacebook, SiGmail } from 'react-icons/si';
 
 // Share Modal Component
 function ShareModal({ isOpen, onClose, referralCode, userName }: { isOpen: boolean; onClose: () => void; referralCode: string; userName: string }) {
@@ -161,58 +162,36 @@ function ShareModal({ isOpen, onClose, referralCode, userName }: { isOpen: boole
         {/* Sharing Options */}
         <div className="grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
           {/* Copy Link */}
-          <button onClick={() => handleShare('copy')} className="share-button group">
-            <Copy className="w-6 h-6 group-hover:scale-110 transition-transform" />
-            <TechnicalLabel text="Copy Link" className="text-xs group-hover:text-primary" />
+          <button onClick={() => handleShare('copy')} className="share-button group" data-testid="share-copy">
+            <Copy className="w-8 h-8 group-hover:scale-110 transition-transform" />
           </button>
           {/* WhatsApp */}
-          <button onClick={() => handleShare('whatsapp')} className="share-button group">
-            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom WhatsApp Icon */}
-              <path d="M1.732 1.732C2.245 1.22 2.882 1 3.571 1h13.286c.689 0 1.326.22 1.732.732C19.245 2.245 19.5 2.882 19.5 3.571v13.286c0 .689-.22 1.326-.732 1.732-1.017 1.017-2.673 1.017-3.69 0L10.286 14H4.429c-.689 0-1.326-.22-1.732-.732C1.22 12.755 1 12.118 1 11.429V3.571c0-.689.22-1.326.732-1.732zm16.778 2.143a12.458 12.458 0 00-2.057-1.821c-1.326-1.326-3.69-1.326-5.016 0L16.778 4.429l2.143 2.143c.365-.365.732-.732 1.098-.732.366 0 .732.366 1.098.732l2.143-2.143a12.458 12.458 0 00-2.057-1.821zM18.5 7.857a1.071 1.071 0 11-2.143 0 1.071 1.071 0 012.143 0z"></path>
-            </svg>
-            <TechnicalLabel text="WhatsApp" className="text-xs group-hover:text-primary" />
+          <button onClick={() => handleShare('whatsapp')} className="share-button group" data-testid="share-whatsapp">
+            <SiWhatsapp className="w-8 h-8 group-hover:scale-110 transition-transform" />
           </button>
           {/* Telegram */}
-          <button onClick={() => handleShare('telegram')} className="share-button group">
-            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Telegram Icon */}
-              <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm-2.707-9.707l1.414 1.414 4.293 2.586 6.293-6.293-7.707-4.293zM7 11.5l3.293 1.976 1.586 1.024 3.414-7.707L7 11.5z"></path>
-            </svg>
-            <TechnicalLabel text="Telegram" className="text-xs group-hover:text-primary" />
+          <button onClick={() => handleShare('telegram')} className="share-button group" data-testid="share-telegram">
+            <SiTelegram className="w-8 h-8 group-hover:scale-110 transition-transform" />
           </button>
           {/* Messenger */}
-          <button onClick={() => handleShare('messenger')} className="share-button group">
-            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Messenger Icon */}
-              <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm-3.414-7.586l1.414 1.414-3.414 3.414 3.414 3.414 1.414-1.414-2-2 2-2z"></path>
-            </svg>
-            <TechnicalLabel text="Messenger" className="text-xs group-hover:text-primary" />
+          <button onClick={() => handleShare('messenger')} className="share-button group" data-testid="share-messenger">
+            <SiMessenger className="w-8 h-8 group-hover:scale-110 transition-transform" />
           </button>
           {/* Instagram */}
-          <button onClick={() => handleShare('instagram')} className="share-button group">
-            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Instagram Icon */}
-              <path d="M7.8 2h8.4c2.538 0 4.6 2.062 4.6 4.6v8.4c0 2.538-2.062 4.6-4.6 4.6H7.8c-2.538 0-4.6-2.062-4.6-4.6V6.6c0-2.538 2.062-4.6 4.6-4.6zm4.2 14.2c-2.275 0-4.1-1.825-4.1-4.1s1.825-4.1 4.1-4.1 4.1 1.825 4.1 4.1-1.825 4.1-4.1 4.1zm2.8-7.7c0-.772-.628-1.4-1.4-1.4s-1.4.628-1.4 1.4.628 1.4 1.4 1.4 1.4-.628 1.4-1.4zM18 10.4c0-.552-.448-1-1-1s-1 .448-1 1 .448 1 1 1 1-.448 1-1z"></path>
-            </svg>
-            <TechnicalLabel text="Instagram" className="text-xs group-hover:text-primary" />
+          <button onClick={() => handleShare('instagram')} className="share-button group" data-testid="share-instagram">
+            <SiInstagram className="w-8 h-8 group-hover:scale-110 transition-transform" />
           </button>
           {/* TikTok */}
-          <button onClick={() => handleShare('tiktok')} className="share-button group">
-            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom TikTok Icon */}
-              <path d="M18.374 2.243a1.375 1.375 0 00-1.25.783L15.374 7h-4.422a8.028 8.028 0 00-1.573.155L5.859 2.5a1.375 1.375 0 00-1.25-.783H2.5v19.243h2.617a1.375 1.375 0 001.25-.783l1.656-3.643h5.017l1.656 3.643a1.375 1.375 0 001.25.783h2.617V2.243zm-2.443 14.977h-4.859a6.684 6.684 0 01-1.328-.134l-1.974 4.356H4.469l2.422-5.328a6.684 6.684 0 011.328.134h4.859a6.684 6.684 0 011.328-.134l1.974-4.356h.617l-2.422 5.328zM19.75 8.375a1.375 1.375 0 100-2.75 1.375 1.375 0 000 2.75z"></path>
-            </svg>
-            <TechnicalLabel text="TikTok" className="text-xs group-hover:text-primary" />
+          <button onClick={() => handleShare('tiktok')} className="share-button group" data-testid="share-tiktok">
+            <SiTiktok className="w-8 h-8 group-hover:scale-110 transition-transform" />
           </button>
           {/* Facebook */}
-          <button onClick={() => handleShare('facebook')} className="share-button group">
-            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Facebook Icon */}
-              <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm1-10h-1.5a.5.5 0 00-.5.5v2h2a.5.5 0 00.5-.5v-2zM10 14h-1.5a.5.5 0 00-.5.5v2h2a.5.5 0 00.5-.5v-2zM8.5 10H10V8h-1.5a.5.5 0 00-.5.5v2a.5.5 0 00.5.5zM14 8h1.5a.5.5 0 00.5-.5v-2a.5.5 0 00-.5-.5H14v3z"></path>
-            </svg>
-            <TechnicalLabel text="Facebook" className="text-xs group-hover:text-primary" />
+          <button onClick={() => handleShare('facebook')} className="share-button group" data-testid="share-facebook">
+            <SiFacebook className="w-8 h-8 group-hover:scale-110 transition-transform" />
           </button>
           {/* Gmail */}
-          <button onClick={() => handleShare('gmail')} className="share-button group">
-            <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"> {/* Custom Gmail Icon */}
-              <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zm-7 7.5l-7-4.5 7-4.5 7 4.5-7 4.5z"></path>
-            </svg>
-            <TechnicalLabel text="Gmail" className="text-xs group-hover:text-primary" />
+          <button onClick={() => handleShare('gmail')} className="share-button group" data-testid="share-gmail">
+            <SiGmail className="w-8 h-8 group-hover:scale-110 transition-transform" />
           </button>
         </div>
 
