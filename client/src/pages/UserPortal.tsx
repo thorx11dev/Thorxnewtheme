@@ -160,7 +160,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName }: { isOpen: boole
         </div>
 
         {/* Sharing Options */}
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3 md:grid-cols-4 md:gap-4 lg:gap-5">
           {/* Copy Link */}
           <button onClick={() => handleShare('copy')} className="share-button group" data-testid="share-copy">
             <Copy className="w-8 h-8 group-hover:scale-110 transition-transform" />
