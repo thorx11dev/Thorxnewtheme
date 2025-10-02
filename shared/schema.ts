@@ -226,6 +226,13 @@ export const insertUserSchema = createInsertSchema(users).omit({
   isActive: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  name: z.string().min(2),
+  email: z.string().email(),
+  password: z.string().min(8),
+  phone: z.string().min(10),
+  identity: z.string().min(1),
+  referralCode: z.string().optional()
 });
 
 export const insertEarningSchema = createInsertSchema(earnings).omit({

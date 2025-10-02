@@ -58,9 +58,9 @@ export const requireSupabaseAuth = async (req: Request, res: Response, next: Nex
 
     const token = authHeader.substring(7);
     const supabase = createServerSupabaseClient();
-    
+
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    
+
     if (error || !user) {
       return res.status(401).json({
         message: "Invalid or expired token",
@@ -169,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Detect if we're running in Replit environment
   const isReplit = process.env.REPL_ID !== undefined || process.env.REPLIT_DB_URL !== undefined;
-  
+
   // Debug: Log environment detection
   console.log("Environment detection:", {
     NODE_ENV: process.env.NODE_ENV,
@@ -200,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   console.log("Session cookie config:", sessionConfig.cookie);
-  
+
   app.use(session(sessionConfig));
 
 
@@ -248,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: true,
           createdAt: new Date().toISOString(),
         };
-        
+
         return res.json(anonymousUser);
       }
 
@@ -434,14 +434,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/config/supabase", (req, res) => {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
-    
+
     if (!supabaseUrl || !supabaseAnonKey) {
       return res.status(500).json({
         error: "Supabase configuration not available",
         message: "Server environment variables not configured"
       });
     }
-    
+
     res.json({
       url: supabaseUrl,
       anonKey: supabaseAnonKey
@@ -720,7 +720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the team member's team key
       const teamKeys = await storage.getTeamKeysByUser(memberId);
       const teamKey = teamKeys[0];
-      
+
       if (!teamKey) {
         return res.status(404).json({
           message: "Team member not found",
@@ -812,7 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the team member's team key to deactivate it
       const teamKeys = await storage.getTeamKeysByUser(memberId);
       const teamKey = teamKeys[0];
-      
+
       if (!teamKey) {
         return res.status(404).json({
           message: "Team member not found",
@@ -995,6 +995,268 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Register new user
+  app.post("/api/register", async (req, res) => {
+    try {
+      const { name, email, password, phone, identity, referralCode, role } = req.body;
+
+      // Split name into first and last name for backward compatibility if needed
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
+
+      // Validate and sanitize data
+      const validatedData = registerSchema.parse({
+        firstName,
+        lastName,
+        email,
+        password,
+        phone,
+        identity,
+        referralCode,
+        role
+      });
+
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(validatedData.email);
+      if (existingUser) {
+        return res.status(400).json({
+          message: "Email already registered",
+          error: "DUPLICATE_EMAIL"
+        });
+      }
+
+      // Create user
+      const newUser = await storage.createUser({
+        ...validatedData,
+        passwordHash: validatedData.password // Password will be hashed in storage layer
+      });
+
+      // Set session
+      req.session.userId = newUser.id;
+      req.session.user = {
+        id: newUser.id,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        role: newUser.role
+      };
+
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "Registration successful",
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          role: newUser.role
+        }
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid registration data",
+          errors: error.errors
+        });
+      }
+
+      res.status(500).json({
+        message: "Registration failed",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Login endpoint
+  app.post("/api/login", async (req, res) => {
+    try {
+      const { email, password } = loginSchema.parse(req.body);
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({
+          message: "Invalid email or password",
+          error: "UNAUTHORIZED"
+        });
+      }
+
+      // Verify password
+      const isMatch = await storage.comparePassword(password, user.passwordHash);
+      if (!isMatch) {
+        return res.status(401).json({
+          message: "Invalid email or password",
+          error: "UNAUTHORIZED"
+        });
+      }
+
+      // Set session
+      req.session.userId = user.id;
+      req.session.user = {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      };
+
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      res.json({
+        message: "Login successful",
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        }
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid login data",
+          errors: error.errors
+        });
+      }
+
+      res.status(500).json({
+        message: "Login failed",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Endpoint to get user profile, requires authentication
+  app.get("/api/profile", requireAuth, async (req, res) => {
+    try {
+      // User is authenticated, fetch profile details
+      const user = await storage.getUserById(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({
+          message: "User profile not found",
+          error: "USER_NOT_FOUND"
+        });
+      }
+
+      res.json({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        identity: user.identity,
+        phone: user.phone,
+        referralCode: user.referralCode,
+        totalEarnings: user.totalEarnings,
+        availableBalance: user.availableBalance,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        role: user.role || 'user',
+      });
+    } catch (error) {
+      console.error("Get profile error:", error);
+      res.status(500).json({
+        message: "Failed to fetch profile data",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Update user profile endpoint
+  app.patch("/api/profile", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { firstName, lastName, phone, identity } = req.body;
+
+      // Validate and sanitize data
+      const updateSchema = z.object({
+        firstName: z.string().min(2, "First name must be at least 2 characters").optional(),
+        lastName: z.string().min(2, "Last name must be at least 2 characters").optional(),
+        phone: z.string().min(10, "Phone number must be at least 10 digits").optional(),
+        identity: z.string().min(1, "Identity is required").optional(),
+      });
+
+      const validatedData = updateSchema.parse({
+        firstName,
+        lastName,
+        phone,
+        identity
+      });
+
+      // Update user in storage
+      const updatedUser = await storage.updateUser(userId, validatedData);
+
+      if (!updatedUser) {
+        return res.status(404).json({
+          message: "User not found",
+          error: "USER_NOT_FOUND"
+        });
+      }
+
+      // Update session data if name changed
+      if (validatedData.firstName || validatedData.lastName) {
+        req.session.user = {
+          ...req.session.user,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName
+        };
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+      }
+
+      res.json({
+        message: "Profile updated successfully",
+        user: {
+          id: updatedUser.id,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          email: updatedUser.email,
+          identity: updatedUser.identity,
+          phone: updatedUser.phone,
+          referralCode: updatedUser.referralCode,
+          totalEarnings: updatedUser.totalEarnings,
+          availableBalance: updatedUser.availableBalance,
+          isActive: updatedUser.isActive,
+          createdAt: updatedUser.createdAt,
+          role: updatedUser.role || 'user',
+        }
+      });
+    } catch (error) {
+      console.error("Update profile error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid profile data",
+          errors: error.errors
+        });
+      }
+
+      res.status(500).json({
+        message: "Failed to update profile",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;

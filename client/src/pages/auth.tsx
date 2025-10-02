@@ -53,8 +53,7 @@ function AnimatedPlaceholder({ examples }: { examples: string[] }) {
 }
 
 const registerSchema = z.object({
-  firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   identity: z.string().min(1, "Identity is required"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   email: z.string().email("Invalid email address"),
@@ -116,8 +115,7 @@ export default function Auth() {
   const registerForm = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
+      name: "",
       identity: "",
       phone: "",
       email: "",
@@ -136,17 +134,19 @@ export default function Auth() {
     }
   });
 
-  // Watch first and last name for identity generation
-  const firstName = registerForm.watch('firstName');
-  const lastName = registerForm.watch('lastName');
+  // Watch name for identity generation
+  const name = registerForm.watch('name');
   
   useEffect(() => {
-    if (firstName && lastName) {
+    if (name && name.trim().includes(' ')) {
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts[nameParts.length - 1];
       const identity = generateThorxIdentity(firstName, lastName);
       setGeneratedIdentity(identity);
       registerForm.setValue('identity', identity);
     }
-  }, [firstName, lastName, registerForm]);
+  }, [name, registerForm]);
 
   const onRegisterSubmit = (data: RegisterForm) => {
     toast({
@@ -250,58 +250,31 @@ export default function Auth() {
 
                   <Form {...registerForm}>
                     <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-3 md:space-y-4">
-                      {/* Name Fields */}
-                      <div className="grid md:grid-cols-2 gap-3 md:gap-4">
-                        <FormField
-                          control={registerForm.control}
-                          name="firstName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="technical-label">FIRST NAME</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input 
-                                    {...field}
-                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
-                                    data-testid="input-register-firstname"
-                                  />
-                                  {!field.value && (
-                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                                      <AnimatedPlaceholder examples={['John', 'Ahmed', 'Ali', 'Hassan']} />
-                                    </div>
-                                  )}
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={registerForm.control}
-                          name="lastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="technical-label">LAST NAME</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input 
-                                    {...field}
-                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
-                                    data-testid="input-register-lastname"
-                                  />
-                                  {!field.value && (
-                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                                      <AnimatedPlaceholder examples={['Khan', 'Shah', 'Ahmed', 'Malik']} />
-                                    </div>
-                                  )}
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      {/* Name Field */}
+                      <FormField
+                        control={registerForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="technical-label">NAME</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  {...field}
+                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3"
+                                  data-testid="input-register-name"
+                                />
+                                {!field.value && (
+                                  <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                    <AnimatedPlaceholder examples={['John Khan', 'Ahmed Shah', 'Ali Malik', 'Hassan Ahmed']} />
+                                  </div>
+                                )}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       {/* Identity Field - Auto Generated */}
                       <FormField
