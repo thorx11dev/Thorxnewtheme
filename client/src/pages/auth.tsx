@@ -242,38 +242,38 @@ export default function Auth() {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="register" className="space-y-3 md:space-y-4">
-                  <div className="text-center mb-4 md:mb-6">
-                    <TechnicalLabel text="NEW USER REGISTRATION" className="mb-2" />
-                    <h3 className="text-xl md:text-3xl font-black text-black">JOIN THE EARNING NETWORK</h3>
+                <TabsContent value="register" className="space-y-6 md:space-y-8">
+                  <div className="text-center mb-6 md:mb-8">
+                    <TechnicalLabel text="NEW USER REGISTRATION" className="mb-3" />
+                    <h3 className="text-xl md:text-3xl font-black text-black mt-2">JOIN THE EARNING NETWORK</h3>
                   </div>
 
                   <Form {...registerForm}>
-                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-3 md:space-y-4">
+                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-6 md:space-y-8">
                       {/* Name and Identity Fields - Side by Side */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         {/* Name Field */}
                         <FormField
                           control={registerForm.control}
                           name="name"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="technical-label">NAME</FormLabel>
+                            <FormItem className="space-y-3">
+                              <FormLabel className="technical-label block mb-2">NAME</FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input 
                                     {...field}
-                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3"
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
                                     data-testid="input-register-name"
                                   />
                                   {!field.value && (
-                                    <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                    <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
                                       <AnimatedPlaceholder examples={['John Khan', 'Ahmed Shah', 'Ali Malik', 'Hassan Ahmed']} />
                                     </div>
                                   )}
                                 </div>
                               </FormControl>
-                              <FormMessage />
+                              <FormMessage className="mt-2" />
                             </FormItem>
                           )}
                         />
@@ -283,29 +283,29 @@ export default function Auth() {
                           control={registerForm.control}
                           name="identity"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="technical-label">THORX IDENTITY</FormLabel>
+                            <FormItem className="space-y-3">
+                              <FormLabel className="technical-label block mb-2">THORX IDENTITY</FormLabel>
                               <div className="space-y-2">
                                 <FormControl>
                                   <div className="relative">
                                     <Input 
                                       {...field}
                                       readOnly
-                                      className="border-2 border-black text-base md:text-lg py-2 md:py-3 bg-black text-white cursor-not-allowed"
+                                      className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 bg-black text-white cursor-not-allowed"
                                       data-testid="input-register-identity"
                                     />
                                     {!field.value && (
-                                      <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                      <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
                                         <AnimatedPlaceholder examples={['THORX_JD_MASTER_4521', 'ALPHA_AK_BUILDER_7832', 'CORE_HS_GENIUS_2941']} />
                                       </div>
                                     )}
                                   </div>
                                 </FormControl>
-                                <div className="text-xs text-muted-foreground mt-1">
+                                <div className="text-xs text-muted-foreground mt-2 px-1">
                                   <TechnicalLabel text="AUTO-GENERATED • UNIQUE • NON-EDITABLE" className="text-xs" />
                                 </div>
                               </div>
-                              <FormMessage />
+                              <FormMessage className="mt-2" />
                             </FormItem>
                           )}
                         />
@@ -316,59 +316,59 @@ export default function Auth() {
                         control={registerForm.control}
                         name="email"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="technical-label">EMAIL ADDRESS</FormLabel>
+                          <FormItem className="space-y-3">
+                            <FormLabel className="technical-label block mb-2">EMAIL ADDRESS</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Input 
                                   {...field}
-                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3"
+                                  className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
                                   data-testid="input-register-email"
                                 />
                                 {!field.value && (
-                                  <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                  <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
                                     <AnimatedPlaceholder examples={['your.email@gmail.com', 'user@thorx.com', 'john.doe@outlook.com']} />
                                   </div>
                                 )}
                               </div>
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage className="mt-2" />
                           </FormItem>
                         )}
                       />
 
                       {/* Password Fields */}
-                      <div className="grid md:grid-cols-2 gap-3 md:gap-4">
+                      <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                         <FormField
                           control={registerForm.control}
                           name="password"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="technical-label">PASSWORD</FormLabel>
+                            <FormItem className="space-y-3">
+                              <FormLabel className="technical-label block mb-2">PASSWORD</FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input 
                                     type={showPassword ? "text" : "password"}
                                     {...field}
-                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3 pr-10"
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 pr-12"
                                     data-testid="input-register-password"
                                   />
                                   {!field.value && (
-                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none pr-10">
+                                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none pr-12">
                                       <AnimatedPlaceholder examples={['ThorX123!', 'SecurePass9$', 'MyStrong8#']} />
                                     </div>
                                   )}
                                   <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10"
+                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10"
                                     data-testid="button-toggle-password"
                                   >
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                   </button>
                                 </div>
                               </FormControl>
-                              <FormMessage />
+                              <FormMessage className="mt-2" />
                             </FormItem>
                           )}
                         />
@@ -377,32 +377,32 @@ export default function Auth() {
                           control={registerForm.control}
                           name="confirmPassword"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="technical-label">CONFIRM PASSWORD</FormLabel>
+                            <FormItem className="space-y-3">
+                              <FormLabel className="technical-label block mb-2">CONFIRM PASSWORD</FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input 
                                     type={showConfirmPassword ? "text" : "password"}
                                     {...field}
-                                    className="border-2 border-black text-base md:text-lg py-2 md:py-3 pr-10"
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 pr-12"
                                     data-testid="input-register-confirm-password"
                                   />
                                   {!field.value && (
-                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none pr-10">
+                                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none pr-12">
                                       <AnimatedPlaceholder examples={['Repeat your password', 'Same as above', 'Confirm password']} />
                                     </div>
                                   )}
                                   <button
                                     type="button"
                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10"
+                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10"
                                     data-testid="button-toggle-confirm-password"
                                   >
                                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                   </button>
                                 </div>
                               </FormControl>
-                              <FormMessage />
+                              <FormMessage className="mt-2" />
                             </FormItem>
                           )}
                         />
@@ -413,47 +413,49 @@ export default function Auth() {
                         control={registerForm.control}
                         name="referralCode"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="technical-label">REFERRAL CODE (OPTIONAL)</FormLabel>
+                          <FormItem className="space-y-3">
+                            <FormLabel className="technical-label block mb-2">REFERRAL CODE (OPTIONAL)</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Input 
                                   {...field}
-                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3"
+                                  className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
                                   data-testid="input-register-referral"
                                 />
                                 {!field.value && (
-                                  <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                  <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
                                     <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} />
                                   </div>
                                 )}
                               </div>
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage className="mt-2" />
                           </FormItem>
                         )}
                       />
 
-                      <Button 
-                        type="submit" 
-                        disabled={true}
-                        className="w-full bg-black text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-primary transition-colors border-2 border-black opacity-50 cursor-not-allowed"
-                        data-testid="button-register-submit"
-                      >
-                        REGISTER NOW →
-                      </Button>
+                      <div className="pt-4">
+                        <Button 
+                          type="submit" 
+                          disabled={true}
+                          className="w-full bg-black text-white text-lg md:text-xl font-black py-4 md:py-5 hover:bg-primary transition-colors border-2 border-black opacity-50 cursor-not-allowed"
+                          data-testid="button-register-submit"
+                        >
+                          REGISTER NOW →
+                        </Button>
+                      </div>
                     </form>
                   </Form>
 
                   {/* Direct Portal Access */}
-                  <div className="mt-6 pt-6 border-t-2 border-black">
-                    <div className="text-center space-y-4">
+                  <div className="mt-8 pt-8 border-t-2 border-black">
+                    <div className="text-center space-y-5">
                       <TechnicalLabel text="OR NAVIGATE TO PORTAL" className="text-muted-foreground" />
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4 md:gap-5">
                         <Button
                           onClick={() => setLocation("/portal")}
                           variant="outline"
-                          className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-lg font-black py-3"
+                          className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-base md:text-lg font-black py-3 md:py-4"
                           data-testid="button-user-portal"
                         >
                           USER PORTAL →
@@ -461,7 +463,7 @@ export default function Auth() {
                         <Button
                           onClick={() => setLocation("/team")}
                           variant="outline"
-                          className="w-full border-2 border-black text-black hover:bg-black hover:text-white text-lg font-black py-3"
+                          className="w-full border-2 border-black text-black hover:bg-black hover:text-white text-base md:text-lg font-black py-3 md:py-4"
                           data-testid="button-team-portal"
                         >
                           TEAM PORTAL →
