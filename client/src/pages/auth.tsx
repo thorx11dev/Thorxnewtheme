@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import { useToast } from "@/hooks/use-toast";
-import { Delete, Eye, EyeOff, Gift, Phone } from "lucide-react";
+import { Delete, Eye, EyeOff } from "lucide-react";
 
 // Animated Placeholder Component
 function AnimatedPlaceholder({ examples }: { examples: string[] }) {
@@ -348,16 +348,13 @@ export default function Auth() {
                               <FormLabel className="technical-label block mb-2">PHONE NUMBER</FormLabel>
                               <FormControl>
                                 <div className="relative">
-                                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
-                                    <Phone className="w-5 h-5 text-black" />
-                                  </div>
                                   <Input 
                                     {...field}
-                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 pl-12 pr-4"
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
                                     data-testid="input-register-phone"
                                   />
                                   {!field.value && (
-                                    <div className="absolute inset-0 flex items-center pl-12 pr-4 pointer-events-none">
+                                    <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
                                       <AnimatedPlaceholder examples={['+92 300 1234567', '03001234567', '+92 321 9876543']} />
                                     </div>
                                   )}
@@ -449,16 +446,13 @@ export default function Auth() {
                             <FormLabel className="technical-label block mb-2">REFERRAL CODE (OPTIONAL)</FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
-                                  <Gift className="w-5 h-5 text-white" />
-                                </div>
                                 <Input 
                                   {...field}
-                                  className="border-2 border-black text-base md:text-lg py-3 md:py-4 pl-12 pr-4 bg-primary text-white placeholder:text-white/60"
+                                  className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 bg-primary text-white"
                                   data-testid="input-register-referral"
                                 />
                                 {!field.value && (
-                                  <div className="absolute inset-0 flex items-center pl-12 pr-4 pointer-events-none">
+                                  <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
                                     <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} />
                                   </div>
                                 )}
