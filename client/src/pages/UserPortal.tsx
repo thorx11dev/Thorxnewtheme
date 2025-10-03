@@ -92,7 +92,7 @@ import {
 import { SiWhatsapp, SiTelegram, SiMessenger, SiInstagram, SiTiktok, SiFacebook, SiGmail } from 'react-icons/si';
 
 // Share Modal Component
-function ShareModal({ isOpen, onClose, referralCode, userName }: { isOpen: boolean; onClose: () => void; referralCode: string; userName: string }) {
+function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen: boolean; onClose: () => void; referralCode: string; userName: string; toast: any }) {
   if (!isOpen) return null;
 
   const shareUrl = `${window.location.origin}/?ref=${referralCode}`;
@@ -439,6 +439,48 @@ export default function UserPortal() {
     description: ""
   });
   const [isContactSubmitting, setIsContactSubmitting] = useState(false);
+
+  // Handle contact form submission
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!contactForm.name || !contactForm.email || !contactForm.description) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all fields before submitting.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsContactSubmitting(true);
+
+    try {
+      const response = await apiRequest("POST", "/api/contact", {
+        name: contactForm.name,
+        email: contactForm.email,
+        description: contactForm.description
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Message Sent!",
+          description: "We'll get back to you within 24 hours."
+        });
+        setContactForm({ name: "", email: "", description: "" });
+      } else {
+        throw new Error("Failed to send message");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsContactSubmitting(false);
+    }
+  };
 
   // Payout section states
   const [currentStep, setCurrentStep] = useState(1);
@@ -947,6 +989,7 @@ export default function UserPortal() {
         onClose={() => setShowShareModal(false)}
         referralCode={displayUser?.referralCode || 'GUEST-CODE'}
         userName={displayUser?.firstName || 'Guest'}
+        toast={toast}
       />
     </div>
   );
