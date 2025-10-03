@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import { useToast } from "@/hooks/use-toast";
-import { Delete, Eye, EyeOff, Info } from "lucide-react";
+import { Delete, Eye, EyeOff, Info, Copy } from "lucide-react";
 
 // Animated Placeholder Component
 function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: { examples: string[]; className?: string }) {
@@ -472,14 +472,51 @@ export default function Auth() {
                               <div className="relative">
                                 <Input 
                                   {...field}
-                                  className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 bg-primary text-white"
+                                  className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 pr-12 bg-primary text-white"
                                   data-testid="input-register-referral"
                                 />
                                 {!field.value && (
-                                  <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
+                                  <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none pr-12">
                                     <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} className="text-white" />
                                   </div>
                                 )}
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      const text = await navigator.clipboard.readText();
+                                      registerForm.setValue('referralCode', text.trim());
+                                      toast({
+                                        title: "Pasted!",
+                                        description: "Referral code pasted from clipboard",
+                                      });
+                                    } catch (err) {
+                                      toast({
+                                        title: "Paste failed",
+                                        description: "Unable to read from clipboard",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                  className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 p-1.5 rounded-sm hover:bg-white/20 transition-all duration-200 group"
+                                  data-testid="button-paste-referral"
+                                >
+                                  <svg 
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    width="16" 
+                                    height="16" 
+                                    viewBox="0 0 24 24" 
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    strokeWidth="2" 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round"
+                                    className="w-4 h-4 text-white group-hover:text-black transition-colors"
+                                  >
+                                    <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
+                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                                  </svg>
+                                </button>
                               </div>
                             </FormControl>
                             <FormMessage className="mt-2" />
