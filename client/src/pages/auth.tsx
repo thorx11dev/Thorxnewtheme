@@ -348,8 +348,8 @@ export default function Auth() {
                               <FormLabel className="technical-label block mb-2 flex items-center gap-2">
                                 PHONE NUMBER
                                 <div className="group relative inline-flex">
-                                  <Info className="w-4 h-4 text-white/70 hover:text-white transition-colors cursor-help" />
-                                  <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-white text-black text-xs px-2 py-1 rounded border-2 border-primary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 font-bold">
+                                  <Info className="w-4 h-4 text-primary/70 hover:text-primary transition-colors cursor-help" />
+                                  <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
                                     Optional Field
                                   </span>
                                 </div>
