@@ -498,7 +498,7 @@ export default function Auth() {
                                       });
                                     }
                                   }}
-                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10 p-2 rounded-md bg-white/10 backdrop-blur-sm hover:bg-white hover:scale-110 transition-all duration-300 ease-out group shadow-sm hover:shadow-md active:scale-95"
+                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10 p-2 rounded-md bg-white/10 backdrop-blur-sm group"
                                   data-testid="button-paste-referral"
                                   aria-label="Paste referral code"
                                 >
@@ -512,7 +512,7 @@ export default function Auth() {
                                     strokeWidth="2.5" 
                                     strokeLinecap="round" 
                                     strokeLinejoin="round"
-                                    className="text-white group-hover:text-primary transition-colors duration-300"
+                                    className="text-white"
                                   >
                                     <rect width="8" height="4" x="8" y="2" rx="1.5" ry="1.5"/>
                                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
