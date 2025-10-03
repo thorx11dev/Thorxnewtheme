@@ -797,7 +797,7 @@ export default function UserPortal() {
   const remainingAds = dailyLimit - (todayAdViews?.count || 0);
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background relative user-portal">
       {/* Industrial Grid Overlay */}
       <div className="industrial-grid fixed inset-0 z-0" />
 
@@ -956,7 +956,7 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section */}
-        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8 user-portal-hero">
           <div className="text-center mb-6 md:mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
               <Activity className="w-4 h-4 md:w-5 md:h-5" />
@@ -976,7 +976,7 @@ export default function UserPortal() {
         </div>
 
         {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10 dashboard-cards-grid dashboard-section">
           {/* Total Earnings */}
           <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10" data-testid="card-total-earnings">
             <div className="flex items-start justify-between mb-3">
@@ -1162,7 +1162,7 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section - Dashboard Style */}
-        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8 user-portal-hero">
           <div className="text-center mb-6 md:mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
               <Briefcase className="w-4 h-4 md:w-5 md:h-5" />
@@ -1182,7 +1182,7 @@ export default function UserPortal() {
         </div>
 
         {/* Key Metrics Cards - Exact Dashboard Layout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10 dashboard-cards-grid dashboard-section">
           {/* Ads Watched */}
           <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10" data-testid="card-work-ads-watched">
             <div className="flex items-start justify-between mb-3">
@@ -1327,7 +1327,7 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section - Dashboard Style */}
-        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8 user-portal-hero">
           <div className="text-center mb-6 md:mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
               <UserCheck className="w-4 h-4 md:w-5 md:h-5" />
@@ -1346,7 +1346,7 @@ export default function UserPortal() {
           </div>
         </div>
         {/* Key Metrics Cards - Dashboard Layout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10 dashboard-cards-grid dashboard-section">
           {/* Total Referrals */}
           <div className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-primary/10" data-testid="card-total-referrals">
             <div className="flex items-start justify-between mb-3">
@@ -1803,7 +1803,7 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section - Dashboard Style */}
-        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8 user-portal-hero">
           <div className="text-center mb-6 md:mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
               <Wallet className="w-4 h-4 md:w-5 md:h-5" />
@@ -2218,7 +2218,7 @@ export default function UserPortal() {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 relative z-10">
         {/* Hero Section - Dashboard Style */}
-        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
+        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8 user-portal-hero">
           <div className="text-center mb-6 md:mb-8">
             <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
               <LifeBuoy className="w-4 h-4 md:w-5 md:h-5" />
