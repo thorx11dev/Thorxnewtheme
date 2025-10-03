@@ -448,7 +448,7 @@ export default function Auth() {
                               <div className="relative">
                                 <Input 
                                   {...field}
-                                  className="border-2 border-primary bg-primary/5 text-base md:text-lg py-3 md:py-4 px-4 focus:bg-primary/10 transition-colors"
+                                  className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 bg-primary text-white"
                                   data-testid="input-register-referral"
                                 />
                                 {!field.value && (
