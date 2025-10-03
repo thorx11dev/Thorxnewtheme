@@ -144,8 +144,10 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
             <div className="mb-6">
               <TechnicalLabel text="FAQ PROTOCOL v2.47" />
             </div>
-            <h2 className="text-5xl lg:text-6xl font-black tracking-tight text-primary leading-tight mb-6">
-              Knowledge<br />Base<br />Access.
+            <h2 className="text-5xl lg:text-6xl font-black tracking-tight text-foreground leading-tight mb-6">
+              <span className="text-primary">Knowledge</span><br />
+              <span className="text-primary">Base</span><br />
+              <span className="text-primary">Access.</span>
             </h2>
             <div className="space-y-2">
               <TechnicalLabel text="SYSTEM STATUS: OPERATIONAL" />
@@ -244,8 +246,10 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
             <div className="mb-4">
               <TechnicalLabel text="FAQ PROTOCOL v2.47" />
             </div>
-            <h2 className="text-4xl font-black tracking-tight text-primary leading-tight mb-4">
-              Knowledge<br />Base<br />Access.
+            <h2 className="text-4xl font-black tracking-tight text-foreground leading-tight mb-4">
+              <span className="text-primary">Knowledge</span><br />
+              <span className="text-primary">Base</span><br />
+              <span className="text-primary">Access.</span>
             </h2>
             <Barcode className="w-24 h-6 mx-auto opacity-60" />
           </div>
