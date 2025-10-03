@@ -2335,8 +2335,32 @@ export default function UserPortal() {
                   <div className="mt-0">
                     {/* Section Heading */}
                     <div className="text-center mb-6 md:mb-8">
-                      <h3 className="text-lg md:text-2xl lg:text-3xl font-black text-foreground tracking-tight">
-                        FREQUENTLY ASKED <span className="text-primary">QUESTIONS</span>
+                      <h3 className="text-lg md:text-2xl lg:text-3xl font-black tracking-tight leading-tight" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
+                        <span className="text-black">F</span>
+                        <span className="text-white">r</span>
+                        <span className="text-primary">e</span>
+                        <span className="text-black">q</span>
+                        <span className="text-white">u</span>
+                        <span className="text-primary">e</span>
+                        <span className="text-black">n</span>
+                        <span className="text-white">t</span>
+                        <span className="text-primary">l</span>
+                        <span className="text-black">y</span>{" "}
+                        <span className="text-white">A</span>
+                        <span className="text-primary">s</span>
+                        <span className="text-black">k</span>
+                        <span className="text-white">e</span>
+                        <span className="text-primary">d</span><br />
+                        <span className="text-black">Q</span>
+                        <span className="text-white">u</span>
+                        <span className="text-primary">e</span>
+                        <span className="text-black">s</span>
+                        <span className="text-white">t</span>
+                        <span className="text-primary">i</span>
+                        <span className="text-black">o</span>
+                        <span className="text-white">n</span>
+                        <span className="text-primary">s</span>
+                        <span className="text-black">.</span>
                       </h3>
                       <TechnicalLabel text="INSTANT ANSWERS TO YOUR THORX QUERIES" className="text-muted-foreground text-xs md:text-sm mt-2" />
                     </div>
