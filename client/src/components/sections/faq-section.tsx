@@ -144,7 +144,7 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
             <div className="mb-6">
               <TechnicalLabel text="FAQ PROTOCOL v2.47" />
             </div>
-            <h2 className="text-5xl lg:text-6xl font-black tracking-tight leading-tight mb-6">
+            <h2 className="text-5xl lg:text-6xl font-black tracking-tight leading-tight mb-6" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
               <span className="text-black">K</span>
               <span className="text-white">n</span>
               <span className="text-primary">o</span>
@@ -263,7 +263,7 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
             <div className="mb-4">
               <TechnicalLabel text="FAQ PROTOCOL v2.47" />
             </div>
-            <h2 className="text-4xl font-black tracking-tight leading-tight mb-4">
+            <h2 className="text-4xl font-black tracking-tight leading-tight mb-4" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
               <span className="text-black">K</span>
               <span className="text-white">n</span>
               <span className="text-primary">o</span>
