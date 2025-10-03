@@ -1257,6 +1257,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Chatbot API routes
+  app.post("/api/chat", requireSupabaseAuth, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { message } = req.body;
+
+      if (!message || typeof message !== 'string' || !message.trim()) {
+        return res.status(400).json({
+          message: "Message is required",
+          error: "INVALID_INPUT"
+        });
+      }
+
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+          error: "USER_NOT_FOUND"
+        });
+      }
+
+      const { chatbotService } = await import('./chatbot/chatbot-service');
+      const userName = user.firstName || 'User';
+      const botResponse = chatbotService.processMessage(message.trim(), userName);
+
+      await storage.createChatMessage({
+        userId,
+        message: message.trim(),
+        sender: 'user',
+        language: botResponse.language,
+        intent: botResponse.intent
+      });
+
+      await storage.createChatMessage({
+        userId,
+        message: botResponse.response,
+        sender: 'support',
+        language: botResponse.language,
+        intent: botResponse.intent
+      });
+
+      res.json({
+        response: botResponse.response,
+        language: botResponse.language,
+        intent: botResponse.intent
+      });
+    } catch (error) {
+      console.error("Chatbot error:", error);
+      res.status(500).json({
+        message: "Failed to process message",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  app.get("/api/chat/history", requireSupabaseAuth, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+
+      const messages = await storage.getUserChatHistory(userId, limit);
+      
+      res.json({
+        messages: messages.reverse()
+      });
+    } catch (error) {
+      console.error("Chat history error:", error);
+      res.status(500).json({
+        message: "Failed to fetch chat history",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;

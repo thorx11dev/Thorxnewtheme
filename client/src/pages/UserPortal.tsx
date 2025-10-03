@@ -421,6 +421,66 @@ export default function UserPortal() {
     },
   });
 
+  // Chat and Help Section state
+  const [activeHelpTab, setActiveHelpTab] = useState("guide");
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 1,
+      text: "Hello! Welcome to THORX Support. How can I assist you today?",
+      sender: "support",
+      timestamp: new Date(Date.now() - 5000).toISOString(),
+      avatar: "TS"
+    }
+  ]);
+  const [newMessage, setNewMessage] = useState("");
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    description: ""
+  });
+  const [isContactSubmitting, setIsContactSubmitting] = useState(false);
+
+  // Payout section states
+  const [currentStep, setCurrentStep] = useState(1);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [selectedMethod, setSelectedMethod] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState({
+    name: "",
+    number: "",
+    id: "",
+    iban: ""
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const chatMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const response = await apiRequest("POST", "/api/chat", { message });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      const supportMessage = {
+        id: chatMessages.length + 2,
+        text: data.response,
+        sender: "support",
+        timestamp: new Date().toISOString(),
+        avatar: "TS"
+      };
+      setChatMessages(prev => [...prev, supportMessage]);
+    },
+    onError: (error) => {
+      console.error("Chat error:", error);
+      const errorMessage = {
+        id: chatMessages.length + 2,
+        text: "Sorry, I'm having trouble connecting right now. Please try again or use the Contact section to reach our team.",
+        sender: "support",
+        timestamp: new Date().toISOString(),
+        avatar: "TS"
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    }
+  });
+
   // Navigation handlers
   const navigateToSection = useCallback((index: number) => {
     if (index >= 0 && index < sections.length && index !== currentSection) {
@@ -1523,19 +1583,6 @@ export default function UserPortal() {
 
   // Progressive Payout Section - Dashboard Style
   function renderPayoutSection() {
-    // Progressive flow state management
-    const [currentStep, setCurrentStep] = useState(1); // 1: Amount, 2: Method, 3: Details
-    const [withdrawAmount, setWithdrawAmount] = useState("");
-    const [selectedMethod, setSelectedMethod] = useState("");
-    const [paymentDetails, setPaymentDetails] = useState({
-      name: "",
-      number: "",
-      id: "",
-      iban: ""
-    });
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [showHistory, setShowHistory] = useState(false);
-
     // Static transaction history data
     const staticHistoryItems = [
       {
@@ -2069,27 +2116,8 @@ export default function UserPortal() {
 
   // Help Section
   function renderHelpSection() {
-    const [activeHelpTab, setActiveHelpTab] = useState("guide");
-    const [chatMessages, setChatMessages] = useState([
-      {
-        id: 1,
-        text: "Hello! Welcome to THORX Support. How can I assist you today?",
-        sender: "support",
-        timestamp: new Date(Date.now() - 5000).toISOString(),
-        avatar: "TS"
-      }
-    ]);
-    const [newMessage, setNewMessage] = useState("");
-    const [contactForm, setContactForm] = useState({
-      name: "",
-      email: "",
-      description: ""
-    });
-    const [isContactSubmitting, setIsContactSubmitting] = useState(false);
-
-    // Chat functionality with Telegram/WhatsApp style
     const sendMessage = () => {
-      if (!newMessage.trim()) return;
+      if (!newMessage.trim() || chatMutation.isPending) return;
 
       const userMessage = {
         id: chatMessages.length + 1,
@@ -2100,28 +2128,10 @@ export default function UserPortal() {
       };
 
       setChatMessages(prev => [...prev, userMessage]);
+      const messageToSend = newMessage;
       setNewMessage("");
-
-      // Simulate support response with typing indicator
-      setTimeout(() => {
-        const responses = [
-          "Thanks for reaching out! Let me help you with that right away.",
-          "I understand your question. Here's what you need to know...",
-          "Great question! I'm here to provide you with the best solution.",
-          "I'm on it! Let me walk you through this step by step.",
-          "Perfect! I can definitely help you resolve this issue."
-        ];
-
-        const supportMessage = {
-          id: chatMessages.length + 2,
-          text: responses[Math.floor(Math.random() * responses.length)],
-          sender: "support",
-          timestamp: new Date().toISOString(),
-          avatar: "TS"
-        };
-
-        setChatMessages(prev => [...prev, supportMessage]);
-      }, 1500);
+      
+      chatMutation.mutate(messageToSend);
     };
 
     // Contact form submission

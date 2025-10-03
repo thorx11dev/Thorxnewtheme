@@ -1,0 +1,231 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2025-10-03",
+    "language": ["en", "ur"]
+  },
+  "intents": [
+    {
+      "id": "greeting",
+      "patterns": {
+        "en": ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "greetings", "assalam"],
+        "ur": ["salam", "assalam o alaikum", "kaise hain", "kya hal hai", "adaab"]
+      },
+      "responses": {
+        "en": [
+          "Hello {name}! Welcome to THORX Support. How can I help you today?",
+          "Hi {name}! I'm here to assist you with anything you need.",
+          "Greetings {name}! What can I do for you today?"
+        ],
+        "ur": [
+          "Assalam o Alaikum {name}! THORX Support mein aapka swagat hai. Main aapki kaise madad kar sakta hoon?",
+          "Hello {name}! Main aapki madad ke liye hazir hoon.",
+          "Salam {name}! Aaj main aapke liye kya kar sakta hoon?"
+        ]
+      }
+    },
+    {
+      "id": "account_balance",
+      "patterns": {
+        "en": ["balance", "earnings", "money", "how much", "total earned", "available balance", "wallet", "payment"],
+        "ur": ["balance", "paise", "kitne paise", "kamai", "total kamai", "wallet", "payment"]
+      },
+      "responses": {
+        "en": [
+          "Hi {name}! You can check your current balance and earnings in the Dashboard section. Your available balance is displayed at the top of the page.",
+          "Your earnings and balance information is available in the Dashboard. Navigate there to see your total earnings and available balance."
+        ],
+        "ur": [
+          "{name}, aap apna balance aur earnings Dashboard section mein dekh sakte hain. Aapka available balance page ke upar dikhaya gaya hai.",
+          "Aapki earnings aur balance ki information Dashboard mein available hai. Wahan jakar aap apni total earnings aur available balance dekh sakte hain."
+        ]
+      }
+    },
+    {
+      "id": "how_to_earn",
+      "patterns": {
+        "en": ["how to earn", "make money", "earn more", "increase earnings", "watch ads", "how does it work", "earning method"],
+        "ur": ["kaise kamaon", "paise kaise banaye", "zyada kaise kamaye", "ads kaise dekhen", "kaam kaise karta hai", "earning ka tareeqa"]
+      },
+      "responses": {
+        "en": [
+          "You can earn money on THORX by: 1) Watching ads in the Work section, 2) Referring friends using your referral code, 3) Completing daily tasks. Navigate to the Work section to start earning!",
+          "{name}, there are multiple ways to earn: Watch video ads, complete tasks, and refer friends. Each ad you watch earns you money instantly!"
+        ],
+        "ur": [
+          "THORX par aap paise kama sakte hain: 1) Work section mein ads dekh kar, 2) Apne referral code se doston ko invite kar ke, 3) Daily tasks complete kar ke. Earning shuru karne ke liye Work section mein jayen!",
+          "{name}, kamai ke kai tareeqe hain: Video ads dekhiye, tasks complete kijiye, aur doston ko refer kijiye. Har ad dekhne par aapko foran paise milte hain!"
+        ]
+      }
+    },
+    {
+      "id": "referral_code",
+      "patterns": {
+        "en": ["referral", "refer friend", "referral code", "invite friends", "share code", "how to refer"],
+        "ur": ["referral", "dost ko bulao", "referral code", "invite kaise karen", "code share kaise karen", "refer kaise karen"]
+      },
+      "responses": {
+        "en": [
+          "Your referral code is displayed in the Referrals section. Click on it to copy and share with friends. You'll earn commission when they complete tasks!",
+          "{name}, go to the Referrals section to find your unique referral code. Share it with friends and earn when they join and work!"
+        ],
+        "ur": [
+          "Aapka referral code Referrals section mein dikhaya gaya hai. Use copy karne ke liye click karein aur doston ke saath share karein. Jab wo tasks complete karenge tab aapko commission milega!",
+          "{name}, Referrals section mein jakar apna unique referral code paayen. Use doston ke saath share karein aur jab wo join ho kar kaam karein to aap kamayen!"
+        ]
+      }
+    },
+    {
+      "id": "password_reset",
+      "patterns": {
+        "en": ["forgot password", "reset password", "change password", "password issue", "can't login", "lost password"],
+        "ur": ["password bhool gaya", "password reset", "password change", "password ki problem", "login nahi ho raha", "password kho gaya"]
+      },
+      "responses": {
+        "en": [
+          "To reset your password, please go to the Contact section and send us a message with your registered email. Our team will help you reset it within 24 hours.",
+          "For password reset assistance, please contact our support team through the Contact section. Include your email address for faster processing."
+        ],
+        "ur": [
+          "Password reset karne ke liye, Contact section mein jayen aur apne registered email ke saath message bhejiye. Hamari team 24 ghante mein aapki madad karegi.",
+          "Password reset ki madad ke liye, Contact section se hamari support team se rabta karein. Apna email address zaroor shamil karein taaki jaldi process ho sake."
+        ]
+      }
+    },
+    {
+      "id": "withdrawal",
+      "patterns": {
+        "en": ["withdraw", "withdrawal", "payout", "cash out", "transfer money", "get paid", "bank transfer"],
+        "ur": ["paise nikalna", "withdrawal", "payout", "cash out", "paise transfer", "payment lena", "bank transfer"]
+      },
+      "responses": {
+        "en": [
+          "To withdraw your earnings, go to the Payout section. You can request a withdrawal once you reach the minimum threshold. Payments are processed within 3-5 business days.",
+          "{name}, navigate to the Payout section to request withdrawals. Make sure you've added your bank details for smooth processing!"
+        ],
+        "ur": [
+          "Apni kamai withdraw karne ke liye, Payout section mein jayen. Minimum threshold complete hone par aap withdrawal request kar sakte hain. Payments 3-5 business days mein process hote hain.",
+          "{name}, withdrawal request karne ke liye Payout section mein jayen. Payment smooth process hone ke liye apne bank details zaroor add kar lein!"
+        ]
+      }
+    },
+    {
+      "id": "account_info",
+      "patterns": {
+        "en": ["my account", "profile", "account details", "personal info", "update profile", "account settings"],
+        "ur": ["mera account", "profile", "account ki details", "personal info", "profile update", "account settings"]
+      },
+      "responses": {
+        "en": [
+          "Your account information is displayed in the Dashboard section. You can see your name, email, phone number, and THORX identity number there.",
+          "{name}, all your account details are in the Dashboard. For any changes to personal information, please contact support through the Contact section."
+        ],
+        "ur": [
+          "Aapke account ki information Dashboard section mein dikhai gayi hai. Wahan aap apna name, email, phone number, aur THORX identity number dekh sakte hain.",
+          "{name}, aapki saari account details Dashboard mein hain. Personal information mein koi badlav ke liye, Contact section se support team se rabta karein."
+        ]
+      }
+    },
+    {
+      "id": "daily_tasks",
+      "patterns": {
+        "en": ["daily task", "tasks", "daily bonus", "what tasks", "task list", "complete tasks"],
+        "ur": ["daily task", "tasks", "daily bonus", "kya tasks hain", "task list", "tasks complete kaise karen"]
+      },
+      "responses": {
+        "en": [
+          "Daily tasks are available in the Work section. Complete tasks like watching ads, logging in daily, and referring friends to earn bonus rewards!",
+          "{name}, check the Work section for daily tasks. Each completed task earns you extra money on top of your regular earnings!"
+        ],
+        "ur": [
+          "Daily tasks Work section mein available hain. Ads dekhna, daily login, aur doston ko refer karna jaise tasks complete karke bonus rewards payen!",
+          "{name}, daily tasks ke liye Work section check karein. Har complete task se aapko regular earnings ke saath extra paise milte hain!"
+        ]
+      }
+    },
+    {
+      "id": "contact_support",
+      "patterns": {
+        "en": ["contact", "support", "help", "customer service", "talk to human", "speak to team", "get help"],
+        "ur": ["contact", "support", "madad chahiye", "customer service", "team se baat", "help chahiye"]
+      },
+      "responses": {
+        "en": [
+          "For direct support, please visit the Contact section and fill out the form. Our team typically responds within 24 hours!",
+          "{name}, our support team is here to help! Go to the Contact section to send us a message and we'll get back to you soon."
+        ],
+        "ur": [
+          "Direct support ke liye, Contact section mein jayen aur form fill karein. Hamari team aksar 24 ghante mein jawab deti hai!",
+          "{name}, hamari support team aapki madad ke liye tayyar hai! Contact section mein jakar message bhejiye, hum jald hi aapko jawab denge."
+        ]
+      }
+    },
+    {
+      "id": "payment_methods",
+      "patterns": {
+        "en": ["payment method", "how to get paid", "bank details", "payment options", "add bank account", "payment info"],
+        "ur": ["payment method", "paise kaise milenge", "bank details", "payment options", "bank account add karna", "payment info"]
+      },
+      "responses": {
+        "en": [
+          "You can add your bank account details in the Payout section. We support bank transfers and popular mobile wallets. Navigate to Payout to set up your preferred method!",
+          "{name}, go to the Payout section to add your payment information. Make sure your details are correct to avoid any payment delays."
+        ],
+        "ur": [
+          "Aap apne bank account ki details Payout section mein add kar sakte hain. Hum bank transfers aur popular mobile wallets support karte hain. Apna pasandida method setup karne ke liye Payout mein jayen!",
+          "{name}, apni payment information add karne ke liye Payout section mein jayen. Payment mein koi delay na ho isliye apni details sahi daalein."
+        ]
+      }
+    },
+    {
+      "id": "ad_types",
+      "patterns": {
+        "en": ["types of ads", "ad types", "what ads", "video ads", "banner ads", "ad categories"],
+        "ur": ["ads ki qismein", "ad types", "kya ads hain", "video ads", "banner ads", "ad categories"]
+      },
+      "responses": {
+        "en": [
+          "THORX offers three types of ads: 1) Video ads (highest earning), 2) Banner ads (quick and easy), 3) Interactive ads (fun and engaging). All available in the Work section!",
+          "You can watch different types of ads - videos, banners, and interactive ads. Each type has different earning rates. Check the Work section to start!"
+        ],
+        "ur": [
+          "THORX par teen tarah ke ads hain: 1) Video ads (zyada kamai), 2) Banner ads (jaldi aur aasan), 3) Interactive ads (maza aur dilchasp). Sab Work section mein available hain!",
+          "Aap mukhtalif tarah ke ads dekh sakte hain - videos, banners, aur interactive ads. Har type ki alag earning rate hai. Shuru karne ke liye Work section check karein!"
+        ]
+      }
+    },
+    {
+      "id": "minimum_withdrawal",
+      "patterns": {
+        "en": ["minimum withdrawal", "minimum payout", "how much to withdraw", "withdrawal limit", "minimum amount"],
+        "ur": ["minimum withdrawal", "minimum payout", "kitne se withdraw kar sakte", "withdrawal ki had", "minimum amount"]
+      },
+      "responses": {
+        "en": [
+          "The minimum withdrawal amount and threshold details are displayed in the Payout section. Once you reach the minimum, you can request a payout anytime!",
+          "{name}, check the Payout section for minimum withdrawal requirements. Keep earning to reach the threshold!"
+        ],
+        "ur": [
+          "Minimum withdrawal amount aur threshold ki details Payout section mein dikhayi gayi hain. Jab aap minimum tak pohanchein ge, tab kabhi bhi payout request kar sakte hain!",
+          "{name}, minimum withdrawal requirements ke liye Payout section check karein. Threshold tak pohanchne ke liye kamai jari rakhein!"
+        ]
+      }
+    }
+  ],
+  "fallback": {
+    "en": [
+      "I don't have specific information about that. Please visit the Contact section to message our support team directly - they'll be happy to help you!",
+      "I'm not sure about that query. For detailed assistance, please reach out to our support team through the Contact section.",
+      "That's outside my knowledge area. Our support team in the Contact section can provide you with accurate information about this."
+    ],
+    "ur": [
+      "Mujhe is baare mein khaas information nahi hai. Meherbani karke Contact section mein jakar hamari support team ko seedha message bhejiye - wo khushi se aapki madad karenge!",
+      "Mujhe is sawaal ka yaqeen nahi hai. Tafseel madad ke liye, Contact section se hamari support team se rabta karein.",
+      "Ye meri knowledge ke bahar hai. Contact section mein hamari support team aapko is baare mein sahi information de sakti hai."
+    ]
+  },
+  "security_blocked_topics": [
+    "backend", "server", "database", "api", "source code", "infrastructure", "team email", "team phone", 
+    "admin panel", "credentials", "authentication mechanism", "security protocol", "payment processing details"
+  ]
+}

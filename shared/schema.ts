@@ -142,6 +142,20 @@ export const userCredentials = pgTable("user_credentials", {
   index("user_credentials_email_idx").on(table.email),
 ]);
 
+// Chat messages for support chatbot
+export const chatMessages = pgTable("chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  message: text("message").notNull(),
+  sender: text("sender").notNull(), // 'user' or 'support'
+  language: text("language").default("en"), // 'en' or 'ur'
+  intent: text("intent"), // detected intent
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("chat_messages_user_id_idx").on(table.userId),
+  index("chat_messages_created_at_idx").on(table.createdAt),
+]);
+
 // Define relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   earnings: many(earnings),
@@ -152,6 +166,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   teamEmailsSent: many(teamEmails),
   teamKeys: many(teamKeys),
   userCredentials: many(userCredentials),
+  chatMessages: many(chatMessages),
   referrer: one(users, {
     fields: [users.referredBy],
     references: [users.id],
@@ -209,6 +224,13 @@ export const teamKeysRelations = relations(teamKeys, ({ one }) => ({
 export const userCredentialsRelations = relations(userCredentials, ({ one }) => ({
   user: one(users, {
     fields: [userCredentials.userId],
+    references: [users.id],
+  }),
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  user: one(users, {
+    fields: [chatMessages.userId],
     references: [users.id],
   }),
 }));
@@ -274,6 +296,11 @@ export const insertUserCredentialSchema = createInsertSchema(userCredentials).om
   createdAt: true,
 });
 
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Type exports
 export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
 export type Registration = typeof registrations.$inferSelect;
@@ -301,3 +328,6 @@ export type TeamKey = typeof teamKeys.$inferSelect;
 
 export type InsertUserCredential = z.infer<typeof insertUserCredentialSchema>;
 export type UserCredential = typeof userCredentials.$inferSelect;
+
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;

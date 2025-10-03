@@ -17,6 +17,8 @@ import {
   type InsertTeamKey,
   type UserCredential,
   type InsertUserCredential,
+  type ChatMessage,
+  type InsertChatMessage,
   users,
   earnings,
   adViews,
@@ -24,7 +26,8 @@ import {
   dailyTasks,
   teamEmails,
   teamKeys,
-  userCredentials
+  userCredentials,
+  chatMessages
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -89,6 +92,10 @@ export interface IStorage {
   getActiveUsersCount(): Promise<number>;
   getTotalEarningsSum(): Promise<string>;
   getAllUsers(): Promise<User[]>; // Added method to fetch all users
+
+  // Chat messages methods
+  createChatMessage(chatMessage: InsertChatMessage): Promise<ChatMessage>;
+  getUserChatHistory(userId: string, limit?: number): Promise<ChatMessage[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -533,6 +540,23 @@ export class DatabaseStorage implements IStorage {
     return result?.total || "0.00";
   }
 
+  async createChatMessage(insertChatMessage: InsertChatMessage): Promise<ChatMessage> {
+    const [message] = await db
+      .insert(chatMessages)
+      .values(insertChatMessage)
+      .returning();
+    return message;
+  }
+
+  async getUserChatHistory(userId: string, limit: number = 50): Promise<ChatMessage[]> {
+    return await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.userId, userId))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(limit);
+  }
+
   private generateReferralCode(): string {
     const prefix = "THORX";
     const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -604,6 +628,8 @@ export class MemStorage implements IStorage {
   async getActiveUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
   async getTotalEarningsSum(): Promise<string> { throw new Error("Not implemented in MemStorage"); }
   async getAllUsers(): Promise<User[]> { throw new Error("Not implemented in MemStorage"); } // Added for MemStorage
+  async createChatMessage(chatMessage: InsertChatMessage): Promise<ChatMessage> { throw new Error("Not implemented in MemStorage"); }
+  async getUserChatHistory(userId: string, limit?: number): Promise<ChatMessage[]> { throw new Error("Not implemented in MemStorage"); }
 
   private generateReferralCode(): string {
     const prefix = "THORX";
