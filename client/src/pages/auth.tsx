@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import { useToast } from "@/hooks/use-toast";
-import { Delete, Eye, EyeOff } from "lucide-react";
+import { Delete, Eye, EyeOff, Info } from "lucide-react";
 
 // Animated Placeholder Component
 function AnimatedPlaceholder({ examples }: { examples: string[] }) {
@@ -345,7 +345,15 @@ export default function Auth() {
                           name="phone"
                           render={({ field }) => (
                             <FormItem className="space-y-3">
-                              <FormLabel className="technical-label block mb-2">PHONE NUMBER</FormLabel>
+                              <FormLabel className="technical-label block mb-2 flex items-center gap-2">
+                                PHONE NUMBER
+                                <div className="group relative inline-flex">
+                                  <Info className="w-4 h-4 text-primary/70 hover:text-primary transition-colors cursor-help" />
+                                  <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                    Optional Field
+                                  </span>
+                                </div>
+                              </FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input 
@@ -443,7 +451,15 @@ export default function Auth() {
                         name="referralCode"
                         render={({ field }) => (
                           <FormItem className="space-y-3">
-                            <FormLabel className="technical-label block mb-2">REFERRAL CODE (OPTIONAL)</FormLabel>
+                            <FormLabel className="technical-label block mb-2 flex items-center gap-2">
+                              REFERRAL CODE
+                              <div className="group relative inline-flex">
+                                <Info className="w-4 h-4 text-white/70 hover:text-white transition-colors cursor-help" />
+                                <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-white text-black text-xs px-2 py-1 rounded border-2 border-primary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 font-bold">
+                                  Optional Field
+                                </span>
+                              </div>
+                            </FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Input 
