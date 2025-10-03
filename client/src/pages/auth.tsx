@@ -311,34 +311,63 @@ export default function Auth() {
                         />
                       </div>
 
-                      {/* Email Field */}
-                      <FormField
-                        control={registerForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem className="space-y-3">
-                            <FormLabel className="technical-label block mb-2">EMAIL ADDRESS</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input 
-                                  {...field}
-                                  className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
-                                  data-testid="input-register-email"
-                                />
-                                {!field.value && (
-                                  <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
-                                    <AnimatedPlaceholder examples={['your.email@gmail.com', 'user@thorx.com', 'john.doe@outlook.com']} />
-                                  </div>
-                                )}
-                              </div>
-                            </FormControl>
-                            <FormMessage className="mt-2" />
-                          </FormItem>
-                        )}
-                      />
+                      {/* Email and Phone Fields - Side by Side */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                        {/* Email Field */}
+                        <FormField
+                          control={registerForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem className="space-y-3">
+                              <FormLabel className="technical-label block mb-2">EMAIL ADDRESS</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input 
+                                    {...field}
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
+                                    data-testid="input-register-email"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
+                                      <AnimatedPlaceholder examples={['your.email@gmail.com', 'user@thorx.com', 'john.doe@outlook.com']} />
+                                    </div>
+                                  )}
+                                </div>
+                              </FormControl>
+                              <FormMessage className="mt-2" />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Phone Field */}
+                        <FormField
+                          control={registerForm.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem className="space-y-3">
+                              <FormLabel className="technical-label block mb-2">PHONE NUMBER</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input 
+                                    {...field}
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
+                                    data-testid="input-register-phone"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
+                                      <AnimatedPlaceholder examples={['+92 300 1234567', '03001234567', '+92 321 9876543']} />
+                                    </div>
+                                  )}
+                                </div>
+                              </FormControl>
+                              <FormMessage className="mt-2" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       {/* Password Fields */}
-                      <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         <FormField
                           control={registerForm.control}
                           name="password"
