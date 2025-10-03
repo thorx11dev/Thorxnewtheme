@@ -432,7 +432,7 @@ export default function UserPortal() {
       avatar: "TS"
     }
   ]);
-  const [newMessage, setNewMessage] = useState("");
+  const [newMessage, setNewMessage] = useState<string>('');
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
@@ -455,7 +455,24 @@ export default function UserPortal() {
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest("POST", "/api/chat", { message });
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      // Add auth token if available
+      if (user?.access_token) {
+        headers['Authorization'] = `Bearer ${user.access_token}`;
+      }
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ message: message.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
       return await response.json();
     },
     onSuccess: (data) => {
@@ -480,6 +497,74 @@ export default function UserPortal() {
       setChatMessages(prev => [...prev, errorMessage]);
     }
   });
+
+  // Fetch chat history
+  const { data: chatHistoryData, isLoading: isChatHistoryLoading } = useQuery({
+    queryKey: ["chat-history"],
+    queryFn: async () => {
+      const headers: Record<string, string> = {};
+
+      // Add auth token if available
+      if (user?.access_token) {
+        headers['Authorization'] = `Bearer ${user.access_token}`;
+      }
+
+      const response = await fetch(`/api/chat/history?limit=50`, {
+        headers
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch chat history");
+      }
+      return await response.json() as { messages: typeof chatMessages };
+    },
+    enabled: !!user, // Only fetch if user exists
+    onSuccess: (data) => {
+      setChatMessages([{
+        id: 1,
+        text: "Hello! Welcome to THORX Support. How can I assist you today?",
+        sender: "support",
+        timestamp: new Date(Date.now() - 5000).toISOString(),
+        avatar: "TS"
+      }, ...data.messages.map(msg => ({ ...msg, id: Date.now() + Math.random() }))]); // Append fetched messages
+    },
+    onError: (error) => {
+      console.error("Chat history error:", error);
+      // Optionally display an error message to the user
+    }
+  });
+
+  // Handle sending a message
+  const handleSendMessage = async () => {
+    if (!newMessage || typeof newMessage !== 'string' || !newMessage.trim()) return;
+
+    const userMessage = {
+      id: Date.now(), // Simple unique ID
+      text: newMessage,
+      sender: "user",
+      timestamp: new Date().toISOString(),
+      avatar: user?.firstName?.charAt(0).toUpperCase() || "U"
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    const messageToSend = newMessage;
+    setNewMessage('');
+
+    try {
+      await chatMutation.mutateAsync(messageToSend);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      // Add an error message to the chat
+      const errorMessage = {
+        id: Date.now() + 1,
+        text: "Message failed to send. Please try again.",
+        sender: "support",
+        timestamp: new Date().toISOString(),
+        avatar: "TS"
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    }
+  };
 
   // Navigation handlers
   const navigateToSection = useCallback((index: number) => {
@@ -661,14 +746,14 @@ export default function UserPortal() {
     const adViewsEarnings = (todayAdViews?.count || 0) * 2.5;
     const referralEarnings = parseFloat(referralsData?.stats.totalEarned || '0');
     const totalEarnings = parseFloat(displayUser?.totalEarnings || '0');
-    
+
     // Calculate remaining from other sources
     const otherEarnings = totalEarnings - adViewsEarnings - referralEarnings;
     const dailyTasksEarnings = Math.max(0, otherEarnings * 0.7);
     const bonusesEarnings = Math.max(0, otherEarnings * 0.3);
-    
+
     const total = adViewsEarnings + referralEarnings + dailyTasksEarnings + bonusesEarnings;
-    
+
     // Calculate percentages
     if (total === 0) {
       return [
@@ -678,31 +763,31 @@ export default function UserPortal() {
         { name: 'Bonuses', value: 3, color: 'hsl(var(--chart-4))' }
       ];
     }
-    
+
     return [
-      { 
-        name: 'Ad Views', 
-        value: Math.round((adViewsEarnings / total) * 100), 
-        color: 'hsl(var(--primary))' 
+      {
+        name: 'Ad Views',
+        value: Math.round((adViewsEarnings / total) * 100),
+        color: 'hsl(var(--primary))'
       },
-      { 
-        name: 'Referrals', 
-        value: Math.round((referralEarnings / total) * 100), 
-        color: 'hsl(var(--secondary))' 
+      {
+        name: 'Referrals',
+        value: Math.round((referralEarnings / total) * 100),
+        color: 'hsl(var(--secondary))'
       },
-      { 
-        name: 'Daily Tasks', 
-        value: Math.round((dailyTasksEarnings / total) * 100), 
-        color: 'hsl(var(--chart-3))' 
+      {
+        name: 'Daily Tasks',
+        value: Math.round((dailyTasksEarnings / total) * 100),
+        color: 'hsl(var(--chart-3))'
       },
-      { 
-        name: 'Bonuses', 
-        value: Math.round((bonusesEarnings / total) * 100), 
-        color: 'hsl(var(--chart-4))' 
+      {
+        name: 'Bonuses',
+        value: Math.round((bonusesEarnings / total) * 100),
+        color: 'hsl(var(--chart-4))'
       }
     ];
   };
-  
+
   const earningTypesData = calculateEarningsBreakdown();
 
   const dailyGoal = 50;
@@ -1843,7 +1928,7 @@ export default function UserPortal() {
                           <button
                             key={method.id}
                             onClick={() => setSelectedMethod(method.id)}
-                            className={`payment-method-selection-card group flex items-center p-3 md:p-4 lg:p-6 border-2 w-full ${
+                            className={`payment-method-selection-card flex items-center p-3 md:p-4 lg:p-6 border-2 w-full ${
                               isSelected
                                 ? 'border-primary bg-primary/10 selected'
                                 : 'border-black bg-background'
@@ -2116,63 +2201,6 @@ export default function UserPortal() {
 
   // Help Section
   function renderHelpSection() {
-    const sendMessage = () => {
-      if (!newMessage.trim() || chatMutation.isPending) return;
-
-      const userMessage = {
-        id: chatMessages.length + 1,
-        text: newMessage,
-        sender: "user",
-        timestamp: new Date().toISOString(),
-        avatar: displayUser?.firstName?.charAt(0).toUpperCase() || "U"
-      };
-
-      setChatMessages(prev => [...prev, userMessage]);
-      const messageToSend = newMessage;
-      setNewMessage("");
-      
-      chatMutation.mutate(messageToSend);
-    };
-
-    // Contact form submission
-    const handleContactSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-
-      if (!contactForm.name || !contactForm.email || !contactForm.description) {
-        toast({
-          title: "Missing Information",
-          description: "Please fill in all fields before sending.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setIsContactSubmitting(true);
-
-      try {
-        const response = await apiRequest("POST", "/api/contact", contactForm);
-
-        if (response.ok) {
-          toast({
-            title: "Message Sent Successfully!",
-            description: "Our team will get back to you within 24 hours.",
-          });
-          setContactForm({ name: "", email: "", description: "" });
-        } else {
-          throw new Error("Failed to send message");
-        }
-      } catch (error) {
-        console.error("Contact form error:", error);
-        toast({
-          title: "Failed to Send Message",
-          description: "Please try again or contact us directly.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsContactSubmitting(false);
-      }
-    };
-
     const formatTime = (timestamp: string) => {
       return new Date(timestamp).toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -2396,12 +2424,12 @@ export default function UserPortal() {
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="Type your message..."
                             className="chat-input flex-1 bg-gray-100 border-2 border-gray-300 text-black px-3 md:px-4 py-2 md:py-3 rounded-lg focus:outline-none focus:border-primary placeholder-gray-500 font-medium text-sm md:text-base min-h-[44px]"
-                            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                           />
                           <Button
-                            onClick={sendMessage}
+                            onClick={handleSendMessage}
                             className="chat-send-button bg-primary hover:bg-primary/90 text-black px-3 md:px-6 py-2 md:py-3 font-black border-2 border-black rounded-lg min-w-[60px] min-h-[44px] flex-shrink-0"
-                            disabled={!newMessage.trim()}
+                            disabled={!newMessage.trim() || chatMutation.isPending}
                           >
                             <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
                           </Button>

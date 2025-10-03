@@ -1257,10 +1257,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chatbot API routes
-  app.post("/api/chat", requireSupabaseAuth, async (req, res) => {
+  // Chatbot API routes - works with or without authentication
+  app.post("/api/chat", async (req, res) => {
     try {
-      const userId = req.user.id;
       const { message } = req.body;
 
       if (!message || typeof message !== 'string' || !message.trim()) {
@@ -1270,33 +1269,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const user = await storage.getUserById(userId);
-      if (!user) {
-        return res.status(404).json({
-          message: "User not found",
-          error: "USER_NOT_FOUND"
-        });
+      // Try to get authenticated user, but don't require it
+      let userId = null;
+      let userName = 'User';
+      
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const supabase = createServerSupabaseClient();
+          const { data: { user } } = await supabase.auth.getUser(token);
+          
+          if (user) {
+            userId = user.id;
+            const userProfile = await storage.getUserById(user.id);
+            if (userProfile) {
+              userName = userProfile.firstName || 'User';
+            }
+          }
+        } catch (authError) {
+          // Continue without authentication
+          console.log('Chatbot auth optional, continuing anonymously');
+        }
       }
 
       const { chatbotService } = await import('./chatbot/chatbot-service');
-      const userName = user.firstName || 'User';
       const botResponse = chatbotService.processMessage(message.trim(), userName);
 
-      await storage.createChatMessage({
-        userId,
-        message: message.trim(),
-        sender: 'user',
-        language: botResponse.language,
-        intent: botResponse.intent
-      });
+      // Only save to database if user is authenticated
+      if (userId) {
+        try {
+          await storage.createChatMessage({
+            userId,
+            message: message.trim(),
+            sender: 'user',
+            language: botResponse.language,
+            intent: botResponse.intent
+          });
 
-      await storage.createChatMessage({
-        userId,
-        message: botResponse.response,
-        sender: 'support',
-        language: botResponse.language,
-        intent: botResponse.intent
-      });
+          await storage.createChatMessage({
+            userId,
+            message: botResponse.response,
+            sender: 'support',
+            language: botResponse.language,
+            intent: botResponse.intent
+          });
+        } catch (dbError) {
+          console.error('Failed to save chat messages:', dbError);
+          // Continue anyway, user still gets response
+        }
+      }
 
       res.json({
         response: botResponse.response,
@@ -1312,11 +1334,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/chat/history", requireSupabaseAuth, async (req, res) => {
+  app.get("/api/chat/history", async (req, res) => {
     try {
-      const userId = req.user.id;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      // Try to get authenticated user
+      let userId = null;
+      
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const supabase = createServerSupabaseClient();
+          const { data: { user } } = await supabase.auth.getUser(token);
+          
+          if (user) {
+            userId = user.id;
+          }
+        } catch (authError) {
+          // Return empty history for unauthenticated users
+          return res.json({ messages: [] });
+        }
+      }
 
+      if (!userId) {
+        return res.json({ messages: [] });
+      }
+
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const messages = await storage.getUserChatHistory(userId, limit);
       
       res.json({
