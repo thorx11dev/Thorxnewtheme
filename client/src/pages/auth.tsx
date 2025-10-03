@@ -350,7 +350,7 @@ export default function Auth() {
                                 <div className="relative">
                                   <Input 
                                     {...field}
-                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 bg-primary text-white"
                                     data-testid="input-register-phone"
                                   />
                                   {!field.value && (
