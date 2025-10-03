@@ -333,6 +333,13 @@
     background: linear-gradient(135deg, #000 0%, #0a0a0a 100%);
     color: white;
   }
+
+  /* Desktop only - Reduce top padding for portal sections */
+  @media (min-width: 769px) {
+    .portal-container .cinematic-section {
+      padding-top: 180px;
+    }
+  }
 }
 
 @media (max-width: 768px) {
