@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Delete, Eye, EyeOff, Info } from "lucide-react";
 
 // Animated Placeholder Component
-function AnimatedPlaceholder({ examples }: { examples: string[] }) {
+function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: { examples: string[]; className?: string }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentText, setCurrentText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
@@ -46,7 +46,7 @@ function AnimatedPlaceholder({ examples }: { examples: string[] }) {
   }, [currentText, currentIndex, examples, isTyping]);
 
   return (
-    <span className="text-muted-foreground">
+    <span className={className}>
       {currentText}<span className="animate-pulse">|</span>
     </span>
   );
@@ -468,8 +468,8 @@ export default function Auth() {
                                   data-testid="input-register-referral"
                                 />
                                 {!field.value && (
-                                  <div className="absolute inset-0 flex items-center px-4 pointer-events-none text-white">
-                                    <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} />
+                                  <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
+                                    <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} className="text-white" />
                                   </div>
                                 )}
                               </div>
