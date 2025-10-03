@@ -469,7 +469,9 @@ export default function Auth() {
                                 />
                                 {!field.value && (
                                   <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
-                                    <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} />
+                                    <span className="text-white">
+                                      <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} />
+                                    </span>
                                   </div>
                                 )}
                               </div>
