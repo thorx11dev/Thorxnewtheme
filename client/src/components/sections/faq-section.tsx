@@ -144,8 +144,27 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
             <div className="mb-6">
               <TechnicalLabel text="FAQ PROTOCOL v2.47" />
             </div>
-            <h2 className="text-5xl lg:text-6xl font-black tracking-tight text-primary leading-tight mb-6">
-              Knowledge<br />Base<br />Access.
+            <h2 className="text-5xl lg:text-6xl font-black tracking-tight leading-tight mb-6">
+              <span className="text-foreground">K</span>
+              <span className="text-white">n</span>
+              <span className="text-primary">o</span>
+              <span className="text-foreground">w</span>
+              <span className="text-white">l</span>
+              <span className="text-primary">e</span>
+              <span className="text-foreground">d</span>
+              <span className="text-white">g</span>
+              <span className="text-primary">e</span><br />
+              <span className="text-foreground">B</span>
+              <span className="text-white">a</span>
+              <span className="text-primary">s</span>
+              <span className="text-foreground">e</span><br />
+              <span className="text-white">A</span>
+              <span className="text-primary">c</span>
+              <span className="text-foreground">c</span>
+              <span className="text-white">e</span>
+              <span className="text-primary">s</span>
+              <span className="text-foreground">s</span>
+              <span className="text-white">.</span>
             </h2>
             <div className="space-y-2">
               <TechnicalLabel text="SYSTEM STATUS: OPERATIONAL" />
@@ -244,8 +263,27 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
             <div className="mb-4">
               <TechnicalLabel text="FAQ PROTOCOL v2.47" />
             </div>
-            <h2 className="text-4xl font-black tracking-tight text-primary leading-tight mb-4">
-              Knowledge<br />Base<br />Access.
+            <h2 className="text-4xl font-black tracking-tight leading-tight mb-4">
+              <span className="text-foreground">K</span>
+              <span className="text-white">n</span>
+              <span className="text-primary">o</span>
+              <span className="text-foreground">w</span>
+              <span className="text-white">l</span>
+              <span className="text-primary">e</span>
+              <span className="text-foreground">d</span>
+              <span className="text-white">g</span>
+              <span className="text-primary">e</span><br />
+              <span className="text-foreground">B</span>
+              <span className="text-white">a</span>
+              <span className="text-primary">s</span>
+              <span className="text-foreground">e</span><br />
+              <span className="text-white">A</span>
+              <span className="text-primary">c</span>
+              <span className="text-foreground">c</span>
+              <span className="text-white">e</span>
+              <span className="text-primary">s</span>
+              <span className="text-foreground">s</span>
+              <span className="text-white">.</span>
             </h2>
             <Barcode className="w-24 h-6 mx-auto opacity-60" />
           </div>
