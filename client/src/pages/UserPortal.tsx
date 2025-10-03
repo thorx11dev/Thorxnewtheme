@@ -964,7 +964,7 @@ export default function UserPortal() {
       </nav>
 
       {/* Section Content */}
-      <div className="pt-16 md:pt-12 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
+      <div className="pt-16 md:pt-2 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
         {sections.map((section, index) => (
           <section
             key={section.id}
@@ -997,7 +997,7 @@ export default function UserPortal() {
   // Dashboard Section
   function renderDashboardSection() {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-4 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-0 relative z-10">
         {/* Hero Section */}
         <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
@@ -1203,7 +1203,7 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-4 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-0 relative z-10">
         {/* Hero Section - Dashboard Style */}
         <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
@@ -1368,7 +1368,7 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-4 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-0 relative z-10">
         {/* Hero Section - Dashboard Style */}
         <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
@@ -1844,7 +1844,7 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-4 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-0 relative z-10">
         {/* Hero Section - Dashboard Style */}
         <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
@@ -2259,7 +2259,7 @@ export default function UserPortal() {
     ];
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-4 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-0 relative z-10">
         {/* Hero Section - Dashboard Style */}
         <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
