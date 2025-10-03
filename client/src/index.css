@@ -183,7 +183,7 @@
   /* Mobile cinematic sections */
   @media (max-width: 768px) {
     .cinematic-section {
-      padding-top: 6rem;
+      padding-top: 10rem;
       padding-bottom: 2rem;
       padding-left: 0.5rem;
       padding-right: 0.5rem;
@@ -201,7 +201,7 @@
   @media (max-width: 768px) {
     .cinematic-section[data-section="1"] {
       justify-content: center;
-      padding: 6rem 1rem 2rem 1rem;
+      padding: 10rem 1rem 2rem 1rem;
     }
   }
 
