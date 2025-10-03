@@ -140,8 +140,8 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
         {/* Desktop Layout */}
         <div className="hidden md:flex items-start justify-between gap-16 min-h-[70vh] pt-16">
           {/* Left Side - Industrial Title with Cubic Container */}
-          <div className="flex-shrink-0 w-96 pt-8">
-            <div className="inline-block bg-background border-4 border-black shadow-lg p-8 lg:p-10 relative">
+          <div className="flex-shrink-0 w-96 pt-8 pr-8">
+            <div className="inline-block bg-background border-4 border-black shadow-lg p-8 lg:p-10 relative mb-8">
               {/* Corner Decorations */}
               <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-primary -translate-x-2 -translate-y-2"></div>
               <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-primary translate-x-2 -translate-y-2"></div>
@@ -185,7 +185,7 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
           </div>
 
           {/* Right Side - Protocol Cards */}
-          <div className="flex-1 space-y-6 max-w-3xl">
+          <div className="flex-1 space-y-6 max-w-3xl pl-8">
             {displayedFaqs.map((faq) => (
               <div
                 key={faq.id}
