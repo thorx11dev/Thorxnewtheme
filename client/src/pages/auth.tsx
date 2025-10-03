@@ -398,10 +398,10 @@ export default function Auth() {
                                   <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-primary hover:bg-black text-white p-2 border-2 border-black transition-all duration-200 hover:scale-110"
+                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10"
                                     data-testid="button-toggle-password"
                                   >
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                   </button>
                                 </div>
                               </FormControl>
@@ -432,10 +432,10 @@ export default function Auth() {
                                   <button
                                     type="button"
                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-primary hover:bg-black text-white p-2 border-2 border-black transition-all duration-200 hover:scale-110"
+                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10"
                                     data-testid="button-toggle-confirm-password"
                                   >
-                                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                   </button>
                                 </div>
                               </FormControl>
@@ -574,10 +574,10 @@ export default function Auth() {
                                 <button
                                   type="button"
                                   onClick={() => setShowPassword(!showPassword)}
-                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10 bg-primary hover:bg-black text-white p-2 border-2 border-black transition-all duration-200 hover:scale-110"
+                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10"
                                   data-testid="button-toggle-login-password"
                                 >
-                                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                               </div>
                             </FormControl>
