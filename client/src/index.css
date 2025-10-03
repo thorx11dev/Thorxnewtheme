@@ -334,14 +334,6 @@
     color: white;
   }
 
-  /* Reduce top spacing for portal sections on desktop only */
-  @media (min-width: 769px) {
-    .portal-container .cinematic-section {
-      padding-top: 210px;
-    }
-  }
-}
-
 @media (max-width: 768px) {
   .split-card {
     flex-direction: column;
