@@ -2335,7 +2335,7 @@ export default function UserPortal() {
                   <div className="mt-0">
                     {/* Section Heading */}
                     <div className="text-center mb-6 md:mb-8">
-                      <h3 className="text-lg md:text-2xl lg:text-3xl font-black tracking-tight leading-tight" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
+                      <h3 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
                         <span className="text-black">F</span>
                         <span className="text-white">r</span>
                         <span className="text-primary">e</span>
