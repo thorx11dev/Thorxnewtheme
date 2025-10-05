@@ -52,8 +52,8 @@ function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: 
   );
 }
 
-// Temporary email domains list
-const TEMP_EMAIL_DOMAINS = [
+// Disposable email domains list (50+ domains)
+const DISPOSABLE_EMAIL_DOMAINS = [
   'tempmail.com', 'throwaway.email', 'guerrillamail.com', 'mailinator.com',
   '10minutemail.com', 'temp-mail.org', 'fakeinbox.com', 'trashmail.com',
   'yopmail.com', 'maildrop.cc', 'getnada.com', 'tempr.email',
@@ -61,50 +61,134 @@ const TEMP_EMAIL_DOMAINS = [
   'spam4.me', 'mintemail.com', 'emailondeck.com', 'tempinbox.com',
   'dispostable.com', 'anonbox.net', 'mohmal.com', 'mytemp.email',
   'emailfake.com', 'temp-link.net', 'jetable.org', 'getairmail.com',
-  'inboxbear.com', 'spamgourmet.com', 'mailnesia.com', 'tempsky.com'
+  'inboxbear.com', 'spamgourmet.com', 'mailnesia.com', 'tempsky.com',
+  'guerrillamailblock.com', 'guerrillamail.de', 'guerrillamail.net', 'guerrillamail.org',
+  'guerrillamail.biz', 'spam4.me', 'grr.la', 'guerrillamail.com',
+  'trbvm.com', 'anonymbox.com', 'binkmail.com', 'trashmail.net',
+  'trashmail.me', 'trashmail.io', 'throwam.com', 'caseedu.tk',
+  'spambox.us', 'tmail.com', 'tmailinator.com', 'trillianpro.com',
+  'vomoto.com', 'bobmail.info', 'chammy.info', 'devnullmail.com',
+  'letthemeatspam.com', 'mailinater.com', 'mailinator2.com', 'sogetthis.com',
+  'thisisnotmyrealemail.com', 'suremail.info', 'spamhereplease.com'
 ];
 
-// Phone validation regex patterns
-const PHONE_PATTERNS = {
-  pakistan: /^(\+92|0)?3[0-9]{9}$/,
-  international: /^\+?[1-9]\d{1,14}$/
+// Common email typos for popular domains
+const EMAIL_TYPOS: Record<string, string> = {
+  'gmial.com': 'gmail.com',
+  'gmai.com': 'gmail.com',
+  'gmil.com': 'gmail.com',
+  'yahooo.com': 'yahoo.com',
+  'yaho.com': 'yahoo.com',
+  'outlok.com': 'outlook.com',
+  'outloo.com': 'outlook.com',
+  'hotmial.com': 'hotmail.com',
+  'hotmai.com': 'hotmail.com',
+  'hotmil.com': 'hotmail.com',
+  'gmai.co': 'gmail.com',
+  'gmailc.om': 'gmail.com'
 };
 
-// Advanced email validation
+// Pakistani mobile operator prefixes
+const PAKISTANI_OPERATOR_PREFIXES = [
+  '300', '301', '302', '303', '304', '305',
+  '310', '311', '312',
+  '313', '314', '315', '316', '317', '318',
+  '320', '321', '322', '323', '324',
+  '330', '331', '332', '333', '334', '335', '336',
+  '340', '341', '342', '343', '344', '345', '346', '347',
+  '355',
+  '370'
+];
+
+// Enhanced email validation with RFC 5322 compliance, typo detection, and disposable email blocking
 const validateEmail = (email: string) => {
-  const domain = email.split('@')[1]?.toLowerCase();
+  if (!email) {
+    return { valid: true, message: "" };
+  }
+
+  const trimmedEmail = email.trim().toLowerCase();
+  
+  // Basic RFC 5322 format check
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  
+  if (!emailRegex.test(trimmedEmail)) {
+    return { valid: false, message: "Please enter a valid email address" };
+  }
+
+  const domain = trimmedEmail.split('@')[1];
   
   if (!domain) {
-    return { valid: false, message: "Invalid email format" };
+    return { valid: false, message: "Please enter a valid email address" };
   }
-  
-  if (TEMP_EMAIL_DOMAINS.includes(domain)) {
+
+  // Check for common email typos
+  if (EMAIL_TYPOS[domain]) {
+    return { 
+      valid: false, 
+      message: `Did you mean ${EMAIL_TYPOS[domain]}? Please check your email address.` 
+    };
+  }
+
+  // Check against disposable email domains
+  if (DISPOSABLE_EMAIL_DOMAINS.includes(domain)) {
     return { valid: false, message: "Temporary email addresses are not allowed" };
   }
-  
-  // Check for suspicious patterns
-  if (domain.includes('temp') || domain.includes('disposable') || domain.includes('trash')) {
-    return { valid: false, message: "Temporary or disposable email addresses are not allowed" };
+
+  // Pattern matching for common disposable email formats
+  if (domain.includes('temp') || domain.includes('disposable') || 
+      domain.includes('trash') || domain.includes('throwaway') ||
+      domain.includes('fake') || domain.includes('guerrilla')) {
+    return { valid: false, message: "Temporary email addresses are not allowed" };
   }
-  
+
+  // Check for role-based addresses (optional, commonly blocked)
+  const localPart = trimmedEmail.split('@')[0];
+  const roleBasedPrefixes = ['admin', 'noreply', 'no-reply', 'support', 'info', 'sales', 'marketing', 'webmaster', 'postmaster'];
+  if (roleBasedPrefixes.includes(localPart)) {
+    return { valid: false, message: "Role-based email addresses are not allowed. Please use a personal email." };
+  }
+
+  // Valid TLD check (ensure domain has a valid extension)
+  const tld = domain.split('.').pop();
+  if (!tld || tld.length < 2) {
+    return { valid: false, message: "Please enter a valid email address" };
+  }
+
   return { valid: true, message: "" };
 };
 
-// Advanced phone validation
+// Enhanced phone validation with Pakistani operator prefix checks
 const validatePhone = (phone: string) => {
+  // If phone is empty, it's valid (optional field)
+  if (!phone || phone.trim() === '') {
+    return { valid: true, message: "" };
+  }
+
   const cleanPhone = phone.replace(/[\s\-()]/g, '');
   
-  // Check Pakistan format
-  if (PHONE_PATTERNS.pakistan.test(cleanPhone)) {
+  // Check Pakistani mobile number format
+  const pkMobileRegex = /^(\+92|92|0)?3(\d{2})(\d{7})$/;
+  const match = cleanPhone.match(pkMobileRegex);
+  
+  if (match) {
+    const operatorPrefix = match[2];
+    
+    // Validate operator prefix
+    if (!PAKISTANI_OPERATOR_PREFIXES.includes(operatorPrefix)) {
+      return { 
+        valid: false, 
+        message: "This mobile number prefix is not recognized" 
+      };
+    }
+    
     return { valid: true, message: "" };
   }
-  
-  // Check international format
-  if (PHONE_PATTERNS.international.test(cleanPhone)) {
-    return { valid: true, message: "" };
-  }
-  
-  return { valid: false, message: "Invalid phone number format. Use Pakistan format (03XXXXXXXXX) or international format (+XX...)" };
+
+  // If doesn't match Pakistani format, provide helpful error
+  return { 
+    valid: false, 
+    message: "Enter a valid Pakistani mobile number (03XX-XXXXXXX)" 
+  };
 };
 
 // Password strength calculation
@@ -144,11 +228,11 @@ const calculatePasswordStrength = (password: string): { level: number; label: st
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   identity: z.string().min(1, "Identity is required"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits").refine(
-    (phone) => validatePhone(phone).valid,
-    (phone) => ({ message: validatePhone(phone).message })
+  phone: z.string().optional().refine(
+    (phone) => validatePhone(phone || '').valid,
+    (phone) => ({ message: validatePhone(phone || '').message })
   ),
-  email: z.string().email("Invalid email address").refine(
+  email: z.string().email("Please enter a valid email address").refine(
     (email) => validateEmail(email).valid,
     (email) => ({ message: validateEmail(email).message })
   ),
@@ -164,7 +248,7 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address").refine(
+  email: z.string().email("Please enter a valid email address").refine(
     (email) => validateEmail(email).valid,
     (email) => ({ message: validateEmail(email).message })
   ),
@@ -462,7 +546,7 @@ export default function Auth() {
                                 <div className="group relative inline-flex">
                                   <Info className="w-4 h-4 text-primary/70 hover:text-primary transition-colors cursor-help" />
                                   <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                    Pakistan or International format
+                                    (Optional)
                                   </span>
                                 </div>
                               </FormLabel>
