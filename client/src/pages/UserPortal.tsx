@@ -799,10 +799,10 @@ export default function UserPortal() {
     // Calculate percentages
     if (total === 0) {
       return [
-        { name: 'Ad Views', value: 65, color: '#FF6B35' },
-        { name: 'Referrals', value: 25, color: '#E8E3D6' },
-        { name: 'Daily Tasks', value: 7, color: '#000000' },
-        { name: 'Bonuses', value: 3, color: '#FF6B35' }
+        { name: 'Ad Views', value: 65, color: 'hsl(var(--primary))' },
+        { name: 'Referrals', value: 25, color: 'hsl(var(--secondary))' },
+        { name: 'Daily Tasks', value: 7, color: 'hsl(var(--chart-3))' },
+        { name: 'Bonuses', value: 3, color: 'hsl(var(--chart-4))' }
       ];
     }
 
@@ -810,22 +810,22 @@ export default function UserPortal() {
       {
         name: 'Ad Views',
         value: Math.round((adViewsEarnings / total) * 100),
-        color: '#FF6B35'
+        color: 'hsl(var(--primary))'
       },
       {
         name: 'Referrals',
         value: Math.round((referralEarnings / total) * 100),
-        color: '#E8E3D6'
+        color: 'hsl(var(--secondary))'
       },
       {
         name: 'Daily Tasks',
         value: Math.round((dailyTasksEarnings / total) * 100),
-        color: '#000000'
+        color: 'hsl(var(--chart-3))'
       },
       {
         name: 'Bonuses',
         value: Math.round((bonusesEarnings / total) * 100),
-        color: '#FF6B35'
+        color: 'hsl(var(--chart-4))'
       }
     ];
   };
@@ -964,7 +964,7 @@ export default function UserPortal() {
       </nav>
 
       {/* Section Content */}
-      <div className="pt-16 md:pt-24 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
+      <div className="pt-16 md:pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
         {sections.map((section, index) => (
           <section
             key={section.id}
@@ -1160,19 +1160,13 @@ export default function UserPortal() {
                     outerRadius={isMobile ? 50 : 80}
                     fill="#8884d8"
                     dataKey="value"
-                    stroke="#000000"
-                    strokeWidth={2}
                     label={({ name, percent }: { name: string; percent: number }) =>
                       isMobile ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(0)}%`
                     }
-                    labelStyle={{ 
-                      fontSize: isMobile ? '10px' : '12px',
-                      fontWeight: 'bold',
-                      fill: '#000000'
-                    }}
+                    labelStyle={{ fontSize: isMobile ? '10px' : '12px' }}
                   >
                     {earningTypesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} stroke="#000000" strokeWidth={2} />
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                 </RechartsPieChart>
