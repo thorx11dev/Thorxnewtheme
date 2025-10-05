@@ -1159,11 +1159,11 @@ export default function UserPortal() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-2 md:p-4">
-              <div className="flex flex-col md:flex-row items-center gap-4">
+              <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
                 {/* Pie Chart */}
-                <div className="flex-1 w-full">
-                  <ResponsiveContainer width="100%" height={isMobile ? 200 : 280} minHeight={isMobile ? 180 : 250}>
-                    <RechartsPieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                <div className="flex-1 w-full flex justify-center">
+                  <ResponsiveContainer width="100%" height={isMobile ? 180 : 280} minHeight={isMobile ? 160 : 250}>
+                    <RechartsPieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                       <Pie
                         data={earningTypesData}
                         cx="50%"
@@ -1173,32 +1173,7 @@ export default function UserPortal() {
                         dataKey="value"
                         stroke="#000000"
                         strokeWidth={3}
-                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-                          const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                          const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                          const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
-                          
-                          return (
-                            <text
-                              x={x}
-                              y={y}
-                              fill="#FFFFFF"
-                              textAnchor={x > cx ? 'start' : 'end'}
-                              dominantBaseline="central"
-                              style={{
-                                fontSize: isMobile ? '11px' : '14px',
-                                fontWeight: '900',
-                                fontFamily: 'var(--font-sans)',
-                                textShadow: '0px 0px 4px #000000, 1px 1px 2px #000000, -1px -1px 2px #000000',
-                                stroke: '#000000',
-                                strokeWidth: '0.5px',
-                                paintOrder: 'stroke'
-                              }}
-                            >
-                              {`${(percent * 100).toFixed(0)}%`}
-                            </text>
-                          );
-                        }}
+                        label={false}
                       >
                         {earningTypesData.map((entry, index) => (
                           <Cell 
@@ -1215,9 +1190,9 @@ export default function UserPortal() {
                           backgroundColor: '#FFFFFF',
                           border: '3px solid #000000',
                           borderRadius: '0px',
-                          padding: '12px',
+                          padding: isMobile ? '8px' : '12px',
                           fontFamily: 'var(--font-sans)',
-                          fontSize: isMobile ? '11px' : '13px',
+                          fontSize: isMobile ? '10px' : '13px',
                           fontWeight: '900',
                           boxShadow: '4px 4px 0px #000000'
                         }}
@@ -1226,11 +1201,13 @@ export default function UserPortal() {
                           fontWeight: '900',
                           marginBottom: '4px',
                           textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
+                          letterSpacing: '0.5px',
+                          fontSize: isMobile ? '9px' : '11px'
                         }}
                         itemStyle={{
                           color: 'hsl(var(--primary))',
-                          fontWeight: '900'
+                          fontWeight: '900',
+                          fontSize: isMobile ? '9px' : '12px'
                         }}
                       />
                     </RechartsPieChart>
@@ -1238,11 +1215,11 @@ export default function UserPortal() {
                 </div>
                 
                 {/* Legend */}
-                <div className="w-full md:w-auto flex flex-row md:flex-col gap-2 flex-wrap justify-center md:justify-start">
+                <div className="w-full md:w-auto grid grid-cols-2 md:flex md:flex-col gap-1.5 md:gap-2 mt-2 md:mt-0">
                   {earningTypesData.map((entry, index) => (
-                    <div key={`legend-${index}`} className="flex items-center gap-2 px-3 py-2 bg-background border-2 border-black hover:bg-primary/5 transition-colors">
+                    <div key={`legend-${index}`} className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 bg-background border border-black md:border-2 hover:bg-primary/5 transition-colors">
                       <div 
-                        className="w-4 h-4 border-2 border-black flex-shrink-0"
+                        className="w-3 h-3 md:w-4 md:h-4 border border-black md:border-2 flex-shrink-0"
                         style={{ backgroundColor: entry.color }}
                       />
                       <div className="text-xs font-black text-foreground whitespace-nowrap">

@@ -610,12 +610,14 @@
   /* Enhanced Pie Chart Styling */
   .recharts-pie-sector {
     transition: all 0.3s ease;
+    cursor: pointer;
   }
 
   .recharts-pie-sector:hover {
-    filter: brightness(1.1);
-    transform: scale(1.02);
+    filter: brightness(1.15);
+    transform: scale(1.05);
     transform-origin: center;
+    opacity: 0.95;
   }
 
   .recharts-pie-label-text {
@@ -626,6 +628,11 @@
       -1px -1px 2px #000000,
       -1px 1px 2px #000000,
       1px -1px 2px #000000 !important;
+  }
+
+  /* Tooltip appears on hover */
+  .recharts-tooltip-wrapper {
+    z-index: 100;
   }
 
   /* Enhanced Wireframe Industrial Design System */
