@@ -309,8 +309,8 @@ export default function Auth() {
       </nav>
 
       {/* Auth Section */}
-      <section className="cinematic-section active min-h-screen pb-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
+      <section className="cinematic-section active min-h-screen pb-8 overflow-y-auto overscroll-behavior-contain">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
           {/* Technical Header */}
           <div className="text-center mb-4 md:mb-6">
             <div className="mb-2">
@@ -324,7 +324,7 @@ export default function Auth() {
 
           {/* Auth Card */}
           <div className="max-w-4xl mx-auto mb-8 px-2 md:px-0">
-            <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-8">
+            <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-8 overflow-visible">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6 md:mb-8 bg-muted border-2 border-black">
                   <TabsTrigger 
@@ -343,14 +343,14 @@ export default function Auth() {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="register" className="space-y-6 md:space-y-8">
+                <TabsContent value="register" className="space-y-6 md:space-y-8 overflow-visible">
                   <div className="text-center mb-6 md:mb-8">
                     <TechnicalLabel text="NEW USER REGISTRATION" className="mb-3" />
                     <h3 className="text-xl md:text-3xl font-black text-black mt-2">JOIN THE EARNING NETWORK</h3>
                   </div>
 
                   <Form {...registerForm}>
-                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-6 md:space-y-8">
+                    <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-6 md:space-y-8 overflow-visible">
                       {/* Name and Identity Fields - Side by Side */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         {/* Name Field */}
@@ -736,14 +736,14 @@ export default function Auth() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="login" className="space-y-4 md:space-y-6">
+                <TabsContent value="login" className="space-y-4 md:space-y-6 overflow-visible">
                   <div className="text-center mb-4 md:mb-6">
                     <TechnicalLabel text="USER LOGIN" className="mb-2" />
                     <h3 className="text-xl md:text-3xl font-black text-black">WELCOME BACK</h3>
                   </div>
 
                   <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4 md:space-y-6">
+                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4 md:space-y-6 overflow-visible">
                       <FormField
                         control={loginForm.control}
                         name="email"

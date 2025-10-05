@@ -90,27 +90,37 @@
   /* Auth page specific overrides for proper scrolling */
   .auth-page {
     min-height: 100vh;
+    height: 100vh;
     position: relative;
     overflow-x: hidden;
+    overflow-y: auto;
     padding-top: 0;
+    -webkit-overflow-scrolling: touch;
   }
 
   .auth-page .cinematic-section {
     z-index: 10;
     position: relative;
-    padding-top: 240px;
-    padding-bottom: 40px;
+    padding-top: 200px;
+    padding-bottom: 80px;
     height: auto;
-    min-height: 100vh;
+    min-height: calc(100vh - 140px);
     transform: none;
     opacity: 1;
     pointer-events: auto;
+    overflow-y: visible;
   }
 
   @media (max-width: 768px) {
+    .auth-page {
+      height: auto;
+      min-height: 100vh;
+    }
+    
     .auth-page .cinematic-section {
-      padding-top: 10rem !important;
-      padding-bottom: 2rem !important;
+      padding-top: 8rem !important;
+      padding-bottom: 4rem !important;
+      min-height: auto;
     }
   }
 }
