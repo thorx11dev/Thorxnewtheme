@@ -607,6 +607,27 @@
     color: #fff;
   }
 
+  /* Enhanced Pie Chart Styling */
+  .recharts-pie-sector {
+    transition: all 0.3s ease;
+  }
+
+  .recharts-pie-sector:hover {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+    transform-origin: center;
+  }
+
+  .recharts-pie-label-text {
+    font-weight: 900 !important;
+    text-shadow: 
+      0 0 4px #000000,
+      1px 1px 2px #000000,
+      -1px -1px 2px #000000,
+      -1px 1px 2px #000000,
+      1px -1px 2px #000000 !important;
+  }
+
   /* Enhanced Wireframe Industrial Design System */
   .bg-grid-pattern {
     background-image:

@@ -1159,52 +1159,99 @@ export default function UserPortal() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-2 md:p-4">
-              <ResponsiveContainer width="100%" height={isMobile ? 200 : 280} minHeight={isMobile ? 180 : 250}>
-                <RechartsPieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                  <Pie
-                    data={earningTypesData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={isMobile ? 50 : 80}
-                    innerRadius={0}
-                    dataKey="value"
-                    stroke="#000000"
-                    strokeWidth={2}
-                    label={({ name, percent }: { name: string; percent: number }) =>
-                      isMobile ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                    labelStyle={{ 
-                      fontSize: isMobile ? '10px' : '12px',
-                      fontWeight: 'bold',
-                      fill: '#000000',
-                      fontFamily: 'var(--font-sans)'
-                    }}
-                  >
-                    {earningTypesData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.color}
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                {/* Pie Chart */}
+                <div className="flex-1 w-full">
+                  <ResponsiveContainer width="100%" height={isMobile ? 200 : 280} minHeight={isMobile ? 180 : 250}>
+                    <RechartsPieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                      <Pie
+                        data={earningTypesData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={isMobile ? 60 : 90}
+                        innerRadius={0}
+                        dataKey="value"
                         stroke="#000000"
-                        strokeWidth={2}
+                        strokeWidth={3}
+                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+                          const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                          const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+                          const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+                          
+                          return (
+                            <text
+                              x={x}
+                              y={y}
+                              fill="#FFFFFF"
+                              textAnchor={x > cx ? 'start' : 'end'}
+                              dominantBaseline="central"
+                              style={{
+                                fontSize: isMobile ? '11px' : '14px',
+                                fontWeight: '900',
+                                fontFamily: 'var(--font-sans)',
+                                textShadow: '0px 0px 4px #000000, 1px 1px 2px #000000, -1px -1px 2px #000000',
+                                stroke: '#000000',
+                                strokeWidth: '0.5px',
+                                paintOrder: 'stroke'
+                              }}
+                            >
+                              {`${(percent * 100).toFixed(0)}%`}
+                            </text>
+                          );
+                        }}
+                      >
+                        {earningTypesData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.color}
+                            stroke="#000000"
+                            strokeWidth={3}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string) => [`${value}%`, name]}
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          border: '3px solid #000000',
+                          borderRadius: '0px',
+                          padding: '12px',
+                          fontFamily: 'var(--font-sans)',
+                          fontSize: isMobile ? '11px' : '13px',
+                          fontWeight: '900',
+                          boxShadow: '4px 4px 0px #000000'
+                        }}
+                        labelStyle={{ 
+                          color: '#000000', 
+                          fontWeight: '900',
+                          marginBottom: '4px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}
+                        itemStyle={{
+                          color: 'hsl(var(--primary))',
+                          fontWeight: '900'
+                        }}
                       />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number) => [`${value}%`, 'Percentage']}
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '2px solid #000000',
-                      borderRadius: '4px',
-                      color: '#000000',
-                      fontFamily: 'var(--font-sans)',
-                      fontSize: isMobile ? '10px' : '12px',
-                      fontWeight: 'bold',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                    }}
-                    labelStyle={{ color: '#000000', fontWeight: 'bold' }}
-                  />
-                </RechartsPieChart>
-              </ResponsiveContainer>
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Legend */}
+                <div className="w-full md:w-auto flex flex-row md:flex-col gap-2 flex-wrap justify-center md:justify-start">
+                  {earningTypesData.map((entry, index) => (
+                    <div key={`legend-${index}`} className="flex items-center gap-2 px-3 py-2 bg-background border-2 border-black hover:bg-primary/5 transition-colors">
+                      <div 
+                        className="w-4 h-4 border-2 border-black flex-shrink-0"
+                        style={{ backgroundColor: entry.color }}
+                      />
+                      <div className="text-xs font-black text-foreground whitespace-nowrap">
+                        {entry.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
