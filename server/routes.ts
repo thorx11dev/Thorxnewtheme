@@ -6,6 +6,7 @@ import { storage } from "./storage";
 import { insertRegistrationSchema, insertUserSchema } from "@shared/schema";
 import { createServerSupabaseClient } from "./supabase";
 import { z } from "zod";
+import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "./validation";
 
 // Extend session data type
 declare module "express-session" {
@@ -148,7 +149,7 @@ const registerSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   identity: z.string().min(1, "Identity is required"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  phone: z.string().optional(),
   email: z.string().email("Invalid email address"),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
@@ -1006,13 +1007,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const firstName = nameParts[0];
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
 
+      // Server-side comprehensive email validation with MX record check
+      const emailValidation = await validateEmailServer(email);
+      if (!emailValidation.valid) {
+        return res.status(400).json({
+          message: emailValidation.message,
+          error: "INVALID_EMAIL"
+        });
+      }
+
+      // Server-side phone validation with Pakistani operator prefix check
+      if (phone && phone.trim() !== '') {
+        const phoneValidation = validatePhoneServer(phone);
+        if (!phoneValidation.valid) {
+          return res.status(400).json({
+            message: phoneValidation.message,
+            error: "INVALID_PHONE"
+          });
+        }
+      }
+
       // Validate and sanitize data
       const validatedData = registerSchema.parse({
         firstName,
         lastName,
         email,
         password,
-        phone,
+        phone: phone && phone.trim() !== '' ? normalizePhoneNumber(phone) : phone,
         identity,
         referralCode,
         role
