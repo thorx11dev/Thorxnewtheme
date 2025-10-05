@@ -159,7 +159,7 @@ export function validatePhoneServer(phone: string): { valid: boolean; message: s
   // If doesn't match Pakistani format, provide helpful error
   return { 
     valid: false, 
-    message: "Enter a valid Pakistani mobile number (03XX-XXXXXXX)" 
+    message: "Invalid phone" 
   };
 }
 
