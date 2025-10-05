@@ -576,7 +576,7 @@ export default function Auth() {
                                   )}
                                 </div>
                               </FormControl>
-                              {!phoneValidation.valid && field.value && (
+                              {!phoneValidation.valid && field.value && field.value.trim() !== '' && (
                                 <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-l-4 border-red-500 rounded">
                                   <span className="text-red-600 text-base font-bold mt-0.5">⚠</span>
                                   <p className="text-sm text-red-900 leading-relaxed font-medium">{phoneValidation.message}</p>
