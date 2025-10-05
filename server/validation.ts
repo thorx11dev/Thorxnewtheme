@@ -142,7 +142,8 @@ export function validatePhoneServer(phone: string): { valid: boolean; message: s
   const match = cleanPhone.match(pkMobileRegex);
   
   if (match) {
-    const operatorPrefix = match[2];
+    // Build the full 3-digit operator prefix (3 + the next 2 digits)
+    const operatorPrefix = '3' + match[2];
     
     // Validate operator prefix
     if (!PAKISTANI_OPERATOR_PREFIXES.includes(operatorPrefix)) {
