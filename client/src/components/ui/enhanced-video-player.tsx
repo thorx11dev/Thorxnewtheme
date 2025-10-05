@@ -646,14 +646,24 @@ export default function EnhancedVideoPlayer({
               )}
               {/* Desktop keeps original layout */}
               {!isMobileDevice && (
-                <TechnicalLabel 
-                  text={`STATUS: ${currentPlayerState.isPlaying ? 'PLAYING' : currentPlayerState.isCompleted ? 'COMPLETE' : 'READY'}`} 
-                  className={`text-black ${
-                    isFullscreen 
-                      ? 'text-sm' 
-                      : 'text-xs'
-                  }`} 
-                />
+                <>
+                  <TechnicalLabel 
+                    text={`ACTIVE: ${activeAreaTab}`} 
+                    className={`text-black ${
+                      isFullscreen 
+                        ? 'text-sm' 
+                        : 'text-xs'
+                    }`} 
+                  />
+                  <TechnicalLabel 
+                    text={`STATUS: ${currentPlayerState.isPlaying ? 'PLAYING' : currentPlayerState.isCompleted ? 'COMPLETE' : 'READY'}`} 
+                    className={`text-black ${
+                      isFullscreen 
+                        ? 'text-sm' 
+                        : 'text-xs'
+                    }`} 
+                  />
+                </>
               )}
             </div>
             <div className={`flex items-center ${isMobileDevice ? 'gap-1' : 'gap-2'}`}>
