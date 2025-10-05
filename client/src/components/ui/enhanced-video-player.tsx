@@ -635,27 +635,6 @@ export default function EnhancedVideoPlayer({
                     }`} 
                   />
                   <TechnicalLabel 
-                    text={`STATUS: ${isPlaying ? 'PLAYING' : isCompleted ? 'COMPLETE' : 'READY'}`} 
-                    className={`text-black ${
-                      isFullscreen 
-                        ? 'text-sm' 
-                        : 'text-xs'
-                    }`} 
-                  />
-                </>
-              )}
-              {/* Desktop keeps original layout */}
-              {!isMobileDevice && (
-                <>
-                  <TechnicalLabel 
-                    text={`ACTIVE: ${activeAreaTab}`} 
-                    className={`text-black ${
-                      isFullscreen 
-                        ? 'text-sm' 
-                        : 'text-xs'
-                    }`} 
-                  />
-                  <TechnicalLabel 
                     text={`STATUS: ${currentPlayerState.isPlaying ? 'PLAYING' : currentPlayerState.isCompleted ? 'COMPLETE' : 'READY'}`} 
                     className={`text-black ${
                       isFullscreen 
