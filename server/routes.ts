@@ -148,7 +148,7 @@ const registerSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   identity: z.string().min(1, "Identity is required"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits").optional(), // Made phone optional here as well for cases where it might not be provided initially
   email: z.string().email("Invalid email address"),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
@@ -161,6 +161,37 @@ const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required")
 });
+
+// Placeholder functions for validation (implement these based on your needs)
+async function validateEmailWithMx(email: string): Promise<{ valid: boolean; message?: string }> {
+  // TODO: Implement MX record lookup and email validation logic
+  console.log(`Validating email: ${email}`);
+  // For now, assume valid unless it's a known disposable domain
+  const disposableDomains = ["mailinator.com", "tempmail.com"]; // Example list
+  const domain = email.split('@')[1];
+  if (disposableDomains.includes(domain)) {
+    return { valid: false, message: "Disposable email addresses are not allowed." };
+  }
+  return { valid: true };
+}
+
+function validatePakistaniPhone(phone: string): { valid: boolean; message?: string } {
+  // TODO: Implement Pakistani phone number validation logic (e.g., using prefixes)
+  console.log(`Validating Pakistani phone: ${phone}`);
+  const pakistaniPhoneRegex = /^(?:\+?92)?(3\d{2})(\d{7})$/; // Basic regex for Pak numbers (e.g., +923xx-xxxxxxx)
+  const phonePrefixes = ["300", "301", "302", "303", "304", "305", "306", "307", "308", "309", "310", "311", "312", "313", "314", "315", "316", "317", "318", "319", "320", "321", "322", "323", "324", "330", "331", "332", "333", "334", "335", "336", "337", "338", "339", "340", "341", "342", "343", "344", "345", "346", "347", "348", "349", "350", "351", "352", "353", "354", "355", "356", "357", "360", "370", "380"];
+
+  if (!pakistaniPhoneRegex.test(phone)) {
+    return { valid: false, message: "Invalid Pakistani phone number format." };
+  }
+
+  const extractedPrefix = phone.match(pakistaniPhoneRegex)?.[1];
+  if (extractedPrefix && !phonePrefixes.includes(extractedPrefix)) {
+    return { valid: false, message: "Invalid Pakistani mobile operator prefix." };
+  }
+
+  return { valid: true };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session management
@@ -1272,14 +1303,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try to get authenticated user, but don't require it
       let userId = null;
       let userName = 'User';
-      
+
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         try {
           const token = authHeader.substring(7);
           const supabase = createServerSupabaseClient();
           const { data: { user } } = await supabase.auth.getUser(token);
-          
+
           if (user) {
             userId = user.id;
             const userProfile = await storage.getUserById(user.id);
@@ -1338,14 +1369,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Try to get authenticated user
       let userId = null;
-      
+
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         try {
           const token = authHeader.substring(7);
           const supabase = createServerSupabaseClient();
           const { data: { user } } = await supabase.auth.getUser(token);
-          
+
           if (user) {
             userId = user.id;
           }
@@ -1361,7 +1392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const messages = await storage.getUserChatHistory(userId, limit);
-      
+
       res.json({
         messages: messages.reverse()
       });

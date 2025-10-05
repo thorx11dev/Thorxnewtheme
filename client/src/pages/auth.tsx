@@ -61,50 +61,127 @@ const TEMP_EMAIL_DOMAINS = [
   'spam4.me', 'mintemail.com', 'emailondeck.com', 'tempinbox.com',
   'dispostable.com', 'anonbox.net', 'mohmal.com', 'mytemp.email',
   'emailfake.com', 'temp-link.net', 'jetable.org', 'getairmail.com',
-  'inboxbear.com', 'spamgourmet.com', 'mailnesia.com', 'tempsky.com'
+  'inboxbear.com', 'spamgourmet.com', 'mailnesia.com', 'tempsky.com',
+  '33mail.com', 'anonaddy.com', 'simplelogin.com', 'burnermail.io',
+  'mailsac.com', 'tempmail.net', 'disposablemail.com', 'trashmail.net',
+  'mailcatch.com', 'mailexpire.com', 'tempmailaddress.com', 'spambox.us',
+  'mailinator2.com', 'sogetthis.com', 'mailinater.com', 'vomoto.com',
+  'rcpt.at', 'spamfree24.org', 'wegwerfmail.de', 'mailforspam.com',
+  'slopsbox.com', 'meltmail.com', 'binkmail.com', 'spambog.com',
+  'discard.email', 'discardmail.com', 'crazymailing.com', 'beefmilk.com'
 ];
 
-// Phone validation regex patterns
-const PHONE_PATTERNS = {
-  pakistan: /^(\+92|0)?3[0-9]{9}$/,
-  international: /^\+?[1-9]\d{1,14}$/
+// Common typo domains
+const TYPO_DOMAINS = {
+  'gmial.com': 'gmail.com',
+  'gmai.com': 'gmail.com',
+  'gmailc.om': 'gmail.com',
+  'yahooo.com': 'yahoo.com',
+  'yaho.com': 'yahoo.com',
+  'hotmial.com': 'hotmail.com',
+  'hotmai.com': 'hotmail.com',
+  'outlok.com': 'outlook.com',
+  'outloo.com': 'outlook.com'
 };
+
+// Valid Pakistani mobile operator prefixes
+const PAKISTAN_PREFIXES = [
+  '300', '301', '302', '303', '304', '305',
+  '310', '311', '312', '313', '314', '315', '316', '317', '318',
+  '320', '321', '322', '323', '324',
+  '330', '331', '332', '333', '334', '335', '336',
+  '340', '341', '342', '343', '344', '345', '346', '347',
+  '355', '370'
+];
+
+// RFC 5322 compliant email regex
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
 // Advanced email validation
 const validateEmail = (email: string) => {
-  const domain = email.split('@')[1]?.toLowerCase();
-  
-  if (!domain) {
-    return { valid: false, message: "Invalid email format" };
+  if (!email || !email.trim()) {
+    return { valid: false, message: "Please enter a valid email address" };
   }
+
+  const trimmedEmail = email.trim().toLowerCase();
   
+  // RFC 5322 format check
+  if (!EMAIL_REGEX.test(trimmedEmail)) {
+    return { valid: false, message: "Please enter a valid email address" };
+  }
+
+  const parts = trimmedEmail.split('@');
+  if (parts.length !== 2) {
+    return { valid: false, message: "Please enter a valid email address" };
+  }
+
+  const [localPart, domain] = parts;
+
+  // Check for common typos
+  if (TYPO_DOMAINS[domain]) {
+    return { valid: false, message: `Did you mean ${localPart}@${TYPO_DOMAINS[domain]}?` };
+  }
+
+  // Check disposable email domains
   if (TEMP_EMAIL_DOMAINS.includes(domain)) {
     return { valid: false, message: "Temporary email addresses are not allowed" };
   }
-  
-  // Check for suspicious patterns
-  if (domain.includes('temp') || domain.includes('disposable') || domain.includes('trash')) {
-    return { valid: false, message: "Temporary or disposable email addresses are not allowed" };
+
+  // Check for suspicious patterns in domain
+  if (domain.includes('temp') || domain.includes('disposable') || domain.includes('trash') || 
+      domain.includes('fake') || domain.includes('spam') || domain.includes('throw')) {
+    return { valid: false, message: "Temporary email addresses are not allowed" };
   }
-  
+
+  // Check for plus-addressing abuse (optional - can be disabled if needed)
+  if (localPart.includes('+')) {
+    const baseEmail = localPart.split('+')[0];
+    if (baseEmail.length < 2) {
+      return { valid: false, message: "Please enter a valid email address" };
+    }
+  }
+
+  // Check for valid TLD
+  const tld = domain.split('.').pop();
+  if (!tld || tld.length < 2) {
+    return { valid: false, message: "Please enter a valid email address" };
+  }
+
   return { valid: true, message: "" };
 };
 
-// Advanced phone validation
+// Advanced phone validation for Pakistani numbers
 const validatePhone = (phone: string) => {
+  if (!phone || !phone.trim()) {
+    return { valid: true, message: "" }; // Optional field
+  }
+
   const cleanPhone = phone.replace(/[\s\-()]/g, '');
   
-  // Check Pakistan format
-  if (PHONE_PATTERNS.pakistan.test(cleanPhone)) {
-    return { valid: true, message: "" };
-  }
+  // Check Pakistani format: +92-3XX-XXXXXXX or 03XX-XXXXXXX
+  let numberToCheck = cleanPhone;
   
-  // Check international format
-  if (PHONE_PATTERNS.international.test(cleanPhone)) {
-    return { valid: true, message: "" };
+  // Normalize format
+  if (cleanPhone.startsWith('+92')) {
+    numberToCheck = '0' + cleanPhone.slice(3);
+  } else if (cleanPhone.startsWith('92')) {
+    numberToCheck = '0' + cleanPhone.slice(2);
   }
-  
-  return { valid: false, message: "Invalid phone number format. Use Pakistan format (03XXXXXXXXX) or international format (+XX...)" };
+
+  // Must be exactly 11 digits starting with 0
+  if (!/^0\d{10}$/.test(numberToCheck)) {
+    return { valid: false, message: "Enter a valid Pakistani mobile number (03XX-XXXXXXX)" };
+  }
+
+  // Extract prefix (first 3 digits after 0)
+  const prefix = numberToCheck.slice(1, 4);
+
+  // Check if prefix is valid
+  if (!PAKISTAN_PREFIXES.includes(prefix)) {
+    return { valid: false, message: "This mobile number prefix is not recognized" };
+  }
+
+  return { valid: true, message: "" };
 };
 
 // Password strength calculation
@@ -441,10 +518,7 @@ export default function Auth() {
                                 </div>
                               </FormControl>
                               {!emailValidation.valid && field.value && (
-                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-l-4 border-red-500 rounded">
-                                  <span className="text-red-600 text-base font-bold mt-0.5">⚠</span>
-                                  <p className="text-sm text-red-900 leading-relaxed font-medium">{emailValidation.message}</p>
-                                </div>
+                                <p className="text-sm text-red-600 font-medium mt-1">{emailValidation.message}</p>
                               )}
                               <FormMessage className="mt-2" />
                             </FormItem>
@@ -462,7 +536,7 @@ export default function Auth() {
                                 <div className="group relative inline-flex">
                                   <Info className="w-4 h-4 text-primary/70 hover:text-primary transition-colors cursor-help" />
                                   <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                    Pakistan or International format
+                                    Optional
                                   </span>
                                 </div>
                               </FormLabel>
@@ -486,10 +560,7 @@ export default function Auth() {
                                 </div>
                               </FormControl>
                               {!phoneValidation.valid && field.value && (
-                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-l-4 border-red-500 rounded">
-                                  <span className="text-red-600 text-base font-bold mt-0.5">⚠</span>
-                                  <p className="text-sm text-red-900 leading-relaxed font-medium">{phoneValidation.message}</p>
-                                </div>
+                                <p className="text-sm text-red-600 font-medium mt-1">{phoneValidation.message}</p>
                               )}
                               <FormMessage className="mt-2" />
                             </FormItem>
