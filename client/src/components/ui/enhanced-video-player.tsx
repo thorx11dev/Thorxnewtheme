@@ -35,6 +35,16 @@ interface EnhancedVideoPlayerProps {
   isMobile?: boolean;
 }
 
+// Individual player state for each area
+interface PlayerState {
+  isPlaying: boolean;
+  currentTime: number;
+  adProgress: number;
+  canSkip: boolean;
+  isCompleted: boolean;
+  showSkip: boolean;
+}
+
 export default function EnhancedVideoPlayer({ 
   tab, 
   isActive = true, 
@@ -43,20 +53,26 @@ export default function EnhancedVideoPlayer({
   isMobile = false 
 }: EnhancedVideoPlayerProps) {
   const isMobileDevice = useIsMobile();
-  // Core player state
-  const [isPlaying, setIsPlaying] = useState(false);
+  
+  // Shared state
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(30);
   const [volume, setVolume] = useState(80);
   const [isMuted, setIsMuted] = useState(false);
-  const [showSkip, setShowSkip] = useState(false);
-  const [adProgress, setAdProgress] = useState(0);
-  const [canSkip, setCanSkip] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
   const [activeAreaTab, setActiveAreaTab] = useState("001");
   
+  // Individual player states for each area
+  const [playerStates, setPlayerStates] = useState<Record<string, PlayerState>>({
+    "001": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
+    "002": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
+    "003": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
+    "004": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
+  });
+  
+  const duration = 30; // Video duration in seconds
   const playerRef = useRef<HTMLDivElement>(null);
+  
+  // Get current player state
+  const currentPlayerState = playerStates[activeAreaTab];
 
   // Area tabs data matching wireframe
   const areaTabs = [
@@ -119,55 +135,84 @@ export default function EnhancedVideoPlayer({
     };
   }, [isMobileDevice]);
 
-  // Main timer for video progress
+  // Main timer for video progress - works for active area only
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (isPlaying && !isCompleted) {
+    const currentState = playerStates[activeAreaTab];
+    
+    if (currentState.isPlaying && !currentState.isCompleted) {
       interval = setInterval(() => {
-        setCurrentTime(prev => {
-          const newTime = prev + 1;
+        setPlayerStates(prev => {
+          const newTime = prev[activeAreaTab].currentTime + 1;
           const progress = (newTime / duration) * 100;
-          setAdProgress(progress);
+          
+          const updatedState: PlayerState = {
+            ...prev[activeAreaTab],
+            currentTime: newTime,
+            adProgress: progress,
+          };
 
           // Allow skip after 5 seconds
-          if (newTime >= 5 && !canSkip) {
-            setCanSkip(true);
-            setShowSkip(true);
+          if (newTime >= 5 && !prev[activeAreaTab].canSkip) {
+            updatedState.canSkip = true;
+            updatedState.showSkip = true;
           }
 
           // Auto-complete at end
           if (newTime >= duration) {
-            setIsPlaying(false);
-            setIsCompleted(true);
-            onComplete?.(tab.id, tab.reward);
-            return duration;
+            updatedState.isPlaying = false;
+            updatedState.isCompleted = true;
+            updatedState.currentTime = duration;
+            onComplete?.(`${tab.id}-area-${activeAreaTab}`, tab.reward);
           }
 
-          return newTime;
+          return {
+            ...prev,
+            [activeAreaTab]: updatedState
+          };
         });
       }, 1000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isPlaying, duration, canSkip, tab.id, tab.reward, onComplete, isCompleted]);
+  }, [playerStates, activeAreaTab, duration, tab.id, tab.reward, onComplete]);
 
   // Player control handlers
   const handlePlay = () => {
-    setIsPlaying(true);
+    setPlayerStates(prev => ({
+      ...prev,
+      [activeAreaTab]: {
+        ...prev[activeAreaTab],
+        isPlaying: true
+      }
+    }));
   };
 
   const handlePause = () => {
-    setIsPlaying(false);
+    setPlayerStates(prev => ({
+      ...prev,
+      [activeAreaTab]: {
+        ...prev[activeAreaTab],
+        isPlaying: false
+      }
+    }));
   };
 
   const handleSkip = () => {
-    if (canSkip && !isCompleted) {
-      setCurrentTime(duration);
-      setAdProgress(100);
-      setIsPlaying(false);
-      setIsCompleted(true);
-      onComplete?.(tab.id, tab.reward);
+    const currentState = playerStates[activeAreaTab];
+    if (currentState.canSkip && !currentState.isCompleted) {
+      setPlayerStates(prev => ({
+        ...prev,
+        [activeAreaTab]: {
+          ...prev[activeAreaTab],
+          currentTime: duration,
+          adProgress: 100,
+          isPlaying: false,
+          isCompleted: true
+        }
+      }));
+      onComplete?.(`${tab.id}-area-${activeAreaTab}`, tab.reward);
     }
   };
 
@@ -383,7 +428,7 @@ export default function EnhancedVideoPlayer({
 
           {/* Minimal Clean Play Button */}
           <div className="relative z-10 flex items-center justify-center">
-            {!isPlaying ? (
+            {!currentPlayerState.isPlaying ? (
               <button
                 onClick={handlePlay}
                 className={`group relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center transition-all duration-300 hover:bg-white/20 hover:scale-105 hover:border-white/40 ${
@@ -399,11 +444,11 @@ export default function EnhancedVideoPlayer({
               <div className="text-center text-white">
                 <div className={`mb-2 ${isFullscreen ? 'text-6xl mb-4' : 'text-4xl'}`}>{tab.icon}</div>
                 <TechnicalLabel 
-                  text={tab.title} 
+                  text={`${tab.title} - AREA ${activeAreaTab}`} 
                   className={`text-white mb-1 ${isFullscreen ? 'text-2xl mb-2' : 'text-lg'}`} 
                 />
                 <p className={`text-white/80 ${isFullscreen ? 'text-lg' : 'text-sm'}`}>{tab.description}</p>
-                {isCompleted && (
+                {currentPlayerState.isCompleted && (
                   <div className={`mt-4 bg-green-600/20 border border-green-400 ${
                     isFullscreen ? 'p-4 mt-6' : 'p-3'
                   }`}>
@@ -421,7 +466,7 @@ export default function EnhancedVideoPlayer({
           </div>
 
           {/* Skip Button - Clearly Visible */}
-          {showSkip && canSkip && !isCompleted && (
+          {currentPlayerState.showSkip && currentPlayerState.canSkip && !currentPlayerState.isCompleted && (
             <button
               onClick={handleSkip}
               className={`absolute bg-white/90 backdrop-blur-sm text-black border border-black/20 rounded-md hover:bg-white hover:border-black/40 transition-all duration-200 shadow-lg z-20 ${
@@ -454,7 +499,7 @@ export default function EnhancedVideoPlayer({
                   : 'mb-2'
             }`}>
               <TechnicalLabel 
-                text={`EARN ${formatCurrency(tab.reward)}`} 
+                text={`AREA ${activeAreaTab} - EARN ${formatCurrency(tab.reward)}`} 
                 className={`text-white ${
                   isFullscreen 
                     ? 'text-sm' 
@@ -471,7 +516,7 @@ export default function EnhancedVideoPlayer({
                       ? 'text-xs' 
                       : 'text-xs'
                 }`}>
-                  {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
+                  {formatVideoTime(currentPlayerState.currentTime)} / {formatVideoTime(duration)}
                 </span>
                 {/* Hide control buttons on mobile - they're relocated to status bar */}
                 {!isMobileDevice && (
@@ -529,7 +574,7 @@ export default function EnhancedVideoPlayer({
                 className={`h-full bg-primary transition-all duration-500 ${
                   isMobileDevice ? 'rounded-sm' : 'border-r border-white/40'
                 }`}
-                style={{ width: `${adProgress}%` }}
+                style={{ width: `${currentPlayerState.adProgress}%` }}
               />
             </div>
           </div>
@@ -602,7 +647,7 @@ export default function EnhancedVideoPlayer({
               {/* Desktop keeps original layout */}
               {!isMobileDevice && (
                 <TechnicalLabel 
-                  text={`STATUS: ${isPlaying ? 'PLAYING' : isCompleted ? 'COMPLETE' : 'READY'}`} 
+                  text={`STATUS: ${currentPlayerState.isPlaying ? 'PLAYING' : currentPlayerState.isCompleted ? 'COMPLETE' : 'READY'}`} 
                   className={`text-black ${
                     isFullscreen 
                       ? 'text-sm' 
@@ -613,7 +658,7 @@ export default function EnhancedVideoPlayer({
             </div>
             <div className={`flex items-center ${isMobileDevice ? 'gap-1' : 'gap-2'}`}>
               <TechnicalLabel 
-                text={`${Math.round(adProgress)}%`} 
+                text={`${Math.round(currentPlayerState.adProgress)}%`} 
                 className={`text-black ${
                   isFullscreen 
                     ? 'text-sm' 
