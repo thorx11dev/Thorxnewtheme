@@ -796,13 +796,21 @@ export default function UserPortal() {
 
     const total = adViewsEarnings + referralEarnings + dailyTasksEarnings + bonusesEarnings;
 
+    // Theme-consistent color palette: Primary orange, black, beige accents, white
+    const chartColors = {
+      primary: '#FF6B35',      // Primary orange
+      secondary: '#000000',    // Black
+      tertiary: '#E8DCC4',     // Beige
+      quaternary: '#FFFFFF'    // White (with black border for visibility)
+    };
+
     // Calculate percentages
     if (total === 0) {
       return [
-        { name: 'Ad Views', value: 65, color: 'hsl(var(--primary))' },
-        { name: 'Referrals', value: 25, color: 'hsl(var(--secondary))' },
-        { name: 'Daily Tasks', value: 7, color: 'hsl(var(--chart-3))' },
-        { name: 'Bonuses', value: 3, color: 'hsl(var(--chart-4))' }
+        { name: 'Ad Views', value: 65, color: chartColors.primary },
+        { name: 'Referrals', value: 25, color: chartColors.secondary },
+        { name: 'Daily Tasks', value: 7, color: chartColors.tertiary },
+        { name: 'Bonuses', value: 3, color: chartColors.quaternary }
       ];
     }
 
@@ -810,22 +818,22 @@ export default function UserPortal() {
       {
         name: 'Ad Views',
         value: Math.round((adViewsEarnings / total) * 100),
-        color: 'hsl(var(--primary))'
+        color: chartColors.primary
       },
       {
         name: 'Referrals',
         value: Math.round((referralEarnings / total) * 100),
-        color: 'hsl(var(--secondary))'
+        color: chartColors.secondary
       },
       {
         name: 'Daily Tasks',
         value: Math.round((dailyTasksEarnings / total) * 100),
-        color: 'hsl(var(--chart-3))'
+        color: chartColors.tertiary
       },
       {
         name: 'Bonuses',
         value: Math.round((bonusesEarnings / total) * 100),
-        color: 'hsl(var(--chart-4))'
+        color: chartColors.quaternary
       }
     ];
   };
@@ -1141,11 +1149,11 @@ export default function UserPortal() {
           </Card>
 
           {/* Earnings Breakdown */}
-          <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
-            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors p-3 md:p-6">
+          <Card className="group split-card bg-gradient-to-br from-card to-card/90 border-2 border-black hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+            <CardHeader className="border-b-2 border-black group-hover:border-primary transition-colors p-3 md:p-6">
               <CardTitle className="flex items-center justify-between">
                 <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground group-hover:text-primary/90 transition-colors text-xs md:text-sm" />
-                <div className="p-1 md:p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                <div className="p-1 md:p-2 bg-primary/10 border-2 border-black group-hover:bg-primary/20 transition-all duration-300">
                   <PieChart className="w-3 h-3 md:w-4 md:h-4 text-primary" />
                 </div>
               </CardTitle>
@@ -1158,17 +1166,43 @@ export default function UserPortal() {
                     cx="50%"
                     cy="50%"
                     outerRadius={isMobile ? 50 : 80}
-                    fill="#8884d8"
+                    innerRadius={0}
                     dataKey="value"
+                    stroke="#000000"
+                    strokeWidth={2}
                     label={({ name, percent }: { name: string; percent: number }) =>
                       isMobile ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(0)}%`
                     }
-                    labelStyle={{ fontSize: isMobile ? '10px' : '12px' }}
+                    labelStyle={{ 
+                      fontSize: isMobile ? '10px' : '12px',
+                      fontWeight: 'bold',
+                      fill: '#000000',
+                      fontFamily: 'var(--font-sans)'
+                    }}
                   >
                     {earningTypesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color}
+                        stroke="#000000"
+                        strokeWidth={2}
+                      />
                     ))}
                   </Pie>
+                  <Tooltip
+                    formatter={(value: number) => [`${value}%`, 'Percentage']}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '2px solid #000000',
+                      borderRadius: '4px',
+                      color: '#000000',
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: isMobile ? '10px' : '12px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    }}
+                    labelStyle={{ color: '#000000', fontWeight: 'bold' }}
+                  />
                 </RechartsPieChart>
               </ResponsiveContainer>
             </CardContent>
