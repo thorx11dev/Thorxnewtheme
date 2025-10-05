@@ -397,19 +397,22 @@
   }
 }
 
-  /* Enhanced Progress Bar Styling */
-  .progress-enhanced {
-    background: hsl(var(--muted));
-    border: 1px solid hsl(var(--muted-foreground) / 0.2);
-    border-radius: 4px;
-    overflow: hidden;
-  }
+/* Enhanced Progress Bar Styling */
+.progress-enhanced {
+  transition: all 0.3s ease;
+}
 
-  .progress-enhanced > div {
-    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
-    border-radius: 3px;
-    transition: width 0.5s ease;
+.progress-enhanced > div {
+  background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%);
+  transition: all 0.5s ease;
+}
+
+/* Desktop-only User Portal spacing adjustments */
+@media (min-width: 769px) {
+  .cinematic-section {
+    padding-top: 2rem;
   }
+}
 
   /* Loading skeleton styles */
   .skeleton {
@@ -1023,7 +1026,7 @@
     }
 
     /* Mobile step indicator */
-    .step-indicator {
+    .step-indicator-mobile {
       width: 32px !important;
       height: 32px !important;
       font-size: 12px !important;
