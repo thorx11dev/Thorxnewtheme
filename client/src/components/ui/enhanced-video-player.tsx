@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -45,6 +44,14 @@ interface PlayerState {
   showSkip: boolean;
 }
 
+// Thorx core color scheme for different players
+const playerColors: Record<string, string> = {
+  "001": "from-blue-600 via-blue-700 to-blue-800", // Example: Blue for AREA 001
+  "002": "from-green-600 via-green-700 to-green-800", // Example: Green for AREA 002
+  "003": "from-yellow-500 via-yellow-600 to-yellow-700", // Example: Yellow for AREA 003
+  "004": "from-purple-600 via-purple-700 to-purple-800", // Example: Purple for AREA 004
+};
+
 export default function EnhancedVideoPlayer({ 
   tab, 
   isActive = true, 
@@ -53,13 +60,13 @@ export default function EnhancedVideoPlayer({
   isMobile = false 
 }: EnhancedVideoPlayerProps) {
   const isMobileDevice = useIsMobile();
-  
+
   // Shared state
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [volume, setVolume] = useState(80);
   const [isMuted, setIsMuted] = useState(false);
   const [activeAreaTab, setActiveAreaTab] = useState("001");
-  
+
   // Individual player states for each area
   const [playerStates, setPlayerStates] = useState<Record<string, PlayerState>>({
     "001": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
@@ -67,10 +74,10 @@ export default function EnhancedVideoPlayer({
     "003": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
     "004": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
   });
-  
+
   const duration = 30; // Video duration in seconds
   const playerRef = useRef<HTMLDivElement>(null);
-  
+
   // Get current player state
   const currentPlayerState = playerStates[activeAreaTab];
 
@@ -104,10 +111,10 @@ export default function EnhancedVideoPlayer({
         (document as any).mozFullScreenElement ||
         (document as any).msFullscreenElement
       );
-      
+
       // Always sync with browser fullscreen state for both desktop and mobile
       setIsFullscreen(isCurrentlyFullscreen);
-      
+
       // Handle body classes - always sync with actual browser state
       if (isMobileDevice) {
         if (isCurrentlyFullscreen) {
@@ -128,7 +135,7 @@ export default function EnhancedVideoPlayer({
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
-      
+
       // Cleanup body classes
       document.body.classList.remove('video-fullscreen-active');
       document.body.classList.remove('cinematic-mode');
@@ -139,13 +146,13 @@ export default function EnhancedVideoPlayer({
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     const currentState = playerStates[activeAreaTab];
-    
+
     if (currentState.isPlaying && !currentState.isCompleted) {
       interval = setInterval(() => {
         setPlayerStates(prev => {
           const newTime = prev[activeAreaTab].currentTime + 1;
           const progress = (newTime / duration) * 100;
-          
+
           const updatedState: PlayerState = {
             ...prev[activeAreaTab],
             currentTime: newTime,
@@ -223,11 +230,11 @@ export default function EnhancedVideoPlayer({
         if (isMobileDevice) {
           // Mobile-specific fullscreen behavior - no rotation, just fullscreen
           setIsFullscreen(true);
-          
+
           // Add body class to prevent scrolling
           document.body.classList.add('video-fullscreen-active');
           document.documentElement.style.overflow = 'hidden';
-          
+
           // Request fullscreen on the player container specifically for mobile
           if (playerRef.current) {
             if (playerRef.current.requestFullscreen) {
@@ -245,7 +252,7 @@ export default function EnhancedVideoPlayer({
               await (document.documentElement as any).webkitRequestFullscreen();
             }
           }
-          
+
         } else {
           // Desktop fullscreen on the player container
           if (playerRef.current) {
@@ -275,14 +282,14 @@ export default function EnhancedVideoPlayer({
       try {
         if (isMobileDevice) {
           // Mobile exit fullscreen - comprehensive approach
-          
+
           // Step 1: Immediate visual state update for instant feedback
           setIsFullscreen(false);
-          
+
           // Step 2: Immediate DOM cleanup
           document.body.classList.remove('video-fullscreen-active');
           document.documentElement.style.overflow = '';
-          
+
           // Step 3: Browser API exit with enhanced error handling
           const exitFullscreenSafely = async () => {
             try {
@@ -293,7 +300,7 @@ export default function EnhancedVideoPlayer({
                 (document as any).mozFullScreenElement ||
                 (document as any).msFullscreenElement
               );
-              
+
               if (isActuallyFullscreen) {
                 // Try different browser APIs in order of preference
                 if (document.exitFullscreen) {
@@ -309,16 +316,16 @@ export default function EnhancedVideoPlayer({
             } catch (apiError) {
               // API failed but visual state is correct - this is acceptable
               console.log('Fullscreen API exit failed, visual state maintained');
-              
+
               // Force cleanup as fallback
               document.body.classList.remove('video-fullscreen-active');
               document.documentElement.style.overflow = '';
             }
           };
-          
+
           // Execute API exit without blocking UI
           setTimeout(exitFullscreenSafely, 16); // Use 16ms for next frame
-          
+
         } else {
           // Desktop exit fullscreen
           if (document.exitFullscreen) {
@@ -407,7 +414,7 @@ export default function EnhancedVideoPlayer({
         {/* Main Video Content Area */}
         <div 
           ref={playerRef}
-          className={`relative bg-gray-200 flex items-center justify-center overflow-hidden transition-all duration-300 ${
+          className={`relative flex items-center justify-center overflow-hidden transition-all duration-300 ${
             isFullscreen 
               ? isMobileDevice
                 ? 'h-[calc(100vh-80px)] w-full border border-black'
@@ -417,6 +424,13 @@ export default function EnhancedVideoPlayer({
                 : 'aspect-video border-2 border-black'
           }`}
           data-testid={`video-player-${tab.id}`}
+          style={{ 
+            backgroundColor: activeAreaTab === "001" ? "#1E3A8A" : // Dark blue for 001
+                           activeAreaTab === "002" ? "#166534" : // Dark green for 002
+                           activeAreaTab === "003" ? "#92400E" : // Dark yellow/orange for 003
+                           activeAreaTab === "004" ? "#581C87" : // Dark purple for 004
+                           "black" // Default to black
+          }}
         >
           {/* Industrial Grid Pattern - Hidden on Mobile for Cleaner Look */}
           <div className={`absolute inset-0 ${isMobileDevice ? 'hidden' : 'opacity-10'}`}>
@@ -424,7 +438,7 @@ export default function EnhancedVideoPlayer({
           </div>
 
           {/* Video Content Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-gray-900/90 to-black/80" />
+          <div className={`absolute inset-0 ${playerColors[activeAreaTab] || 'from-black/80 via-gray-900/90 to-black/80'}`} />
 
           {/* Minimal Clean Play Button */}
           <div className="relative z-10 flex items-center justify-center">
@@ -561,7 +575,7 @@ export default function EnhancedVideoPlayer({
                 )}
               </div>
             </div>
-            
+
             {/* Progress Bar with Simplified Mobile Styling */}
             <div className={`w-full bg-gray-600 transition-all duration-300 ${
               isFullscreen 
@@ -639,8 +653,10 @@ export default function EnhancedVideoPlayer({
                     className={`text-black ${
                       isFullscreen 
                         ? 'text-sm' 
-                        : 'text-xs'
-                    }`} 
+                        : isMobileDevice 
+                      ? 'text-xs' 
+                      : 'text-xs'
+                }`} 
                   />
                 </>
               )}
