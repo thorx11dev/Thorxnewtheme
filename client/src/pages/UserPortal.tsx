@@ -443,7 +443,7 @@ export default function UserPortal() {
   // Handle contact form submission
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!contactForm.name || !contactForm.email || !contactForm.description) {
       toast({
         title: "Missing Information",
@@ -997,7 +997,7 @@ export default function UserPortal() {
   // Dashboard Section
   function renderDashboardSection() {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-8 lg:py-12 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-0 relative z-10">
         {/* Hero Section */}
         <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
@@ -1313,7 +1313,7 @@ export default function UserPortal() {
   // Enhanced Referrals Section - Dashboard Style
   function renderReferralsSection() {
     // Mock data for leadership board
-    const mockLeaderboardData = [
+    const leaderboardData = [
       {
         id: "1",
         rank: 1,
@@ -1368,7 +1368,7 @@ export default function UserPortal() {
     };
 
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-8 lg:py-12 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-0 relative z-10">
         {/* Hero Section - Dashboard Style */}
         <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
@@ -1559,7 +1559,7 @@ export default function UserPortal() {
         </div>
         {/* Bottom Section - Leaderboard List (Blue highlighted in wireframe) */}
         <div className="wireframe-border bg-primary/5 p-4 md:p-6">
-          <div className="border-b-2 border-black pb-3 md:pb-4 mb-4 md:mb-6">
+          <div className="border-b-2 border-primary pb-3 md:pb-4 mb-4 md:mb-6">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2 md:gap-3">
                 <Trophy className="w-4 h-4 md:w-6 md:h-6 text-primary" />
@@ -1573,7 +1573,7 @@ export default function UserPortal() {
 
           {/* Mobile Optimized Leaderboard List */}
           <div className="mobile-leaderboard-list space-y-2 md:space-y-4">
-            {mockLeaderboardData.map((leader, index) => (
+            {leaderboardData.map((leader, index) => (
               <div key={leader.id} className="mobile-leaderboard-card bg-white border-2 border-black hover:bg-primary/5 transition-all duration-200 overflow-hidden">
                 {/* Mobile Card Layout */}
                 <div className="block md:hidden">
@@ -2244,7 +2244,7 @@ export default function UserPortal() {
 
   // Help Section
   function renderHelpSection() {
-    const formatChatTime = (timestamp: string) => {
+    const formatTime = (timestamp: string) => {
       return new Date(timestamp).toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit'
@@ -2341,7 +2341,7 @@ export default function UserPortal() {
                         <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-primary translate-x-2 -translate-y-2"></div>
                         <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-primary -translate-x-2 translate-y-2"></div>
                         <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-primary translate-x-2 translate-y-2"></div>
-
+                        
                         <h3 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight mb-4" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
                           <span className="text-black">F</span>
                           <span className="text-white">r</span>
@@ -2369,9 +2369,9 @@ export default function UserPortal() {
                           <span className="text-primary">s</span>
                           <span className="text-black">.</span>
                         </h3>
-
+                        
                         <div className="h-1 w-24 bg-primary mx-auto mb-3"></div>
-
+                        
                         <TechnicalLabel text="INSTANT ANSWERS TO YOUR THORX QUERIES" className="text-muted-foreground text-xs md:text-sm" />
                       </div>
                     </div>
@@ -2480,15 +2480,15 @@ export default function UserPortal() {
                             >
                               <p className="text-xs md:text-sm font-medium mb-1 break-words">{message.text}</p>
                               <p className={`text-xs ${message.sender === 'user' ? 'text-black/60' : 'text-gray-500'} text-right`}>
-                                {formatChatTime(message.timestamp)}
+                                {formatTime(message.timestamp)}
                               </p>
                             </div>
 
                             {message.sender === 'user' && (
-                                  <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
-                                    {message.avatar}
-                                  </div>
-                                )}
+                              <div className="w-6 h-6 md:w-8 md:h-8 bg-black text-white rounded-full flex items-center justify-center text-xs md:text-sm font-black mb-1 flex-shrink-0">
+                                {message.avatar}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
