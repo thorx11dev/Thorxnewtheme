@@ -107,6 +107,40 @@ const validatePhone = (phone: string) => {
   return { valid: false, message: "Invalid phone number format. Use Pakistan format (03XXXXXXXXX) or international format (+XX...)" };
 };
 
+// Password strength calculation
+const calculatePasswordStrength = (password: string): { level: number; label: string; color: string } => {
+  if (!password) {
+    return { level: 0, label: '', color: '' };
+  }
+  
+  let strength = 0;
+  const checks = {
+    length: password.length >= 8,
+    lowercase: /[a-z]/.test(password),
+    uppercase: /[A-Z]/.test(password),
+    number: /\d/.test(password),
+    special: /[^a-zA-Z0-9]/.test(password)
+  };
+  
+  // Calculate strength
+  if (checks.length) strength++;
+  if (checks.lowercase) strength++;
+  if (checks.uppercase) strength++;
+  if (checks.number) strength++;
+  if (checks.special) strength++;
+  
+  // Determine level and color
+  if (strength <= 2) {
+    return { level: 1, label: 'Weak', color: 'bg-red-500' };
+  } else if (strength === 3) {
+    return { level: 2, label: 'Fair', color: 'bg-orange-500' };
+  } else if (strength === 4) {
+    return { level: 3, label: 'Good', color: 'bg-yellow-500' };
+  } else {
+    return { level: 4, label: 'Strong', color: 'bg-green-500' };
+  }
+};
+
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   identity: z.string().min(1, "Identity is required"),
@@ -148,6 +182,7 @@ export default function Auth() {
   const [generatedIdentity, setGeneratedIdentity] = useState<string>('');
   const [emailValidation, setEmailValidation] = useState<{ valid: boolean; message: string }>({ valid: true, message: "" });
   const [phoneValidation, setPhoneValidation] = useState<{ valid: boolean; message: string }>({ valid: true, message: "" });
+  const [passwordStrength, setPasswordStrength] = useState<{ level: number; label: string; color: string }>({ level: 0, label: '', color: '' });
   const { toast } = useToast();
 
   // Identity generation function
@@ -395,7 +430,7 @@ export default function Auth() {
                                       const validation = validateEmail(e.target.value);
                                       setEmailValidation(validation);
                                     }}
-                                    className={`border-2 ${!emailValidation.valid && field.value ? 'border-red-500' : emailValidation.valid && field.value ? 'border-green-500' : 'border-black'} text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200`}
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200"
                                     data-testid="input-register-email"
                                   />
                                   {!field.value && (
@@ -403,24 +438,10 @@ export default function Auth() {
                                       <AnimatedPlaceholder examples={['your.email@gmail.com', 'user@thorx.com', 'john.doe@outlook.com']} />
                                     </div>
                                   )}
-                                  {!emailValidation.valid && field.value && (
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-pulse">
-                                      <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-red-700 flex items-center justify-center">
-                                        <span className="text-white text-sm font-bold">!</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {emailValidation.valid && field.value && (
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                      <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-green-700 flex items-center justify-center">
-                                        <span className="text-white text-sm font-bold">✓</span>
-                                      </div>
-                                    </div>
-                                  )}
                                 </div>
                               </FormControl>
                               {!emailValidation.valid && field.value && (
-                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-2 border-red-500 rounded">
+                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-l-4 border-red-500 rounded">
                                   <span className="text-red-600 text-base font-bold mt-0.5">⚠</span>
                                   <p className="text-sm text-red-900 leading-relaxed font-medium">{emailValidation.message}</p>
                                 </div>
@@ -454,7 +475,7 @@ export default function Auth() {
                                       const validation = validatePhone(e.target.value);
                                       setPhoneValidation(validation);
                                     }}
-                                    className={`border-2 ${!phoneValidation.valid && field.value ? 'border-red-500' : phoneValidation.valid && field.value ? 'border-green-500' : 'border-black'} text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200`}
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200"
                                     data-testid="input-register-phone"
                                   />
                                   {!field.value && (
@@ -462,24 +483,10 @@ export default function Auth() {
                                       <AnimatedPlaceholder examples={['+92 300 1234567', '03001234567', '+92 321 9876543']} />
                                     </div>
                                   )}
-                                  {!phoneValidation.valid && field.value && (
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-pulse">
-                                      <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-red-700 flex items-center justify-center">
-                                        <span className="text-white text-sm font-bold">!</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {phoneValidation.valid && field.value && (
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                      <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-green-700 flex items-center justify-center">
-                                        <span className="text-white text-sm font-bold">✓</span>
-                                      </div>
-                                    </div>
-                                  )}
                                 </div>
                               </FormControl>
                               {!phoneValidation.valid && field.value && (
-                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-2 border-red-500 rounded">
+                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-l-4 border-red-500 rounded">
                                   <span className="text-red-600 text-base font-bold mt-0.5">⚠</span>
                                   <p className="text-sm text-red-900 leading-relaxed font-medium">{phoneValidation.message}</p>
                                 </div>
@@ -499,30 +506,79 @@ export default function Auth() {
                             <FormItem className="space-y-3">
                               <FormLabel className="technical-label block mb-2">PASSWORD</FormLabel>
                               <FormControl>
-                                <div className="relative">
-                                  <Input 
-                                    type={showPassword ? "text" : "password"}
-                                    {...field}
-                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 pr-12"
-                                    data-testid="input-register-password"
-                                  />
-                                  {!field.value && (
-                                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none pr-12">
-                                      <AnimatedPlaceholder examples={['ThorX123!', 'SecurePass9$', 'MyStrong8#']} />
+                                <div className="space-y-2">
+                                  <div className="relative">
+                                    <Input 
+                                      type={showPassword ? "text" : "password"}
+                                      {...field}
+                                      onChange={(e) => {
+                                        field.onChange(e);
+                                        const strength = calculatePasswordStrength(e.target.value);
+                                        setPasswordStrength(strength);
+                                      }}
+                                      className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 pr-12"
+                                      data-testid="input-register-password"
+                                    />
+                                    {!field.value && (
+                                      <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none pr-12">
+                                        <AnimatedPlaceholder examples={['ThorX123!', 'SecurePass9$', 'MyStrong8#']} />
+                                      </div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowPassword(!showPassword)}
+                                      className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 p-1.5 rounded-sm hover:bg-muted/50 transition-all duration-200 group"
+                                      data-testid="button-toggle-password"
+                                    >
+                                      {showPassword ? (
+                                        <EyeOff className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                      ) : (
+                                        <Eye className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                      )}
+                                    </button>
+                                  </div>
+                                  
+                                  {/* Password Strength Indicator */}
+                                  {field.value && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                          <div 
+                                            className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                                            style={{ width: `${(passwordStrength.level / 4) * 100}%` }}
+                                          />
+                                        </div>
+                                        <span className={`text-xs font-semibold ${
+                                          passwordStrength.level === 1 ? 'text-red-600' :
+                                          passwordStrength.level === 2 ? 'text-orange-600' :
+                                          passwordStrength.level === 3 ? 'text-yellow-600' :
+                                          'text-green-600'
+                                        }`}>
+                                          {passwordStrength.label}
+                                        </span>
+                                      </div>
+                                      
+                                      {/* Requirements Checklist */}
+                                      <div className="space-y-1 text-xs">
+                                        <div className={`flex items-center gap-1.5 ${/^.{8,}$/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                          <span className="text-sm">{/^.{8,}$/.test(field.value) ? '✓' : '○'}</span>
+                                          <span>At least 8 characters</span>
+                                        </div>
+                                        <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                          <span className="text-sm">{/[A-Z]/.test(field.value) ? '✓' : '○'}</span>
+                                          <span>One uppercase letter</span>
+                                        </div>
+                                        <div className={`flex items-center gap-1.5 ${/[a-z]/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                          <span className="text-sm">{/[a-z]/.test(field.value) ? '✓' : '○'}</span>
+                                          <span>One lowercase letter</span>
+                                        </div>
+                                        <div className={`flex items-center gap-1.5 ${/\d/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                          <span className="text-sm">{/\d/.test(field.value) ? '✓' : '○'}</span>
+                                          <span>One number</span>
+                                        </div>
+                                      </div>
                                     </div>
                                   )}
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 p-1.5 rounded-sm hover:bg-muted/50 transition-all duration-200 group"
-                                    data-testid="button-toggle-password"
-                                  >
-                                    {showPassword ? (
-                                      <EyeOff className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                                    ) : (
-                                      <Eye className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                                    )}
-                                  </button>
                                 </div>
                               </FormControl>
                               <FormMessage className="mt-2" />
