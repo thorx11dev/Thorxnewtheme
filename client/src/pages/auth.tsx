@@ -73,37 +73,37 @@ const PHONE_PATTERNS = {
 // Advanced email validation
 const validateEmail = (email: string) => {
   const domain = email.split('@')[1]?.toLowerCase();
-
+  
   if (!domain) {
     return { valid: false, message: "Invalid email format" };
   }
-
+  
   if (TEMP_EMAIL_DOMAINS.includes(domain)) {
     return { valid: false, message: "Temporary email addresses are not allowed" };
   }
-
+  
   // Check for suspicious patterns
   if (domain.includes('temp') || domain.includes('disposable') || domain.includes('trash')) {
     return { valid: false, message: "Temporary or disposable email addresses are not allowed" };
   }
-
+  
   return { valid: true, message: "" };
 };
 
 // Advanced phone validation
 const validatePhone = (phone: string) => {
   const cleanPhone = phone.replace(/[\s\-()]/g, '');
-
+  
   // Check Pakistan format
   if (PHONE_PATTERNS.pakistan.test(cleanPhone)) {
     return { valid: true, message: "" };
   }
-
+  
   // Check international format
   if (PHONE_PATTERNS.international.test(cleanPhone)) {
     return { valid: true, message: "" };
   }
-
+  
   return { valid: false, message: "Invalid phone number format. Use Pakistan format (03XXXXXXXXX) or international format (+XX...)" };
 };
 
@@ -112,7 +112,7 @@ const calculatePasswordStrength = (password: string): { level: number; label: st
   if (!password) {
     return { level: 0, label: '', color: '' };
   }
-
+  
   let strength = 0;
   const checks = {
     length: password.length >= 8,
@@ -121,14 +121,14 @@ const calculatePasswordStrength = (password: string): { level: number; label: st
     number: /\d/.test(password),
     special: /[^a-zA-Z0-9]/.test(password)
   };
-
+  
   // Calculate strength
   if (checks.length) strength++;
   if (checks.lowercase) strength++;
   if (checks.uppercase) strength++;
   if (checks.number) strength++;
   if (checks.special) strength++;
-
+  
   // Determine level and color
   if (strength <= 2) {
     return { level: 1, label: 'Weak', color: 'bg-red-500' };
@@ -148,7 +148,7 @@ const registerSchema = z.object({
     (phone) => validatePhone(phone).valid,
     (phone) => ({ message: validatePhone(phone).message })
   ),
-  email: z.string().email("Invalid email").refine(
+  email: z.string().email("Invalid email address").refine(
     (email) => validateEmail(email).valid,
     (email) => ({ message: validateEmail(email).message })
   ),
@@ -190,7 +190,7 @@ export default function Auth() {
     const thorxPrefixes = ['THORX', 'EARN', 'DIGI', 'CYBER', 'PRIME', 'ALPHA', 'CORE', 'ELITE'];
     const thorxSuffixes = ['MASTER', 'FORCE', 'AGENT', 'BUILDER', 'TRADER', 'GENIUS', 'COMMANDER', 'PIONEER'];
     const numbers = Math.floor(Math.random() * 9999) + 1000;
-
+    
     if (firstName && lastName) {
       const prefix = thorxPrefixes[Math.floor(Math.random() * thorxPrefixes.length)];
       const suffix = thorxSuffixes[Math.floor(Math.random() * thorxSuffixes.length)];
@@ -237,7 +237,7 @@ export default function Auth() {
 
   // Watch name for identity generation
   const name = registerForm.watch('name');
-
+  
   useEffect(() => {
     if (name && name.trim().includes(' ')) {
       const nameParts = name.trim().split(' ');
@@ -285,7 +285,7 @@ export default function Auth() {
                 <TechnicalLabel text="BACKSPACE" className="text-white text-xs md:text-sm" />
               </button>
             </div>
-
+            
             {/* Right Section */}
             <div className="flex items-center">
               <div className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2">
@@ -297,7 +297,7 @@ export default function Auth() {
             </div>
           </div>
         </div>
-
+        
         {/* Main Title Section */}
         <div className="bg-white border-b-3 border-black py-3 md:py-4">
           <div className="max-w-7xl mx-auto px-4 md:px-8 text-center">
@@ -537,7 +537,7 @@ export default function Auth() {
                                       )}
                                     </button>
                                   </div>
-
+                                  
                                   {/* Password Strength Indicator */}
                                   {field.value && (
                                     <div className="space-y-2">
@@ -557,7 +557,7 @@ export default function Auth() {
                                           {passwordStrength.label}
                                         </span>
                                       </div>
-
+                                      
                                       {/* Requirements Checklist */}
                                       <div className="space-y-1 text-xs">
                                         <div className={`flex items-center gap-1.5 ${/^.{8,}$/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
