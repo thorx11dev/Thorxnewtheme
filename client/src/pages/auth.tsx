@@ -395,7 +395,7 @@ export default function Auth() {
                                       const validation = validateEmail(e.target.value);
                                       setEmailValidation(validation);
                                     }}
-                                    className={`border-2 ${!emailValidation.valid && field.value ? 'border-amber-300' : emailValidation.valid && field.value ? 'border-green-300' : 'border-black'} text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200`}
+                                    className={`border-2 ${!emailValidation.valid && field.value ? 'border-red-500' : emailValidation.valid && field.value ? 'border-green-500' : 'border-black'} text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200`}
                                     data-testid="input-register-email"
                                   />
                                   {!field.value && (
@@ -405,24 +405,24 @@ export default function Auth() {
                                   )}
                                   {!emailValidation.valid && field.value && (
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-pulse">
-                                      <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center">
-                                        <span className="text-amber-600 text-sm">!</span>
+                                      <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-red-700 flex items-center justify-center">
+                                        <span className="text-white text-sm font-bold">!</span>
                                       </div>
                                     </div>
                                   )}
                                   {emailValidation.valid && field.value && (
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                      <div className="w-5 h-5 rounded-full bg-green-100 border border-green-300 flex items-center justify-center">
-                                        <span className="text-green-600 text-sm">✓</span>
+                                      <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-green-700 flex items-center justify-center">
+                                        <span className="text-white text-sm font-bold">✓</span>
                                       </div>
                                     </div>
                                   )}
                                 </div>
                               </FormControl>
                               {!emailValidation.valid && field.value && (
-                                <div className="flex items-start gap-2 mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
-                                  <span className="text-amber-500 text-sm mt-0.5">ℹ</span>
-                                  <p className="text-sm text-amber-700 leading-relaxed">{emailValidation.message}</p>
+                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-2 border-red-500 rounded">
+                                  <span className="text-red-600 text-base font-bold mt-0.5">⚠</span>
+                                  <p className="text-sm text-red-900 leading-relaxed font-medium">{emailValidation.message}</p>
                                 </div>
                               )}
                               <FormMessage className="mt-2" />
@@ -454,7 +454,7 @@ export default function Auth() {
                                       const validation = validatePhone(e.target.value);
                                       setPhoneValidation(validation);
                                     }}
-                                    className={`border-2 ${!phoneValidation.valid && field.value ? 'border-amber-300' : phoneValidation.valid && field.value ? 'border-green-300' : 'border-black'} text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200`}
+                                    className={`border-2 ${!phoneValidation.valid && field.value ? 'border-red-500' : phoneValidation.valid && field.value ? 'border-green-500' : 'border-black'} text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200`}
                                     data-testid="input-register-phone"
                                   />
                                   {!field.value && (
@@ -464,24 +464,24 @@ export default function Auth() {
                                   )}
                                   {!phoneValidation.valid && field.value && (
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2 animate-pulse">
-                                      <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center">
-                                        <span className="text-amber-600 text-sm">!</span>
+                                      <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-red-700 flex items-center justify-center">
+                                        <span className="text-white text-sm font-bold">!</span>
                                       </div>
                                     </div>
                                   )}
                                   {phoneValidation.valid && field.value && (
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                      <div className="w-5 h-5 rounded-full bg-green-100 border border-green-300 flex items-center justify-center">
-                                        <span className="text-green-600 text-sm">✓</span>
+                                      <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-green-700 flex items-center justify-center">
+                                        <span className="text-white text-sm font-bold">✓</span>
                                       </div>
                                     </div>
                                   )}
                                 </div>
                               </FormControl>
                               {!phoneValidation.valid && field.value && (
-                                <div className="flex items-start gap-2 mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
-                                  <span className="text-amber-500 text-sm mt-0.5">ℹ</span>
-                                  <p className="text-sm text-amber-700 leading-relaxed">{phoneValidation.message}</p>
+                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-2 border-red-500 rounded">
+                                  <span className="text-red-600 text-base font-bold mt-0.5">⚠</span>
+                                  <p className="text-sm text-red-900 leading-relaxed font-medium">{phoneValidation.message}</p>
                                 </div>
                               )}
                               <FormMessage className="mt-2" />
