@@ -50,7 +50,7 @@ export const earnings = pgTable("earnings", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   description: text("description").notNull(),
   status: text("status").default("completed"),
-  metadata: jsonb("metadata"),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("earnings_user_id_idx").on(table.userId),
@@ -77,7 +77,7 @@ export const advertisements = pgTable("advertisements", {
   isActive: boolean("is_active").default(true),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
-  metadata: jsonb("metadata"),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -142,7 +142,7 @@ export const withdrawals = pgTable("withdrawals", {
   method: text("method").notNull(),
   accountName: text("account_name").notNull(),
   accountNumber: text("account_number").notNull(),
-  accountDetails: jsonb("account_details"),
+  accountDetails: jsonb("account_details").notNull().default(sql`'{}'::jsonb`),
   status: text("status").default("pending"),
   transactionId: text("transaction_id"),
   processedAt: timestamp("processed_at"),
@@ -169,7 +169,7 @@ export const paymentMethods = pgTable("payment_methods", {
   iban: text("iban"),
   isDefault: boolean("is_default").default(false),
   isVerified: boolean("is_verified").default(false),
-  metadata: jsonb("metadata"),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -189,7 +189,7 @@ export const transactions = pgTable("transactions", {
   description: text("description").notNull(),
   referenceId: varchar("reference_id"),
   status: text("status").default("completed"),
-  metadata: jsonb("metadata"),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("transactions_user_id_idx").on(table.userId),
@@ -208,7 +208,7 @@ export const notifications = pgTable("notifications", {
   priority: text("priority").default("normal"),
   isRead: boolean("is_read").default(false),
   actionUrl: text("action_url"),
-  metadata: jsonb("metadata"),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
@@ -283,8 +283,8 @@ export const auditLogs = pgTable("audit_logs", {
   entityId: varchar("entity_id"),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  changes: jsonb("changes"),
-  metadata: jsonb("metadata"),
+  changes: jsonb("changes").notNull().default(sql`'{}'::jsonb`),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
   severity: text("severity").default("info"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
@@ -317,8 +317,7 @@ export const userSessions = pgTable("user_sessions", {
 export const systemSettings = pgTable("system_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   key: text("key").notNull().unique(),
-  value: text("value").notNull(),
-  type: text("type").default("string"),
+  value: jsonb("value").notNull(),
   category: text("category").notNull(),
   description: text("description"),
   isPublic: boolean("is_public").default(false),
@@ -339,7 +338,7 @@ export const teamEmails = pgTable("team_emails", {
   content: text("content").notNull(),
   status: text("status").default("sent"),
   type: text("type").default("outbound"),
-  attachments: jsonb("attachments"),
+  attachments: jsonb("attachments").notNull().default(sql`'[]'::jsonb`),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("team_emails_from_user_id_idx").on(table.fromUserId),
@@ -393,7 +392,7 @@ export const chatMessages = pgTable("chat_messages", {
   language: text("language").default("en"),
   intent: text("intent"),
   sentiment: text("sentiment"),
-  metadata: jsonb("metadata"),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("chat_messages_user_id_idx").on(table.userId),
