@@ -118,13 +118,13 @@ const validateEmail = (email: string) => {
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
   
   if (!emailRegex.test(trimmedEmail)) {
-    return { valid: false, message: "Please enter a valid email address" };
+    return { valid: false, message: "Invalid email" };
   }
 
   const domain = trimmedEmail.split('@')[1];
   
   if (!domain) {
-    return { valid: false, message: "Please enter a valid email address" };
+    return { valid: false, message: "Invalid email" };
   }
 
   // Check for common email typos
@@ -157,7 +157,7 @@ const validateEmail = (email: string) => {
   // Valid TLD check (ensure domain has a valid extension)
   const tld = domain.split('.').pop();
   if (!tld || tld.length < 2) {
-    return { valid: false, message: "Please enter a valid email address" };
+    return { valid: false, message: "Invalid email" };
   }
 
   return { valid: true, message: "" };
