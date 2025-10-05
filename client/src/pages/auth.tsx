@@ -52,11 +52,72 @@ function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: 
   );
 }
 
+// Temporary email domains list
+const TEMP_EMAIL_DOMAINS = [
+  'tempmail.com', 'throwaway.email', 'guerrillamail.com', 'mailinator.com',
+  '10minutemail.com', 'temp-mail.org', 'fakeinbox.com', 'trashmail.com',
+  'yopmail.com', 'maildrop.cc', 'getnada.com', 'tempr.email',
+  'throwawaymail.com', 'sharklasers.com', 'guerrillamail.info', 'grr.la',
+  'spam4.me', 'mintemail.com', 'emailondeck.com', 'tempinbox.com',
+  'dispostable.com', 'anonbox.net', 'mohmal.com', 'mytemp.email',
+  'emailfake.com', 'temp-link.net', 'jetable.org', 'getairmail.com',
+  'inboxbear.com', 'spamgourmet.com', 'mailnesia.com', 'tempsky.com'
+];
+
+// Phone validation regex patterns
+const PHONE_PATTERNS = {
+  pakistan: /^(\+92|0)?3[0-9]{9}$/,
+  international: /^\+?[1-9]\d{1,14}$/
+};
+
+// Advanced email validation
+const validateEmail = (email: string) => {
+  const domain = email.split('@')[1]?.toLowerCase();
+  
+  if (!domain) {
+    return { valid: false, message: "Invalid email format" };
+  }
+  
+  if (TEMP_EMAIL_DOMAINS.includes(domain)) {
+    return { valid: false, message: "Temporary email addresses are not allowed" };
+  }
+  
+  // Check for suspicious patterns
+  if (domain.includes('temp') || domain.includes('disposable') || domain.includes('trash')) {
+    return { valid: false, message: "Temporary or disposable email addresses are not allowed" };
+  }
+  
+  return { valid: true, message: "" };
+};
+
+// Advanced phone validation
+const validatePhone = (phone: string) => {
+  const cleanPhone = phone.replace(/[\s\-()]/g, '');
+  
+  // Check Pakistan format
+  if (PHONE_PATTERNS.pakistan.test(cleanPhone)) {
+    return { valid: true, message: "" };
+  }
+  
+  // Check international format
+  if (PHONE_PATTERNS.international.test(cleanPhone)) {
+    return { valid: true, message: "" };
+  }
+  
+  return { valid: false, message: "Invalid phone number format. Use Pakistan format (03XXXXXXXXX) or international format (+XX...)" };
+};
+
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   identity: z.string().min(1, "Identity is required"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  email: z.string().email("Invalid email address"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits").refine(
+    (phone) => validatePhone(phone).valid,
+    (phone) => ({ message: validatePhone(phone).message })
+  ),
+  email: z.string().email("Invalid email address").refine(
+    (email) => validateEmail(email).valid,
+    (email) => ({ message: validateEmail(email).message })
+  ),
   password: z.string()
     .min(8, "Password must be at least 8 characters")
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
@@ -69,7 +130,10 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address").refine(
+    (email) => validateEmail(email).valid,
+    (email) => ({ message: validateEmail(email).message })
+  ),
   password: z.string().min(1, "Password is required")
 });
 
@@ -82,6 +146,8 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [generatedIdentity, setGeneratedIdentity] = useState<string>('');
+  const [emailValidation, setEmailValidation] = useState<{ valid: boolean; message: string }>({ valid: true, message: "" });
+  const [phoneValidation, setPhoneValidation] = useState<{ valid: boolean; message: string }>({ valid: true, message: "" });
   const { toast } = useToast();
 
   // Identity generation function
@@ -324,7 +390,12 @@ export default function Auth() {
                                 <div className="relative">
                                   <Input 
                                     {...field}
-                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
+                                    onChange={(e) => {
+                                      field.onChange(e);
+                                      const validation = validateEmail(e.target.value);
+                                      setEmailValidation(validation);
+                                    }}
+                                    className={`border-2 ${!emailValidation.valid && field.value ? 'border-red-500' : 'border-black'} text-base md:text-lg py-3 md:py-4 px-4`}
                                     data-testid="input-register-email"
                                   />
                                   {!field.value && (
@@ -332,8 +403,16 @@ export default function Auth() {
                                       <AnimatedPlaceholder examples={['your.email@gmail.com', 'user@thorx.com', 'john.doe@outlook.com']} />
                                     </div>
                                   )}
+                                  {!emailValidation.valid && field.value && (
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                      <span className="text-red-500 text-xl">⚠</span>
+                                    </div>
+                                  )}
                                 </div>
                               </FormControl>
+                              {!emailValidation.valid && field.value && (
+                                <p className="text-sm text-red-500 mt-1">{emailValidation.message}</p>
+                              )}
                               <FormMessage className="mt-2" />
                             </FormItem>
                           )}
@@ -350,7 +429,7 @@ export default function Auth() {
                                 <div className="group relative inline-flex">
                                   <Info className="w-4 h-4 text-primary/70 hover:text-primary transition-colors cursor-help" />
                                   <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                    Optional Field
+                                    Pakistan or International format
                                   </span>
                                 </div>
                               </FormLabel>
@@ -358,7 +437,12 @@ export default function Auth() {
                                 <div className="relative">
                                   <Input 
                                     {...field}
-                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
+                                    onChange={(e) => {
+                                      field.onChange(e);
+                                      const validation = validatePhone(e.target.value);
+                                      setPhoneValidation(validation);
+                                    }}
+                                    className={`border-2 ${!phoneValidation.valid && field.value ? 'border-red-500' : 'border-black'} text-base md:text-lg py-3 md:py-4 px-4`}
                                     data-testid="input-register-phone"
                                   />
                                   {!field.value && (
@@ -366,8 +450,21 @@ export default function Auth() {
                                       <AnimatedPlaceholder examples={['+92 300 1234567', '03001234567', '+92 321 9876543']} />
                                     </div>
                                   )}
+                                  {!phoneValidation.valid && field.value && (
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                      <span className="text-red-500 text-xl">⚠</span>
+                                    </div>
+                                  )}
+                                  {phoneValidation.valid && field.value && (
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                      <span className="text-green-500 text-xl">✓</span>
+                                    </div>
+                                  )}
                                 </div>
                               </FormControl>
+                              {!phoneValidation.valid && field.value && (
+                                <p className="text-sm text-red-500 mt-1">{phoneValidation.message}</p>
+                              )}
                               <FormMessage className="mt-2" />
                             </FormItem>
                           )}
