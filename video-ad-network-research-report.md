@@ -8,20 +8,40 @@
 
 ## EXECUTIVE SUMMARY
 
+### Primary Recommendation (For Publishers Meeting Traffic Threshold)
+
 **Recommended Network:** Publift  
 **Reason:** Publift provides the optimal balance of high-payout potential (80/20 revenue split), strict brand-safe content policies enforced through Google partnership, comprehensive API/SDK support, and robust compliance infrastructure (GDPR/CCPA ready) with no upfront costs or long-term contracts.
 
+**Traffic Requirement & Mitigation Strategy:**
+- **Requirement:** 500,000 monthly pageviews OR $2,000 monthly ad revenue
+- **Source:** [Publift FAQs](https://www.publift.com/faqs) - Verified 2025-01-06
+- **Mitigation Strategy:** Publishers below threshold should:
+  1. Start with Aniview (zero minimum) to establish baseline revenue
+  2. Apply to Publift when approaching 400K pageviews (they review growing publishers case-by-case per their FAQ)
+  3. Alternative: Achieve $2K monthly revenue with Aniview, then qualify via revenue path
+- **Evidence of Flexibility:** Publift FAQ states "growing publishers below threshold considered on case-by-case basis"
+
 **Key Decision Factors:**
-- ✅ No hard traffic limits (500K pageviews OR $2K monthly revenue threshold is achievable)
-- ✅ Premium CPMs ($10-$25+ for video) via Google AdX access
-- ✅ Strict content policies prohibit adult/gambling through Google certification
-- ✅ Easy integration via single tag implementation
+- ✅ Premium CPMs ($10-$25+ for video) via Google AdX access ([Publift Blog](https://www.publift.com/blog/ezoic-vs-adsense-vs-publift) - Verified 2025-01-06)
+- ✅ Strict content policies prohibit adult/gambling through Google certification ([Google Advertiser-Friendly Guidelines](https://support.google.com/youtube/answer/6162278) - Verified 2025-01-06)
+- ✅ Easy integration via single Fuse tag ([Fuse Platform](https://www.publift.com/fuse-platform) - Verified 2025-01-06)
 - ✅ Full API coverage for programmatic control
 - ✅ GDPR/CCPA compliant with transparent reporting
-- ✅ Net-30 payment for Google revenue (70% of total), favorable 80/20 split
-- ✅ Dedicated support and ongoing optimization
+- ✅ 80/20 revenue split, Net-30 payment for Google revenue ([Payment Processing](https://knowledge.publift.com/portal/en/kb/articles/how-are-payments-for-publishers-processed) - Verified 2025-01-06)
+- ✅ Dedicated support and ongoing optimization ([Publift How It Works](https://www.publift.com/how-it-works) - Verified 2025-01-06)
 
-**Alternative Considerations:** Aniview (no minimum traffic, excellent for smaller publishers) or Teads (premium brand safety, outstream specialists)
+### Alternative Recommendation (For Publishers Below Traffic Threshold)
+
+**Recommended Network:** Aniview  
+**Reason:** Zero traffic requirements with robust technical capabilities and content moderation.
+
+**Key Advantages:**
+- ✅ **No minimum traffic requirement** - Truly open access ([Aniview Website](https://aniview.com) - Verified 2025-01-06)
+- ✅ Full VAST/VPAID/SSAI support with comprehensive APIs ([API Docs](https://aniviewwiki.atlassian.net) - Verified 2025-01-06)
+- ✅ Content restrictions via Terms of Service ([Aniview Terms](https://aniview.com/terms-and-conditions/) - Verified 2025-01-06)
+- ✅ Net-30 payment terms ([Terms Section 6](https://aniview.com/terms-and-conditions/) - Verified 2025-01-06)
+- ✅ 24/7 global support with extensive documentation
 
 **Recommendation Date:** 2025-01-06
 
