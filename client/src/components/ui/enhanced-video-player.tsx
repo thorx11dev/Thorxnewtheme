@@ -59,6 +59,297 @@ const playerColors: Record<string, string> = {
 const thorxOrange = "#F97316"; // Example: primary orange
 const thorxBlack = "#000000"; // Example: black
 
+// Single area player component
+interface AreaPlayerProps {
+  areaId: string;
+  areaLabel: string;
+  tab: VideoTab;
+  isActive: boolean;
+  isFullscreen: boolean;
+  isMobileDevice: boolean;
+  onComplete?: (tabId: string, earnings: string) => void;
+  onFullscreenToggle: () => void;
+}
+
+function AreaPlayer({ 
+  areaId, 
+  areaLabel, 
+  tab, 
+  isActive, 
+  isFullscreen, 
+  isMobileDevice,
+  onComplete,
+  onFullscreenToggle
+}: AreaPlayerProps) {
+  // Independent state for this specific area player
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [adProgress, setAdProgress] = useState(0);
+  const [canSkip, setCanSkip] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [showSkip, setShowSkip] = useState(false);
+  const [autoplayEnabled, setAutoplayEnabled] = useState(false);
+  const [volume, setVolume] = useState(80);
+  const [isMuted, setIsMuted] = useState(false);
+  const [adQueue, setAdQueue] = useState<number[]>([1, 2, 3]); // Queue of ads for this area
+  const [currentAdIndex, setCurrentAdIndex] = useState(0);
+
+  const duration = 30; // Video duration in seconds
+  const playerRef = useRef<HTMLDivElement>(null);
+
+  // Format currency
+  const formatCurrency = (amount: string) => {
+    return `$${parseFloat(amount).toFixed(2)}`;
+  };
+
+  const formatVideoTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Timer for video progress - only runs when this area is active
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (isActive && isPlaying && !isCompleted) {
+      interval = setInterval(() => {
+        setCurrentTime(prev => {
+          const newTime = prev + 1;
+          const progress = (newTime / duration) * 100;
+          setAdProgress(progress);
+
+          // Allow skip after 5 seconds
+          if (newTime >= 5 && !canSkip) {
+            setCanSkip(true);
+            setShowSkip(true);
+          }
+
+          // Auto-complete at end
+          if (newTime >= duration) {
+            setIsPlaying(false);
+            setIsCompleted(true);
+            onComplete?.(`${tab.id}-area-${areaId}-ad-${currentAdIndex + 1}`, tab.reward);
+
+            // If autoplay is enabled and there are more ads in queue
+            if (autoplayEnabled && currentAdIndex < adQueue.length - 1) {
+              setTimeout(() => {
+                // Move to next ad in queue
+                setCurrentAdIndex(prev => prev + 1);
+                setCurrentTime(0);
+                setAdProgress(0);
+                setCanSkip(false);
+                setIsCompleted(false);
+                setShowSkip(false);
+                setIsPlaying(true); // Auto-start next ad
+              }, 1500);
+            } else if (autoplayEnabled && currentAdIndex >= adQueue.length - 1) {
+              // No more ads in queue, disable autoplay
+              setAutoplayEnabled(false);
+            }
+
+            return duration;
+          }
+
+          return newTime;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isActive, isPlaying, isCompleted, duration, canSkip, autoplayEnabled, currentAdIndex, adQueue.length, tab.id, tab.reward, areaId, onComplete]);
+
+  const handlePlay = () => setIsPlaying(true);
+  const handlePause = () => setIsPlaying(false);
+
+  const handleSkip = () => {
+    if (canSkip && !isCompleted) {
+      setCurrentTime(duration);
+      setAdProgress(100);
+      setIsPlaying(false);
+      setIsCompleted(true);
+      onComplete?.(`${tab.id}-area-${areaId}-ad-${currentAdIndex + 1}`, tab.reward);
+    }
+  };
+
+  const handleVolumeToggle = () => setIsMuted(!isMuted);
+  const handleAutoplayToggle = () => setAutoplayEnabled(!autoplayEnabled);
+
+  if (!isActive) return null;
+
+  return (
+    <div 
+      ref={playerRef}
+      className={`relative flex items-center justify-center overflow-hidden transition-all duration-300 ${
+        isFullscreen 
+          ? isMobileDevice
+            ? 'h-[calc(100vh-80px)] w-full border border-black'
+            : 'h-[calc(100vh-200px)] w-full border-2 border-black' 
+          : isMobileDevice
+            ? 'aspect-video border border-black'
+            : 'aspect-video border-2 border-black'
+      }`}
+      data-testid={`video-player-${areaId}`}
+      style={{ 
+        backgroundColor: areaId === "001" ? "#1E3A8A" : 
+                       areaId === "002" ? "#166534" : 
+                       areaId === "003" ? "#92400E" : 
+                       areaId === "004" ? "#581C87" : 
+                       "black"
+      }}
+    >
+      {/* Industrial Grid Pattern */}
+      <div className={`absolute inset-0 ${isMobileDevice ? 'hidden' : 'opacity-10'}`}>
+        <div className="industrial-grid" />
+      </div>
+
+      {/* Video Content Background */}
+      <div className={`absolute inset-0 ${playerColors[areaId] || 'from-black/80 via-gray-900/90 to-black/80'}`} />
+
+      {/* Play Button */}
+      <div className="relative z-10 flex items-center justify-center">
+        {!isPlaying ? (
+          <button
+            onClick={handlePlay}
+            className={`group relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center transition-all duration-300 hover:bg-white/20 hover:scale-105 hover:border-white/40 ${
+              isFullscreen ? 'w-24 h-24' : 'w-16 h-16'
+            }`}
+            data-testid={`button-play-${areaId}`}
+          >
+            <PlayCircle className={`text-white group-hover:text-white/90 transition-colors ${
+              isFullscreen ? 'w-12 h-12' : 'w-8 h-8'
+            }`} />
+          </button>
+        ) : (
+          <div className="text-center text-white">
+            <div className={`mb-2 ${isFullscreen ? 'text-6xl mb-4' : 'text-4xl'}`}>{tab.icon}</div>
+            <TechnicalLabel 
+              text={`${areaLabel} - AD ${currentAdIndex + 1}/${adQueue.length}`} 
+              className={`text-white mb-1 ${isFullscreen ? 'text-2xl mb-2' : 'text-lg'}`} 
+            />
+            <p className={`text-white/80 ${isFullscreen ? 'text-lg' : 'text-sm'}`}>{tab.description}</p>
+            {isCompleted && (
+              <div className={`mt-4 bg-green-600/20 border border-green-400 ${
+                isFullscreen ? 'p-4 mt-6' : 'p-3'
+              }`}>
+                <TechnicalLabel 
+                  text="AD COMPLETED" 
+                  className={`text-green-400 ${isFullscreen ? 'text-lg' : ''}`} 
+                />
+                <p className={`text-white mt-1 ${isFullscreen ? 'text-lg mt-2' : ''}`}>
+                  You earned {formatCurrency(tab.reward)}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Skip Button */}
+      {showSkip && canSkip && !isCompleted && (
+        <button
+          onClick={handleSkip}
+          className={`absolute bg-white/90 backdrop-blur-sm text-black border border-black/20 rounded-md hover:bg-white hover:border-black/40 transition-all duration-200 shadow-lg z-20 ${
+            isFullscreen ? 'top-6 right-6 px-4 py-3' : 'top-4 right-4 px-3 py-2'
+          }`}
+          data-testid={`button-skip-${areaId}`}
+        >
+          <TechnicalLabel 
+            text="SKIP AD" 
+            className={`text-black font-medium ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
+          />
+        </button>
+      )}
+
+      {/* Progress Bar */}
+      <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
+        isFullscreen ? 'p-4' : isMobileDevice ? 'p-2' : 'p-3'
+      }`}>
+        <div className={`flex items-center justify-between ${
+          isFullscreen ? 'mb-3' : isMobileDevice ? 'mb-1' : 'mb-2'
+        }`}>
+          <TechnicalLabel 
+            text={`${areaLabel} - EARN ${formatCurrency(tab.reward)}`} 
+            className={`text-white ${
+              isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'
+            }`} 
+          />
+          <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-3'}`}>
+            <span className={`text-white/60 ${
+              isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'
+            }`}>
+              {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
+            </span>
+            {!isMobileDevice && (
+              <>
+                <button
+                  onClick={handleAutoplayToggle}
+                  className={`relative rounded-full transition-all duration-300 ${
+                    isFullscreen ? 'w-12 h-6' : 'w-10 h-5'
+                  } ${
+                    autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
+                  } border-2 border-white`}
+                  data-testid={`button-autoplay-${areaId}`}
+                  title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+                >
+                  <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
+                    isFullscreen ? 'w-4 h-4' : 'w-3 h-3'
+                  } ${
+                    autoplayEnabled ? (isFullscreen ? 'left-6' : 'left-5') : 'left-0.5'
+                  }`} />
+                </button>
+                <button
+                  onClick={handleVolumeToggle}
+                  className="text-white hover:text-primary transition-colors p-1"
+                  data-testid={`button-volume-${areaId}`}
+                >
+                  {isMuted || volume === 0 ? 
+                    <VolumeX className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
+                    <Volume2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
+                  }
+                </button>
+                <button
+                  onClick={onFullscreenToggle}
+                  className="text-white hover:text-primary transition-colors p-1"
+                  data-testid={`button-fullscreen-${areaId}`}
+                >
+                  {isFullscreen ? 
+                    <Minimize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
+                    <Maximize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
+                  }
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className={`w-full bg-gray-600 transition-all duration-300 ${
+          isFullscreen ? 'h-3 border border-white/20' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
+        }`}>
+          <div 
+            className={`h-full bg-primary transition-all duration-500 ${
+              isMobileDevice ? 'rounded-sm' : 'border-r border-white/40'
+            }`}
+            style={{ width: `${adProgress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Industrial Corner Accents */}
+      {!isMobileDevice && (
+        <>
+          <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-white/40" />
+          <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-white/40" />
+          <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-white/40" />
+          <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-white/40" />
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function EnhancedVideoPlayer({ 
   tab, 
   isActive = true, 
@@ -68,25 +359,11 @@ export default function EnhancedVideoPlayer({
 }: EnhancedVideoPlayerProps) {
   const isMobileDevice = useIsMobile();
 
-  // Shared state
+  // Shared state across all players
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [volume, setVolume] = useState(80);
-  const [isMuted, setIsMuted] = useState(false);
   const [activeAreaTab, setActiveAreaTab] = useState("001");
 
-  // Individual player states for each area
-  const [playerStates, setPlayerStates] = useState<Record<string, PlayerState>>({
-    "001": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false, autoplayEnabled: false },
-    "002": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false, autoplayEnabled: false },
-    "003": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false, autoplayEnabled: false },
-    "004": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false, autoplayEnabled: false },
-  });
-
-  const duration = 30; // Video duration in seconds
   const playerRef = useRef<HTMLDivElement>(null);
-
-  // Get current player state
-  const currentPlayerState = playerStates[activeAreaTab];
 
   // Area tabs data matching wireframe
   const areaTabs = [
@@ -119,10 +396,8 @@ export default function EnhancedVideoPlayer({
         (document as any).msFullscreenElement
       );
 
-      // Always sync with browser fullscreen state for both desktop and mobile
       setIsFullscreen(isCurrentlyFullscreen);
 
-      // Handle body classes - always sync with actual browser state
       if (isMobileDevice) {
         if (isCurrentlyFullscreen) {
           document.body.classList.add('video-fullscreen-active');
@@ -142,133 +417,12 @@ export default function EnhancedVideoPlayer({
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
-
-      // Cleanup body classes
       document.body.classList.remove('video-fullscreen-active');
       document.body.classList.remove('cinematic-mode');
     };
   }, [isMobileDevice]);
 
-  // Main timer for video progress - works for active area only
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    const currentState = playerStates[activeAreaTab];
-
-    if (currentState.isPlaying && !currentState.isCompleted) {
-      interval = setInterval(() => {
-        setPlayerStates(prev => {
-          const newTime = prev[activeAreaTab].currentTime + 1;
-          const progress = (newTime / duration) * 100;
-
-          const updatedState: PlayerState = {
-            ...prev[activeAreaTab],
-            currentTime: newTime,
-            adProgress: progress,
-          };
-
-          // Allow skip after 5 seconds
-          if (newTime >= 5 && !prev[activeAreaTab].canSkip) {
-            updatedState.canSkip = true;
-            updatedState.showSkip = true;
-          }
-
-          // Auto-complete at end
-          if (newTime >= duration) {
-            updatedState.isPlaying = false;
-            updatedState.isCompleted = true;
-            updatedState.currentTime = duration;
-            onComplete?.(`${tab.id}-area-${activeAreaTab}`, tab.reward);
-
-            // If autoplay is enabled, trigger next ad after a short delay
-            if (updatedState.autoplayEnabled) {
-              setTimeout(() => {
-                // Find next area
-                const currentIndex = areaTabs.findIndex(t => t.id === activeAreaTab);
-                const nextIndex = currentIndex + 1;
-                
-                if (nextIndex < areaTabs.length) {
-                  const nextAreaTab = areaTabs[nextIndex].id;
-                  setActiveAreaTab(nextAreaTab);
-                  
-                  // Reset state and start playing automatically
-                  setPlayerStates(prevStates => ({
-                    ...prevStates,
-                    [nextAreaTab]: {
-                      ...prevStates[nextAreaTab],
-                      isPlaying: true, // Auto-start playback
-                      currentTime: 0,
-                      adProgress: 0,
-                      canSkip: false,
-                      isCompleted: false,
-                      showSkip: false,
-                      autoplayEnabled: true, // Carry over autoplay setting
-                    }
-                  }));
-                } else {
-                  // No more areas, stop autoplay
-                  setPlayerStates(prevStates => ({
-                    ...prevStates,
-                    [activeAreaTab]: { 
-                      ...prevStates[activeAreaTab], 
-                      autoplayEnabled: false 
-                    }
-                  }));
-                }
-              }, 1500);
-            }
-          }
-
-          return {
-            ...prev,
-            [activeAreaTab]: updatedState
-          };
-        });
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [playerStates, activeAreaTab, duration, tab.id, tab.reward, onComplete, areaTabs]); // Added areaTabs dependency
-
-  // Player control handlers
-  const handlePlay = () => {
-    setPlayerStates(prev => ({
-      ...prev,
-      [activeAreaTab]: {
-        ...prev[activeAreaTab],
-        isPlaying: true
-      }
-    }));
-  };
-
-  const handlePause = () => {
-    setPlayerStates(prev => ({
-      ...prev,
-      [activeAreaTab]: {
-        ...prev[activeAreaTab],
-        isPlaying: false
-      }
-    }));
-  };
-
-  const handleSkip = () => {
-    const currentState = playerStates[activeAreaTab];
-    if (currentState.canSkip && !currentState.isCompleted) {
-      setPlayerStates(prev => ({
-        ...prev,
-        [activeAreaTab]: {
-          ...prev[activeAreaTab],
-          currentTime: duration,
-          adProgress: 100,
-          isPlaying: false,
-          isCompleted: true
-        }
-      }));
-      onComplete?.(`${tab.id}-area-${activeAreaTab}`, tab.reward);
-    }
-  };
-
-  const handleFullscreen = async () => {
+  const handleFullscreenToggle = async () => {
     if (!isFullscreen) {
       // Enter fullscreen
       try {
@@ -394,20 +548,7 @@ export default function EnhancedVideoPlayer({
     }
   };
 
-  const handleVolumeToggle = () => {
-    setIsMuted(!isMuted);
-  };
-
-  const formatVideoTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Autoplay toggle handler
-  const handleAutoplayToggle = () => {
-    setPlayerStates(prev => ({ ...prev, [activeAreaTab]: { ...prev[activeAreaTab], autoplayEnabled: !prev[activeAreaTab].autoplayEnabled } }));
-  };
+  
 
 
   return (
@@ -438,18 +579,7 @@ export default function EnhancedVideoPlayer({
               {areaTabs.map((areaTab) => (
                 <button
                   key={areaTab.id}
-                  onClick={() => {
-                    const wasAutoplayEnabled = currentPlayerState.autoplayEnabled;
-                    setActiveAreaTab(areaTab.id);
-                    // Preserve autoplay state when switching areas
-                    setPlayerStates(prev => ({
-                      ...prev,
-                      [areaTab.id]: { 
-                        ...prev[areaTab.id], 
-                        autoplayEnabled: wasAutoplayEnabled 
-                      }
-                    }));
-                  }}
+                  onClick={() => setActiveAreaTab(areaTab.id)}
                   className={`border border-black transition-all duration-200 ${
                     isFullscreen 
                       ? 'text-sm px-4 py-2' 
@@ -473,219 +603,20 @@ export default function EnhancedVideoPlayer({
           </div>
         </div>
 
-        {/* Main Video Content Area */}
-        <div 
-          ref={playerRef}
-          className={`relative flex items-center justify-center overflow-hidden transition-all duration-300 ${
-            isFullscreen 
-              ? isMobileDevice
-                ? 'h-[calc(100vh-80px)] w-full border border-black'
-                : 'h-[calc(100vh-200px)] w-full border-2 border-black' 
-              : isMobileDevice
-                ? 'aspect-video border border-black'
-                : 'aspect-video border-2 border-black'
-          }`}
-          data-testid={`video-player-${tab.id}`}
-          style={{ 
-            backgroundColor: activeAreaTab === "001" ? "#1E3A8A" : // Dark blue for 001
-                           activeAreaTab === "002" ? "#166534" : // Dark green for 002
-                           activeAreaTab === "003" ? "#92400E" : // Dark yellow/orange for 003
-                           activeAreaTab === "004" ? "#581C87" : // Dark purple for 004
-                           "black" // Default to black
-          }}
-        >
-          {/* Industrial Grid Pattern - Hidden on Mobile for Cleaner Look */}
-          <div className={`absolute inset-0 ${isMobileDevice ? 'hidden' : 'opacity-10'}`}>
-            <div className="industrial-grid" />
-          </div>
-
-          {/* Video Content Background */}
-          <div className={`absolute inset-0 ${playerColors[activeAreaTab] || 'from-black/80 via-gray-900/90 to-black/80'}`} />
-
-          {/* Minimal Clean Play Button */}
-          <div className="relative z-10 flex items-center justify-center">
-            {!currentPlayerState.isPlaying ? (
-              <button
-                onClick={handlePlay}
-                className={`group relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center transition-all duration-300 hover:bg-white/20 hover:scale-105 hover:border-white/40 ${
-                  isFullscreen ? 'w-24 h-24' : 'w-16 h-16'
-                }`}
-                data-testid="button-play"
-              >
-                <PlayCircle className={`text-white group-hover:text-white/90 transition-colors ${
-                  isFullscreen ? 'w-12 h-12' : 'w-8 h-8'
-                }`} />
-              </button>
-            ) : (
-              <div className="text-center text-white">
-                <div className={`mb-2 ${isFullscreen ? 'text-6xl mb-4' : 'text-4xl'}`}>{tab.icon}</div>
-                <TechnicalLabel 
-                  text={`${tab.title} - AREA ${activeAreaTab}`} 
-                  className={`text-white mb-1 ${isFullscreen ? 'text-2xl mb-2' : 'text-lg'}`} 
-                />
-                <p className={`text-white/80 ${isFullscreen ? 'text-lg' : 'text-sm'}`}>{tab.description}</p>
-                {currentPlayerState.isCompleted && (
-                  <div className={`mt-4 bg-green-600/20 border border-green-400 ${
-                    isFullscreen ? 'p-4 mt-6' : 'p-3'
-                  }`}>
-                    <TechnicalLabel 
-                      text="AD COMPLETED" 
-                      className={`text-green-400 ${isFullscreen ? 'text-lg' : ''}`} 
-                    />
-                    <p className={`text-white mt-1 ${isFullscreen ? 'text-lg mt-2' : ''}`}>
-                      You earned {formatCurrency(tab.reward)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Skip Button - Clearly Visible */}
-          {currentPlayerState.showSkip && currentPlayerState.canSkip && !currentPlayerState.isCompleted && (
-            <button
-              onClick={handleSkip}
-              className={`absolute bg-white/90 backdrop-blur-sm text-black border border-black/20 rounded-md hover:bg-white hover:border-black/40 transition-all duration-200 shadow-lg z-20 ${
-                isFullscreen 
-                  ? 'top-6 right-6 px-4 py-3' 
-                  : 'top-4 right-4 px-3 py-2'
-              }`}
-              data-testid="button-skip"
-            >
-              <TechnicalLabel 
-                text="SKIP AD" 
-                className={`text-black font-medium ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
-              />
-            </button>
-          )}
-
-          {/* Progress Bar - Simplified for Mobile */}
-          <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
-            isFullscreen 
-              ? 'p-4' 
-              : isMobileDevice 
-                ? 'p-2' 
-                : 'p-3'
-          }`}>
-            <div className={`flex items-center justify-between ${
-              isFullscreen 
-                ? 'mb-3' 
-                : isMobileDevice 
-                  ? 'mb-1' 
-                  : 'mb-2'
-            }`}>
-              <TechnicalLabel 
-                text={`AREA ${activeAreaTab} - EARN ${formatCurrency(tab.reward)}`} 
-                className={`text-white ${
-                  isFullscreen 
-                    ? 'text-sm' 
-                    : isMobileDevice 
-                      ? 'text-xs' 
-                      : 'text-xs'
-                }`} 
-              />
-              <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-3'}`}>
-                <span className={`text-white/60 ${
-                  isFullscreen 
-                    ? 'text-sm' 
-                    : isMobileDevice 
-                      ? 'text-xs' 
-                      : 'text-xs'
-                }`}>
-                  {formatVideoTime(currentPlayerState.currentTime)} / {formatVideoTime(duration)}
-                </span>
-                {/* Hide control buttons on mobile - they're relocated to status bar */}
-                {!isMobileDevice && (
-                  <>
-                    {/* Autoplay Toggle Button */}
-                    <button
-                      onClick={handleAutoplayToggle}
-                      className={`relative rounded-full transition-all duration-300 ${
-                        isFullscreen ? 'w-12 h-6' : 'w-10 h-5'
-                      } ${
-                        currentPlayerState.autoplayEnabled 
-                          ? 'bg-primary' 
-                          : 'bg-gray-400'
-                      } border-2 border-white`}
-                      data-testid="button-autoplay"
-                      title={currentPlayerState.autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
-                    >
-                      <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
-                        isFullscreen ? 'w-4 h-4' : 'w-3 h-3'
-                      } ${
-                        currentPlayerState.autoplayEnabled 
-                          ? isFullscreen ? 'left-6' : 'left-5'
-                          : 'left-0.5'
-                      }`} />
-                    </button>
-                    <button
-                      onClick={handleVolumeToggle}
-                      className="text-white hover:text-primary transition-colors p-1"
-                      data-testid="button-volume"
-                    >
-                      {isMuted || volume === 0 ? 
-                        <VolumeX className={
-                          isFullscreen 
-                            ? 'w-5 h-5' 
-                            : 'w-4 h-4'
-                        } /> : 
-                        <Volume2 className={
-                          isFullscreen 
-                            ? 'w-5 h-5' 
-                            : 'w-4 h-4'
-                        } />
-                      }
-                    </button>
-                    <button
-                      onClick={handleFullscreen}
-                      className="text-white hover:text-primary transition-colors p-1"
-                      data-testid="button-fullscreen"
-                    >
-                      {isFullscreen ? 
-                        <Minimize2 className={
-                          isFullscreen 
-                            ? 'w-5 h-5' 
-                            : 'w-4 h-4'
-                        } /> : 
-                        <Maximize2 className={
-                          isFullscreen 
-                            ? 'w-5 h-5' 
-                            : 'w-4 h-4'
-                        } />
-                      }
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Progress Bar with Simplified Mobile Styling */}
-            <div className={`w-full bg-gray-600 transition-all duration-300 ${
-              isFullscreen 
-                ? 'h-3 border border-white/20' 
-                : isMobileDevice 
-                  ? 'h-2 border-none rounded-sm' 
-                  : 'h-2 border border-white/20'
-            }`}>
-              <div 
-                className={`h-full bg-primary transition-all duration-500 ${
-                  isMobileDevice ? 'rounded-sm' : 'border-r border-white/40'
-                }`}
-                style={{ width: `${currentPlayerState.adProgress}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Industrial Corner Accents - Simplified for Mobile */}
-          {!isMobileDevice && (
-            <>
-              <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-white/40" />
-              <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-white/40" />
-              <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-white/40" />
-              <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-white/40" />
-            </>
-          )}
-        </div>
+        {/* Main Video Content Area - Independent Players for Each Area */}
+        {areaTabs.map((areaTab) => (
+          <AreaPlayer
+            key={areaTab.id}
+            areaId={areaTab.id}
+            areaLabel={areaTab.label}
+            tab={tab}
+            isActive={activeAreaTab === areaTab.id}
+            isFullscreen={isFullscreen}
+            isMobileDevice={isMobileDevice}
+            onComplete={onComplete}
+            onFullscreenToggle={handleFullscreenToggle}
+          />
+        ))}
 
         {/* Industrial Status Bar - Mobile Controls Relocated */}
         <div className={`bg-white transition-all duration-300 ${
@@ -697,94 +628,29 @@ export default function EnhancedVideoPlayer({
         }`}>
           <div className={`flex items-center justify-between ${isMobileDevice ? 'text-xs' : ''}`}>
             <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-4'}`}>
-              {/* Mobile: Replace ACTIVE label with video controls */}
-              {isMobileDevice ? (
-                <div className="flex items-center gap-2">
-                  {/* Autoplay Toggle Button - Mobile */}
-                  <button
-                    onClick={handleAutoplayToggle}
-                    className={`relative rounded-full transition-all duration-300 w-10 h-5 ${
-                      currentPlayerState.autoplayEnabled 
-                        ? 'bg-primary' 
-                        : 'bg-gray-400'
-                    } border-2 border-black`}
-                    data-testid="button-autoplay-status"
-                    title={currentPlayerState.autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
-                  >
-                    <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white w-3 h-3 ${
-                      currentPlayerState.autoplayEnabled 
-                        ? 'left-5'
-                        : 'left-0.5'
-                    }`} />
-                  </button>
-                  <button
-                    onClick={handleVolumeToggle}
-                    className="text-black hover:text-primary transition-colors p-1 bg-gray-100 border border-black hover:bg-gray-200"
-                    data-testid="button-volume-status"
-                  >
-                    {isMuted || volume === 0 ? 
-                      <VolumeX className="w-4 h-4" /> : 
-                      <Volume2 className="w-4 h-4" />
-                    }
-                  </button>
-                  <button
-                    onClick={handleFullscreen}
-                    className="text-black hover:text-primary transition-colors p-1 bg-gray-100 border border-black hover:bg-gray-200"
-                    data-testid="button-fullscreen-status"
-                  >
-                    {isFullscreen ? 
-                      <Minimize2 className="w-4 h-4" /> : 
-                      <Maximize2 className="w-4 h-4" />
-                    }
-                  </button>
-                </div>
-              ) : (
+              {!isMobileDevice && (
                 <>
                   <TechnicalLabel 
                     text={`ACTIVE: ${activeAreaTab}`} 
-                    className={`text-black ${
-                      isFullscreen 
-                        ? 'text-sm' 
-                        : 'text-xs'
-                    }`} 
+                    className={`text-black ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
                   />
                   <TechnicalLabel 
-                    text={`STATUS: ${currentPlayerState.isPlaying ? 'PLAYING' : currentPlayerState.isCompleted ? 'COMPLETE' : 'READY'}`} 
-                    className={`text-black ${
-                      isFullscreen 
-                        ? 'text-sm' 
-                        : isMobileDevice 
-                      ? 'text-xs' 
-                      : 'text-xs'
-                }`} 
+                    text="STATUS: READY" 
+                    className={`text-black ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
                   />
                 </>
               )}
             </div>
             <div className={`flex items-center ${isMobileDevice ? 'gap-1' : 'gap-2'}`}>
               <TechnicalLabel 
-                text={`${Math.round(currentPlayerState.adProgress)}%`} 
-                className={`text-black ${
-                  isFullscreen 
-                    ? 'text-sm' 
-                    : isMobileDevice 
-                      ? 'text-xs' 
-                      : 'text-xs'
-                }`} 
+                text="AREA PLAYER" 
+                className={`text-black ${isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'}`} 
               />
               <div className={`bg-black ${
-                isFullscreen 
-                  ? 'w-5 h-5 border border-gray-400' 
-                  : isMobileDevice 
-                    ? 'w-3 h-3' 
-                    : 'w-4 h-4 border border-gray-400'
+                isFullscreen ? 'w-5 h-5 border border-gray-400' : isMobileDevice ? 'w-3 h-3' : 'w-4 h-4 border border-gray-400'
               }`}>
                 <div className={`bg-primary ${
-                  isFullscreen 
-                    ? 'w-2.5 h-2.5 m-0.5' 
-                    : isMobileDevice 
-                      ? 'w-1.5 h-1.5 m-0.25' 
-                      : 'w-2 h-2 m-0.5'
+                  isFullscreen ? 'w-2.5 h-2.5 m-0.5' : isMobileDevice ? 'w-1.5 h-1.5 m-0.25' : 'w-2 h-2 m-0.5'
                 }`} />
               </div>
             </div>
