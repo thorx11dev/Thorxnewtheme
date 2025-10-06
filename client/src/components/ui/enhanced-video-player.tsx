@@ -586,6 +586,27 @@ export default function EnhancedVideoPlayer({
                 {/* Hide control buttons on mobile - they're relocated to status bar */}
                 {!isMobileDevice && (
                   <>
+                    {/* Autoplay Toggle Button */}
+                    <button
+                      onClick={handleAutoplayToggle}
+                      className={`relative rounded-full transition-all duration-300 ${
+                        isFullscreen ? 'w-12 h-6' : 'w-10 h-5'
+                      } ${
+                        currentPlayerState.autoplayEnabled 
+                          ? 'bg-primary' 
+                          : 'bg-gray-400'
+                      } border-2 border-white`}
+                      data-testid="button-autoplay"
+                      title={currentPlayerState.autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+                    >
+                      <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
+                        isFullscreen ? 'w-4 h-4' : 'w-3 h-3'
+                      } ${
+                        currentPlayerState.autoplayEnabled 
+                          ? isFullscreen ? 'left-6' : 'left-5'
+                          : 'left-0.5'
+                      }`} />
+                    </button>
                     <button
                       onClick={handleVolumeToggle}
                       className="text-white hover:text-primary transition-colors p-1"
@@ -667,7 +688,24 @@ export default function EnhancedVideoPlayer({
             <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-4'}`}>
               {/* Mobile: Replace ACTIVE label with video controls */}
               {isMobileDevice ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  {/* Autoplay Toggle Button - Mobile */}
+                  <button
+                    onClick={handleAutoplayToggle}
+                    className={`relative rounded-full transition-all duration-300 w-10 h-5 ${
+                      currentPlayerState.autoplayEnabled 
+                        ? 'bg-primary' 
+                        : 'bg-gray-400'
+                    } border-2 border-black`}
+                    data-testid="button-autoplay-status"
+                    title={currentPlayerState.autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+                  >
+                    <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white w-3 h-3 ${
+                      currentPlayerState.autoplayEnabled 
+                        ? 'left-5'
+                        : 'left-0.5'
+                    }`} />
+                  </button>
                   <button
                     onClick={handleVolumeToggle}
                     className="text-black hover:text-primary transition-colors p-1 bg-gray-100 border border-black hover:bg-gray-200"
