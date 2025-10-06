@@ -357,7 +357,6 @@ export default function UserPortal() {
   const [activeWorkTab, setActiveWorkTab] = useState<string>("ads");
   const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
-  const [currentAdIndex, setCurrentAdIndex] = useState(0);
 
   // Mobile detection
   useEffect(() => {
@@ -1248,30 +1247,17 @@ export default function UserPortal() {
       });
     };
 
-    // Handle autoplay next ad
-    const handleAutoplayNext = () => {
-      const nextIndex = (currentAdIndex + 1) % availableAds.length;
-      setCurrentAdIndex(nextIndex);
-      const nextAd = availableAds[nextIndex];
-      
-      toast({
-        title: "Next Ad Loading...",
-        description: `Starting ${nextAd.title}`,
-      });
-    };
-
-    // Get current ad based on index
-    const currentAd = availableAds[currentAdIndex];
-    
     // Get current video tab data for player
     const currentVideoTab = {
-      id: currentAd.id,
-      title: currentAd.title,
-      icon: getAdTypeIcon(currentAd.type),
+      id: activeWorkTab,
+      title: WORK_TABS.find(tab => tab.id === activeWorkTab)?.title || "ADS",
+      icon: activeWorkTab === "ads" ? "📺" :
+            activeWorkTab === "surveys" ? "📊" :
+            activeWorkTab === "referrals" ? "👥" : "✅",
       color: "primary",
-      videoUrl: `#${currentAd.id}-video`,
-      reward: currentAd.reward,
-      description: currentAd.description
+      videoUrl: `#${activeWorkTab}-video`,
+      reward: "2.50",
+      description: WORK_TABS.find(tab => tab.id === activeWorkTab)?.description || "Watch and earn"
     };
 
     return (
@@ -1371,7 +1357,6 @@ export default function UserPortal() {
                       onComplete={handleVideoComplete}
                       autoplay={false}
                       isMobile={isMobile}
-                      onAutoplayNext={handleAutoplayNext}
                     />
                   )}
                 </div>
