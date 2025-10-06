@@ -182,32 +182,39 @@ export default function EnhancedVideoPlayer({
             // If autoplay is enabled, trigger next ad after a short delay
             if (updatedState.autoplayEnabled) {
               setTimeout(() => {
-                // Reset state and start next ad
-                setPlayerStates(prevStates => {
-                  const nextAreaTab = (parseInt(activeAreaTab) + 1).toString();
-                  if (areaTabs.some(tab => tab.id === nextAreaTab)) {
-                    setActiveAreaTab(nextAreaTab);
-                    return {
-                      ...prevStates,
-                      [nextAreaTab]: {
-                        isPlaying: false,
-                        currentTime: 0,
-                        adProgress: 0,
-                        canSkip: false,
-                        isCompleted: false,
-                        showSkip: false,
-                        autoplayEnabled: true, // Carry over autoplay setting
-                      }
-                    };
-                  } else {
-                    // No more areas, stop autoplay
-                    return {
-                      ...prevStates,
-                      [activeAreaTab]: { ...prevStates[activeAreaTab], autoplayEnabled: false }
-                    };
-                  }
-                });
-              }, 1000);
+                // Find next area
+                const currentIndex = areaTabs.findIndex(t => t.id === activeAreaTab);
+                const nextIndex = currentIndex + 1;
+                
+                if (nextIndex < areaTabs.length) {
+                  const nextAreaTab = areaTabs[nextIndex].id;
+                  setActiveAreaTab(nextAreaTab);
+                  
+                  // Reset state and start playing automatically
+                  setPlayerStates(prevStates => ({
+                    ...prevStates,
+                    [nextAreaTab]: {
+                      ...prevStates[nextAreaTab],
+                      isPlaying: true, // Auto-start playback
+                      currentTime: 0,
+                      adProgress: 0,
+                      canSkip: false,
+                      isCompleted: false,
+                      showSkip: false,
+                      autoplayEnabled: true, // Carry over autoplay setting
+                    }
+                  }));
+                } else {
+                  // No more areas, stop autoplay
+                  setPlayerStates(prevStates => ({
+                    ...prevStates,
+                    [activeAreaTab]: { 
+                      ...prevStates[activeAreaTab], 
+                      autoplayEnabled: false 
+                    }
+                  }));
+                }
+              }, 1500);
             }
           }
 
@@ -432,11 +439,15 @@ export default function EnhancedVideoPlayer({
                 <button
                   key={areaTab.id}
                   onClick={() => {
+                    const wasAutoplayEnabled = currentPlayerState.autoplayEnabled;
                     setActiveAreaTab(areaTab.id);
-                    // If autoplay is on, ensure the next ad continues with the same setting
+                    // Preserve autoplay state when switching areas
                     setPlayerStates(prev => ({
                       ...prev,
-                      [areaTab.id]: { ...prev[areaTab.id], autoplayEnabled: currentPlayerState.autoplayEnabled }
+                      [areaTab.id]: { 
+                        ...prev[areaTab.id], 
+                        autoplayEnabled: wasAutoplayEnabled 
+                      }
                     }));
                   }}
                   className={`border border-black transition-all duration-200 ${
