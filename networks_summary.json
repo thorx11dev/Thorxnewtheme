@@ -1,0 +1,195 @@
+{
+  "report_metadata": {
+    "title": "Video Ad Network Integration Research Report",
+    "date_prepared": "2025-01-06",
+    "version": "1.0",
+    "recommendation": "Publift",
+    "sources_verified": "2025-01-06"
+  },
+  "networks_summary": [
+    {
+      "rank": 1,
+      "name": "Publift",
+      "official_url": "https://www.publift.com",
+      "type": "Programmatic SSP/Ad Management",
+      "score": 87.25,
+      "content_policy": {
+        "adult_content": "prohibited",
+        "gambling": "prohibited",
+        "policy_url": "https://www.publift.com/terms-and-conditions",
+        "enforcement": "Google Certified Partnership"
+      },
+      "traffic_requirements": {
+        "minimum_pageviews": 500000,
+        "minimum_revenue": 2000,
+        "currency": "USD",
+        "period": "monthly",
+        "flexible": true
+      },
+      "payout_terms": {
+        "revenue_share": "80/20 (publisher/network)",
+        "cpm_range": "10-25+",
+        "payment_schedule": "Net 30 (Google), Net 90 (others)",
+        "minimum_payout": 50,
+        "payment_methods": ["bank_transfer", "multi_currency"]
+      },
+      "integration": {
+        "sdk_urls": [
+          "https://www.publift.com/fuse-platform"
+        ],
+        "api_endpoints": [
+          "Proprietary Fuse Tag (managed)"
+        ],
+        "supported_formats": ["instream", "outstream", "VAST", "header_bidding"],
+        "documentation": "https://knowledge.publift.com"
+      },
+      "compliance": {
+        "gdpr": true,
+        "ccpa": true,
+        "coppa": true,
+        "iab_tcf": "2.2"
+      },
+      "support": {
+        "contact_email": "via website contact form",
+        "account_management": "dedicated",
+        "support_hours": "24/7",
+        "documentation_url": "https://knowledge.publift.com"
+      }
+    },
+    {
+      "rank": 2,
+      "name": "Aniview",
+      "official_url": "https://aniview.com",
+      "type": "Video Ad Server/Platform",
+      "score": 85.75,
+      "content_policy": {
+        "adult_content": "restricted_via_terms",
+        "gambling": "restricted_via_terms",
+        "policy_url": "https://aniview.com/terms-and-conditions/",
+        "enforcement": "Service Order specific"
+      },
+      "traffic_requirements": {
+        "minimum_pageviews": 0,
+        "minimum_revenue": 0,
+        "currency": null,
+        "period": null,
+        "flexible": true
+      },
+      "payout_terms": {
+        "revenue_share": "performance_based_undisclosed",
+        "cpm_range": "variable",
+        "payment_schedule": "Net 30",
+        "minimum_payout": "custom",
+        "payment_methods": ["custom_arrangements"]
+      },
+      "integration": {
+        "sdk_urls": [
+          "https://aniview.com/mobile-sdk/",
+          "https://docs.prebid.org/dev-docs/bidders/aniview.html"
+        ],
+        "api_endpoints": [
+          "https://aniviewwiki.atlassian.net/wiki/spaces/documentation/pages/155975720/Reporting+API",
+          "https://aniviewwiki.atlassian.net/wiki/spaces/documentation/pages/2057699370/Ad+Source+API"
+        ],
+        "supported_formats": ["instream", "outstream", "VAST", "VPAID", "SSAI", "CTV_OTT"],
+        "documentation": "https://aniviewwiki.atlassian.net/wiki/spaces/documentation/"
+      },
+      "compliance": {
+        "gdpr": true,
+        "ccpa": true,
+        "coppa": false,
+        "iab_tcf": "standard"
+      },
+      "support": {
+        "contact_email": "info@aniview.com",
+        "account_management": "available",
+        "support_hours": "24/7",
+        "documentation_url": "https://aniviewwiki.atlassian.net"
+      }
+    },
+    {
+      "rank": 3,
+      "name": "Teads",
+      "official_url": "https://www.teads.com",
+      "type": "Outstream Video SSP",
+      "score": 85.50,
+      "content_policy": {
+        "adult_content": "prohibited",
+        "gambling": "restricted_certification_required",
+        "policy_url": "https://www.teads.com/ad-policies/",
+        "enforcement": "Multi-tier review + account manager approval"
+      },
+      "traffic_requirements": {
+        "minimum_pageviews": 0,
+        "minimum_revenue": 0,
+        "currency": null,
+        "period": null,
+        "flexible": true,
+        "note": "Premium publisher focus"
+      },
+      "payout_terms": {
+        "revenue_share": "undisclosed",
+        "cpm_range": "3-20+",
+        "payment_schedule": "Net 45",
+        "minimum_payout": 50,
+        "payment_methods": ["paypal", "wire_transfer"]
+      },
+      "integration": {
+        "sdk_urls": [
+          "Mobile SDK (iOS/Android)",
+          "Stats Perform API"
+        ],
+        "api_endpoints": [
+          "Teads Interface (self-serve)",
+          "Web tags (JavaScript)"
+        ],
+        "supported_formats": ["outstream_InRead", "outstream_InBoard", "outstream_InPicture", "TrueView", "CTV"],
+        "documentation": "https://www.teads.com/terms-of-use/"
+      },
+      "compliance": {
+        "gdpr": true,
+        "ccpa": true,
+        "coppa": false,
+        "iab_tcf": "2.2"
+      },
+      "support": {
+        "contact_email": "ob-legal@teads.com",
+        "account_management": "dedicated",
+        "support_hours": "business_hours",
+        "documentation_url": "https://www.teads.com/media-owners/"
+      }
+    }
+  ],
+  "excluded_networks": [
+    {
+      "name": "ExoClick",
+      "reason": "Explicitly allows adult/gambling content",
+      "evidence_url": "https://www.blockchain-ads.com/post/adult-ad-networks"
+    },
+    {
+      "name": "PropellerAds",
+      "reason": "Accepts adult/gambling traffic",
+      "evidence_url": "Industry reputation, no explicit prohibition"
+    },
+    {
+      "name": "TrafficJunky",
+      "reason": "Adult content specialist",
+      "evidence_url": "https://www.blockchain-ads.com/post/adult-ad-networks"
+    },
+    {
+      "name": "Adsterra",
+      "reason": "Allows adult/dating/gambling categories",
+      "evidence_url": "Policy review - accepts all verticals"
+    }
+  ],
+  "integration_examples": {
+    "vanilla_html_js": "See Integration Method 3: Video.js + IMA SDK in main report",
+    "react": "See React + Video.js + IMA Component in main report",
+    "videojs": "See Video.js + IMA SDK (HTML) and React examples in main report"
+  },
+  "compliance_tools": {
+    "fraud_detection": ["Integral Ad Science", "DoubleVerify", "Pixalate", "GeoEdge"],
+    "privacy_compliance": ["OneTrust", "TrustArc", "Cookiebot", "Quantcast"]
+  },
+  "date_checked": "2025-01-06"
+}
