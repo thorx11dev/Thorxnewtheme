@@ -13,7 +13,9 @@ import {
   Settings,
   User,
   HelpCircle,
-  MoreHorizontal
+  MoreHorizontal,
+  Minimize, // Import Minimize icon
+  Maximize // Import Maximize icon
 } from "lucide-react";
 
 interface VideoTab {
@@ -42,6 +44,7 @@ interface PlayerState {
   canSkip: boolean;
   isCompleted: boolean;
   showSkip: boolean;
+  autoplayEnabled: boolean; // Added for autoplay toggle
 }
 
 // Thorx core color scheme for different players
@@ -51,6 +54,10 @@ const playerColors: Record<string, string> = {
   "003": "from-yellow-500 via-yellow-600 to-yellow-700", // Example: Yellow for AREA 003
   "004": "from-purple-600 via-purple-700 to-purple-800", // Example: Purple for AREA 004
 };
+
+// Thorx core colors for UI elements
+const thorxOrange = "#F97316"; // Example: primary orange
+const thorxBlack = "#000000"; // Example: black
 
 export default function EnhancedVideoPlayer({ 
   tab, 
@@ -69,10 +76,10 @@ export default function EnhancedVideoPlayer({
 
   // Individual player states for each area
   const [playerStates, setPlayerStates] = useState<Record<string, PlayerState>>({
-    "001": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
-    "002": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
-    "003": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
-    "004": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false },
+    "001": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false, autoplayEnabled: false },
+    "002": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false, autoplayEnabled: false },
+    "003": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false, autoplayEnabled: false },
+    "004": { isPlaying: false, currentTime: 0, adProgress: 0, canSkip: false, isCompleted: false, showSkip: false, autoplayEnabled: false },
   });
 
   const duration = 30; // Video duration in seconds
@@ -171,6 +178,37 @@ export default function EnhancedVideoPlayer({
             updatedState.isCompleted = true;
             updatedState.currentTime = duration;
             onComplete?.(`${tab.id}-area-${activeAreaTab}`, tab.reward);
+
+            // If autoplay is enabled, trigger next ad after a short delay
+            if (updatedState.autoplayEnabled) {
+              setTimeout(() => {
+                // Reset state and start next ad
+                setPlayerStates(prevStates => {
+                  const nextAreaTab = (parseInt(activeAreaTab) + 1).toString();
+                  if (areaTabs.some(tab => tab.id === nextAreaTab)) {
+                    setActiveAreaTab(nextAreaTab);
+                    return {
+                      ...prevStates,
+                      [nextAreaTab]: {
+                        isPlaying: false,
+                        currentTime: 0,
+                        adProgress: 0,
+                        canSkip: false,
+                        isCompleted: false,
+                        showSkip: false,
+                        autoplayEnabled: true, // Carry over autoplay setting
+                      }
+                    };
+                  } else {
+                    // No more areas, stop autoplay
+                    return {
+                      ...prevStates,
+                      [activeAreaTab]: { ...prevStates[activeAreaTab], autoplayEnabled: false }
+                    };
+                  }
+                });
+              }, 1000);
+            }
           }
 
           return {
@@ -183,7 +221,7 @@ export default function EnhancedVideoPlayer({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [playerStates, activeAreaTab, duration, tab.id, tab.reward, onComplete]);
+  }, [playerStates, activeAreaTab, duration, tab.id, tab.reward, onComplete, areaTabs]); // Added areaTabs dependency
 
   // Player control handlers
   const handlePlay = () => {
@@ -359,6 +397,12 @@ export default function EnhancedVideoPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Autoplay toggle handler
+  const handleAutoplayToggle = () => {
+    setPlayerStates(prev => ({ ...prev, [activeAreaTab]: { ...prev[activeAreaTab], autoplayEnabled: !prev[activeAreaTab].autoplayEnabled } }));
+  };
+
+
   return (
     <div className={`w-full transition-all duration-300 ${
       isFullscreen 
@@ -387,7 +431,14 @@ export default function EnhancedVideoPlayer({
               {areaTabs.map((areaTab) => (
                 <button
                   key={areaTab.id}
-                  onClick={() => setActiveAreaTab(areaTab.id)}
+                  onClick={() => {
+                    setActiveAreaTab(areaTab.id);
+                    // If autoplay is on, ensure the next ad continues with the same setting
+                    setPlayerStates(prev => ({
+                      ...prev,
+                      [areaTab.id]: { ...prev[areaTab.id], autoplayEnabled: currentPlayerState.autoplayEnabled }
+                    }));
+                  }}
                   className={`border border-black transition-all duration-200 ${
                     isFullscreen 
                       ? 'text-sm px-4 py-2' 
