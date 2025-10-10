@@ -267,57 +267,63 @@ function AreaPlayer({
       <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
         isFullscreen ? 'p-4' : isMobileDevice ? 'p-2' : 'p-3'
       }`}>
-        {!isMobileDevice && (
-          <div className={`flex items-center justify-between ${
-            isFullscreen ? 'mb-3' : 'mb-2'
-          }`}>
-            <TechnicalLabel 
-              text={`${areaLabel} - EARN ${formatCurrency(tab.reward)}`} 
-              className={`text-white ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
-            />
-            <div className="flex items-center gap-3">
-              <span className={`text-white/60 ${isFullscreen ? 'text-sm' : 'text-xs'}`}>
-                {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
-              </span>
-              <button
-                onClick={handleAutoplayToggle}
-                className={`relative rounded-full transition-all duration-300 ${
-                  isFullscreen ? 'w-12 h-6' : 'w-10 h-5'
-                } ${
-                  autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
-                } border-2 border-white`}
-                data-testid={`button-autoplay-${areaId}`}
-                title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
-              >
-                <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
-                  isFullscreen ? 'w-4 h-4' : 'w-3 h-3'
-                } ${
-                  autoplayEnabled ? (isFullscreen ? 'left-6' : 'left-5') : 'left-0.5'
-                }`} />
-              </button>
-              <button
-                onClick={handleVolumeToggle}
-                className="text-white hover:text-primary transition-colors p-1"
-                data-testid={`button-volume-${areaId}`}
-              >
-                {isMuted || volume === 0 ? 
-                  <VolumeX className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
-                  <Volume2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
-                }
-              </button>
-              <button
-                onClick={onFullscreenToggle}
-                className="text-white hover:text-primary transition-colors p-1"
-                data-testid={`button-fullscreen-${areaId}`}
-              >
-                {isFullscreen ? 
-                  <Minimize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
-                  <Maximize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
-                }
-              </button>
-            </div>
+        <div className={`flex items-center justify-between ${
+          isFullscreen ? 'mb-3' : isMobileDevice ? 'mb-1' : 'mb-2'
+        }`}>
+          <TechnicalLabel 
+            text={`${areaLabel} - EARN ${formatCurrency(tab.reward)}`} 
+            className={`text-white ${
+              isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'
+            }`} 
+          />
+          <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-3'}`}>
+            <span className={`text-white/60 ${
+              isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'
+            }`}>
+              {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
+            </span>
+            {!isMobileDevice && (
+              <>
+                <button
+                  onClick={handleAutoplayToggle}
+                  className={`relative rounded-full transition-all duration-300 ${
+                    isFullscreen ? 'w-12 h-6' : 'w-10 h-5'
+                  } ${
+                    autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
+                  } border-2 border-white`}
+                  data-testid={`button-autoplay-${areaId}`}
+                  title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+                >
+                  <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
+                    isFullscreen ? 'w-4 h-4' : 'w-3 h-3'
+                  } ${
+                    autoplayEnabled ? (isFullscreen ? 'left-6' : 'left-5') : 'left-0.5'
+                  }`} />
+                </button>
+                <button
+                  onClick={handleVolumeToggle}
+                  className="text-white hover:text-primary transition-colors p-1"
+                  data-testid={`button-volume-${areaId}`}
+                >
+                  {isMuted || volume === 0 ? 
+                    <VolumeX className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
+                    <Volume2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
+                  }
+                </button>
+                <button
+                  onClick={onFullscreenToggle}
+                  className="text-white hover:text-primary transition-colors p-1"
+                  data-testid={`button-fullscreen-${areaId}`}
+                >
+                  {isFullscreen ? 
+                    <Minimize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
+                    <Maximize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
+                  }
+                </button>
+              </>
+            )}
           </div>
-        )}
+        </div>
 
         <div className={`w-full bg-gray-600 transition-all duration-300 ${
           isFullscreen ? 'h-3 border border-white/20' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
@@ -356,14 +362,8 @@ export default function EnhancedVideoPlayer({
   // Shared state across all players
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeAreaTab, setActiveAreaTab] = useState("001");
-  const [autoplayEnabled, setAutoplayEnabled] = useState(false);
-  const [volume, setVolume] = useState(80);
-  const [isMuted, setIsMuted] = useState(false);
 
   const playerRef = useRef<HTMLDivElement>(null);
-
-  const handleAutoplayToggle = () => setAutoplayEnabled(!autoplayEnabled);
-  const handleVolumeToggle = () => setIsMuted(!isMuted);
 
   // Area tabs data matching wireframe
   const areaTabs = [
@@ -641,43 +641,7 @@ export default function EnhancedVideoPlayer({
                 </>
               )}
             </div>
-            <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-2'}`}>
-              {isMobileDevice && (
-                <>
-                  <button
-                    onClick={handleAutoplayToggle}
-                    className={`relative rounded-full transition-all duration-300 w-9 h-5 ${
-                      autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
-                    } border-2 border-black`}
-                    data-testid={`button-autoplay-mobile-${activeAreaTab}`}
-                    title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
-                  >
-                    <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white w-3 h-3 ${
-                      autoplayEnabled ? 'left-4' : 'left-0.5'
-                    }`} />
-                  </button>
-                  <button
-                    onClick={handleVolumeToggle}
-                    className="text-black hover:text-primary transition-colors p-1"
-                    data-testid={`button-volume-mobile-${activeAreaTab}`}
-                  >
-                    {isMuted || volume === 0 ? 
-                      <VolumeX className="w-4 h-4" /> : 
-                      <Volume2 className="w-4 h-4" />
-                    }
-                  </button>
-                  <button
-                    onClick={handleFullscreenToggle}
-                    className="text-black hover:text-primary transition-colors p-1"
-                    data-testid={`button-fullscreen-mobile-${activeAreaTab}`}
-                  >
-                    {isFullscreen ? 
-                      <Minimize2 className="w-4 h-4" /> : 
-                      <Maximize2 className="w-4 h-4" />
-                    }
-                  </button>
-                </>
-              )}
+            <div className={`flex items-center ${isMobileDevice ? 'gap-1' : 'gap-2'}`}>
               <TechnicalLabel 
                 text="AREA PLAYER" 
                 className={`text-black ${isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'}`} 
