@@ -276,52 +276,48 @@ function AreaPlayer({
               isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'
             }`} 
           />
-          <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-3'}`}>
+          <div className={`flex items-center ${isMobileDevice ? 'gap-1.5' : 'gap-3'}`}>
             <span className={`text-white/60 ${
               isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'
             }`}>
               {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
             </span>
-            {!isMobileDevice && (
-              <>
-                <button
-                  onClick={handleAutoplayToggle}
-                  className={`relative rounded-full transition-all duration-300 ${
-                    isFullscreen ? 'w-12 h-6' : 'w-10 h-5'
-                  } ${
-                    autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
-                  } border-2 border-white`}
-                  data-testid={`button-autoplay-${areaId}`}
-                  title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
-                >
-                  <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
-                    isFullscreen ? 'w-4 h-4' : 'w-3 h-3'
-                  } ${
-                    autoplayEnabled ? (isFullscreen ? 'left-6' : 'left-5') : 'left-0.5'
-                  }`} />
-                </button>
-                <button
-                  onClick={handleVolumeToggle}
-                  className="text-white hover:text-primary transition-colors p-1"
-                  data-testid={`button-volume-${areaId}`}
-                >
-                  {isMuted || volume === 0 ? 
-                    <VolumeX className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
-                    <Volume2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
-                  }
-                </button>
-                <button
-                  onClick={onFullscreenToggle}
-                  className="text-white hover:text-primary transition-colors p-1"
-                  data-testid={`button-fullscreen-${areaId}`}
-                >
-                  {isFullscreen ? 
-                    <Minimize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> : 
-                    <Maximize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
-                  }
-                </button>
-              </>
-            )}
+            <button
+              onClick={handleAutoplayToggle}
+              className={`relative rounded-full transition-all duration-300 ${
+                isFullscreen ? 'w-12 h-6' : isMobileDevice ? 'w-9 h-5' : 'w-10 h-5'
+              } ${
+                autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
+              } border-2 border-white`}
+              data-testid={`button-autoplay-${areaId}`}
+              title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+            >
+              <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
+                isFullscreen ? 'w-4 h-4' : isMobileDevice ? 'w-3 h-3' : 'w-3 h-3'
+              } ${
+                autoplayEnabled ? (isFullscreen ? 'left-6' : isMobileDevice ? 'left-4' : 'left-5') : 'left-0.5'
+              }`} />
+            </button>
+            <button
+              onClick={handleVolumeToggle}
+              className="text-white hover:text-primary transition-colors p-1"
+              data-testid={`button-volume-${areaId}`}
+            >
+              {isMuted || volume === 0 ? 
+                <VolumeX className={isFullscreen ? 'w-5 h-5' : isMobileDevice ? 'w-4 h-4' : 'w-4 h-4'} /> : 
+                <Volume2 className={isFullscreen ? 'w-5 h-5' : isMobileDevice ? 'w-4 h-4' : 'w-4 h-4'} />
+              }
+            </button>
+            <button
+              onClick={onFullscreenToggle}
+              className="text-white hover:text-primary transition-colors p-1"
+              data-testid={`button-fullscreen-${areaId}`}
+            >
+              {isFullscreen ? 
+                <Minimize2 className={isFullscreen ? 'w-5 h-5' : isMobileDevice ? 'w-4 h-4' : 'w-4 h-4'} /> : 
+                <Maximize2 className={isFullscreen ? 'w-5 h-5' : isMobileDevice ? 'w-4 h-4' : 'w-4 h-4'} />
+              }
+            </button>
           </div>
         </div>
 
