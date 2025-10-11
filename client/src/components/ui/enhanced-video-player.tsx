@@ -575,16 +575,8 @@ export default function EnhancedVideoPlayer({
               <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-4'}`}>
                 {!isMobileDevice ? (
                   <>
-                    <TechnicalLabel
-                      text={`ACTIVE: ${activeAreaTab}`}
-                      className="text-black text-xs"
-                    />
-                    <TechnicalLabel
-                      text="STATUS: READY"
-                      className="text-black text-xs"
-                    />
                     {/* Desktop Controls */}
-                    <div className="flex items-center gap-3 ml-4">
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={handleAutoplayToggle}
                         className={`relative rounded-full transition-all duration-300 w-10 h-5 ${
