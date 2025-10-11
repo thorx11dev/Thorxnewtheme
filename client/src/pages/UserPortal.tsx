@@ -2391,51 +2391,36 @@ export default function UserPortal() {
                 {/* Area Guide - FAQ Section Style */}
                 {activeHelpTab === "guide" && (
                   <div className="mt-0">
-                    {/* Section Heading - Professional Cubic Container */}
-                    <div className="text-center mb-8 md:mb-12">
-                      <div className="inline-block bg-background border-4 border-black shadow-lg p-6 md:p-8 lg:p-10 relative mx-4">
-                        {/* Corner Decorations */}
-                        <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-primary -translate-x-2 -translate-y-2"></div>
-                        <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-primary translate-x-2 -translate-y-2"></div>
-                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-primary -translate-x-2 translate-y-2"></div>
-                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-primary translate-x-2 translate-y-2"></div>
+                    {/* Section Heading - Modern 3D Design */}
+                    <div className="text-center mb-8 md:mb-12 px-4">
+                      <div className="relative inline-block">
+                        {/* 3D Background Layers */}
+                        <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 opacity-20"></div>
+                        <div className="absolute inset-0 bg-primary translate-x-1 translate-y-1 opacity-40"></div>
                         
-                        <h3 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight mb-4" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
-                          <span className="text-black">F</span>
-                          <span className="text-white">r</span>
-                          <span className="text-primary">e</span>
-                          <span className="text-black">q</span>
-                          <span className="text-white">u</span>
-                          <span className="text-primary">e</span>
-                          <span className="text-black">n</span>
-                          <span className="text-white">t</span>
-                          <span className="text-primary">l</span>
-                          <span className="text-black">y</span>{" "}
-                          <span className="text-white">A</span>
-                          <span className="text-primary">s</span>
-                          <span className="text-black">k</span>
-                          <span className="text-white">e</span>
-                          <span className="text-primary">d</span><br />
-                          <span className="text-black">Q</span>
-                          <span className="text-white">u</span>
-                          <span className="text-primary">e</span>
-                          <span className="text-black">s</span>
-                          <span className="text-white">t</span>
-                          <span className="text-primary">i</span>
-                          <span className="text-black">o</span>
-                          <span className="text-white">n</span>
-                          <span className="text-primary">s</span>
-                          <span className="text-black">.</span>
-                        </h3>
-                        
-                        <div className="h-1 w-24 bg-primary mx-auto mb-3"></div>
-                        
-                        <TechnicalLabel text="INSTANT ANSWERS TO YOUR THORX QUERIES" className="text-muted-foreground text-xs md:text-sm" />
+                        {/* Main Content Card */}
+                        <div className="relative bg-gradient-to-br from-white via-gray-50 to-white border-4 border-black p-6 md:p-10 lg:p-12 shadow-2xl">
+                          {/* Accent Line */}
+                          <div className="absolute top-0 left-0 w-20 h-1 bg-primary"></div>
+                          <div className="absolute bottom-0 right-0 w-20 h-1 bg-primary"></div>
+                          
+                          <h3 className="text-2xl md:text-4xl lg:text-5xl font-black tracking-tight text-black mb-3 relative">
+                            FREQUENTLY ASKED
+                            <br />
+                            <span className="text-primary">QUESTIONS</span>
+                          </h3>
+                          
+                          <div className="h-1 w-16 bg-black mx-auto my-4"></div>
+                          
+                          <p className="text-sm md:text-base text-gray-600 font-medium tracking-wide uppercase">
+                            Instant Answers to Your THORX Queries
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* FAQ Items - Landing Page Style */}
-                    <div className="space-y-4 md:space-y-6">
+                    {/* FAQ Items - Modern 3D Card Design */}
+                    <div className="space-y-6 md:space-y-8 px-2 md:px-0">
                       {[
                         {
                           id: "001",
@@ -2476,38 +2461,57 @@ export default function UserPortal() {
                       ].map((faq) => (
                         <div
                           key={faq.id}
-                          className="split-card bg-background relative group transition-all duration-500"
+                          className="relative group"
                         >
-                          {/* Protocol Header */}
-                          <div className="px-4 md:px-8 py-3 md:py-4 bg-primary text-primary-foreground border-b-[3px] border-black">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 md:gap-4">
-                                <TechnicalLabel text={`FAQ-${faq.id}`} className="text-white text-xs md:text-sm" />
-                                <TechnicalLabel text={faq.protocol} className="text-white opacity-80 text-xs" />
-                              </div>
-                              <div className="w-12 md:w-16 h-3 md:h-4 opacity-60">
-                                <Barcode />
+                          {/* 3D Shadow Layers */}
+                          <div className="absolute inset-0 bg-black translate-x-1.5 translate-y-1.5 md:translate-x-2 md:translate-y-2"></div>
+                          <div className="absolute inset-0 bg-primary/60 translate-x-0.5 translate-y-0.5 md:translate-x-1 md:translate-y-1"></div>
+                          
+                          {/* Main Card */}
+                          <div className="relative bg-white border-4 border-black overflow-hidden transition-transform duration-300 group-hover:-translate-x-1 group-hover:-translate-y-1">
+                            {/* Top Accent Stripe */}
+                            <div className="h-2 bg-gradient-to-r from-black via-primary to-black"></div>
+                            
+                            {/* Header with ID Badge */}
+                            <div className="bg-gradient-to-br from-gray-50 to-white px-4 md:px-6 py-4 md:py-5 border-b-2 border-gray-200">
+                              <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 md:gap-4">
+                                  <div className="bg-black text-white px-3 py-1.5 font-black text-xs md:text-sm tracking-wider">
+                                    {faq.id}
+                                  </div>
+                                  <div className="text-xs md:text-sm text-gray-600 font-semibold tracking-wide uppercase">
+                                    {faq.protocol}
+                                  </div>
+                                </div>
+                                <div className="w-10 md:w-12 h-2.5 md:h-3 opacity-30">
+                                  <Barcode />
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Protocol Content */}
-                          <div className="bg-background p-4 md:p-6">
-                            <div className="mb-3 md:mb-4">
-                              <h4 className="text-base md:text-xl lg:text-2xl font-bold text-foreground leading-tight">
+                            {/* Content */}
+                            <div className="p-5 md:p-8">
+                              <h4 className="text-lg md:text-2xl font-black text-black mb-4 md:mb-5 leading-tight">
                                 {faq.question}
                               </h4>
-                            </div>
-                            <div className="text-foreground text-sm md:text-base leading-relaxed bg-muted p-3 md:p-6 border-l-4 border-primary">
-                              {faq.answer}
+                              <div className="relative pl-4 md:pl-6">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+                                <p className="text-sm md:text-base text-gray-700 leading-relaxed">
+                                  {faq.answer}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t-2 border-black text-center">
-                      <TechnicalLabel text="NEED MORE HELP? USE AREA HELP FOR LIVE CHAT OR AREA CONTACT FOR DIRECT SUPPORT" className="text-muted-foreground text-xs md:text-sm" />
+                    <div className="mt-8 md:mt-12 pt-6 md:pt-8 border-t-4 border-black">
+                      <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 p-4 md:p-6 border-2 border-gray-300 text-center">
+                        <p className="text-xs md:text-sm text-gray-600 font-semibold tracking-wide uppercase">
+                          Need More Help? Use <span className="text-primary font-black">AREA HELP</span> for Live Chat or <span className="text-primary font-black">AREA CONTACT</span> for Direct Support
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
