@@ -325,6 +325,53 @@ function AreaPlayer({
           </div>
         </div>
 
+        <div className={`flex items-center justify-between ${isMobileDevice ? 'mb-1' : ''}`}>
+          {/* Mobile Controls - Left Side */}
+          {isMobileDevice && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleAutoplayToggle}
+                className={`relative rounded-full transition-all duration-300 ${
+                  isFullscreen ? 'w-10 h-5' : 'w-9 h-4'
+                } ${
+                  autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
+                } border border-white`}
+                data-testid={`button-autoplay-${areaId}`}
+                title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+              >
+                <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
+                  isFullscreen ? 'w-3 h-3' : 'w-2.5 h-2.5'
+                } ${
+                  autoplayEnabled ? (isFullscreen ? 'left-5' : 'left-4.5') : 'left-0.5'
+                }`} />
+              </button>
+              <button
+                onClick={handleVolumeToggle}
+                className="text-white hover:text-primary transition-colors p-1 active:scale-95"
+                data-testid={`button-volume-${areaId}`}
+              >
+                {isMuted || volume === 0 ? 
+                  <VolumeX className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} /> : 
+                  <Volume2 className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
+                }
+              </button>
+              <button
+                onClick={onFullscreenToggle}
+                className="text-white hover:text-primary transition-colors p-1 active:scale-95"
+                data-testid={`button-fullscreen-${areaId}`}
+              >
+                {isFullscreen ? 
+                  <Minimize className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} /> : 
+                  <Maximize className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
+                }
+              </button>
+            </div>
+          )}
+
+          {/* Spacer for non-mobile or progress bar */}
+          {!isMobileDevice && <div />}
+        </div>
+
         <div className={`w-full bg-gray-600 transition-all duration-300 ${
           isFullscreen ? 'h-3 border border-white/20' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
         }`}>
