@@ -131,23 +131,6 @@ function AreaPlayer({
             setIsCompleted(true);
             onComplete?.(`${tab.id}-area-${areaId}-ad-${currentAdIndex + 1}`, tab.reward);
 
-            // If autoplay is enabled and there are more ads in queue
-            if (autoplayEnabled && currentAdIndex < adQueue.length - 1) {
-              setTimeout(() => {
-                // Move to next ad in queue
-                setCurrentAdIndex(prev => prev + 1);
-                setCurrentTime(0);
-                setAdProgress(0);
-                setCanSkip(false);
-                setIsCompleted(false);
-                setShowSkip(false);
-                setIsPlaying(true); // Auto-start next ad
-              }, 1500);
-            } else if (autoplayEnabled && currentAdIndex >= adQueue.length - 1) {
-              // No more ads in queue, disable autoplay
-              setAutoplayEnabled(false);
-            }
-
             return duration;
           }
 
@@ -159,7 +142,28 @@ function AreaPlayer({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isActive, isPlaying, isCompleted, duration, canSkip, autoplayEnabled, currentAdIndex, adQueue.length, tab.id, tab.reward, areaId, onComplete]);
+  }, [isActive, isPlaying, isCompleted, duration, canSkip, tab.id, tab.reward, areaId, currentAdIndex, onComplete]);
+
+  // Separate effect for autoplay handling
+  useEffect(() => {
+    if (isCompleted && autoplayEnabled && currentAdIndex < adQueue.length - 1) {
+      const autoplayTimeout = setTimeout(() => {
+        // Move to next ad in queue
+        setCurrentAdIndex(prev => prev + 1);
+        setCurrentTime(0);
+        setAdProgress(0);
+        setCanSkip(false);
+        setIsCompleted(false);
+        setShowSkip(false);
+        setIsPlaying(true); // Auto-start next ad
+      }, 1500);
+
+      return () => clearTimeout(autoplayTimeout);
+    } else if (isCompleted && autoplayEnabled && currentAdIndex >= adQueue.length - 1) {
+      // No more ads in queue, disable autoplay
+      setAutoplayEnabled(false);
+    }
+  }, [isCompleted, autoplayEnabled, currentAdIndex, adQueue.length]);
 
   const handlePlay = () => setIsPlaying(true);
   const handlePause = () => setIsPlaying(false);
@@ -282,7 +286,8 @@ function AreaPlayer({
             }`}>
               {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
             </span>
-            {!isMobileDevice && (
+            {/* Show controls in fullscreen for both mobile and desktop */}
+            {(isFullscreen || !isMobileDevice) && (
               <>
                 <button
                   onClick={handleAutoplayToggle}
@@ -561,41 +566,41 @@ export default function EnhancedVideoPlayer({
             ? 'border-2 border-white p-1'
             : 'border-4 border-white p-2'
       }`}>
-        {/* Top Navigation Bar - Wireframe Style - Simplified for Mobile */}
-        <div className={`bg-white transition-all duration-300 ${
-          isFullscreen ? 'mb-4 border-2 border-black' : isMobileDevice ? 'mb-1 border border-black' : 'border-2 border-black mb-2'
-        }`}>
-          <div className={`flex items-center justify-between transition-all duration-300 ${
-            isFullscreen ? 'p-4' : isMobileDevice ? 'p-1.5' : 'p-2'
+        {/* Top Navigation Bar - Wireframe Style - Hidden in Fullscreen */}
+        {!isFullscreen && (
+          <div className={`bg-white transition-all duration-300 ${
+            isMobileDevice ? 'mb-1 border border-black' : 'border-2 border-black mb-2'
           }`}>
-            {/* Area Tabs - Left Side - Simplified for Mobile */}
-            <div className={`flex items-center ${isMobileDevice ? 'gap-0.5' : 'gap-1'}`}>
-              {areaTabs.map((areaTab) => (
-                <button
-                  key={areaTab.id}
-                  onClick={() => setActiveAreaTab(areaTab.id)}
-                  className={`border border-black transition-all duration-200 ${
-                    isFullscreen
-                      ? 'text-sm px-4 py-2'
-                      : isMobileDevice
+            <div className={`flex items-center justify-between transition-all duration-300 ${
+              isMobileDevice ? 'p-1.5' : 'p-2'
+            }`}>
+              {/* Area Tabs - Left Side - Simplified for Mobile */}
+              <div className={`flex items-center ${isMobileDevice ? 'gap-0.5' : 'gap-1'}`}>
+                {areaTabs.map((areaTab) => (
+                  <button
+                    key={areaTab.id}
+                    onClick={() => setActiveAreaTab(areaTab.id)}
+                    className={`border border-black transition-all duration-200 ${
+                      isMobileDevice
                         ? 'text-xs px-2 py-1'
                         : 'text-xs px-3 py-1'
-                  } ${
-                    activeAreaTab === areaTab.id
-                      ? 'bg-black text-white'
-                      : 'bg-white text-black hover:bg-gray-100'
-                  }`}
-                  data-testid={`area-tab-${areaTab.id}`}
-                >
-                  <TechnicalLabel
-                    text={areaTab.label}
-                    className={isFullscreen ? "text-sm" : isMobileDevice ? "text-xs" : "text-xs"}
-                  />
-                </button>
-              ))}
+                    } ${
+                      activeAreaTab === areaTab.id
+                        ? 'bg-black text-white'
+                        : 'bg-white text-black hover:bg-gray-100'
+                    }`}
+                    data-testid={`area-tab-${areaTab.id}`}
+                  >
+                    <TechnicalLabel
+                      text={areaTab.label}
+                      className={isMobileDevice ? "text-xs" : "text-xs"}
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Main Video Content Area - Independent Players for Each Area */}
         {areaTabs.map((areaTab) => (
