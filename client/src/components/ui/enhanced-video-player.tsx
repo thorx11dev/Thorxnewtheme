@@ -652,7 +652,7 @@ export default function EnhancedVideoPlayer({
                     }
                   </button>
                   <button
-                    onClick={onFullscreenToggle}
+                    onClick={handleFullscreenToggle}
                     className="text-black hover:text-primary transition-colors p-1 active:scale-95"
                     data-testid={`button-fullscreen-${activeAreaTab}`}
                   >
