@@ -7,6 +7,7 @@ import { insertRegistrationSchema, insertUserSchema } from "@shared/schema";
 import { createServerSupabaseClient } from "./supabase";
 import { z } from "zod";
 import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "./validation";
+import { hilltopAdsService } from "./hilltopads-service";
 
 // Extend session data type
 declare module "express-session" {
@@ -1574,6 +1575,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("HilltopAds ad completion error:", error);
       res.status(500).json({ message: "Failed to record ad completion", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  // HilltopAds Sync Endpoints (Team/Founder only)
+  app.post("/api/hilltopads/sync/inventory", requireTeamRole, async (req, res) => {
+    try {
+      await hilltopAdsService.syncInventory();
+      res.json({ success: true, message: "Inventory synced successfully" });
+    } catch (error) {
+      console.error("Sync inventory error:", error);
+      res.status(500).json({ message: "Failed to sync inventory", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  app.post("/api/hilltopads/sync/stats", requireTeamRole, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.body;
+      await hilltopAdsService.syncStats(startDate, endDate);
+      res.json({ success: true, message: "Stats synced successfully" });
+    } catch (error) {
+      console.error("Sync stats error:", error);
+      res.status(500).json({ message: "Failed to sync stats", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  app.get("/api/hilltopads/balance", requireTeamRole, async (req, res) => {
+    try {
+      const balance = await hilltopAdsService.getBalance();
+      res.json({ balance });
+    } catch (error) {
+      console.error("Get balance error:", error);
+      res.status(500).json({ message: "Failed to fetch balance", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  app.get("/api/hilltopads/anti-adblock/:zoneId", async (req, res) => {
+    try {
+      const { zoneId } = req.params;
+      const code = await hilltopAdsService.getAntiAdBlockCode(zoneId);
+      res.json({ code });
+    } catch (error) {
+      console.error("Get anti-adblock code error:", error);
+      res.status(500).json({ message: "Failed to fetch anti-adblock code", error: "INTERNAL_ERROR" });
     }
   });
 
