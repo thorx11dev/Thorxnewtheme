@@ -1395,6 +1395,188 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // HilltopAds Configuration Routes (Team/Founder only)
+  app.post("/api/hilltopads/config", requireTeamRole, async (req, res) => {
+    try {
+      const { apiKey, publisherId, settings } = req.body;
+      
+      if (!apiKey) {
+        return res.status(400).json({ message: "API key is required" });
+      }
+
+      const config = await storage.createHilltopAdsConfig({
+        apiKey,
+        publisherId,
+        isActive: true,
+        settings: settings || {}
+      });
+
+      res.json(config);
+    } catch (error) {
+      console.error("Create HilltopAds config error:", error);
+      res.status(500).json({ message: "Failed to create config", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  app.get("/api/hilltopads/config", requireTeamRole, async (req, res) => {
+    try {
+      const config = await storage.getHilltopAdsConfig();
+      res.json(config || null);
+    } catch (error) {
+      console.error("Get HilltopAds config error:", error);
+      res.status(500).json({ message: "Failed to fetch config", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  app.patch("/api/hilltopads/config/:id", requireTeamRole, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+
+      const config = await storage.updateHilltopAdsConfig(id, updates);
+      
+      if (!config) {
+        return res.status(404).json({ message: "Config not found" });
+      }
+
+      res.json(config);
+    } catch (error) {
+      console.error("Update HilltopAds config error:", error);
+      res.status(500).json({ message: "Failed to update config", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  // HilltopAds Zones Routes (Team/Founder only)
+  app.post("/api/hilltopads/zones", requireTeamRole, async (req, res) => {
+    try {
+      const { zoneId, siteName, zoneName, adFormat, settings } = req.body;
+      
+      if (!zoneId || !siteName || !zoneName || !adFormat) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const zone = await storage.createHilltopAdsZone({
+        zoneId,
+        siteName,
+        zoneName,
+        adFormat,
+        status: "active",
+        settings: settings || {}
+      });
+
+      res.json(zone);
+    } catch (error) {
+      console.error("Create HilltopAds zone error:", error);
+      res.status(500).json({ message: "Failed to create zone", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  app.get("/api/hilltopads/zones", requireTeamRole, async (req, res) => {
+    try {
+      const zones = await storage.getHilltopAdsZones();
+      res.json(zones);
+    } catch (error) {
+      console.error("Get HilltopAds zones error:", error);
+      res.status(500).json({ message: "Failed to fetch zones", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  app.get("/api/hilltopads/zones/:zoneId", requireTeamRole, async (req, res) => {
+    try {
+      const { zoneId } = req.params;
+      const zone = await storage.getHilltopAdsZoneById(zoneId);
+      
+      if (!zone) {
+        return res.status(404).json({ message: "Zone not found" });
+      }
+
+      res.json(zone);
+    } catch (error) {
+      console.error("Get HilltopAds zone error:", error);
+      res.status(500).json({ message: "Failed to fetch zone", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  app.patch("/api/hilltopads/zones/:id", requireTeamRole, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+
+      const zone = await storage.updateHilltopAdsZone(id, updates);
+      
+      if (!zone) {
+        return res.status(404).json({ message: "Zone not found" });
+      }
+
+      res.json(zone);
+    } catch (error) {
+      console.error("Update HilltopAds zone error:", error);
+      res.status(500).json({ message: "Failed to update zone", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  // HilltopAds Statistics Routes (Team/Founder only)
+  app.get("/api/hilltopads/stats", requireTeamRole, async (req, res) => {
+    try {
+      const { zoneId, startDate, endDate } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const stats = await storage.getHilltopAdsStats(
+        zoneId as string | undefined,
+        start,
+        end
+      );
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Get HilltopAds stats error:", error);
+      res.status(500).json({ message: "Failed to fetch stats", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  app.get("/api/hilltopads/revenue", requireTeamRole, async (req, res) => {
+    try {
+      const totalRevenue = await storage.getTotalHilltopAdsRevenue();
+      res.json({ totalRevenue });
+    } catch (error) {
+      console.error("Get HilltopAds revenue error:", error);
+      res.status(500).json({ message: "Failed to fetch revenue", error: "INTERNAL_ERROR" });
+    }
+  });
+
+  // HilltopAds Ad Completion Tracking (Authenticated users)
+  app.post("/api/hilltopads/ad-completion", requireSupabaseAuth, async (req, res) => {
+    try {
+      const { zoneId, adType, duration } = req.body;
+      const userId = req.userProfile.id;
+
+      if (!zoneId || !adType) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Create ad view record
+      const adView = await storage.createAdView({
+        userId,
+        adType,
+        adNetwork: "hilltopads",
+        duration: duration || 0,
+        completed: true,
+        earnedAmount: "0.10" // Configure reward amount
+      });
+
+      res.json({
+        success: true,
+        adView,
+        message: "Ad completion recorded"
+      });
+    } catch (error) {
+      console.error("HilltopAds ad completion error:", error);
+      res.status(500).json({ message: "Failed to record ad completion", error: "INTERNAL_ERROR" });
+    }
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;
