@@ -19,6 +19,12 @@ import {
   type InsertUserCredential,
   type ChatMessage,
   type InsertChatMessage,
+  type HilltopAdsConfig,
+  type InsertHilltopAdsConfig,
+  type HilltopAdsZone,
+  type InsertHilltopAdsZone,
+  type HilltopAdsStat,
+  type InsertHilltopAdsStat,
   users,
   earnings,
   adViews,
@@ -27,7 +33,10 @@ import {
   teamEmails,
   teamKeys,
   userCredentials,
-  chatMessages
+  chatMessages,
+  hilltopAdsConfig,
+  hilltopAdsZones,
+  hilltopAdsStats
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -96,6 +105,22 @@ export interface IStorage {
   // Chat messages methods
   createChatMessage(chatMessage: InsertChatMessage): Promise<ChatMessage>;
   getUserChatHistory(userId: string, limit?: number): Promise<ChatMessage[]>;
+
+  // HilltopAds configuration methods
+  createHilltopAdsConfig(config: InsertHilltopAdsConfig): Promise<HilltopAdsConfig>;
+  getHilltopAdsConfig(): Promise<HilltopAdsConfig | undefined>;
+  updateHilltopAdsConfig(configId: string, updates: Partial<InsertHilltopAdsConfig>): Promise<HilltopAdsConfig | undefined>;
+
+  // HilltopAds zones methods
+  createHilltopAdsZone(zone: InsertHilltopAdsZone): Promise<HilltopAdsZone>;
+  getHilltopAdsZones(): Promise<HilltopAdsZone[]>;
+  getHilltopAdsZoneById(zoneId: string): Promise<HilltopAdsZone | undefined>;
+  updateHilltopAdsZone(id: string, updates: Partial<InsertHilltopAdsZone>): Promise<HilltopAdsZone | undefined>;
+
+  // HilltopAds statistics methods
+  createHilltopAdsStat(stat: InsertHilltopAdsStat): Promise<HilltopAdsStat>;
+  getHilltopAdsStats(zoneId?: string, startDate?: Date, endDate?: Date): Promise<HilltopAdsStat[]>;
+  getTotalHilltopAdsRevenue(): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -557,6 +582,79 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
+  async createHilltopAdsConfig(insertConfig: InsertHilltopAdsConfig): Promise<HilltopAdsConfig> {
+    const [config] = await db.insert(hilltopAdsConfig).values(insertConfig).returning();
+    return config;
+  }
+
+  async getHilltopAdsConfig(): Promise<HilltopAdsConfig | undefined> {
+    const configs = await db.select().from(hilltopAdsConfig).limit(1);
+    return configs[0];
+  }
+
+  async updateHilltopAdsConfig(configId: string, updates: Partial<InsertHilltopAdsConfig>): Promise<HilltopAdsConfig | undefined> {
+    const [updated] = await db
+      .update(hilltopAdsConfig)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(hilltopAdsConfig.id, configId))
+      .returning();
+    return updated;
+  }
+
+  async createHilltopAdsZone(insertZone: InsertHilltopAdsZone): Promise<HilltopAdsZone> {
+    const [zone] = await db.insert(hilltopAdsZones).values(insertZone).returning();
+    return zone;
+  }
+
+  async getHilltopAdsZones(): Promise<HilltopAdsZone[]> {
+    return await db.select().from(hilltopAdsZones).orderBy(desc(hilltopAdsZones.createdAt));
+  }
+
+  async getHilltopAdsZoneById(zoneId: string): Promise<HilltopAdsZone | undefined> {
+    const [zone] = await db.select().from(hilltopAdsZones).where(eq(hilltopAdsZones.zoneId, zoneId)).limit(1);
+    return zone;
+  }
+
+  async updateHilltopAdsZone(id: string, updates: Partial<InsertHilltopAdsZone>): Promise<HilltopAdsZone | undefined> {
+    const [updated] = await db
+      .update(hilltopAdsZones)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(hilltopAdsZones.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createHilltopAdsStat(insertStat: InsertHilltopAdsStat): Promise<HilltopAdsStat> {
+    const [stat] = await db.insert(hilltopAdsStats).values(insertStat).returning();
+    return stat;
+  }
+
+  async getHilltopAdsStats(zoneId?: string, startDate?: Date, endDate?: Date): Promise<HilltopAdsStat[]> {
+    let query = db.select().from(hilltopAdsStats);
+
+    if (zoneId) {
+      query = query.where(eq(hilltopAdsStats.zoneId, zoneId));
+    }
+
+    if (startDate && endDate) {
+      query = query.where(
+        and(
+          sql`${hilltopAdsStats.date} >= ${startDate}`,
+          sql`${hilltopAdsStats.date} <= ${endDate}`
+        )
+      );
+    }
+
+    return await query.orderBy(desc(hilltopAdsStats.date));
+  }
+
+  async getTotalHilltopAdsRevenue(): Promise<string> {
+    const result = await db
+      .select({ total: sql<string>`COALESCE(SUM(${hilltopAdsStats.revenue}), 0)` })
+      .from(hilltopAdsStats);
+    return result[0]?.total || "0";
+  }
+
   private generateReferralCode(): string {
     const prefix = "THORX";
     const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -630,6 +728,17 @@ export class MemStorage implements IStorage {
   async getAllUsers(): Promise<User[]> { throw new Error("Not implemented in MemStorage"); } // Added for MemStorage
   async createChatMessage(chatMessage: InsertChatMessage): Promise<ChatMessage> { throw new Error("Not implemented in MemStorage"); }
   async getUserChatHistory(userId: string, limit?: number): Promise<ChatMessage[]> { throw new Error("Not implemented in MemStorage"); }
+
+  async createHilltopAdsConfig(config: InsertHilltopAdsConfig): Promise<HilltopAdsConfig> { throw new Error("Not implemented in MemStorage"); }
+  async getHilltopAdsConfig(): Promise<HilltopAdsConfig | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async updateHilltopAdsConfig(configId: string, updates: Partial<InsertHilltopAdsConfig>): Promise<HilltopAdsConfig | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async createHilltopAdsZone(zone: InsertHilltopAdsZone): Promise<HilltopAdsZone> { throw new Error("Not implemented in MemStorage"); }
+  async getHilltopAdsZones(): Promise<HilltopAdsZone[]> { throw new Error("Not implemented in MemStorage"); }
+  async getHilltopAdsZoneById(zoneId: string): Promise<HilltopAdsZone | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async updateHilltopAdsZone(id: string, updates: Partial<InsertHilltopAdsZone>): Promise<HilltopAdsZone | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async createHilltopAdsStat(stat: InsertHilltopAdsStat): Promise<HilltopAdsStat> { throw new Error("Not implemented in MemStorage"); }
+  async getHilltopAdsStats(zoneId?: string, startDate?: Date, endDate?: Date): Promise<HilltopAdsStat[]> { throw new Error("Not implemented in MemStorage"); }
+  async getTotalHilltopAdsRevenue(): Promise<string> { throw new Error("Not implemented in MemStorage"); }
 
   private generateReferralCode(): string {
     const prefix = "THORX";
