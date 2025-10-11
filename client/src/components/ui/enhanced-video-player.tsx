@@ -325,53 +325,6 @@ function AreaPlayer({
           </div>
         </div>
 
-        <div className={`flex items-center justify-between ${isMobileDevice ? 'mb-1' : ''}`}>
-          {/* Mobile Controls - Left Side */}
-          {isMobileDevice && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleAutoplayToggle}
-                className={`relative rounded-full transition-all duration-300 ${
-                  isFullscreen ? 'w-10 h-5' : 'w-9 h-4'
-                } ${
-                  autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
-                } border border-white`}
-                data-testid={`button-autoplay-${areaId}`}
-                title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
-              >
-                <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
-                  isFullscreen ? 'w-3 h-3' : 'w-2.5 h-2.5'
-                } ${
-                  autoplayEnabled ? (isFullscreen ? 'left-5' : 'left-4.5') : 'left-0.5'
-                }`} />
-              </button>
-              <button
-                onClick={handleVolumeToggle}
-                className="text-white hover:text-primary transition-colors p-1 active:scale-95"
-                data-testid={`button-volume-${areaId}`}
-              >
-                {isMuted || volume === 0 ? 
-                  <VolumeX className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} /> : 
-                  <Volume2 className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
-                }
-              </button>
-              <button
-                onClick={onFullscreenToggle}
-                className="text-white hover:text-primary transition-colors p-1 active:scale-95"
-                data-testid={`button-fullscreen-${areaId}`}
-              >
-                {isFullscreen ? 
-                  <Minimize className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} /> : 
-                  <Maximize className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
-                }
-              </button>
-            </div>
-          )}
-
-          {/* Spacer for non-mobile or progress bar */}
-          {!isMobileDevice && <div />}
-        </div>
-
         <div className={`w-full bg-gray-600 transition-all duration-300 ${
           isFullscreen ? 'h-3 border border-white/20' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
         }`}>
@@ -409,8 +362,14 @@ export default function EnhancedVideoPlayer({
   // Shared state across all players
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeAreaTab, setActiveAreaTab] = useState("001");
+  const [autoplayEnabled, setAutoplayEnabled] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(80);
 
   const playerRef = useRef<HTMLDivElement>(null);
+  
+  const handleAutoplayToggle = () => setAutoplayEnabled(!autoplayEnabled);
+  const handleVolumeToggle = () => setIsMuted(!isMuted);
 
   // Area tabs data matching wireframe
   const areaTabs = [
@@ -473,15 +432,21 @@ export default function EnhancedVideoPlayer({
     if (!isFullscreen) {
       // Enter fullscreen
       try {
+        setIsFullscreen(true);
+        
         if (isMobileDevice) {
-          // Mobile-specific fullscreen behavior - no rotation, just fullscreen
-          setIsFullscreen(true);
-
-          // Add body class to prevent scrolling
+          // Mobile-specific fullscreen behavior
           document.body.classList.add('video-fullscreen-active');
           document.documentElement.style.overflow = 'hidden';
+          document.body.style.overflow = 'hidden';
+          
+          // Add mobile-specific viewport meta tag adjustments
+          const viewport = document.querySelector('meta[name=viewport]');
+          if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+          }
 
-          // Request fullscreen on the player container specifically for mobile
+          // Request fullscreen on the player container
           if (playerRef.current) {
             if (playerRef.current.requestFullscreen) {
               await playerRef.current.requestFullscreen();
@@ -490,15 +455,7 @@ export default function EnhancedVideoPlayer({
             } else if ((playerRef.current as any).mozRequestFullScreen) {
               await (playerRef.current as any).mozRequestFullScreen();
             }
-          } else {
-            // Fallback to document fullscreen if player ref not available
-            if (document.documentElement.requestFullscreen) {
-              await document.documentElement.requestFullscreen();
-            } else if ((document.documentElement as any).webkitRequestFullscreen) {
-              await (document.documentElement as any).webkitRequestFullscreen();
-            }
           }
-
         } else {
           // Desktop fullscreen on the player container
           if (playerRef.current) {
@@ -512,68 +469,37 @@ export default function EnhancedVideoPlayer({
               await (playerRef.current as any).msRequestFullscreen();
             }
           }
-          setIsFullscreen(true);
         }
       } catch (error) {
         console.error('Failed to enter fullscreen:', error);
-        // Fallback for mobile when fullscreen API fails
-        if (isMobileDevice) {
-          setIsFullscreen(true);
-          document.body.classList.add('video-fullscreen-active');
-          document.documentElement.style.overflow = 'hidden';
-        }
       }
     } else {
       // Exit fullscreen
       try {
+        setIsFullscreen(false);
+        
         if (isMobileDevice) {
-          // Mobile exit fullscreen - comprehensive approach
-
-          // Step 1: Immediate visual state update for instant feedback
-          setIsFullscreen(false);
-
-          // Step 2: Immediate DOM cleanup
+          // Mobile exit fullscreen
           document.body.classList.remove('video-fullscreen-active');
           document.documentElement.style.overflow = '';
+          document.body.style.overflow = '';
+          
+          // Reset viewport meta tag
+          const viewport = document.querySelector('meta[name=viewport]');
+          if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+          }
+        }
 
-          // Step 3: Browser API exit with enhanced error handling
-          const exitFullscreenSafely = async () => {
-            try {
-              // Check if actually in fullscreen before attempting exit
-              const isActuallyFullscreen = !!(
-                document.fullscreenElement ||
-                (document as any).webkitFullscreenElement ||
-                (document as any).mozFullScreenElement ||
-                (document as any).msFullscreenElement
-              );
+        // Exit fullscreen API
+        const isActuallyFullscreen = !!(
+          document.fullscreenElement ||
+          (document as any).webkitFullscreenElement ||
+          (document as any).mozFullScreenElement ||
+          (document as any).msFullscreenElement
+        );
 
-              if (isActuallyFullscreen) {
-                // Try different browser APIs in order of preference
-                if (document.exitFullscreen) {
-                  await document.exitFullscreen();
-                } else if ((document as any).webkitExitFullscreen) {
-                  await (document as any).webkitExitFullscreen();
-                } else if ((document as any).mozCancelFullScreen) {
-                  await (document as any).mozCancelFullScreen();
-                } else if ((document as any).msExitFullscreen) {
-                  await (document as any).msExitFullscreen();
-                }
-              }
-            } catch (apiError) {
-              // API failed but visual state is correct - this is acceptable
-              console.log('Fullscreen API exit failed, visual state maintained');
-
-              // Force cleanup as fallback
-              document.body.classList.remove('video-fullscreen-active');
-              document.documentElement.style.overflow = '';
-            }
-          };
-
-          // Execute API exit without blocking UI
-          setTimeout(exitFullscreenSafely, 16); // Use 16ms for next frame
-
-        } else {
-          // Desktop exit fullscreen
+        if (isActuallyFullscreen) {
           if (document.exitFullscreen) {
             await document.exitFullscreen();
           } else if ((document as any).webkitExitFullscreen) {
@@ -583,14 +509,13 @@ export default function EnhancedVideoPlayer({
           } else if ((document as any).msExitFullscreen) {
             await (document as any).msExitFullscreen();
           }
-          setIsFullscreen(false);
         }
       } catch (error) {
         console.error('Failed to exit fullscreen:', error);
-        // Ensure cleanup even if API calls fail
-        setIsFullscreen(false);
+        // Ensure cleanup
         document.body.classList.remove('video-fullscreen-active');
         document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
       }
     }
   };
@@ -599,16 +524,27 @@ export default function EnhancedVideoPlayer({
 
 
   return (
-    <div className={`w-full transition-all duration-300 ${
-      isFullscreen 
-        ? 'fixed inset-0 z-50 bg-black video-player-fullscreen'
-        : ''
-    }`}>
+    <div 
+      ref={playerRef}
+      className={`w-full transition-all duration-300 ${
+        isFullscreen 
+          ? 'fixed inset-0 z-50 bg-black video-player-fullscreen'
+          : ''
+      }`}
+      style={isFullscreen && isMobileDevice ? {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        maxHeight: '100vh'
+      } : {}}
+    >
       {/* Industrial Frame Container */}
       <div className={`bg-black transition-all duration-300 ${
         isFullscreen 
           ? isMobileDevice
-            ? 'h-screen w-screen p-1'
+            ? 'h-full w-full p-1'
             : 'h-screen w-screen p-4' 
           : isMobileDevice 
             ? 'border-2 border-white p-1' 
@@ -665,7 +601,7 @@ export default function EnhancedVideoPlayer({
           />
         ))}
 
-        {/* Industrial Status Bar - Mobile Controls Relocated */}
+        {/* Industrial Status Bar - Mobile Controls on Bottom Left */}
         <div className={`bg-white transition-all duration-300 ${
           isFullscreen 
             ? 'mt-4 p-4 border-2 border-black' 
@@ -675,7 +611,7 @@ export default function EnhancedVideoPlayer({
         }`}>
           <div className={`flex items-center justify-between ${isMobileDevice ? 'text-xs' : ''}`}>
             <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-4'}`}>
-              {!isMobileDevice && (
+              {!isMobileDevice ? (
                 <>
                   <TechnicalLabel 
                     text={`ACTIVE: ${activeAreaTab}`} 
@@ -686,6 +622,46 @@ export default function EnhancedVideoPlayer({
                     className={`text-black ${isFullscreen ? 'text-sm' : 'text-xs'}`} 
                   />
                 </>
+              ) : (
+                /* Mobile Controls - Bottom Left */
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleAutoplayToggle}
+                    className={`relative rounded-full transition-all duration-300 ${
+                      isFullscreen ? 'w-10 h-5' : 'w-9 h-4'
+                    } ${
+                      autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
+                    } border border-black`}
+                    data-testid={`button-autoplay-${activeAreaTab}`}
+                    title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+                  >
+                    <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
+                      isFullscreen ? 'w-3 h-3' : 'w-2.5 h-2.5'
+                    } ${
+                      autoplayEnabled ? (isFullscreen ? 'left-5' : 'left-4.5') : 'left-0.5'
+                    }`} />
+                  </button>
+                  <button
+                    onClick={handleVolumeToggle}
+                    className="text-black hover:text-primary transition-colors p-1 active:scale-95"
+                    data-testid={`button-volume-${activeAreaTab}`}
+                  >
+                    {isMuted || volume === 0 ? 
+                      <VolumeX className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} /> : 
+                      <Volume2 className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
+                    }
+                  </button>
+                  <button
+                    onClick={onFullscreenToggle}
+                    className="text-black hover:text-primary transition-colors p-1 active:scale-95"
+                    data-testid={`button-fullscreen-${activeAreaTab}`}
+                  >
+                    {isFullscreen ? 
+                      <Minimize className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} /> : 
+                      <Maximize className={isFullscreen ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
+                    }
+                  </button>
+                </div>
               )}
             </div>
             <div className={`flex items-center ${isMobileDevice ? 'gap-1' : 'gap-2'}`}>
