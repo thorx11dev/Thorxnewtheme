@@ -189,7 +189,7 @@ function AreaPlayer({
       className={`relative flex items-center justify-center overflow-hidden transition-all duration-300 ${
         isFullscreen
           ? isMobileDevice
-            ? 'h-[calc(100vh-80px)] w-full border border-black'
+            ? 'h-screen w-full border-none'
             : 'h-[calc(100vh-200px)] w-full border-2 border-black'
           : isMobileDevice
             ? 'aspect-video border border-black'
@@ -269,7 +269,13 @@ function AreaPlayer({
 
       {/* Progress Bar */}
       <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
-        isFullscreen ? 'p-4' : isMobileDevice ? 'p-2' : 'p-3'
+        isFullscreen 
+          ? isMobileDevice 
+            ? 'p-3 pb-4' 
+            : 'p-4'
+          : isMobileDevice 
+            ? 'p-2' 
+            : 'p-3'
       }`}>
         <div className={`flex items-center justify-between ${
           isFullscreen ? 'mb-3' : isMobileDevice ? 'mb-1' : 'mb-2'

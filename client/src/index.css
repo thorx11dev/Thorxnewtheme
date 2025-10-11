@@ -2028,6 +2028,7 @@
     left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    height: 100dvh !important;
     z-index: 9999 !important;
     background: #000 !important;
   }
@@ -2057,6 +2058,9 @@
       background: #000 !important;
       width: 100vw !important;
       height: 100vh !important;
+      height: 100dvh !important;
+      max-height: 100vh !important;
+      max-height: 100dvh !important;
     }
 
     /* Ensure proper touch handling in fullscreen */
@@ -2087,7 +2091,10 @@
     .video-player-fullscreen {
       /* iOS Safari viewport fix */
       height: 100vh !important;
+      height: 100dvh !important;
       height: -webkit-fill-available !important;
+      max-height: 100vh !important;
+      max-height: -webkit-fill-available !important;
     }
   }
 
