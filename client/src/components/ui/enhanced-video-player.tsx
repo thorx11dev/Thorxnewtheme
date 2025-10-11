@@ -267,16 +267,76 @@ function AreaPlayer({
         </button>
       )}
 
-      {/* Progress Bar */}
+      {/* Progress Bar with Controls */}
       <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
         isFullscreen 
           ? isMobileDevice 
+            ? 'p-3 pb-4' 
+            : 'p-4'
+          : isMobileDevice 
             ? 'p-2' 
             : 'p-3'
-          : isMobileDevice 
-            ? 'p-1.5' 
-            : 'p-2'
       }`}>
+        {/* Controls and Time Display */}
+        <div className={`flex items-center justify-between ${
+          isFullscreen ? 'mb-3' : isMobileDevice ? 'mb-1' : 'mb-2'
+        }`}>
+          <TechnicalLabel
+            text={`${areaLabel} - EARN ${formatCurrency(tab.reward)}`}
+            className={`text-white ${
+              isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'
+            }`}
+          />
+          <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-3'}`}>
+            <span className={`text-white/60 ${
+              isFullscreen ? 'text-sm' : isMobileDevice ? 'text-xs' : 'text-xs'
+            }`}>
+              {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
+            </span>
+            {/* Show controls in fullscreen for both mobile and desktop, or always show for desktop */}
+            {(isFullscreen || !isMobileDevice) && (
+              <>
+                <button
+                  onClick={handleAutoplayToggle}
+                  className={`relative rounded-full transition-all duration-300 ${
+                    isFullscreen ? 'w-12 h-6' : 'w-10 h-5'
+                  } ${
+                    autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
+                  } border-2 border-white`}
+                  data-testid={`button-autoplay-${areaId}`}
+                  title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+                >
+                  <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white ${
+                    isFullscreen ? 'w-4 h-4' : 'w-3 h-3'
+                  } ${
+                    autoplayEnabled ? (isFullscreen ? 'left-6' : 'left-5') : 'left-0.5'
+                  }`} />
+                </button>
+                <button
+                  onClick={handleVolumeToggle}
+                  className="text-white hover:text-primary transition-colors p-1"
+                  data-testid={`button-volume-${areaId}`}
+                >
+                  {isMuted || volume === 0 ?
+                    <VolumeX className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> :
+                    <Volume2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
+                  }
+                </button>
+                <button
+                  onClick={onFullscreenToggle}
+                  className="text-white hover:text-primary transition-colors p-1"
+                  data-testid={`button-fullscreen-${areaId}`}
+                >
+                  {isFullscreen ?
+                    <Minimize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} /> :
+                    <Maximize2 className={isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} />
+                  }
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className={`w-full bg-gray-600 transition-all duration-300 ${
           isFullscreen ? 'h-3 border border-white/20' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
         }`}>
