@@ -2391,31 +2391,46 @@ export default function UserPortal() {
                 {/* Area Guide - FAQ Section Style */}
                 {activeHelpTab === "guide" && (
                   <div className="mt-0">
-                    {/* Section Heading - Modern 3D Design */}
-                    <div className="text-center mb-8 md:mb-12 px-4">
-                      <div className="relative inline-block">
-                        {/* 3D Background Layers */}
-                        <div className="absolute inset-0 bg-black translate-x-2 translate-y-2 opacity-20"></div>
-                        <div className="absolute inset-0 bg-primary translate-x-1 translate-y-1 opacity-40"></div>
+                    {/* Section Heading - Professional Cubic Container */}
+                    <div className="text-center mb-8 md:mb-12">
+                      <div className="inline-block bg-background border-4 border-black shadow-lg p-6 md:p-8 lg:p-10 relative mx-4">
+                        {/* Corner Decorations */}
+                        <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-primary -translate-x-2 -translate-y-2"></div>
+                        <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-primary translate-x-2 -translate-y-2"></div>
+                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-primary -translate-x-2 translate-y-2"></div>
+                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-primary translate-x-2 translate-y-2"></div>
                         
-                        {/* Main Content Card */}
-                        <div className="relative bg-gradient-to-br from-white via-gray-50 to-white border-4 border-black p-6 md:p-10 lg:p-12 shadow-2xl">
-                          {/* Accent Line */}
-                          <div className="absolute top-0 left-0 w-20 h-1 bg-primary"></div>
-                          <div className="absolute bottom-0 right-0 w-20 h-1 bg-primary"></div>
-                          
-                          <h3 className="text-2xl md:text-4xl lg:text-5xl font-black tracking-tight text-black mb-3 relative">
-                            FREQUENTLY ASKED
-                            <br />
-                            <span className="text-primary">QUESTIONS</span>
-                          </h3>
-                          
-                          <div className="h-1 w-16 bg-black mx-auto my-4"></div>
-                          
-                          <p className="text-sm md:text-base text-gray-600 font-medium tracking-wide uppercase">
-                            Instant Answers to Your THORX Queries
-                          </p>
-                        </div>
+                        <h3 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight mb-4" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
+                          <span className="text-black">F</span>
+                          <span className="text-white">r</span>
+                          <span className="text-primary">e</span>
+                          <span className="text-black">q</span>
+                          <span className="text-white">u</span>
+                          <span className="text-primary">e</span>
+                          <span className="text-black">n</span>
+                          <span className="text-white">t</span>
+                          <span className="text-primary">l</span>
+                          <span className="text-black">y</span>{" "}
+                          <span className="text-white">A</span>
+                          <span className="text-primary">s</span>
+                          <span className="text-black">k</span>
+                          <span className="text-white">e</span>
+                          <span className="text-primary">d</span><br />
+                          <span className="text-black">Q</span>
+                          <span className="text-white">u</span>
+                          <span className="text-primary">e</span>
+                          <span className="text-black">s</span>
+                          <span className="text-white">t</span>
+                          <span className="text-primary">i</span>
+                          <span className="text-black">o</span>
+                          <span className="text-white">n</span>
+                          <span className="text-primary">s</span>
+                          <span className="text-black">.</span>
+                        </h3>
+                        
+                        <div className="h-1 w-24 bg-primary mx-auto mb-3"></div>
+                        
+                        <TechnicalLabel text="INSTANT ANSWERS TO YOUR THORX QUERIES" className="text-muted-foreground text-xs md:text-sm" />
                       </div>
                     </div>
 
