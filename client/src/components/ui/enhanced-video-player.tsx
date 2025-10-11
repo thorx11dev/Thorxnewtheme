@@ -266,17 +266,17 @@ function AreaPlayer({
       )}
 
       {/* Progress Bar and Fullscreen Controls */}
-      <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
+      <div className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${
         isFullscreen 
           ? isMobileDevice 
-            ? 'p-2' 
-            : 'p-4'
+            ? 'bg-black/90 p-3' 
+            : 'bg-black/80 p-4'
           : isMobileDevice 
-            ? 'p-1.5' 
-            : 'p-2'
+            ? 'bg-black/80 p-1.5' 
+            : 'bg-black/80 p-2'
       }`}>
         <div className={`w-full bg-gray-600 transition-all duration-300 ${
-          isFullscreen ? 'h-3 border border-white/20' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
+          isFullscreen ? 'h-3 border border-white/20 mb-4' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
         }`}>
           <div
             className={`h-full bg-primary transition-all duration-500 ${
@@ -288,30 +288,28 @@ function AreaPlayer({
         
         {/* Fullscreen Controls - Only visible in fullscreen mode */}
         {isFullscreen && (
-          <div className={`flex items-center justify-between ${
-            isMobileDevice ? 'mt-3' : 'mt-3'
-          }`}>
-            <div className={`flex items-center ${isMobileDevice ? 'gap-3' : 'gap-4'}`}>
+          <div className="flex items-center justify-between">
+            <div className={`flex items-center ${isMobileDevice ? 'gap-4' : 'gap-4'}`}>
               {/* Autoplay Toggle */}
               <button
                 onClick={handleAutoplayToggle}
                 className={`relative rounded-full transition-all duration-300 ${
                   isMobileDevice 
-                    ? 'w-12 h-6 border-2 border-white/40' 
-                    : 'w-12 h-6 border-2 border-white/40'
+                    ? 'w-14 h-7 border-2 border-white/60' 
+                    : 'w-14 h-7 border-2 border-white/60'
                 } ${
                   autoplayEnabled ? 'bg-primary' : 'bg-gray-600'
                 }`}
                 data-testid={`button-autoplay-fullscreen-${areaId}`}
                 title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
               >
-                <div className={`absolute transition-all duration-300 rounded-full bg-white ${
+                <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white shadow-lg ${
                   isMobileDevice 
-                    ? 'top-0.5 w-4 h-4' 
-                    : 'top-0.5 w-4 h-4'
+                    ? 'w-5 h-5' 
+                    : 'w-5 h-5'
                 } ${
                   autoplayEnabled 
-                    ? 'left-6' 
+                    ? 'left-7' 
                     : 'left-0.5'
                 }`} />
               </button>
@@ -319,14 +317,14 @@ function AreaPlayer({
               {/* Volume Toggle */}
               <button
                 onClick={handleVolumeToggle}
-                className={`text-white hover:text-primary active:text-primary transition-colors bg-white/10 rounded-lg ${
-                  isMobileDevice ? 'p-2' : 'p-2'
+                className={`text-white hover:text-primary active:text-primary active:scale-95 transition-all bg-white/20 rounded-lg border-2 border-white/30 ${
+                  isMobileDevice ? 'p-2.5' : 'p-2.5'
                 }`}
                 data-testid={`button-volume-fullscreen-${areaId}`}
               >
                 {isMuted || volume === 0 ?
-                  <VolumeX className={isMobileDevice ? 'w-5 h-5' : 'w-5 h-5'} /> :
-                  <Volume2 className={isMobileDevice ? 'w-5 h-5' : 'w-5 h-5'} />
+                  <VolumeX className={isMobileDevice ? 'w-6 h-6' : 'w-6 h-6'} /> :
+                  <Volume2 className={isMobileDevice ? 'w-6 h-6' : 'w-6 h-6'} />
                 }
               </button>
             </div>
@@ -334,12 +332,12 @@ function AreaPlayer({
             {/* Exit Fullscreen Button */}
             <button
               onClick={onFullscreenToggle}
-              className={`text-white hover:text-primary active:text-primary transition-colors bg-white/10 rounded-lg ${
-                isMobileDevice ? 'p-2' : 'p-2'
+              className={`text-white hover:text-primary active:text-primary active:scale-95 transition-all bg-white/20 rounded-lg border-2 border-white/30 ${
+                isMobileDevice ? 'p-2.5' : 'p-2.5'
               }`}
               data-testid={`button-exit-fullscreen-${areaId}`}
             >
-              <Minimize2 className={isMobileDevice ? 'w-5 h-5' : 'w-5 h-5'} />
+              <Minimize2 className={isMobileDevice ? 'w-6 h-6' : 'w-6 h-6'} />
             </button>
           </div>
         )}
