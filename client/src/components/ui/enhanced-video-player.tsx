@@ -583,6 +583,38 @@ export default function EnhancedVideoPlayer({
                       text="STATUS: READY"
                       className="text-black text-xs"
                     />
+                    {/* Desktop Controls */}
+                    <div className="flex items-center gap-3 ml-4">
+                      <button
+                        onClick={handleAutoplayToggle}
+                        className={`relative rounded-full transition-all duration-300 w-10 h-5 ${
+                          autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
+                        } border-2 border-black`}
+                        data-testid={`button-autoplay-${activeAreaTab}`}
+                        title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+                      >
+                        <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white w-3 h-3 ${
+                          autoplayEnabled ? 'left-5' : 'left-0.5'
+                        }`} />
+                      </button>
+                      <button
+                        onClick={handleVolumeToggle}
+                        className="text-black hover:text-primary transition-colors p-1"
+                        data-testid={`button-volume-${activeAreaTab}`}
+                      >
+                        {isMuted || volume === 0 ?
+                          <VolumeX className="w-4 h-4" /> :
+                          <Volume2 className="w-4 h-4" />
+                        }
+                      </button>
+                      <button
+                        onClick={handleFullscreenToggle}
+                        className="text-black hover:text-primary transition-colors p-1"
+                        data-testid={`button-fullscreen-${activeAreaTab}`}
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </>
                 ) : (
                   /* Mobile Controls - Bottom Left */
