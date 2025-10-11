@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import Auth from "@/pages/auth";
 import UserPortal from "@/pages/UserPortal";
 import TeamPortal from "@/pages/TeamPortal";
+import HilltopAdsAdmin from "@/pages/HilltopAdsAdmin";
 import { ProtectedRoute, PublicOnlyRoute, TeamProtectedRoute } from "@/components/auth/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 
@@ -73,6 +74,13 @@ function Router() {
 
       <Route path="/work">
         <UserPortal />
+      </Route>
+
+      {/* HilltopAds Admin - Team/Founder only */}
+      <Route path="/hilltopads">
+        <TeamProtectedRoute>
+          <HilltopAdsAdmin />
+        </TeamProtectedRoute>
       </Route>
 
       {/* 404 page */}
