@@ -2419,8 +2419,8 @@ export default function UserPortal() {
                       </div>
                     </div>
 
-                    {/* FAQ Items - Modern 3D Card Design */}
-                    <div className="space-y-6 md:space-y-8 px-2 md:px-0">
+                    {/* FAQ Items - Landing Page Style */}
+                    <div className="space-y-4 md:space-y-6">
                       {[
                         {
                           id: "001",
@@ -2461,57 +2461,38 @@ export default function UserPortal() {
                       ].map((faq) => (
                         <div
                           key={faq.id}
-                          className="relative group"
+                          className="split-card bg-background relative group transition-all duration-500"
                         >
-                          {/* 3D Shadow Layers */}
-                          <div className="absolute inset-0 bg-black translate-x-1.5 translate-y-1.5 md:translate-x-2 md:translate-y-2"></div>
-                          <div className="absolute inset-0 bg-primary/60 translate-x-0.5 translate-y-0.5 md:translate-x-1 md:translate-y-1"></div>
-                          
-                          {/* Main Card */}
-                          <div className="relative bg-white border-4 border-black overflow-hidden transition-transform duration-300 group-hover:-translate-x-1 group-hover:-translate-y-1">
-                            {/* Top Accent Stripe */}
-                            <div className="h-2 bg-gradient-to-r from-black via-primary to-black"></div>
-                            
-                            {/* Header with ID Badge */}
-                            <div className="bg-gradient-to-br from-gray-50 to-white px-4 md:px-6 py-4 md:py-5 border-b-2 border-gray-200">
-                              <div className="flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-3 md:gap-4">
-                                  <div className="bg-black text-white px-3 py-1.5 font-black text-xs md:text-sm tracking-wider">
-                                    {faq.id}
-                                  </div>
-                                  <div className="text-xs md:text-sm text-gray-600 font-semibold tracking-wide uppercase">
-                                    {faq.protocol}
-                                  </div>
-                                </div>
-                                <div className="w-10 md:w-12 h-2.5 md:h-3 opacity-30">
-                                  <Barcode />
-                                </div>
+                          {/* Protocol Header */}
+                          <div className="px-4 md:px-8 py-3 md:py-4 bg-primary text-primary-foreground border-b-[3px] border-black">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 md:gap-4">
+                                <TechnicalLabel text={`FAQ-${faq.id}`} className="text-white text-xs md:text-sm" />
+                                <TechnicalLabel text={faq.protocol} className="text-white opacity-80 text-xs" />
+                              </div>
+                              <div className="w-12 md:w-16 h-3 md:h-4 opacity-60">
+                                <Barcode />
                               </div>
                             </div>
+                          </div>
 
-                            {/* Content */}
-                            <div className="p-5 md:p-8">
-                              <h4 className="text-lg md:text-2xl font-black text-black mb-4 md:mb-5 leading-tight">
+                          {/* Protocol Content */}
+                          <div className="bg-background p-4 md:p-6">
+                            <div className="mb-3 md:mb-4">
+                              <h4 className="text-base md:text-xl lg:text-2xl font-bold text-foreground leading-tight">
                                 {faq.question}
                               </h4>
-                              <div className="relative pl-4 md:pl-6">
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
-                                <p className="text-sm md:text-base text-gray-700 leading-relaxed">
-                                  {faq.answer}
-                                </p>
-                              </div>
+                            </div>
+                            <div className="text-foreground text-sm md:text-base leading-relaxed bg-muted p-3 md:p-6 border-l-4 border-primary">
+                              {faq.answer}
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-8 md:mt-12 pt-6 md:pt-8 border-t-4 border-black">
-                      <div className="bg-gradient-to-r from-gray-50 via-white to-gray-50 p-4 md:p-6 border-2 border-gray-300 text-center">
-                        <p className="text-xs md:text-sm text-gray-600 font-semibold tracking-wide uppercase">
-                          Need More Help? Use <span className="text-primary font-black">AREA HELP</span> for Live Chat or <span className="text-primary font-black">AREA CONTACT</span> for Direct Support
-                        </p>
-                      </div>
+                    <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t-2 border-black text-center">
+                      <TechnicalLabel text="NEED MORE HELP? USE AREA HELP FOR LIVE CHAT OR AREA CONTACT FOR DIRECT SUPPORT" className="text-muted-foreground text-xs md:text-sm" />
                     </div>
                   </div>
                 )}
