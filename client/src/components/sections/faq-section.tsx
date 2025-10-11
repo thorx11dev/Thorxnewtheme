@@ -141,45 +141,52 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
         <div className="hidden md:flex items-start justify-between gap-16 min-h-[70vh] pt-16">
           {/* Left Side - Industrial Title with Cubic Container */}
           <div className="flex-shrink-0 w-96 pt-8 pr-8">
-            <div className="inline-block bg-background border-4 border-black shadow-lg p-8 lg:p-10 relative mb-8">
-              {/* Corner Decorations */}
-              <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-primary -translate-x-2 -translate-y-2"></div>
-              <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-primary translate-x-2 -translate-y-2"></div>
-              <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-primary -translate-x-2 translate-y-2"></div>
-              <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-primary translate-x-2 translate-y-2"></div>
+            <div className="inline-block relative mb-8">
+              {/* Subtle depth shadow */}
+              <div className="absolute inset-0 bg-black/15 translate-x-1.5 translate-y-1.5 -z-10"></div>
               
-              <div className="mb-6">
-                <TechnicalLabel text="FAQ PROTOCOL v2.47" />
-              </div>
-              
-              <h2 className="text-5xl lg:text-6xl font-black tracking-tight leading-tight mb-6" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
-                <span className="text-black">K</span>
-                <span className="text-white">n</span>
-                <span className="text-primary">o</span>
-                <span className="text-black">w</span>
-                <span className="text-white">l</span>
-                <span className="text-primary">e</span>
-                <span className="text-black">d</span>
-                <span className="text-white">g</span>
-                <span className="text-primary">e</span><br />
-                <span className="text-black">B</span>
-                <span className="text-white">a</span>
-                <span className="text-primary">s</span>
-                <span className="text-black">e</span><br />
-                <span className="text-white">A</span>
-                <span className="text-primary">c</span>
-                <span className="text-black">c</span>
-                <span className="text-white">e</span>
-                <span className="text-primary">s</span>
-                <span className="text-black">s</span>
-                <span className="text-white">.</span>
-              </h2>
-              
-              <div className="h-1 w-24 bg-primary mb-4"></div>
-              
-              <div className="space-y-2">
-                <TechnicalLabel text="SYSTEM STATUS: OPERATIONAL" />
-                <Barcode className="w-32 h-8 opacity-60" />
+              {/* Main Container */}
+              <div className="relative bg-background border-[3px] border-black p-8 lg:p-10">
+                {/* Clean corner accents */}
+                <div className="absolute top-0 left-0 w-3 h-3 border-t-[3px] border-l-[3px] border-primary -translate-x-1.5 -translate-y-1.5"></div>
+                <div className="absolute top-0 right-0 w-3 h-3 border-t-[3px] border-r-[3px] border-primary translate-x-1.5 -translate-y-1.5"></div>
+                <div className="absolute bottom-0 left-0 w-3 h-3 border-b-[3px] border-l-[3px] border-primary -translate-x-1.5 translate-y-1.5"></div>
+                <div className="absolute bottom-0 right-0 w-3 h-3 border-b-[3px] border-r-[3px] border-primary translate-x-1.5 translate-y-1.5"></div>
+                
+                {/* Content */}
+                <div className="mb-6">
+                  <TechnicalLabel text="FAQ PROTOCOL v2.47" />
+                </div>
+                
+                <h2 className="text-5xl lg:text-6xl font-black tracking-tight leading-tight mb-6" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
+                  <span className="text-black">K</span>
+                  <span className="text-white">n</span>
+                  <span className="text-primary">o</span>
+                  <span className="text-black">w</span>
+                  <span className="text-white">l</span>
+                  <span className="text-primary">e</span>
+                  <span className="text-black">d</span>
+                  <span className="text-white">g</span>
+                  <span className="text-primary">e</span><br />
+                  <span className="text-black">B</span>
+                  <span className="text-white">a</span>
+                  <span className="text-primary">s</span>
+                  <span className="text-black">e</span><br />
+                  <span className="text-white">A</span>
+                  <span className="text-primary">c</span>
+                  <span className="text-black">c</span>
+                  <span className="text-white">e</span>
+                  <span className="text-primary">s</span>
+                  <span className="text-black">s</span>
+                  <span className="text-white">.</span>
+                </h2>
+                
+                <div className="h-1 w-24 bg-primary mb-4"></div>
+                
+                <div className="space-y-2">
+                  <TechnicalLabel text="SYSTEM STATUS: OPERATIONAL" />
+                  <Barcode className="w-32 h-8 opacity-60" />
+                </div>
               </div>
             </div>
           </div>
