@@ -92,6 +92,7 @@ export const adViews = pgTable("ad_views", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   adId: varchar("ad_id").references(() => advertisements.id, { onDelete: "set null" }),
   adType: text("ad_type").notNull(),
+  adNetwork: text("ad_network").default("internal"),
   duration: integer("duration"),
   completed: boolean("completed").default(false),
   earnedAmount: decimal("earned_amount", { precision: 10, scale: 2 }).notNull(),
@@ -102,6 +103,7 @@ export const adViews = pgTable("ad_views", {
   index("ad_views_user_id_idx").on(table.userId),
   index("ad_views_ad_id_idx").on(table.adId),
   index("ad_views_completed_idx").on(table.completed),
+  index("ad_views_network_idx").on(table.adNetwork),
   index("ad_views_created_at_idx").on(table.createdAt),
 ]);
 
@@ -400,6 +402,55 @@ export const chatMessages = pgTable("chat_messages", {
   index("chat_messages_created_at_idx").on(table.createdAt),
 ]);
 
+// HilltopAds configuration table
+export const hilltopAdsConfig = pgTable("hilltop_ads_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiKey: text("api_key").notNull(),
+  publisherId: text("publisher_id"),
+  isActive: boolean("is_active").default(true),
+  settings: jsonb("settings").notNull().default(sql`'{}'::jsonb`),
+  lastSyncedAt: timestamp("last_synced_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// HilltopAds zones table
+export const hilltopAdsZones = pgTable("hilltop_ads_zones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  zoneId: text("zone_id").notNull().unique(),
+  siteName: text("site_name").notNull(),
+  zoneName: text("zone_name").notNull(),
+  adFormat: text("ad_format").notNull(),
+  status: text("status").default("active"),
+  settings: jsonb("settings").notNull().default(sql`'{}'::jsonb`),
+  totalImpressions: integer("total_impressions").default(0),
+  totalClicks: integer("total_clicks").default(0),
+  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).default("0.00"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("hilltop_ads_zones_zone_id_idx").on(table.zoneId),
+  index("hilltop_ads_zones_status_idx").on(table.status),
+  index("hilltop_ads_zones_ad_format_idx").on(table.adFormat),
+]);
+
+// HilltopAds statistics table
+export const hilltopAdsStats = pgTable("hilltop_ads_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  zoneId: varchar("zone_id").references(() => hilltopAdsZones.id, { onDelete: "cascade" }),
+  date: timestamp("date").notNull(),
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  cpm: decimal("cpm", { precision: 10, scale: 4 }).default("0.0000"),
+  revenue: decimal("revenue", { precision: 10, scale: 4 }).default("0.0000"),
+  ctr: decimal("ctr", { precision: 5, scale: 2 }).default("0.00"),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("hilltop_ads_stats_zone_id_idx").on(table.zoneId),
+  index("hilltop_ads_stats_date_idx").on(table.date),
+]);
+
 // Define relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   earnings: many(earnings),
@@ -570,6 +621,17 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   }),
 }));
 
+export const hilltopAdsZonesRelations = relations(hilltopAdsZones, ({ many }) => ({
+  stats: many(hilltopAdsStats),
+}));
+
+export const hilltopAdsStatsRelations = relations(hilltopAdsStats, ({ one }) => ({
+  zone: one(hilltopAdsZones, {
+    fields: [hilltopAdsStats.zoneId],
+    references: [hilltopAdsZones.id],
+  }),
+}));
+
 // Zod schemas for validation
 export const insertRegistrationSchema = createInsertSchema(registrations).pick({
   phone: true,
@@ -717,6 +779,23 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   createdAt: true,
 });
 
+export const insertHilltopAdsConfigSchema = createInsertSchema(hilltopAdsConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertHilltopAdsZoneSchema = createInsertSchema(hilltopAdsZones).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertHilltopAdsStatSchema = createInsertSchema(hilltopAdsStats).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Type exports
 export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
 export type Registration = typeof registrations.$inferSelect;
@@ -780,3 +859,12 @@ export type UserCredential = typeof userCredentials.$inferSelect;
 
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+export type InsertHilltopAdsConfig = z.infer<typeof insertHilltopAdsConfigSchema>;
+export type HilltopAdsConfig = typeof hilltopAdsConfig.$inferSelect;
+
+export type InsertHilltopAdsZone = z.infer<typeof insertHilltopAdsZoneSchema>;
+export type HilltopAdsZone = typeof hilltopAdsZones.$inferSelect;
+
+export type InsertHilltopAdsStat = z.infer<typeof insertHilltopAdsStatSchema>;
+export type HilltopAdsStat = typeof hilltopAdsStats.$inferSelect;
