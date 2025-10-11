@@ -188,9 +188,7 @@ function AreaPlayer({
       ref={playerRef}
       className={`relative flex items-center justify-center overflow-hidden transition-all duration-300 ${
         isFullscreen
-          ? isMobileDevice
-            ? 'h-screen w-full border-none'
-            : 'h-[calc(100vh-200px)] w-full border-2 border-black'
+          ? 'h-screen w-full border-none'
           : isMobileDevice
             ? 'aspect-video border border-black'
             : 'aspect-video border-2 border-black'
@@ -267,12 +265,12 @@ function AreaPlayer({
         </button>
       )}
 
-      {/* Progress Bar */}
+      {/* Progress Bar and Fullscreen Controls */}
       <div className={`absolute bottom-0 left-0 right-0 bg-black/80 transition-all duration-300 ${
         isFullscreen 
           ? isMobileDevice 
             ? 'p-2' 
-            : 'p-3'
+            : 'p-4'
           : isMobileDevice 
             ? 'p-1.5' 
             : 'p-2'
@@ -287,6 +285,64 @@ function AreaPlayer({
             style={{ width: `${adProgress}%` }}
           />
         </div>
+        
+        {/* Fullscreen Controls - Only visible in fullscreen mode */}
+        {isFullscreen && (
+          <div className={`flex items-center justify-between ${
+            isMobileDevice ? 'mt-3' : 'mt-3'
+          }`}>
+            <div className={`flex items-center ${isMobileDevice ? 'gap-3' : 'gap-4'}`}>
+              {/* Autoplay Toggle */}
+              <button
+                onClick={handleAutoplayToggle}
+                className={`relative rounded-full transition-all duration-300 ${
+                  isMobileDevice 
+                    ? 'w-12 h-6 border-2 border-white/40' 
+                    : 'w-12 h-6 border-2 border-white/40'
+                } ${
+                  autoplayEnabled ? 'bg-primary' : 'bg-gray-600'
+                }`}
+                data-testid={`button-autoplay-fullscreen-${areaId}`}
+                title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
+              >
+                <div className={`absolute transition-all duration-300 rounded-full bg-white ${
+                  isMobileDevice 
+                    ? 'top-0.5 w-4 h-4' 
+                    : 'top-0.5 w-4 h-4'
+                } ${
+                  autoplayEnabled 
+                    ? 'left-6' 
+                    : 'left-0.5'
+                }`} />
+              </button>
+              
+              {/* Volume Toggle */}
+              <button
+                onClick={handleVolumeToggle}
+                className={`text-white hover:text-primary active:text-primary transition-colors bg-white/10 rounded-lg ${
+                  isMobileDevice ? 'p-2' : 'p-2'
+                }`}
+                data-testid={`button-volume-fullscreen-${areaId}`}
+              >
+                {isMuted || volume === 0 ?
+                  <VolumeX className={isMobileDevice ? 'w-5 h-5' : 'w-5 h-5'} /> :
+                  <Volume2 className={isMobileDevice ? 'w-5 h-5' : 'w-5 h-5'} />
+                }
+              </button>
+            </div>
+            
+            {/* Exit Fullscreen Button */}
+            <button
+              onClick={onFullscreenToggle}
+              className={`text-white hover:text-primary active:text-primary transition-colors bg-white/10 rounded-lg ${
+                isMobileDevice ? 'p-2' : 'p-2'
+              }`}
+              data-testid={`button-exit-fullscreen-${areaId}`}
+            >
+              <Minimize2 className={isMobileDevice ? 'w-5 h-5' : 'w-5 h-5'} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Industrial Corner Accents */}
@@ -506,9 +562,7 @@ export default function EnhancedVideoPlayer({
       {/* Industrial Frame Container */}
       <div className={`bg-black transition-all duration-300 ${
         isFullscreen
-          ? isMobileDevice
-            ? 'h-full w-full p-1'
-            : 'h-screen w-screen p-4'
+          ? 'h-full w-full flex items-center justify-center'
           : isMobileDevice
             ? 'border-2 border-white p-1'
             : 'border-4 border-white p-2'
@@ -550,19 +604,21 @@ export default function EnhancedVideoPlayer({
         )}
 
         {/* Main Video Content Area - Independent Players for Each Area */}
-        {areaTabs.map((areaTab) => (
-          <AreaPlayer
-            key={areaTab.id}
-            areaId={areaTab.id}
-            areaLabel={areaTab.label}
-            tab={tab}
-            isActive={activeAreaTab === areaTab.id}
-            isFullscreen={isFullscreen}
-            isMobileDevice={isMobileDevice}
-            onComplete={onComplete}
-            onFullscreenToggle={handleFullscreenToggle}
-          />
-        ))}
+        <div className={isFullscreen ? 'w-full h-full' : 'w-full'}>
+          {areaTabs.map((areaTab) => (
+            <AreaPlayer
+              key={areaTab.id}
+              areaId={areaTab.id}
+              areaLabel={areaTab.label}
+              tab={tab}
+              isActive={activeAreaTab === areaTab.id}
+              isFullscreen={isFullscreen}
+              isMobileDevice={isMobileDevice}
+              onComplete={onComplete}
+              onFullscreenToggle={handleFullscreenToggle}
+            />
+          ))}
+        </div>
 
         {/* Industrial Status Bar - Mobile Controls on Bottom Left - Hidden in Fullscreen */}
         {!isFullscreen && (
