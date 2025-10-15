@@ -12,6 +12,8 @@ import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import { useToast } from "@/hooks/use-toast";
 import { Delete, Eye, EyeOff, Info, Copy } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Animated Placeholder Component
 function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: { examples: string[]; className?: string }) {
@@ -274,7 +276,9 @@ export default function Auth() {
   const [emailValidation, setEmailValidation] = useState<{ valid: boolean; message: string }>({ valid: true, message: "" });
   const [phoneValidation, setPhoneValidation] = useState<{ valid: boolean; message: string }>({ valid: true, message: "" });
   const [passwordStrength, setPasswordStrength] = useState<{ level: number; label: string; color: string }>({ level: 0, label: '', color: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Identity generation function
   const generateThorxIdentity = (firstName: string, lastName: string): string => {
@@ -340,20 +344,91 @@ export default function Auth() {
     }
   }, [name, registerForm]);
 
-  const onRegisterSubmit = (data: RegisterForm) => {
-    toast({
-      title: "Registration Disabled",
-      description: "Registration is currently disabled. Use portal navigation buttons below.",
-      variant: "destructive"
-    });
+  const onRegisterSubmit = async (data: RegisterForm) => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      // Split name into firstName and lastName
+      const nameParts = data.name.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || nameParts[0];
+
+      const response = await apiRequest("POST", "/api/register", {
+        firstName,
+        lastName,
+        email: data.email,
+        password: data.password,
+        phone: data.phone || '',
+        identity: data.identity,
+        referralCode: data.referralCode || '',
+        role: data.role
+      });
+
+      const result = await response.json();
+      
+      // Invalidate auth query to fetch new user data
+      await queryClient.invalidateQueries({ queryKey: ["auth"] });
+      
+      toast({
+        title: "Registration Successful!",
+        description: `Welcome to THORX, ${firstName}!`,
+      });
+
+      // Redirect based on role
+      if (data.role === 'team' || data.role === 'founder') {
+        setLocation("/team-portal");
+      } else {
+        setLocation("/user-portal");
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Failed to create account. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const onLoginSubmit = (data: LoginForm) => {
-    toast({
-      title: "Login Disabled",
-      description: "Login is currently disabled. Use portal navigation buttons below.",
-      variant: "destructive"
-    });
+  const onLoginSubmit = async (data: LoginForm) => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      const response = await apiRequest("POST", "/api/login", {
+        email: data.email,
+        password: data.password
+      });
+
+      const result = await response.json();
+      
+      // Invalidate auth query to fetch new user data
+      await queryClient.invalidateQueries({ queryKey: ["auth"] });
+      
+      toast({
+        title: "Login Successful!",
+        description: `Welcome back!`,
+      });
+
+      // Redirect based on role
+      if (result.user?.role === 'team' || result.user?.role === 'founder') {
+        setLocation("/team-portal");
+      } else {
+        setLocation("/user-portal");
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid email or password",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
