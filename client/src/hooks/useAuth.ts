@@ -25,8 +25,8 @@ export function useAuth() {
         const response = await apiRequest("GET", "/api/user");
         return await response.json();
       } catch (error: any) {
-        // Handle 401 without throwing an error - user is simply not logged in
-        if (error.message?.includes('401')) {
+        // Handle 401 and 404 without throwing - user is not logged in
+        if (error.message?.includes('401') || error.message?.includes('404')) {
           return null;
         }
         throw error;
