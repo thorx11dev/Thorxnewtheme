@@ -2033,6 +2033,11 @@
     background: #000 !important;
   }
 
+  /* Safe area bottom padding for mobile fullscreen controls */
+  .safe-area-bottom {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom)) !important;
+  }
+
   /* Smooth transitions for fullscreen */
   .video-transition {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
