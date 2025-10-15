@@ -158,7 +158,7 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-auto bg-gradient-to-br from-background to-background/95 border-3 border-black p-0 overflow-hidden shadow-2xl">
+      <DialogContent className="max-w-lg mx-auto bg-gradient-to-br from-background to-background/95 border-3 border-black p-0 overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:rounded-lg">
         {/* Header with enhanced styling */}
         <DialogHeader className="bg-gradient-to-r from-primary via-primary to-primary/90 text-primary-foreground p-4 md:p-6 border-b-3 border-black relative overflow-hidden">
           {/* Animated background pattern */}
@@ -168,22 +168,22 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
           
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3 animate-zoom-in">
-              <div className="p-2 bg-black/20 border-2 border-black rounded-md">
+              <div className="p-2 bg-black/20 border-2 border-black rounded-md shadow-lg">
                 <Share2 className="w-5 h-5 md:w-6 md:h-6" />
               </div>
-              <DialogTitle className="text-lg md:text-2xl font-black tracking-tight">
+              <DialogTitle className="text-xl md:text-2xl font-black tracking-tight leading-tight">
                 INVITE FRIENDS
               </DialogTitle>
             </div>
             <button
               onClick={onClose}
-              className="group relative w-10 h-10 bg-black text-white hover:bg-white hover:text-black transition-all duration-300 border-2 border-black flex items-center justify-center overflow-hidden transform hover:scale-110 hover:rotate-90"
+              className="group relative w-10 h-10 bg-black/20 text-primary-foreground hover:bg-black hover:text-white transition-all duration-300 border-2 border-black flex items-center justify-center overflow-hidden transform hover:scale-110 shadow-lg hover:shadow-xl"
             >
               <X className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover:rotate-90" />
-              <div className="absolute inset-0 bg-white transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
+              <div className="absolute inset-0 bg-black transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
             </button>
           </div>
-          <TechnicalLabel text="SHARE PROTOCOL v2.1" className="text-primary-foreground/90 text-xs mt-2 relative z-10" />
+          <TechnicalLabel text="SHARE PROTOCOL v2.1" className="text-primary-foreground/90 text-xs mt-2 relative z-10 font-black" />
         </DialogHeader>
 
         {/* Content with enhanced styling */}
@@ -193,10 +193,10 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
           
           {/* Referral Code Display with enhanced animation */}
           <div className="text-center relative animate-zoom-in">
-            <TechnicalLabel text="YOUR REFERRAL CODE" className="text-muted-foreground mb-3 text-xs font-black" />
+            <TechnicalLabel text="YOUR REFERRAL CODE" className="text-muted-foreground mb-3 text-xs font-black tracking-wider" />
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-primary via-primary to-primary/80 blur opacity-25 group-hover:opacity-40 transition duration-300"></div>
-              <div className="relative bg-black text-white p-4 md:p-5 border-3 border-primary shadow-lg">
+              <div className="relative bg-black text-white p-4 md:p-5 border-3 border-primary shadow-[4px_4px_0px_0px_rgba(255,119,0,0.3)]">
                 <div className="text-2xl md:text-3xl font-black tracking-widest text-center text-primary animate-pulse">
                   {referralCode}
                 </div>
@@ -206,13 +206,13 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
           {/* Custom Message Input with enhanced styling */}
           <div className="relative">
-            <TechnicalLabel text="CUSTOM MESSAGE (OPTIONAL)" className="text-foreground mb-3 text-xs font-black" />
+            <TechnicalLabel text="CUSTOM MESSAGE (OPTIONAL)" className="text-foreground mb-3 text-xs font-black tracking-wider" />
             <div className="relative group">
               <textarea
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}
                 placeholder={defaultMessage}
-                className="w-full min-h-[80px] p-3 border-3 border-black text-sm resize-vertical focus:outline-none focus:border-primary focus:shadow-lg focus:shadow-primary/20 transition-all duration-300 bg-white group-hover:border-primary/50"
+                className="w-full min-h-[80px] p-3 border-3 border-black text-sm resize-vertical focus:outline-none focus:border-primary focus:shadow-[4px_4px_0px_0px_rgba(255,119,0,0.2)] transition-all duration-300 bg-white group-hover:border-primary/50 rounded-md"
                 maxLength={500}
               />
             </div>
@@ -223,7 +223,7 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
           {/* Platform Grid with enhanced animations */}
           <div className="relative">
-            <TechnicalLabel text="CHOOSE PLATFORM" className="text-foreground mb-4 text-xs font-black" />
+            <TechnicalLabel text="CHOOSE PLATFORM" className="text-foreground mb-4 text-xs font-black tracking-wider" />
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {sharePlatforms.map((platform, index) => {
                 const Icon = platform.icon;
@@ -236,10 +236,10 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
                       group relative flex flex-col items-center justify-center p-3 md:p-4 
                       border-3 border-black transition-all duration-300 
                       ${platform.bgColor} ${platform.hoverColor}
-                      hover:transform hover:scale-110 hover:shadow-xl hover:shadow-black/20
+                      hover:transform hover:scale-110 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
                       active:scale-95 animate-zoom-in
                       focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
-                      overflow-hidden
+                      overflow-hidden rounded-md
                     `}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -256,19 +256,19 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
           {/* Quick Actions with enhanced styling */}
           <div className="space-y-3 relative">
-            <TechnicalLabel text="QUICK ACTIONS" className="text-foreground text-xs font-black" />
+            <TechnicalLabel text="QUICK ACTIONS" className="text-foreground text-xs font-black tracking-wider" />
             
             {/* Copy Link with enhanced design */}
             <div className="flex items-center gap-2">
               <Input
                 value={shareUrl}
                 readOnly
-                className="flex-1 border-3 border-black text-sm bg-muted font-mono focus:border-primary focus:shadow-lg focus:shadow-primary/20 transition-all"
+                className="flex-1 border-3 border-black text-sm bg-muted font-mono focus:border-primary focus:shadow-[4px_4px_0px_0px_rgba(255,119,0,0.2)] transition-all rounded-md"
               />
               <Button
                 onClick={handleCopyLink}
                 variant="outline"
-                className="group border-3 border-black hover:bg-black hover:text-white px-4 transition-all duration-300 hover:scale-105 active:scale-95"
+                className="group border-3 border-black hover:bg-black hover:text-white px-4 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] rounded-md"
               >
                 {copied ? (
                   <Check className="w-4 h-4 animate-zoom-in" />
@@ -282,7 +282,7 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
             <Button
               onClick={handleCopyMessage}
               variant="outline"
-              className="group w-full border-3 border-black hover:bg-black hover:text-white py-3 font-black transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-lg overflow-hidden relative"
+              className="group w-full border-3 border-black hover:bg-black hover:text-white py-3 font-black transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden relative rounded-md"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 transform -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
               <Link2 className="w-4 h-4 mr-2 relative z-10 group-hover:scale-110 transition-transform" />
@@ -291,16 +291,16 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
           </div>
 
           {/* Stats Display with enhanced styling */}
-          <div className="relative group bg-gradient-to-br from-muted to-muted/80 p-4 md:p-5 border-3 border-black shadow-lg overflow-hidden">
+          <div className="relative group bg-gradient-to-br from-muted to-muted/80 p-4 md:p-5 border-3 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] overflow-hidden rounded-md">
             <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
             <div className="grid grid-cols-2 gap-4 text-center relative z-10">
               <div className="transform group-hover:scale-105 transition-transform duration-300">
                 <div className="text-2xl md:text-3xl font-black text-primary">25%</div>
-                <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs mt-1" />
+                <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs mt-1 font-black" />
               </div>
               <div className="transform group-hover:scale-105 transition-transform duration-300">
                 <div className="text-2xl md:text-3xl font-black text-foreground">∞</div>
-                <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs mt-1" />
+                <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs mt-1 font-black" />
               </div>
             </div>
           </div>
