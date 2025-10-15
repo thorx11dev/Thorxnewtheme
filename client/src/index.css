@@ -2254,9 +2254,9 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.08);
   }
 
-  /* Enhanced Border Utilities */
+  /* Team Keys Border Animation */
   .border-3 {
-    border-width: 3px !important;
+    border-width: 3px;
   }
 
   /* Team Keys Staggered Animation */
