@@ -158,75 +158,95 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-auto bg-background border-2 border-black p-0 overflow-hidden">
-        {/* Header */}
-        <DialogHeader className="bg-primary text-primary-foreground p-4 md:p-6 border-b-2 border-black">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Share2 className="w-5 h-5 md:w-6 md:h-6" />
-              <DialogTitle className="text-lg md:text-xl font-black">
+      <DialogContent className="max-w-lg mx-auto bg-gradient-to-br from-background to-background/95 border-3 border-black p-0 overflow-hidden shadow-2xl">
+        {/* Header with enhanced styling */}
+        <DialogHeader className="bg-gradient-to-r from-primary via-primary to-primary/90 text-primary-foreground p-4 md:p-6 border-b-3 border-black relative overflow-hidden">
+          {/* Animated background pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0 bg-grid-pattern"></div>
+          </div>
+          
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-3 animate-zoom-in">
+              <div className="p-2 bg-black/20 border-2 border-black rounded-md">
+                <Share2 className="w-5 h-5 md:w-6 md:h-6" />
+              </div>
+              <DialogTitle className="text-lg md:text-2xl font-black tracking-tight">
                 INVITE FRIENDS
               </DialogTitle>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 bg-black text-white hover:bg-white hover:text-black transition-colors border border-black flex items-center justify-center"
+              className="group relative w-10 h-10 bg-black text-white hover:bg-white hover:text-black transition-all duration-300 border-2 border-black flex items-center justify-center overflow-hidden transform hover:scale-110 hover:rotate-90"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover:rotate-90" />
+              <div className="absolute inset-0 bg-white transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
             </button>
           </div>
-          <TechnicalLabel text="SHARE PROTOCOL v2.1" className="text-primary-foreground/80 text-xs" />
+          <TechnicalLabel text="SHARE PROTOCOL v2.1" className="text-primary-foreground/90 text-xs mt-2 relative z-10" />
         </DialogHeader>
 
-        {/* Content */}
-        <div className="p-4 md:p-6 space-y-6">
-          {/* Referral Code Display */}
-          <div className="text-center">
-            <TechnicalLabel text="YOUR REFERRAL CODE" className="text-muted-foreground mb-2 text-xs" />
-            <div className="bg-black text-white p-3 md:p-4 border-2 border-primary">
-              <div className="text-xl md:text-2xl font-black tracking-widest text-center text-primary">
-                {referralCode}
+        {/* Content with enhanced styling */}
+        <div className="p-4 md:p-6 space-y-6 relative">
+          {/* Background grid pattern */}
+          <div className="absolute inset-0 opacity-5 bg-grid-pattern pointer-events-none"></div>
+          
+          {/* Referral Code Display with enhanced animation */}
+          <div className="text-center relative animate-zoom-in">
+            <TechnicalLabel text="YOUR REFERRAL CODE" className="text-muted-foreground mb-3 text-xs font-black" />
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-primary via-primary to-primary/80 blur opacity-25 group-hover:opacity-40 transition duration-300"></div>
+              <div className="relative bg-black text-white p-4 md:p-5 border-3 border-primary shadow-lg">
+                <div className="text-2xl md:text-3xl font-black tracking-widest text-center text-primary animate-pulse">
+                  {referralCode}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Custom Message Input */}
-          <div>
-            <TechnicalLabel text="CUSTOM MESSAGE (OPTIONAL)" className="text-foreground mb-2 text-xs font-black" />
-            <textarea
-              value={customMessage}
-              onChange={(e) => setCustomMessage(e.target.value)}
-              placeholder={defaultMessage}
-              className="w-full min-h-[80px] p-3 border-2 border-black text-sm resize-vertical focus:outline-none focus:border-primary"
-              maxLength={500}
-            />
-            <div className="text-right mt-1">
-              <TechnicalLabel text={`${customMessage.length}/500`} className="text-muted-foreground text-xs" />
+          {/* Custom Message Input with enhanced styling */}
+          <div className="relative">
+            <TechnicalLabel text="CUSTOM MESSAGE (OPTIONAL)" className="text-foreground mb-3 text-xs font-black" />
+            <div className="relative group">
+              <textarea
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                placeholder={defaultMessage}
+                className="w-full min-h-[80px] p-3 border-3 border-black text-sm resize-vertical focus:outline-none focus:border-primary focus:shadow-lg focus:shadow-primary/20 transition-all duration-300 bg-white group-hover:border-primary/50"
+                maxLength={500}
+              />
+            </div>
+            <div className="text-right mt-2">
+              <TechnicalLabel text={`${customMessage.length}/500`} className="text-muted-foreground text-xs font-bold" />
             </div>
           </div>
 
-          {/* Platform Grid */}
-          <div>
-            <TechnicalLabel text="CHOOSE PLATFORM" className="text-foreground mb-3 text-xs font-black" />
+          {/* Platform Grid with enhanced animations */}
+          <div className="relative">
+            <TechnicalLabel text="CHOOSE PLATFORM" className="text-foreground mb-4 text-xs font-black" />
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {sharePlatforms.map((platform) => {
+              {sharePlatforms.map((platform, index) => {
                 const Icon = platform.icon;
                 return (
                   <button
                     key={platform.id}
                     onClick={() => handlePlatformShare(platform)}
+                    style={{ animationDelay: `${index * 0.05}s` }}
                     className={`
-                      flex flex-col items-center justify-center p-3 md:p-4 
-                      border-2 border-black transition-all duration-200 
+                      group relative flex flex-col items-center justify-center p-3 md:p-4 
+                      border-3 border-black transition-all duration-300 
                       ${platform.bgColor} ${platform.hoverColor}
-                      hover:transform hover:scale-105 active:scale-95
+                      hover:transform hover:scale-110 hover:shadow-xl hover:shadow-black/20
+                      active:scale-95 animate-zoom-in
                       focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+                      overflow-hidden
                     `}
                   >
-                    <Icon className={`w-6 h-6 md:w-8 md:h-8 mb-2 ${platform.color}`} />
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <Icon className={`w-6 h-6 md:w-8 md:h-8 mb-2 ${platform.color} relative z-10 transform group-hover:scale-110 transition-transform duration-300`} />
                     <TechnicalLabel 
                       text={platform.name.toUpperCase()} 
-                      className="text-xs font-black text-center leading-tight" 
+                      className="text-xs font-black text-center leading-tight relative z-10" 
                     />
                   </button>
                 );
@@ -234,47 +254,53 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="space-y-3">
+          {/* Quick Actions with enhanced styling */}
+          <div className="space-y-3 relative">
             <TechnicalLabel text="QUICK ACTIONS" className="text-foreground text-xs font-black" />
             
-            {/* Copy Link */}
+            {/* Copy Link with enhanced design */}
             <div className="flex items-center gap-2">
               <Input
                 value={shareUrl}
                 readOnly
-                className="flex-1 border-2 border-black text-sm bg-muted"
+                className="flex-1 border-3 border-black text-sm bg-muted font-mono focus:border-primary focus:shadow-lg focus:shadow-primary/20 transition-all"
               />
               <Button
                 onClick={handleCopyLink}
                 variant="outline"
-                className="border-2 border-black hover:bg-black hover:text-white px-3"
+                className="group border-3 border-black hover:bg-black hover:text-white px-4 transition-all duration-300 hover:scale-105 active:scale-95"
               >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? (
+                  <Check className="w-4 h-4 animate-zoom-in" />
+                ) : (
+                  <Copy className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                )}
               </Button>
             </div>
 
-            {/* Copy Full Message */}
+            {/* Copy Full Message with enhanced design */}
             <Button
               onClick={handleCopyMessage}
               variant="outline"
-              className="w-full border-2 border-black hover:bg-black hover:text-white py-3 font-black"
+              className="group w-full border-3 border-black hover:bg-black hover:text-white py-3 font-black transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-lg overflow-hidden relative"
             >
-              <Link2 className="w-4 h-4 mr-2" />
-              COPY FULL MESSAGE
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 transform -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              <Link2 className="w-4 h-4 mr-2 relative z-10 group-hover:scale-110 transition-transform" />
+              <span className="relative z-10">COPY FULL MESSAGE</span>
             </Button>
           </div>
 
-          {/* Stats Display */}
-          <div className="bg-muted p-3 md:p-4 border border-muted-foreground/20">
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <div className="text-lg font-black text-primary">25%</div>
-                <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs" />
+          {/* Stats Display with enhanced styling */}
+          <div className="relative group bg-gradient-to-br from-muted to-muted/80 p-4 md:p-5 border-3 border-black shadow-lg overflow-hidden">
+            <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+            <div className="grid grid-cols-2 gap-4 text-center relative z-10">
+              <div className="transform group-hover:scale-105 transition-transform duration-300">
+                <div className="text-2xl md:text-3xl font-black text-primary">25%</div>
+                <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs mt-1" />
               </div>
-              <div>
-                <div className="text-lg font-black text-foreground">∞</div>
-                <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
+              <div className="transform group-hover:scale-105 transition-transform duration-300">
+                <div className="text-2xl md:text-3xl font-black text-foreground">∞</div>
+                <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs mt-1" />
               </div>
             </div>
           </div>
