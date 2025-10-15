@@ -269,14 +269,14 @@ function AreaPlayer({
       <div className={`absolute left-0 right-0 transition-all duration-300 ${
         isFullscreen 
           ? isMobileDevice 
-            ? 'bottom-0 bg-black/95 p-4 pb-6 safe-area-bottom' 
+            ? 'bottom-0 bg-black/95 p-3 pb-4 safe-area-bottom' 
             : 'bottom-0 bg-black/80 p-4'
           : isMobileDevice 
             ? 'bottom-0 bg-black/80 p-1.5' 
             : 'bottom-0 bg-black/80 p-2'
       }`}>
         <div className={`w-full bg-gray-600 transition-all duration-300 ${
-          isFullscreen ? isMobileDevice ? 'h-2 border border-white/20 mb-6' : 'h-3 border border-white/20 mb-4' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
+          isFullscreen ? isMobileDevice ? 'h-1.5 border border-white/20 mb-3' : 'h-3 border border-white/20 mb-4' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
         }`}>
           <div
             className={`h-full bg-primary transition-all duration-500 ${
@@ -289,13 +289,13 @@ function AreaPlayer({
         {/* Fullscreen Controls - Only visible in fullscreen mode */}
         {isFullscreen && (
           <div className="flex items-center justify-between">
-            <div className={`flex items-center ${isMobileDevice ? 'gap-3' : 'gap-4'}`}>
+            <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-4'}`}>
               {/* Autoplay Toggle */}
               <button
                 onClick={handleAutoplayToggle}
                 className={`relative rounded-full transition-all duration-300 ${
                   isMobileDevice 
-                    ? 'w-16 h-8 border-2 border-white/70' 
+                    ? 'w-11 h-6 border border-white/70' 
                     : 'w-14 h-7 border-2 border-white/60'
                 } ${
                   autoplayEnabled ? 'bg-primary' : 'bg-gray-600'
@@ -305,11 +305,11 @@ function AreaPlayer({
               >
                 <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white shadow-lg ${
                   isMobileDevice 
-                    ? 'w-6 h-6' 
+                    ? 'w-4 h-4' 
                     : 'w-5 h-5'
                 } ${
                   autoplayEnabled 
-                    ? isMobileDevice ? 'left-8' : 'left-7'
+                    ? isMobileDevice ? 'left-5' : 'left-7'
                     : 'left-0.5'
                 }`} />
               </button>
@@ -317,14 +317,14 @@ function AreaPlayer({
               {/* Volume Toggle */}
               <button
                 onClick={handleVolumeToggle}
-                className={`text-white hover:text-primary active:text-primary active:scale-95 transition-all bg-white/20 rounded-lg border-2 border-white/30 ${
-                  isMobileDevice ? 'p-3' : 'p-2.5'
+                className={`text-white hover:text-primary active:text-primary active:scale-95 transition-all bg-white/20 rounded-lg border border-white/30 ${
+                  isMobileDevice ? 'p-2' : 'p-2.5'
                 }`}
                 data-testid={`button-volume-fullscreen-${areaId}`}
               >
                 {isMuted || volume === 0 ?
-                  <VolumeX className={isMobileDevice ? 'w-7 h-7' : 'w-6 h-6'} /> :
-                  <Volume2 className={isMobileDevice ? 'w-7 h-7' : 'w-6 h-6'} />
+                  <VolumeX className={isMobileDevice ? 'w-5 h-5' : 'w-6 h-6'} /> :
+                  <Volume2 className={isMobileDevice ? 'w-5 h-5' : 'w-6 h-6'} />
                 }
               </button>
             </div>
@@ -332,12 +332,12 @@ function AreaPlayer({
             {/* Exit Fullscreen Button */}
             <button
               onClick={onFullscreenToggle}
-              className={`text-white hover:text-primary active:text-primary active:scale-95 transition-all bg-white/20 rounded-lg border-2 border-white/30 ${
-                isMobileDevice ? 'p-3' : 'p-2.5'
+              className={`text-white hover:text-primary active:text-primary active:scale-95 transition-all bg-white/20 rounded-lg border border-white/30 ${
+                isMobileDevice ? 'p-2' : 'p-2.5'
               }`}
               data-testid={`button-exit-fullscreen-${areaId}`}
             >
-              <Minimize2 className={isMobileDevice ? 'w-7 h-7' : 'w-6 h-6'} />
+              <Minimize2 className={isMobileDevice ? 'w-5 h-5' : 'w-6 h-6'} />
             </button>
           </div>
         )}
