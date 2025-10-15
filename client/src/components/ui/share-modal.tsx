@@ -158,20 +158,20 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-auto bg-gradient-to-br from-background to-background/95 border-3 border-black p-0 overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-lg">
+      <DialogContent className="max-w-lg mx-auto bg-gradient-to-br from-background via-background to-muted/30 border-[4px] border-black p-0 overflow-hidden shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] rounded-xl">
         {/* Enhanced Header with improved styling */}
-        <DialogHeader className="bg-gradient-to-r from-primary via-primary to-primary/90 text-primary-foreground p-4 md:p-6 border-b-3 border-black relative overflow-hidden">
+        <DialogHeader className="bg-gradient-to-r from-primary via-primary/95 to-primary text-primary-foreground p-5 md:p-7 border-b-[4px] border-black relative overflow-hidden">
           {/* Animated background pattern - matching logo area */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-grid-pattern"></div>
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0 bg-grid-pattern animate-pulse"></div>
           </div>
           
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-3 animate-zoom-in">
-              <div className="p-2 bg-black/20 border-2 border-black rounded-md shadow-lg">
-                <Share2 className="w-5 h-5 md:w-6 md:h-6" />
+              <div className="p-2.5 bg-black/30 border-[3px] border-black rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,0.7)] transition-all">
+                <Share2 className="w-6 h-6 md:w-7 md:h-7 animate-pulse" />
               </div>
-              <DialogTitle className="text-xl md:text-2xl font-black tracking-tight leading-tight">
+              <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight leading-tight drop-shadow-[2px_2px_0px_rgba(0,0,0,0.3)]">
                 INVITE FRIENDS
               </DialogTitle>
             </div>
@@ -179,27 +179,30 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
             {/* Enhanced close button with better styling */}
             <button
               onClick={onClose}
-              className="group relative w-10 h-10 bg-black/20 border-2 border-black rounded-md text-primary-foreground hover:bg-black hover:text-white transition-all duration-300 flex items-center justify-center overflow-hidden transform hover:scale-110 shadow-lg hover:shadow-xl"
+              className="group relative w-12 h-12 bg-black/30 border-[3px] border-black rounded-lg text-primary-foreground hover:bg-black hover:text-white transition-all duration-300 flex items-center justify-center overflow-hidden transform hover:scale-110 hover:rotate-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+              aria-label="Close modal"
             >
-              <X className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover:rotate-90" />
-              <div className="absolute inset-0 bg-black transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
+              <X className="w-6 h-6 relative z-10 transition-transform duration-300 group-hover:rotate-90" strokeWidth={3} />
+              <div className="absolute inset-0 bg-gradient-to-br from-black to-black/80 transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
             </button>
           </div>
-          <TechnicalLabel text="SHARE PROTOCOL v2.1" className="text-primary-foreground/90 text-xs mt-2 relative z-10 font-black" />
+          <TechnicalLabel text="SHARE PROTOCOL v2.5 ENHANCED" className="text-primary-foreground/95 text-xs mt-3 relative z-10 font-black tracking-widest drop-shadow-md" />
         </DialogHeader>
 
         {/* Enhanced Content with refined borders and spacing */}
-        <div className="p-4 md:p-6 space-y-6 relative">
+        <div className="p-5 md:p-7 space-y-7 relative bg-gradient-to-b from-transparent to-muted/20">
           {/* Background grid pattern */}
-          <div className="absolute inset-0 opacity-5 bg-grid-pattern pointer-events-none"></div>
+          <div className="absolute inset-0 opacity-10 bg-grid-pattern pointer-events-none animate-pulse"></div>
           
           {/* Referral Code Display - matching logo area animation */}
           <div className="text-center relative animate-zoom-in">
-            <TechnicalLabel text="YOUR REFERRAL CODE" className="text-muted-foreground mb-3 text-xs font-black tracking-wider" />
+            <div className="inline-block mb-4 px-4 py-1.5 bg-black border-[3px] border-primary rounded-lg shadow-[4px_4px_0px_0px_rgba(255,119,0,0.4)]">
+              <TechnicalLabel text="YOUR REFERRAL CODE" className="text-primary text-xs font-black tracking-widest" />
+            </div>
             <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary via-primary to-primary/80 blur opacity-25 group-hover:opacity-40 transition duration-300"></div>
-              <div className="relative bg-black text-white p-4 md:p-5 border-3 border-primary rounded-md shadow-[4px_4px_0px_0px_rgba(255,119,0,0.3)]">
-                <div className="text-2xl md:text-3xl font-black tracking-widest text-center text-primary animate-pulse">
+              <div className="absolute -inset-2 bg-gradient-to-r from-primary via-primary to-primary/80 blur-md opacity-40 group-hover:opacity-60 transition duration-300 animate-pulse"></div>
+              <div className="relative bg-gradient-to-br from-black to-black/90 text-white p-5 md:p-6 border-[4px] border-primary rounded-xl shadow-[6px_6px_0px_0px_rgba(255,119,0,0.5)] group-hover:shadow-[8px_8px_0px_0px_rgba(255,119,0,0.7)] transition-all">
+                <div className="text-3xl md:text-4xl font-black tracking-widest text-center text-primary animate-pulse drop-shadow-[0_0_10px_rgba(255,119,0,0.5)]">
                   {referralCode}
                 </div>
               </div>
@@ -208,7 +211,9 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
           {/* Enhanced Custom Message Input */}
           <div className="relative">
-            <TechnicalLabel text="CUSTOM MESSAGE (OPTIONAL)" className="text-foreground mb-3 text-xs font-black tracking-wider" />
+            <div className="inline-block mb-3 px-3 py-1 bg-foreground/5 border-[2px] border-black rounded-md">
+              <TechnicalLabel text="CUSTOM MESSAGE (OPTIONAL)" className="text-foreground text-xs font-black tracking-widest" />
+            </div>
             <div className="relative group">
               <textarea
                 value={customMessage}
@@ -225,7 +230,9 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
           {/* Enhanced Platform Grid */}
           <div className="relative">
-            <TechnicalLabel text="CHOOSE PLATFORM" className="text-foreground mb-4 text-xs font-black tracking-wider" />
+            <div className="inline-block mb-4 px-3 py-1 bg-foreground/5 border-[2px] border-black rounded-md">
+              <TechnicalLabel text="CHOOSE PLATFORM" className="text-foreground text-xs font-black tracking-widest" />
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {sharePlatforms.map((platform, index) => {
                 const Icon = platform.icon;
@@ -258,7 +265,9 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
           {/* Enhanced Quick Actions */}
           <div className="space-y-3 relative">
-            <TechnicalLabel text="QUICK ACTIONS" className="text-foreground text-xs font-black tracking-wider" />
+            <div className="inline-block mb-2 px-3 py-1 bg-foreground/5 border-[2px] border-black rounded-md">
+              <TechnicalLabel text="QUICK ACTIONS" className="text-foreground text-xs font-black tracking-widest" />
+            </div>
             
             {/* Copy Link with refined borders */}
             <div className="flex items-center gap-2">
@@ -293,16 +302,16 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
           </div>
 
           {/* Enhanced Stats Display */}
-          <div className="relative group bg-gradient-to-br from-muted to-muted/80 p-4 md:p-5 border-3 border-black rounded-md shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] overflow-hidden">
-            <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-            <div className="grid grid-cols-2 gap-4 text-center relative z-10">
-              <div className="transform group-hover:scale-105 transition-transform duration-300">
-                <div className="text-2xl md:text-3xl font-black text-primary">25%</div>
-                <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs mt-1 font-black" />
+          <div className="relative group bg-gradient-to-br from-primary/10 via-muted to-muted/80 p-5 md:p-6 border-[4px] border-black rounded-xl shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.3)] transition-all overflow-hidden">
+            <div className="absolute inset-0 bg-grid-pattern opacity-10 animate-pulse"></div>
+            <div className="grid grid-cols-2 gap-6 text-center relative z-10">
+              <div className="transform group-hover:scale-110 transition-transform duration-300 p-3 bg-white/50 border-[3px] border-black rounded-lg">
+                <div className="text-3xl md:text-4xl font-black text-primary drop-shadow-md">25%</div>
+                <TechnicalLabel text="COMMISSION RATE" className="text-foreground text-xs mt-2 font-black tracking-wider" />
               </div>
-              <div className="transform group-hover:scale-105 transition-transform duration-300">
-                <div className="text-2xl md:text-3xl font-black text-foreground">∞</div>
-                <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs mt-1 font-black" />
+              <div className="transform group-hover:scale-110 transition-transform duration-300 p-3 bg-white/50 border-[3px] border-black rounded-lg">
+                <div className="text-3xl md:text-4xl font-black text-foreground drop-shadow-md">∞</div>
+                <TechnicalLabel text="LIFETIME EARNINGS" className="text-foreground text-xs mt-2 font-black tracking-wider" />
               </div>
             </div>
           </div>
