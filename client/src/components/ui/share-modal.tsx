@@ -158,10 +158,10 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg mx-auto bg-gradient-to-br from-background to-background/95 border-3 border-black p-0 overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:rounded-lg">
-        {/* Header with enhanced styling */}
+      <DialogContent className="max-w-lg mx-auto bg-gradient-to-br from-background to-background/95 border-3 border-black p-0 overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-lg">
+        {/* Enhanced Header with improved styling */}
         <DialogHeader className="bg-gradient-to-r from-primary via-primary to-primary/90 text-primary-foreground p-4 md:p-6 border-b-3 border-black relative overflow-hidden">
-          {/* Animated background pattern */}
+          {/* Animated background pattern - matching logo area */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0 bg-grid-pattern"></div>
           </div>
@@ -175,9 +175,11 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
                 INVITE FRIENDS
               </DialogTitle>
             </div>
+            
+            {/* Enhanced close button with better styling */}
             <button
               onClick={onClose}
-              className="group relative w-10 h-10 bg-black/20 text-primary-foreground hover:bg-black hover:text-white transition-all duration-300 border-2 border-black flex items-center justify-center overflow-hidden transform hover:scale-110 shadow-lg hover:shadow-xl"
+              className="group relative w-10 h-10 bg-black/20 border-2 border-black rounded-md text-primary-foreground hover:bg-black hover:text-white transition-all duration-300 flex items-center justify-center overflow-hidden transform hover:scale-110 shadow-lg hover:shadow-xl"
             >
               <X className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover:rotate-90" />
               <div className="absolute inset-0 bg-black transform scale-0 group-hover:scale-100 transition-transform duration-300"></div>
@@ -186,17 +188,17 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
           <TechnicalLabel text="SHARE PROTOCOL v2.1" className="text-primary-foreground/90 text-xs mt-2 relative z-10 font-black" />
         </DialogHeader>
 
-        {/* Content with enhanced styling */}
+        {/* Enhanced Content with refined borders and spacing */}
         <div className="p-4 md:p-6 space-y-6 relative">
           {/* Background grid pattern */}
           <div className="absolute inset-0 opacity-5 bg-grid-pattern pointer-events-none"></div>
           
-          {/* Referral Code Display with enhanced animation */}
+          {/* Referral Code Display - matching logo area animation */}
           <div className="text-center relative animate-zoom-in">
             <TechnicalLabel text="YOUR REFERRAL CODE" className="text-muted-foreground mb-3 text-xs font-black tracking-wider" />
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-primary via-primary to-primary/80 blur opacity-25 group-hover:opacity-40 transition duration-300"></div>
-              <div className="relative bg-black text-white p-4 md:p-5 border-3 border-primary shadow-[4px_4px_0px_0px_rgba(255,119,0,0.3)]">
+              <div className="relative bg-black text-white p-4 md:p-5 border-3 border-primary rounded-md shadow-[4px_4px_0px_0px_rgba(255,119,0,0.3)]">
                 <div className="text-2xl md:text-3xl font-black tracking-widest text-center text-primary animate-pulse">
                   {referralCode}
                 </div>
@@ -204,7 +206,7 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
             </div>
           </div>
 
-          {/* Custom Message Input with enhanced styling */}
+          {/* Enhanced Custom Message Input */}
           <div className="relative">
             <TechnicalLabel text="CUSTOM MESSAGE (OPTIONAL)" className="text-foreground mb-3 text-xs font-black tracking-wider" />
             <div className="relative group">
@@ -221,7 +223,7 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
             </div>
           </div>
 
-          {/* Platform Grid with enhanced animations */}
+          {/* Enhanced Platform Grid */}
           <div className="relative">
             <TechnicalLabel text="CHOOSE PLATFORM" className="text-foreground mb-4 text-xs font-black tracking-wider" />
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -254,11 +256,11 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
             </div>
           </div>
 
-          {/* Quick Actions with enhanced styling */}
+          {/* Enhanced Quick Actions */}
           <div className="space-y-3 relative">
             <TechnicalLabel text="QUICK ACTIONS" className="text-foreground text-xs font-black tracking-wider" />
             
-            {/* Copy Link with enhanced design */}
+            {/* Copy Link with refined borders */}
             <div className="flex items-center gap-2">
               <Input
                 value={shareUrl}
@@ -278,7 +280,7 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
               </Button>
             </div>
 
-            {/* Copy Full Message with enhanced design */}
+            {/* Copy Full Message with refined styling */}
             <Button
               onClick={handleCopyMessage}
               variant="outline"
@@ -290,8 +292,8 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
             </Button>
           </div>
 
-          {/* Stats Display with enhanced styling */}
-          <div className="relative group bg-gradient-to-br from-muted to-muted/80 p-4 md:p-5 border-3 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] overflow-hidden rounded-md">
+          {/* Enhanced Stats Display */}
+          <div className="relative group bg-gradient-to-br from-muted to-muted/80 p-4 md:p-5 border-3 border-black rounded-md shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] overflow-hidden">
             <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
             <div className="grid grid-cols-2 gap-4 text-center relative z-10">
               <div className="transform group-hover:scale-105 transition-transform duration-300">
