@@ -4,17 +4,6 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table for Replit Auth
-export const sessions = pgTable(
-  "sessions",
-  {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
-  },
-  (table) => [index("IDX_session_expire").on(table.expire)],
-);
-
 // Legacy registrations table (keeping for backward compatibility)
 export const registrations = pgTable("registrations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -26,14 +15,13 @@ export const registrations = pgTable("registrations", {
 // Main users table with full authentication and profile data
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  identity: text("identity"),
-  phone: text("phone"),
-  email: text("email").unique(),
-  profileImageUrl: text("profile_image_url"),
-  passwordHash: text("password_hash"),
-  referralCode: text("referral_code").unique(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  identity: text("identity").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  referralCode: text("referral_code").notNull().unique(),
   referredBy: varchar("referred_by"),
   role: text("role").default("user"),
   totalEarnings: decimal("total_earnings", { precision: 10, scale: 2 }).default("0.00"),

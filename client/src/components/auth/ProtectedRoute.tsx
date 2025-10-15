@@ -1,4 +1,4 @@
-import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
+import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useSupabaseAuthWithQuery();
+  const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -47,7 +47,7 @@ interface PublicOnlyRouteProps {
 }
 
 export function PublicOnlyRoute({ children, redirectTo = "/" }: PublicOnlyRouteProps) {
-  const { isAuthenticated, isLoading } = useSupabaseAuthWithQuery();
+  const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -83,7 +83,7 @@ interface TeamProtectedRouteProps {
 }
 
 export function TeamProtectedRoute({ children, fallback }: TeamProtectedRouteProps) {
-  const { user, isAuthenticated, isLoading } = useSupabaseAuthWithQuery();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 

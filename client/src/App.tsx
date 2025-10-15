@@ -3,7 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
+import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
 import Auth from "@/pages/auth";
 import UserPortal from "@/pages/UserPortal";
@@ -13,7 +13,7 @@ import { ProtectedRoute, PublicOnlyRoute, TeamProtectedRoute } from "@/component
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { user, isAuthenticated, isLoading } = useSupabaseAuthWithQuery();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (

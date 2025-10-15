@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
+import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -335,7 +335,7 @@ const sections = [
 ];
 
 export default function UserPortal() {
-  const { user, logout, isLoading } = useSupabaseAuthWithQuery();
+  const { user, logout, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();

@@ -4,7 +4,6 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { insertRegistrationSchema, insertUserSchema } from "@shared/schema";
-import { createServerSupabaseClient } from "./supabase";
 import { z } from "zod";
 import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "./validation";
 import { hilltopAdsService } from "./hilltopads-service";
@@ -36,42 +35,28 @@ declare module "express-session" {
   }
 }
 
-// Extend Express Request to include Supabase user and anonymous user
+// Extend Express Request to include user
 declare global {
   namespace Express {
     interface Request {
-      user?: any; // Supabase user object
       userProfile?: any; // Local user profile with role
       anonymousUser?: any; // Anonymous user object for iframe environments
     }
   }
 }
 
-// Supabase Authentication middleware
-export const requireSupabaseAuth = async (req: Request, res: Response, next: NextFunction) => {
+// Simple session-based authentication middleware
+export const requireSessionAuth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!req.session.userId) {
       return res.status(401).json({
         message: "Authentication required",
         error: "UNAUTHORIZED"
       });
     }
 
-    const token = authHeader.substring(7);
-    const supabase = createServerSupabaseClient();
-
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (error || !user) {
-      return res.status(401).json({
-        message: "Invalid or expired token",
-        error: "UNAUTHORIZED"
-      });
-    }
-
-    // Get user profile from local database including role
-    const userProfile = await storage.getUserById(user.id);
+    // Get user profile from database
+    const userProfile = await storage.getUserById(req.session.userId);
     if (!userProfile) {
       return res.status(404).json({
         message: "User profile not found",
@@ -79,8 +64,7 @@ export const requireSupabaseAuth = async (req: Request, res: Response, next: Nex
       });
     }
 
-    // Attach both Supabase user and local profile to request
-    req.user = user;
+    // Attach user profile to request
     req.userProfile = userProfile;
     next();
   } catch (error) {
@@ -92,10 +76,9 @@ export const requireSupabaseAuth = async (req: Request, res: Response, next: Nex
   }
 };
 
-// Team role enforcement middleware (requires Supabase auth)
+// Team role enforcement middleware
 export const requireTeamRole = async (req: Request, res: Response, next: NextFunction) => {
-  // First ensure Supabase authentication
-  await requireSupabaseAuth(req, res, () => {
+  await requireSessionAuth(req, res, () => {
     // Check if user has team or founder role
     if (req.userProfile?.role !== 'team' && req.userProfile?.role !== 'founder') {
       return res.status(403).json({
@@ -1548,7 +1531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // HilltopAds Ad Completion Tracking (Authenticated users)
-  app.post("/api/hilltopads/ad-completion", requireSupabaseAuth, async (req, res) => {
+  app.post("/api/hilltopads/ad-completion", requireSessionAuth, async (req, res) => {
     try {
       const { zoneId, adType, duration } = req.body;
       const userId = req.userProfile.id;

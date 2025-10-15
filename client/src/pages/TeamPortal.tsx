@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSupabaseAuthWithQuery } from "@/hooks/useSupabaseAuthWithQuery";
+import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -80,7 +80,7 @@ const teamSections = [
 ];
 
 export default function TeamPortal() {
-  const { user, logout, isLoading } = useSupabaseAuthWithQuery();
+  const { user, logout, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
