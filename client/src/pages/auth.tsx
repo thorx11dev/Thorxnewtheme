@@ -866,11 +866,11 @@ export default function Auth() {
                       <div className="pt-4">
                         <Button 
                           type="submit" 
-                          disabled={true}
-                          className="w-full bg-black text-white text-lg md:text-xl font-black py-4 md:py-5 hover:bg-primary transition-colors border-2 border-black opacity-50 cursor-not-allowed"
+                          disabled={isSubmitting}
+                          className="w-full bg-black text-white text-lg md:text-xl font-black py-4 md:py-5 hover:bg-primary transition-colors border-2 border-black disabled:opacity-50 disabled:cursor-not-allowed"
                           data-testid="button-register-submit"
                         >
-                          REGISTER NOW →
+                          {isSubmitting ? "REGISTERING..." : "REGISTER NOW →"}
                         </Button>
                       </div>
                     </form>
@@ -993,11 +993,11 @@ export default function Auth() {
 
                       <Button 
                         type="submit" 
-                        disabled={true}
-                        className="w-full bg-primary text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-black transition-colors border-2 border-black opacity-50 cursor-not-allowed"
+                        disabled={isSubmitting}
+                        className="w-full bg-primary text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-black transition-colors border-2 border-black disabled:opacity-50 disabled:cursor-not-allowed"
                         data-testid="button-login-submit"
                       >
-                        LOGIN →
+                        {isSubmitting ? "LOGGING IN..." : "LOGIN →"}
                       </Button>
                     </form>
                   </Form>
