@@ -52,22 +52,25 @@ function Router() {
         </PublicOnlyRoute>
       </Route>
 
-      {/* User Portal - now publicly accessible */}
+      {/* User Portal routes */}
+      <Route path="/user-portal">
+        <UserPortal />
+      </Route>
+      
       <Route path="/portal">
         <UserPortal />
       </Route>
 
-      {/* Team Portal - now publicly accessible */}
-      <Route path="/team">
-        <TeamPortal />
-      </Route>
-      
-      {/* Legacy team-portal route - redirect to /team */}
+      {/* Team Portal routes */}
       <Route path="/team-portal">
         <TeamPortal />
       </Route>
+      
+      <Route path="/team">
+        <TeamPortal />
+      </Route>
 
-      {/* Legacy routes - now publicly accessible */}
+      {/* Legacy routes */}
       <Route path="/dashboard">
         <UserPortal />
       </Route>
