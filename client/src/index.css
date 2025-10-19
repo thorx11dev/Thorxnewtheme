@@ -797,6 +797,16 @@
     50% { opacity: 0.5; }
   }
 
+  /* Loading Screen Animations */
+  @keyframes border-pulse {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 0.8; }
+  }
+
+  .animate-border-pulse {
+    animation: border-pulse 2s ease-in-out infinite;
+  }
+
   /* Technical drawing lines */
   .tech-line {
     position: relative;

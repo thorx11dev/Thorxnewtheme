@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -12,15 +13,80 @@ import HilltopAdsAdmin from "@/pages/HilltopAdsAdmin";
 import { ProtectedRoute, PublicOnlyRoute, TeamProtectedRoute } from "@/components/auth/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 
+// Animated Loading Status Component
+function AnimatedLoadingStatus() {
+  const statusWords = ["Initializing", "Connecting", "Authenticating", "Preparing"];
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentText, setCurrentText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    const word = statusWords[currentIndex];
+    let timeout: NodeJS.Timeout;
+
+    if (isTyping) {
+      if (currentText.length < word.length) {
+        timeout = setTimeout(() => {
+          setCurrentText(word.slice(0, currentText.length + 1));
+        }, 80);
+      } else {
+        timeout = setTimeout(() => setIsTyping(false), 800);
+      }
+    } else {
+      if (currentText.length > 0) {
+        timeout = setTimeout(() => {
+          setCurrentText(currentText.slice(0, -1));
+        }, 40);
+      } else {
+        setCurrentIndex((prev) => (prev + 1) % statusWords.length);
+        setIsTyping(true);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [currentText, currentIndex, isTyping]);
+
+  return (
+    <span className="text-primary font-bold text-xs sm:text-sm md:text-base tracking-wide min-w-[120px] sm:min-w-[140px] md:min-w-[160px] text-right">
+      {currentText}
+      <span className="animate-pulse">|</span>
+    </span>
+  );
+}
+
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-black">
         <div className="text-center">
-          <div className="text-2xl font-black mb-2">THORX</div>
-          <div className="text-sm">LOADING...</div>
+          {/* Animated Loading Input Field */}
+          <div className="relative w-[320px] sm:w-[400px] md:w-[480px] mx-auto">
+            {/* Input Field Container */}
+            <div className="relative border-2 border-white bg-transparent rounded-none overflow-hidden">
+              {/* Animated Text Content */}
+              <div className="px-4 py-3 sm:px-6 sm:py-4 md:px-8 md:py-5">
+                <div className="flex items-center justify-between">
+                  {/* LOADING Text */}
+                  <span className="text-white font-black text-sm sm:text-base md:text-lg tracking-wider animate-pulse">
+                    LOADING...
+                  </span>
+                  
+                  {/* Animated Status Word */}
+                  <AnimatedLoadingStatus />
+                </div>
+              </div>
+              
+              {/* Animated Border Glow */}
+              <div className="absolute inset-0 border-2 border-primary opacity-0 animate-border-pulse pointer-events-none"></div>
+            </div>
+            
+            {/* THORX Brand Below */}
+            <div className="mt-6 text-white font-black text-xl sm:text-2xl md:text-3xl tracking-widest opacity-60">
+              THORX
+            </div>
+          </div>
         </div>
       </div>
     );
