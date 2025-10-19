@@ -984,12 +984,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register new user
   app.post("/api/register", async (req, res) => {
     try {
-      const { name, email, password, phone, identity, referralCode, role } = req.body;
+      const { firstName, lastName, email, password, phone, identity, referralCode, role } = req.body;
 
-      // Split name into first and last name for backward compatibility if needed
-      const nameParts = name.trim().split(' ');
-      const firstName = nameParts[0];
-      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
+      // Validate required fields
+      if (!firstName || !email || !password) {
+        return res.status(400).json({
+          message: "First name, email, and password are required",
+          error: "MISSING_REQUIRED_FIELDS"
+        });
+      }
 
       // Server-side comprehensive email validation with MX record check
       const emailValidation = await validateEmailServer(email);
@@ -1087,18 +1090,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = loginSchema.parse(req.body);
 
-      // Find user by email
-      const user = await storage.getUserByEmail(email);
+      // Validate user credentials
+      const user = await storage.validateUserPassword(email, password);
       if (!user) {
-        return res.status(401).json({
-          message: "Invalid email or password",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      // Verify password
-      const isMatch = await storage.comparePassword(password, user.passwordHash);
-      if (!isMatch) {
         return res.status(401).json({
           message: "Invalid email or password",
           error: "UNAUTHORIZED"
