@@ -23,8 +23,8 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   if (isLoading) {
     return (
       fallback || (
-        // Replaced the original spinner with the branded ThorxLoadingScreen
-        <ThorxLoadingScreen message="VERIFYING ACCESS CREDENTIALS" duration={1500} />
+        // Consistent 1.8 second loading for all transitions
+        <ThorxLoadingScreen message="VERIFYING ACCESS CREDENTIALS" duration={1800} />
       )
     );
   }
@@ -55,9 +55,9 @@ export function PublicOnlyRoute({ children, redirectTo = "/" }: PublicOnlyRouteP
 
   // Show loading while checking authentication
   if (isLoading) {
-    // Replaced the original spinner with the branded ThorxLoadingScreen
+    // Consistent 1.8 second loading for all transitions
     return (
-      <ThorxLoadingScreen message="CHECKING AUTHENTICATION STATUS" duration={1500} />
+      <ThorxLoadingScreen message="CHECKING AUTHENTICATION STATUS" duration={1800} />
     );
   }
 
@@ -105,8 +105,8 @@ export function TeamProtectedRoute({ children, fallback }: TeamProtectedRoutePro
   if (isLoading) {
     return (
       fallback || (
-        // Replaced the original spinner with the branded ThorxLoadingScreen
-        <ThorxLoadingScreen message="VALIDATING TEAM CREDENTIALS" duration={1500} />
+        // Consistent 1.8 second loading for all transitions
+        <ThorxLoadingScreen message="VALIDATING TEAM CREDENTIALS" duration={1800} />
       )
     );
   }

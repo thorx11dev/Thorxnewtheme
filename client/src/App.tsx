@@ -20,7 +20,7 @@ function Router() {
 
   useEffect(() => {
     if (!isLoading) {
-      // Show loading screen for minimum duration for smooth experience
+      // Show loading screen for exactly 1.8 seconds for consistent UX
       const timer = setTimeout(() => {
         setShowLoadingScreen(false);
       }, 1800);

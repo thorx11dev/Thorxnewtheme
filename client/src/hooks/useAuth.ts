@@ -53,13 +53,13 @@ export function useAuth() {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
-      // Add minimum delay for smooth transition
+      // Consistent 1.8 second transition for logout
       setTimeout(() => {
         queryClient.setQueryData(["auth"], null);
         queryClient.clear();
         setIsTransitioning(false);
         setLocation("/");
-      }, 1200);
+      }, 1800);
     },
   });
 
