@@ -102,7 +102,7 @@ export default function Home() {
             <div className="flex items-center">
               {currentSection === 1 && !isMobile ? (
                 <div className="bg-black text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black">
-                  <TechnicalLabel text="EARNING SYSTEM V01" className="text-white text-xs md:text-sm" />
+                  <TechnicalLabel text="EARNING SYSTEM" className="text-white text-xs md:text-sm" />
                 </div>
               ) : (
                 <button
