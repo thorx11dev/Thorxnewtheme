@@ -1216,186 +1216,242 @@ export default function TeamPortal() {
           </div>
         </div>
 
-        {/* Add Team Member Section - Programmer Initialization Interface */}
-        <Card className="wireframe-border bg-background mb-8 overflow-hidden">
-          {/* System Header */}
-          <div className="bg-gradient-to-r from-primary via-primary/80 to-primary border-b-2 border-black p-4">
+        {/* Add Team Member Section - Hacker/Programmer Terminal Interface */}
+        <Card className="relative bg-black/95 border-2 border-primary/30 mb-8 overflow-hidden shadow-2xl shadow-primary/20">
+          {/* Matrix-style animated background */}
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute inset-0" style={{
+              backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(var(--primary-rgb, 151, 251, 0), 0.03) 2px, rgba(var(--primary-rgb, 151, 251, 0), 0.03) 4px)',
+              backgroundSize: '100% 4px'
+            }}></div>
+          </div>
+
+          {/* Terminal Header */}
+          <div className="relative bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border-b-2 border-primary/30 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-black border-2 border-black shadow-lg">
-                  <UserCheck className="w-6 h-6 text-primary" />
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary blur-lg opacity-50 animate-pulse"></div>
+                  <div className="relative p-3 bg-black border-2 border-primary shadow-lg shadow-primary/50">
+                    <UserCheck className="w-6 h-6 text-primary" />
+                  </div>
                 </div>
                 <div>
-                  <TechnicalLabel text="MEMBER INITIALIZATION PROTOCOL" className="text-black text-xl font-black mb-1" />
-                  <TechnicalLabel text="SYSTEM ACCESS CONFIGURATION v2.47" className="text-black/70 text-xs" />
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <TechnicalLabel text="$ ./init_member.sh" className="text-primary text-xl font-mono font-black" />
+                  </div>
+                  <TechnicalLabel text="// TEAM MEMBER INITIALIZATION PROTOCOL v2.47" className="text-primary/60 text-xs font-mono" />
                 </div>
               </div>
-              <div className="hidden md:block">
-                <Barcode className="w-32 h-6 opacity-40" />
+              <div className="hidden md:flex items-center gap-3">
+                <div className="text-primary/40 text-xs font-mono">
+                  SESSION: {Date.now().toString(36).toUpperCase()}
+                </div>
+                <Barcode className="w-24 h-6 opacity-40" />
               </div>
             </div>
           </div>
 
-          <CardContent className="p-0">
+          <CardContent className="p-0 relative">
             <form onSubmit={teamMemberForm.handleSubmit(handleAddTeamMember)}>
-              {/* Status Bar */}
-              <div className="bg-muted/20 border-b border-muted-foreground/20 px-6 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 bg-green-500 border border-black animate-pulse"></div>
-                  <TechnicalLabel text="READY TO INITIALIZE NEW MEMBER" className="text-muted-foreground text-sm font-bold" />
-                  <div className="ml-auto text-xs text-muted-foreground font-mono">
-                    ID: {Date.now().toString(36).toUpperCase()}
+              {/* Terminal Status Bar */}
+              <div className="bg-black/50 border-b border-primary/20 px-6 py-3 font-mono text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-green-500">ONLINE</span>
+                    </div>
+                    <div className="text-primary/60">|</div>
+                    <span className="text-primary/60">root@thorx:~# ready</span>
+                  </div>
+                  <div className="text-primary/40">
+                    {new Date().toLocaleTimeString()}
                   </div>
                 </div>
               </div>
 
-              {/* Configuration Grid */}
-              <div className="p-6 space-y-6">
-                {/* Identity Configuration */}
-                <div className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-5">
-                  <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-primary/20">
-                    <div className="w-1 h-6 bg-primary"></div>
-                    <TechnicalLabel text="[1] IDENTITY CONFIGURATION" className="text-foreground font-black text-sm" />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <TechnicalLabel text="MEMBER.NAME" className="text-primary text-xs font-mono font-bold" />
-                        <TechnicalLabel text="[REQUIRED]" className="text-red-500 text-xs font-bold" />
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="John Doe"
-                        className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/40"
-                        data-testid="input-member-name"
-                        {...teamMemberForm.register("memberName")}
-                      />
-                      {teamMemberForm.formState.errors.memberName && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-2 h-2 bg-red-500"></div>
-                          <p className="text-red-500 text-xs font-bold">{teamMemberForm.formState.errors.memberName.message}</p>
-                        </div>
-                      )}
+              {/* Code-style Configuration */}
+              <div className="p-6 space-y-6 bg-gradient-to-b from-black/40 to-transparent">
+                {/* STEP 1: Identity */}
+                <div className="relative group">
+                  <div className="absolute -left-2 top-0 bottom-0 w-1 bg-gradient-to-b from-primary via-primary/50 to-transparent"></div>
+                  <div className="bg-primary/5 border border-primary/20 rounded-none p-5 hover:border-primary/40 transition-all duration-300">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="text-primary font-mono font-black text-sm">01</div>
+                      <div className="h-px flex-1 bg-gradient-to-r from-primary/50 to-transparent"></div>
+                      <TechnicalLabel text="IDENTITY_CONFIG" className="text-primary font-mono text-sm" />
                     </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <TechnicalLabel text="MEMBER.EMAIL" className="text-primary text-xs font-mono font-bold" />
-                        <TechnicalLabel text="[REQUIRED]" className="text-red-500 text-xs font-bold" />
-                      </div>
-                      <input
-                        type="email"
-                        placeholder="member@thorx.com"
-                        className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/40"
-                        data-testid="input-member-email"
-                        {...teamMemberForm.register("email")}
-                      />
-                      {teamMemberForm.formState.errors.email && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-2 h-2 bg-red-500"></div>
-                          <p className="text-red-500 text-xs font-bold">{teamMemberForm.formState.errors.email.message}</p>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-mono">
+                          <span className="text-primary/60">const</span>
+                          <span className="text-primary font-bold">memberName</span>
+                          <span className="text-primary/60">=</span>
+                          <span className="text-red-400">required</span>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Access Control Configuration */}
-                <div className="border-2 border-yellow-500/30 bg-gradient-to-br from-yellow-500/5 to-transparent p-5">
-                  <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-yellow-500/20">
-                    <div className="w-1 h-6 bg-yellow-500"></div>
-                    <TechnicalLabel text="[2] ACCESS CONTROL MATRIX" className="text-foreground font-black text-sm" />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <TechnicalLabel text="PERMISSION.LEVEL" className="text-yellow-600 text-xs font-mono font-bold" />
-                        <TechnicalLabel text="[REQUIRED]" className="text-red-500 text-xs font-bold" />
-                      </div>
-                      <div className="relative">
-                        <select 
-                          className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-sm font-mono font-bold focus:outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/20 transition-all appearance-none cursor-pointer"
-                          data-testid="select-access-level"
-                          {...teamMemberForm.register("accessLevel")}
-                        >
-                          <option value="" disabled className="text-muted-foreground">SELECT ACCESS LEVEL</option>
-                          <option value="admin" className="font-bold">ADMIN - Full Administrative Access</option>
-                          <option value="member" className="font-bold">MEMBER - Standard Team Access</option>
-                        </select>
-                        <Shield className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-yellow-600 pointer-events-none" />
-                      </div>
-                      {teamMemberForm.formState.errors.accessLevel && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-2 h-2 bg-red-500"></div>
-                          <p className="text-red-500 text-xs font-bold">{teamMemberForm.formState.errors.accessLevel.message}</p>
+                        <div className="relative group/input">
+                          <div className="absolute inset-0 bg-primary/5 opacity-0 group-focus-within/input:opacity-100 transition-opacity"></div>
+                          <input
+                            type="text"
+                            placeholder='"John_Doe"'
+                            className="relative w-full bg-black/80 border border-primary/30 text-primary px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary focus:shadow-lg focus:shadow-primary/20 transition-all placeholder:text-primary/30"
+                            data-testid="input-member-name"
+                            {...teamMemberForm.register("memberName")}
+                          />
                         </div>
-                      )}
-                    </div>
+                        {teamMemberForm.formState.errors.memberName && (
+                          <div className="flex items-center gap-2 mt-1 text-xs font-mono">
+                            <span className="text-red-500">✗</span>
+                            <span className="text-red-400">{teamMemberForm.formState.errors.memberName.message}</span>
+                          </div>
+                        )}
+                      </div>
 
-                    <div className="space-y-2">
-                      <div className="bg-muted/30 border border-muted-foreground/20 p-3">
-                        <TechnicalLabel text="ACCESS PRIVILEGES:" className="text-foreground text-xs font-bold mb-2" />
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-primary"></div>
-                            <TechnicalLabel text="Team Dashboard Access" className="text-muted-foreground text-xs" />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-primary"></div>
-                            <TechnicalLabel text="Data Read Permissions" className="text-muted-foreground text-xs" />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-primary"></div>
-                            <TechnicalLabel text="Inbox Management" className="text-muted-foreground text-xs" />
-                          </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-mono">
+                          <span className="text-primary/60">const</span>
+                          <span className="text-primary font-bold">email</span>
+                          <span className="text-primary/60">=</span>
+                          <span className="text-red-400">required</span>
                         </div>
+                        <div className="relative group/input">
+                          <div className="absolute inset-0 bg-primary/5 opacity-0 group-focus-within/input:opacity-100 transition-opacity"></div>
+                          <input
+                            type="email"
+                            placeholder='"member@thorx.io"'
+                            className="relative w-full bg-black/80 border border-primary/30 text-primary px-4 py-3 text-sm font-mono focus:outline-none focus:border-primary focus:shadow-lg focus:shadow-primary/20 transition-all placeholder:text-primary/30"
+                            data-testid="input-member-email"
+                            {...teamMemberForm.register("email")}
+                          />
+                        </div>
+                        {teamMemberForm.formState.errors.email && (
+                          <div className="flex items-center gap-2 mt-1 text-xs font-mono">
+                            <span className="text-red-500">✗</span>
+                            <span className="text-red-400">{teamMemberForm.formState.errors.email.message}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Security Configuration */}
-                <div className="border-2 border-red-500/30 bg-gradient-to-br from-red-500/5 to-transparent p-5">
-                  <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-red-500/20">
-                    <div className="w-1 h-6 bg-red-500"></div>
-                    <TechnicalLabel text="[3] SECURITY CREDENTIALS" className="text-foreground font-black text-sm" />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <TechnicalLabel text="CREDENTIALS.PASSWORD" className="text-red-600 text-xs font-mono font-bold" />
-                        <TechnicalLabel text="[REQUIRED]" className="text-red-500 text-xs font-bold" />
-                      </div>
-                      <input
-                        type="password"
-                        placeholder="••••••••••••"
-                        className="w-full bg-background border-2 border-muted-foreground/30 text-foreground px-4 py-3 text-sm font-mono focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all placeholder:text-muted-foreground/40"
-                        data-testid="input-member-password"
-                        {...teamMemberForm.register("password")}
-                      />
-                      {teamMemberForm.formState.errors.password && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-2 h-2 bg-red-500"></div>
-                          <p className="text-red-500 text-xs font-bold">{teamMemberForm.formState.errors.password.message}</p>
-                        </div>
-                      )}
+                {/* STEP 2: Access Control */}
+                <div className="relative group">
+                  <div className="absolute -left-2 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-500 via-yellow-500/50 to-transparent"></div>
+                  <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-none p-5 hover:border-yellow-500/40 transition-all duration-300">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="text-yellow-500 font-mono font-black text-sm">02</div>
+                      <div className="h-px flex-1 bg-gradient-to-r from-yellow-500/50 to-transparent"></div>
+                      <TechnicalLabel text="ACCESS_MATRIX" className="text-yellow-500 font-mono text-sm" />
                     </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-mono">
+                          <span className="text-yellow-500/60">let</span>
+                          <span className="text-yellow-500 font-bold">accessLevel</span>
+                          <span className="text-yellow-500/60">=</span>
+                          <span className="text-red-400">required</span>
+                        </div>
+                        <div className="relative group/select">
+                          <div className="absolute inset-0 bg-yellow-500/5 opacity-0 group-focus-within/select:opacity-100 transition-opacity"></div>
+                          <select 
+                            className="relative w-full bg-black/80 border border-yellow-500/30 text-yellow-500 px-4 py-3 text-sm font-mono font-bold focus:outline-none focus:border-yellow-500 focus:shadow-lg focus:shadow-yellow-500/20 transition-all appearance-none cursor-pointer"
+                            data-testid="select-access-level"
+                            {...teamMemberForm.register("accessLevel")}
+                          >
+                            <option value="" className="bg-black">{"{ SELECT_LEVEL }"}</option>
+                            <option value="admin" className="bg-black">ADMIN → Full Access</option>
+                            <option value="member" className="bg-black">MEMBER → Standard</option>
+                          </select>
+                          <Shield className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-yellow-500/60 pointer-events-none" />
+                        </div>
+                        {teamMemberForm.formState.errors.accessLevel && (
+                          <div className="flex items-center gap-2 mt-1 text-xs font-mono">
+                            <span className="text-red-500">✗</span>
+                            <span className="text-red-400">{teamMemberForm.formState.errors.accessLevel.message}</span>
+                          </div>
+                        )}
+                      </div>
 
-                    <div className="space-y-2">
-                      <div className="bg-red-500/10 border border-red-500/30 p-3">
-                        <TechnicalLabel text="SECURITY REQUIREMENTS:" className="text-red-600 text-xs font-bold mb-2" />
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-red-500"></div>
-                            <TechnicalLabel text="Minimum 6 characters" className="text-muted-foreground text-xs" />
+                      <div className="space-y-2">
+                        <div className="bg-black/60 border border-yellow-500/20 p-3">
+                          <div className="text-yellow-500/60 text-xs font-mono mb-2">// Granted permissions:</div>
+                          <div className="space-y-1 text-xs font-mono">
+                            <div className="flex items-center gap-2">
+                              <span className="text-green-500">✓</span>
+                              <span className="text-primary/80">dashboard.access()</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-green-500">✓</span>
+                              <span className="text-primary/80">data.read()</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-green-500">✓</span>
+                              <span className="text-primary/80">inbox.manage()</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-red-500"></div>
-                            <TechnicalLabel text="Encrypted storage" className="text-muted-foreground text-xs" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* STEP 3: Security */}
+                <div className="relative group">
+                  <div className="absolute -left-2 top-0 bottom-0 w-1 bg-gradient-to-b from-red-500 via-red-500/50 to-transparent"></div>
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-none p-5 hover:border-red-500/40 transition-all duration-300">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="text-red-500 font-mono font-black text-sm">03</div>
+                      <div className="h-px flex-1 bg-gradient-to-r from-red-500/50 to-transparent"></div>
+                      <TechnicalLabel text="SECURITY_CREDENTIALS" className="text-red-500 font-mono text-sm" />
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-mono">
+                          <span className="text-red-500/60">private</span>
+                          <span className="text-red-500 font-bold">password</span>
+                          <span className="text-red-500/60">=</span>
+                          <span className="text-red-400">required</span>
+                        </div>
+                        <div className="relative group/input">
+                          <div className="absolute inset-0 bg-red-500/5 opacity-0 group-focus-within/input:opacity-100 transition-opacity"></div>
+                          <input
+                            type="password"
+                            placeholder="********"
+                            className="relative w-full bg-black/80 border border-red-500/30 text-red-400 px-4 py-3 text-sm font-mono focus:outline-none focus:border-red-500 focus:shadow-lg focus:shadow-red-500/20 transition-all placeholder:text-red-500/30"
+                            data-testid="input-member-password"
+                            {...teamMemberForm.register("password")}
+                          />
+                        </div>
+                        {teamMemberForm.formState.errors.password && (
+                          <div className="flex items-center gap-2 mt-1 text-xs font-mono">
+                            <span className="text-red-500">✗</span>
+                            <span className="text-red-400">{teamMemberForm.formState.errors.password.message}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-red-500"></div>
-                            <TechnicalLabel text="2FA recommended" className="text-muted-foreground text-xs" />
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="bg-black/60 border border-red-500/20 p-3">
+                          <div className="text-red-500/60 text-xs font-mono mb-2">// Security rules:</div>
+                          <div className="space-y-1 text-xs font-mono">
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-400">→</span>
+                              <span className="text-primary/80">min_length: 6</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-400">→</span>
+                              <span className="text-primary/80">encrypted: true</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-400">→</span>
+                              <span className="text-primary/80">2fa: recommended</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1404,30 +1460,35 @@ export default function TeamPortal() {
                 </div>
               </div>
 
-              {/* Execution Controls */}
-              <div className="border-t-2 border-black bg-muted/10 p-6">
+              {/* Terminal Execute Command */}
+              <div className="border-t-2 border-primary/30 bg-black/60 p-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-primary animate-pulse"></div>
-                    <TechnicalLabel text="SYSTEM STATUS: AWAITING INITIALIZATION" className="text-muted-foreground text-sm font-bold" />
+                  <div className="flex items-center gap-3 text-xs font-mono">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-green-500">SYSTEM_READY</span>
+                    </div>
+                    <span className="text-primary/40">|</span>
+                    <span className="text-primary/60">awaiting_execution</span>
                   </div>
                   
                   <Button
                     type="submit"
                     disabled={addTeamMemberMutation.isPending}
-                    className="group relative bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-black px-8 py-4 text-base font-black border-2 border-black shadow-lg disabled:opacity-50 transition-all duration-300 overflow-hidden"
+                    className="group relative bg-gradient-to-r from-primary via-primary/90 to-primary/70 hover:from-primary hover:to-primary/80 text-black px-8 py-4 text-base font-mono font-black border-2 border-primary shadow-2xl shadow-primary/30 disabled:opacity-50 transition-all duration-300 overflow-hidden"
                     data-testid="button-add-member"
                   >
-                    <div className="absolute inset-0 bg-black/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                     {addTeamMemberMutation.isPending ? (
                       <div className="flex items-center relative z-10">
                         <div className="w-5 h-5 mr-3 animate-spin border-2 border-black border-t-transparent rounded-full"></div>
-                        <TechnicalLabel text="INITIALIZING MEMBER..." className="text-black" />
+                        <span>EXECUTING...</span>
                       </div>
                     ) : (
                       <div className="flex items-center relative z-10">
-                        <UserCheck className="w-5 h-5 mr-3" />
-                        <TechnicalLabel text="INITIALIZE MEMBER ACCESS" className="text-black" />
+                        <span className="mr-3">$</span>
+                        <span>./execute init_member.sh</span>
+                        <UserCheck className="w-5 h-5 ml-3" />
                       </div>
                     )}
                   </Button>
