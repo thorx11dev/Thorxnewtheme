@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import ThorxLoadingScreen from "@/components/ui/thorx-loading-screen"; // Assuming ThorxLoadingScreen is in this path
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -22,12 +23,8 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   if (isLoading) {
     return (
       fallback || (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        </div>
+        // Replaced the original spinner with the branded ThorxLoadingScreen
+        <ThorxLoadingScreen message="VERIFYING ACCESS CREDENTIALS" duration={1500} />
       )
     );
   }
@@ -58,13 +55,9 @@ export function PublicOnlyRoute({ children, redirectTo = "/" }: PublicOnlyRouteP
 
   // Show loading while checking authentication
   if (isLoading) {
+    // Replaced the original spinner with the branded ThorxLoadingScreen
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
+      <ThorxLoadingScreen message="CHECKING AUTHENTICATION STATUS" duration={1500} />
     );
   }
 
@@ -94,7 +87,7 @@ export function TeamProtectedRoute({ children, fallback }: TeamProtectedRoutePro
         setLocation("/auth");
         return;
       }
-      
+
       if (user?.role !== 'team' && user?.role !== 'founder') {
         // Authenticated but not team or founder role, redirect to appropriate portal
         toast({
@@ -112,12 +105,8 @@ export function TeamProtectedRoute({ children, fallback }: TeamProtectedRoutePro
   if (isLoading) {
     return (
       fallback || (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        </div>
+        // Replaced the original spinner with the branded ThorxLoadingScreen
+        <ThorxLoadingScreen message="VALIDATING TEAM CREDENTIALS" duration={1500} />
       )
     );
   }

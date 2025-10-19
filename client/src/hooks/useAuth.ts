@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { useState } from "react";
 
 export interface User {
   id: string;
@@ -18,6 +20,8 @@ export interface User {
 }
 
 export function useAuth() {
+  const [, setLocation] = useLocation();
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const { data: user, isLoading, error } = useQuery({
     queryKey: ["auth"],
     queryFn: async () => {
@@ -43,24 +47,28 @@ export function useAuth() {
 
   const queryClient = useQueryClient();
 
-  const logout = async () => {
-    try {
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      setIsTransitioning(true);
       await apiRequest("POST", "/api/logout");
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      // Clear all queries and redirect
-      queryClient.clear();
-      window.location.href = "/";
-    }
-  };
+    },
+    onSuccess: () => {
+      // Add minimum delay for smooth transition
+      setTimeout(() => {
+        queryClient.setQueryData(["auth"], null);
+        queryClient.clear();
+        setIsTransitioning(false);
+        setLocation("/");
+      }, 1200);
+    },
+  });
 
   return {
     user,
     isAuthenticated: !!user,
-    isLoading,
+    isLoading: isLoading || isTransitioning,
     error,
-    logout,
+    logout: logoutMutation.mutate,
   };
 }
 
