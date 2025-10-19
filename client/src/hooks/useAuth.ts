@@ -35,10 +35,11 @@ export function useAuth() {
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 5 * 60 * 1000, // Cache for 5 minutes
-    refetchOnMount: true,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
     refetchInterval: false,
     refetchOnReconnect: true,
+    networkMode: 'online',
   });
 
   const queryClient = useQueryClient();
