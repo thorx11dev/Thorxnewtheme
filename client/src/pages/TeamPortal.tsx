@@ -561,7 +561,17 @@ export default function TeamPortal() {
     }, 300);
   };
 
-  // Loading state handled by parent ProtectedRoute component
+  // CONDITIONAL RENDERING FOR LOADING STATE - FIXES REACT HOOKS ERROR
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <div className="text-2xl font-black mb-2">THORX TEAM</div>
+          <div className="text-sm">LOADING...</div>
+        </div>
+      </div>
+    );
+  }
 
   // Copy email to clipboard
   const copyEmailToClipboard = (email: string) => {

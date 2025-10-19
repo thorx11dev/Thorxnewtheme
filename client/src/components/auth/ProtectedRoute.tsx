@@ -18,9 +18,18 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
     }
   }, [isAuthenticated, isLoading, setLocation]);
 
-  // Loading state handled by parent Router component in App.tsx
+  // Show loading spinner while checking authentication
   if (isLoading) {
-    return null;
+    return (
+      fallback || (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      )
+    );
   }
 
   // Don't render children if not authenticated (will redirect in useEffect)

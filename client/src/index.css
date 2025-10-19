@@ -807,22 +807,6 @@
     animation: border-pulse 2s ease-in-out infinite;
   }
 
-  /* Prevent white flashes during page transitions */
-  html, body, #root {
-    background-color: #000000;
-    min-height: 100vh;
-  }
-
-  /* Smooth fade-in for content after loading */
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  .fade-in {
-    animation: fadeIn 0.3s ease-in;
-  }
-
   /* Technical drawing lines */
   .tech-line {
     position: relative;
