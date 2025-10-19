@@ -22,17 +22,17 @@ export default function Home() {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkIsMobile();
     window.addEventListener('resize', checkIsMobile);
-    
+
     return () => window.removeEventListener('resize', checkIsMobile);
   }, []);
 
   // Add cinematic-mode class to body when component mounts
   useEffect(() => {
     document.body.classList.add('cinematic-mode');
-    
+
     return () => {
       document.body.classList.remove('cinematic-mode');
     };
@@ -72,17 +72,17 @@ export default function Home() {
     // Navigate to Auth page for all action buttons
     setLocation("/auth");
   };
-  
+
   const handleSectionChange = (section: number) => {
     setCurrentSection(section);
   };
-  
+
   const handlePrevious = () => {
     if (currentSection > 1) {
       setCurrentSection(prev => prev - 1);
     }
   };
-  
+
   const handleNext = () => {
     if (currentSection < totalSections) {
       setCurrentSection(prev => prev + 1);
@@ -114,7 +114,7 @@ export default function Home() {
                 </button>
               )}
             </div>
-            
+
             {/* Right Section */}
             <div className="flex items-center">
               {hasTransformedToClock ? (
@@ -122,7 +122,7 @@ export default function Home() {
                   <DigitalClock />
                 </div>
               ) : (
-                <div 
+                <div
                   className={`bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2 transition-all duration-300 ${
                     currentSection >= 3 ? 'blur-sm opacity-70' : ''
                   }`}
@@ -136,7 +136,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-        
+
         {/* Main Title Section */}
         <div className="bg-white border-b-3 border-black py-4 md:py-6">
           <div className="max-w-7xl mx-auto px-4 md:px-8 text-center">
@@ -149,36 +149,36 @@ export default function Home() {
 
       {/* Sections */}
       <div data-section="1">
-        <HookSection 
-          isActive={currentSection === 1} 
+        <HookSection
+          isActive={currentSection === 1}
           onAdvance={handleSectionAdvance}
         />
       </div>
       <div data-section="2">
-        <EarningReveal 
-          isActive={currentSection === 2} 
+        <EarningReveal
+          isActive={currentSection === 2}
           onAdvance={handleSectionAdvance}
         />
       </div>
       <div data-section="3">
-        <TrustBuilder 
-          isActive={currentSection === 3} 
+        <TrustBuilder
+          isActive={currentSection === 3}
           onAdvance={handleSectionAdvance}
         />
       </div>
       <div data-section="4">
-        <FAQSection 
+        <FAQSection
           isActive={currentSection === 4}
         />
       </div>
 
       {/* Navigation Elements */}
-      <NavigationProgress 
+      <NavigationProgress
         currentSection={currentSection}
         totalSections={totalSections}
         onSectionChange={handleSectionChange}
       />
-      <ArrowKeysGuide 
+      <ArrowKeysGuide
         currentSection={currentSection}
         totalSections={totalSections}
         onPrevious={handlePrevious}
