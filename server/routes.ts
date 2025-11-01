@@ -1065,31 +1065,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passwordHash: validatedData.password // Password will be hashed in storage layer
       });
 
-      // Set session
+      // Set session data
       req.session.userId = newUser.id;
       req.session.user = {
         id: newUser.id,
         email: newUser.email,
         firstName: newUser.firstName,
         lastName: newUser.lastName,
-        role: newUser.role
+        role: newUser.role || 'user'
       };
 
-      console.log("Setting session for new user:", { 
-        userId: newUser.id, 
-        email: newUser.email,
-        sessionId: req.session.id 
-      });
-
+      // Force save with explicit promise
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
           if (err) {
-            console.error("Session save error during registration:", err);
-            reject(err);
-          } else {
-            console.log("Session saved successfully for user:", newUser.id);
-            resolve();
+            console.error("Session save error:", err);
+            return reject(err);
           }
+          
+          // Verify data was set
+          console.log("Session saved:", {
+            userId: req.session.userId,
+            sessionId: req.session.id,
+            hasUser: !!req.session.user
+          });
+          
+          resolve();
+        });
+      });
+
+      // Reload session to verify persistence
+      await new Promise<void>((resolve, reject) => {
+        req.session.reload((err) => {
+          if (err) {
+            console.error("Session reload error:", err);
+            return reject(err);
+          }
+          
+          console.log("Session after reload:", {
+            userId: req.session.userId,
+            sessionId: req.session.id
+          });
+          
+          resolve();
         });
       });
 
@@ -1134,31 +1152,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Set session
+      // Set session data
       req.session.userId = user.id;
       req.session.user = {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        role: user.role || 'user'
       };
 
-      console.log("Setting session for login user:", { 
-        userId: user.id, 
-        email: user.email,
-        sessionId: req.session.id 
-      });
-
+      // Force save with explicit promise
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
           if (err) {
-            console.error("Session save error during login:", err);
-            reject(err);
-          } else {
-            console.log("Session saved successfully for user:", user.id);
-            resolve();
+            console.error("Session save error:", err);
+            return reject(err);
           }
+          
+          // Verify data was set
+          console.log("Session saved:", {
+            userId: req.session.userId,
+            sessionId: req.session.id,
+            hasUser: !!req.session.user
+          });
+          
+          resolve();
+        });
+      });
+
+      // Reload session to verify persistence
+      await new Promise<void>((resolve, reject) => {
+        req.session.reload((err) => {
+          if (err) {
+            console.error("Session reload error:", err);
+            return reject(err);
+          }
+          
+          console.log("Session after reload:", {
+            userId: req.session.userId,
+            sessionId: req.session.id
+          });
+          
+          resolve();
         });
       });
 
