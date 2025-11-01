@@ -141,35 +141,32 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
         <div className="hidden md:flex items-start justify-between gap-16 min-h-[70vh] pt-16">
           {/* Left Side - Clean Modern Title Container */}
           <div className="flex-shrink-0 w-96 pt-8 pr-8">
-            <div className="inline-block relative mb-8">
-              {/* Subtle gradient background */}
-              <div className="relative bg-gradient-to-br from-white to-gray-50 border-l-4 border-primary p-8 lg:p-10 shadow-lg">
-                {/* Top accent bar */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary/60 to-transparent"></div>
-                
-                {/* Content */}
-                <div className="mb-6">
-                  <div className="inline-flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-sm">
-                    <div className="w-2 h-2 bg-primary rounded-full pulse-glow"></div>
-                    <TechnicalLabel text="FAQ PROTOCOL v2.47" className="text-primary" />
-                  </div>
-                </div>
-                
-                <h2 className="text-5xl lg:text-6xl font-black tracking-tight leading-tight mb-6 text-foreground">
+            <div className="space-y-8">
+              {/* Protocol Badge */}
+              <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 px-4 py-2 rounded-md">
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                <TechnicalLabel text="FAQ PROTOCOL v2.47" className="text-primary text-xs font-bold" />
+              </div>
+              
+              {/* Main Title */}
+              <div className="space-y-4">
+                <h2 className="text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-foreground">
                   Knowledge<br />
                   <span className="text-primary">Base</span><br />
                   Access<span className="text-primary">.</span>
                 </h2>
                 
-                <div className="h-1 w-24 bg-gradient-to-r from-primary to-primary/40 mb-6"></div>
-                
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <TechnicalLabel text="SYSTEM STATUS: OPERATIONAL" className="text-muted-foreground" />
-                  </div>
-                  <Barcode className="w-32 h-6 opacity-40" />
+                {/* Accent Line */}
+                <div className="h-1 w-20 bg-gradient-to-r from-primary to-primary/30 rounded-full"></div>
+              </div>
+              
+              {/* Status & Barcode */}
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <TechnicalLabel text="SYSTEM STATUS: OPERATIONAL" className="text-muted-foreground text-xs" />
                 </div>
+                <Barcode className="w-32 h-6 opacity-30" />
               </div>
             </div>
           </div>
