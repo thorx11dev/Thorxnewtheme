@@ -54,6 +54,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByReferralCode(referralCode: string): Promise<User | undefined>;
   validateUserPassword(email: string, password: string): Promise<User | undefined>;
+  updateUser(userId: string, updates: Partial<InsertUser>): Promise<User | undefined>;
   updateUserEarnings(userId: string, amount: string): Promise<void>;
 
   // Earnings methods
@@ -196,6 +197,15 @@ export class DatabaseStorage implements IStorage {
     return isValid ? user : undefined;
   }
 
+  async updateUser(userId: string, updates: Partial<InsertUser>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
+  }
+
   async updateUserEarnings(userId: string, amount: string): Promise<void> {
     await db
       .update(users)
@@ -293,6 +303,7 @@ export class DatabaseStorage implements IStorage {
         referrerId: referrals.referrerId,
         referredId: referrals.referredId,
         status: referrals.status,
+        tier: referrals.tier,
         totalEarned: referrals.totalEarned,
         createdAt: referrals.createdAt,
         referred: users,
@@ -428,7 +439,13 @@ export class DatabaseStorage implements IStorage {
         role: users.role,
         totalEarnings: users.totalEarnings,
         availableBalance: users.availableBalance,
+        pendingBalance: users.pendingBalance,
+        totalWithdrawn: users.totalWithdrawn,
         isActive: users.isActive,
+        isVerified: users.isVerified,
+        verificationToken: users.verificationToken,
+        loginStreak: users.loginStreak,
+        lastLoginDate: users.lastLoginDate,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
         teamKey: teamKeys,
@@ -482,7 +499,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Get all users for team data management
-  async getAllUsers() {
+  async getAllUsers(): Promise<User[]> {
     try {
       const result = await db
         .select({
@@ -497,7 +514,13 @@ export class DatabaseStorage implements IStorage {
           referredBy: users.referredBy,
           totalEarnings: users.totalEarnings,
           availableBalance: users.availableBalance,
+          pendingBalance: users.pendingBalance,
+          totalWithdrawn: users.totalWithdrawn,
           isActive: users.isActive,
+          isVerified: users.isVerified,
+          verificationToken: users.verificationToken,
+          loginStreak: users.loginStreak,
+          lastLoginDate: users.lastLoginDate,
           role: users.role,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt
@@ -630,22 +653,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getHilltopAdsStats(zoneId?: string, startDate?: Date, endDate?: Date): Promise<HilltopAdsStat[]> {
-    let query = db.select().from(hilltopAdsStats);
+    let conditions: any[] = [];
 
     if (zoneId) {
-      query = query.where(eq(hilltopAdsStats.zoneId, zoneId));
+      conditions.push(eq(hilltopAdsStats.zoneId, zoneId));
     }
 
     if (startDate && endDate) {
-      query = query.where(
-        and(
-          sql`${hilltopAdsStats.date} >= ${startDate}`,
-          sql`${hilltopAdsStats.date} <= ${endDate}`
-        )
-      );
+      conditions.push(sql`${hilltopAdsStats.date} >= ${startDate}`);
+      conditions.push(sql`${hilltopAdsStats.date} <= ${endDate}`);
     }
 
-    return await query.orderBy(desc(hilltopAdsStats.date));
+    if (conditions.length > 0) {
+      return await db
+        .select()
+        .from(hilltopAdsStats)
+        .where(and(...conditions))
+        .orderBy(desc(hilltopAdsStats.date));
+    }
+
+    return await db
+      .select()
+      .from(hilltopAdsStats)
+      .orderBy(desc(hilltopAdsStats.date));
   }
 
   async getTotalHilltopAdsRevenue(): Promise<string> {
@@ -694,6 +724,7 @@ export class MemStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async getUserByReferralCode(referralCode: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async validateUserPassword(email: string, password: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async updateUser(userId: string, updates: Partial<InsertUser>): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async updateUserEarnings(userId: string, amount: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
   async createEarning(earning: InsertEarning): Promise<Earning> { throw new Error("Not implemented in MemStorage"); }
   async getUserEarnings(userId: string, limit?: number): Promise<Earning[]> { throw new Error("Not implemented in MemStorage"); }

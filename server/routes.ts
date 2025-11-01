@@ -662,12 +662,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create team member user
+      const firstName = memberName.split(' ')[0] || memberName;
+      const lastName = memberName.split(' ').slice(1).join(' ') || 'Member';
       const teamMemberData = {
-        firstName: memberName.split(' ')[0] || memberName,
-        lastName: memberName.split(' ').slice(1).join(' ') || 'Member',
+        firstName,
+        lastName,
+        name: memberName,
         identity: `TEAM_${Date.now()}`,
         phone: "+92 300 0000000", // Default team member phone
         email: email,
+        password: password, // Will be hashed in storage layer
         passwordHash: password, // Will be hashed in storage layer
         referralCode: `TEAM-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
         role: 'team'
@@ -959,9 +963,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const founderData = {
         firstName,
         lastName,
+        name: `${firstName} ${lastName}`,
         identity: `FOUNDER_${Date.now()}`,
         phone: "+1 555 0000000",
         email,
+        password: password,
         passwordHash: password,
         referralCode: `FOUNDER-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
         role: 'team'
@@ -1072,6 +1078,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user
       const newUser = await storage.createUser({
         ...validatedData,
+        phone: validatedData.phone || "+1 555 0000000", // Ensure phone is always a string
+        name: `${validatedData.firstName} ${validatedData.lastName}`,
         passwordHash: validatedData.password // Password will be hashed in storage layer
       });
 
@@ -1303,9 +1311,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update session data if name changed
       if (validatedData.firstName || validatedData.lastName) {
         req.session.user = {
-          ...req.session.user,
+          id: updatedUser.id,
+          email: updatedUser.email,
           firstName: updatedUser.firstName,
-          lastName: updatedUser.lastName
+          lastName: updatedUser.lastName,
+          role: updatedUser.role || 'user'
         };
         await new Promise<void>((resolve, reject) => {
           req.session.save((err) => {
@@ -1364,23 +1374,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let userId = null;
       let userName = 'User';
       
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        try {
-          const token = authHeader.substring(7);
-          const supabase = createServerSupabaseClient();
-          const { data: { user } } = await supabase.auth.getUser(token);
-          
-          if (user) {
-            userId = user.id;
-            const userProfile = await storage.getUserById(user.id);
-            if (userProfile) {
-              userName = userProfile.firstName || 'User';
-            }
-          }
-        } catch (authError) {
-          // Continue without authentication
-          console.log('Chatbot auth optional, continuing anonymously');
+      // Check session for authenticated user
+      if (req.session.userId) {
+        userId = req.session.userId;
+        const userProfile = await storage.getUserById(req.session.userId);
+        if (userProfile) {
+          userName = userProfile.firstName || 'User';
         }
       }
 
@@ -1427,24 +1426,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/chat/history", async (req, res) => {
     try {
-      // Try to get authenticated user
-      let userId = null;
-      
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        try {
-          const token = authHeader.substring(7);
-          const supabase = createServerSupabaseClient();
-          const { data: { user } } = await supabase.auth.getUser(token);
-          
-          if (user) {
-            userId = user.id;
-          }
-        } catch (authError) {
-          // Return empty history for unauthenticated users
-          return res.json({ messages: [] });
-        }
-      }
+      // Try to get authenticated user from session
+      const userId = req.session.userId;
 
       if (!userId) {
         return res.json({ messages: [] });

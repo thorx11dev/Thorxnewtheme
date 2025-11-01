@@ -541,7 +541,7 @@ export default function UserPortal() {
   });
 
   // Fetch chat history
-  const { data: chatHistoryData, isLoading: isChatHistoryLoading } = useQuery({
+  const { data: chatHistoryData, isLoading: isChatHistoryLoading } = useQuery<{ messages: Array<{ id: number; text: string; sender: string; timestamp: string; avatar: string }> }>({
     queryKey: ["chat-history"],
     queryFn: async () => {
       const headers: Record<string, string> = {};
@@ -558,23 +558,23 @@ export default function UserPortal() {
       if (!response.ok) {
         throw new Error("Failed to fetch chat history");
       }
-      return await response.json() as { messages: typeof chatMessages };
+      return await response.json() as { messages: Array<{ id: number; text: string; sender: string; timestamp: string; avatar: string }> };
     },
     enabled: !!user, // Only fetch if user exists
-    onSuccess: (data) => {
+  });
+
+  // Handle chat history data with useEffect
+  useEffect(() => {
+    if (chatHistoryData?.messages) {
       setChatMessages([{
         id: 1,
         text: "Hello! Welcome to THORX Support. How can I assist you today?",
         sender: "support",
         timestamp: new Date(Date.now() - 5000).toISOString(),
         avatar: "TS"
-      }, ...data.messages.map(msg => ({ ...msg, id: Date.now() + Math.random() }))]); // Append fetched messages
-    },
-    onError: (error) => {
-      console.error("Chat history error:", error);
-      // Optionally display an error message to the user
+      }, ...chatHistoryData.messages.map((msg: { id: number; text: string; sender: string; timestamp: string; avatar: string }) => ({ ...msg, id: Date.now() + Math.random() }))]); // Append fetched messages
     }
-  });
+  }, [chatHistoryData]);
 
   // Handle sending a message
   const handleSendMessage = async () => {
@@ -907,7 +907,7 @@ export default function UserPortal() {
                 <TechnicalLabel text={displayUser?.firstName || "USER"} className="text-foreground" />
               </div>
               <Button
-                onClick={logout}
+                onClick={() => logout()}
                 variant="outline"
                 size="sm"
                 className="border-2 border-black text-foreground hover:bg-black hover:text-white"
