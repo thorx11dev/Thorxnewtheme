@@ -10,6 +10,8 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5000',
   'https://localhost:5000',
+  'http://127.0.0.1:5000',
+  'https://127.0.0.1:5000',
   ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
   ...(process.env.REPL_SLUG && process.env.REPL_OWNER ? [`https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`] : []),
 ];
