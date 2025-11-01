@@ -171,47 +171,45 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
             </div>
           </div>
 
-          {/* Right Side - Modern FAQ Cards */}
-          <div className="flex-1 space-y-5 max-w-3xl pl-8">
+          {/* Right Side - Protocol Cards */}
+          <div className="flex-1 space-y-6 max-w-3xl pl-8">
             {displayedFaqs.map((faq) => (
               <div
                 key={faq.id}
-                className={`bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100 ${isAnimating && displayedFaqCount === allFaqData.length ? 'animate-zoom-in' : ''}`}
+                className={`split-card bg-background relative group transition-all duration-500 ${isAnimating && displayedFaqCount === allFaqData.length ? 'animate-zoom-in' : ''}`}
                 data-testid={`faq-item-${faq.id}`}
               >
-                {/* Clean Header */}
-                <div className="px-6 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                {/* Protocol Header */}
+                <div className="px-8 py-4 bg-primary text-primary-foreground border-b-[3px] border-black">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="px-2 py-1 bg-primary/10 rounded text-primary text-xs font-bold">
-                        #{faq.id}
-                      </div>
-                      <TechnicalLabel text={faq.protocol} className="text-muted-foreground text-xs" />
+                    <div className="flex items-center gap-4">
+                      <TechnicalLabel text={`FAQ-${faq.id}`} className="text-white" />
+                      <TechnicalLabel text={faq.protocol} className="text-white opacity-80" />
                     </div>
-                    <div className="w-12 h-3 opacity-30">
+                    <div className="w-16 h-4 opacity-60">
                       <Barcode />
                     </div>
                   </div>
                 </div>
 
-                {/* Content */}
-                <div className="bg-white">
+                {/* Protocol Content */}
+                <div className="bg-background">
                   <Accordion type="single" collapsible className="w-full" onValueChange={handleValueChange}>
                     <AccordionItem 
                       value={faq.id}
                       className="border-none"
                     >
                       <AccordionTrigger 
-                        className="text-left hover:no-underline px-6 py-5 [&>svg]:hidden hover:bg-gray-50/50 transition-all"
+                        className="text-left hover:no-underline px-8 py-6 [&>svg]:hidden group-hover:bg-muted/20 transition-all"
                         data-testid={`faq-trigger-${faq.id}`}
                       >
                         <div className="flex items-center justify-between w-full gap-4">
-                          <div className="text-lg lg:text-xl font-bold text-foreground flex-1 leading-snug">
+                          <div className="text-xl lg:text-2xl font-bold text-foreground flex-1 leading-tight">
                             {faq.question}
                           </div>
-                          <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="flex items-center gap-4 flex-shrink-0">
                             <div 
-                              className="w-8 h-8 flex items-center justify-center text-primary text-xl font-bold rounded-full bg-primary/10 hover:bg-primary hover:text-white transition-all"
+                              className="w-10 h-10 flex items-center justify-center bg-primary text-primary-foreground text-2xl font-black border-2 border-black hover:bg-primary/90 transition-all"
                               data-testid={`faq-expand-${faq.id}`}
                             >
                               {openItems[faq.id] ? '−' : '+'}
@@ -219,8 +217,8 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                           </div>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="px-6 pb-5">
-                        <div className="text-muted-foreground text-base leading-relaxed bg-gray-50 p-5 rounded-md border-l-3 border-primary/60">
+                      <AccordionContent className="px-8 pb-6">
+                        <div className="text-muted-foreground text-base lg:text-lg leading-relaxed border-l-4 border-primary pl-6 py-2">
                           {faq.answer}
                         </div>
                       </AccordionContent>
@@ -232,15 +230,16 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
 
             {/* Load More Button - Desktop */}
             {!showAll && (
-              <div className="flex justify-center pt-8">
+              <div className="flex justify-center pt-6">
                 <button
                   onClick={handleLoadMore}
                   disabled={isAnimating}
-                  className="group flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="group flex items-center gap-3 px-6 py-3 bg-primary text-primary-foreground border-2 border-black hover:bg-background hover:text-primary transition-all duration-300 disabled:opacity-50"
                   data-testid="load-more-desktop"
                 >
-                  <TechnicalLabel text="LOAD MORE" className="text-white font-bold text-sm" />
+                  <TechnicalLabel text="LOAD MORE" className="text-current font-bold text-sm" />
                   <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-current rounded-full pulse-glow"></div>
                     <ChevronDown 
                       className={`w-5 h-5 transition-transform duration-300 ${
                         isAnimating ? 'animate-spin' : 'group-hover:translate-y-1'
@@ -256,57 +255,72 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
         {/* Mobile Layout */}
         <div className="md:hidden py-12">
           {/* Mobile Header */}
-          <div className="text-center mb-8 px-4">
-            <div className="mb-4 inline-flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-sm">
-              <div className="w-2 h-2 bg-primary rounded-full pulse-glow"></div>
-              <TechnicalLabel text="FAQ PROTOCOL v2.47" className="text-primary" />
+          <div className="text-center mb-8">
+            <div className="mb-4">
+              <TechnicalLabel text="FAQ PROTOCOL v2.47" />
             </div>
-            <h2 className="text-3xl font-black tracking-tight leading-tight mb-4 text-foreground">
-              Knowledge<br />
-              <span className="text-primary">Base</span> Access<span className="text-primary">.</span>
+            <h2 className="text-4xl font-black tracking-tight leading-tight mb-4" style={{ textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>
+              <span className="text-black">K</span>
+              <span className="text-white">n</span>
+              <span className="text-primary">o</span>
+              <span className="text-black">w</span>
+              <span className="text-white">l</span>
+              <span className="text-primary">e</span>
+              <span className="text-black">d</span>
+              <span className="text-white">g</span>
+              <span className="text-primary">e</span><br />
+              <span className="text-black">B</span>
+              <span className="text-white">a</span>
+              <span className="text-primary">s</span>
+              <span className="text-black">e</span><br />
+              <span className="text-white">A</span>
+              <span className="text-primary">c</span>
+              <span className="text-black">c</span>
+              <span className="text-white">e</span>
+              <span className="text-primary">s</span>
+              <span className="text-black">s</span>
+              <span className="text-white">.</span>
             </h2>
-            <div className="h-1 w-16 bg-gradient-to-r from-primary to-primary/40 mx-auto mb-4"></div>
-            <Barcode className="w-20 h-5 mx-auto opacity-30" />
+            <Barcode className="w-24 h-6 mx-auto opacity-60" />
           </div>
 
-          {/* Mobile FAQ Cards */}
-          <div className="space-y-4 px-4">
+          {/* Mobile Protocol Cards */}
+          <div className="space-y-4">
             {displayedFaqs.map((faq) => (
               <div
                 key={faq.id}
-                className={`bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 transition-all duration-500 ${isAnimating && displayedFaqCount === allFaqData.length ? 'animate-zoom-in' : ''}`}
+                className={`split-card bg-background relative transition-all duration-500 ${isAnimating && displayedFaqCount === allFaqData.length ? 'animate-zoom-in' : ''}`}
                 data-testid={`faq-item-${faq.id}`}
               >
-                {/* Mobile Header */}
-                <div className="px-4 py-2.5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                {/* Mobile Protocol Header */}
+                <div className="px-6 py-3 bg-primary text-primary-foreground border-b-[3px] border-black">
                   <div className="flex items-center justify-between">
-                    <div className="px-2 py-0.5 bg-primary/10 rounded text-primary text-xs font-bold">
-                      #{faq.id}
-                    </div>
-                    <div className="w-10 h-2.5 opacity-30">
+                    <TechnicalLabel text={`FAQ-${faq.id}`} className="text-white text-xs" />
+                    <div className="w-12 h-3">
                       <Barcode />
                     </div>
                   </div>
                 </div>
 
                 {/* Mobile Content */}
-                <div className="bg-white">
+                <div className="bg-background">
                   <Accordion type="single" collapsible className="w-full" onValueChange={handleValueChange}>
                     <AccordionItem 
                       value={faq.id}
                       className="border-none"
                     >
                       <AccordionTrigger 
-                        className="text-left hover:no-underline px-4 py-4 [&>svg]:hidden"
+                        className="text-left hover:no-underline px-6 py-5 [&>svg]:hidden"
                         data-testid={`faq-trigger-mobile-${faq.id}`}
                       >
-                        <div className="flex items-center justify-between w-full gap-3">
-                          <div className="text-base font-bold text-foreground leading-tight flex-1">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="text-lg font-bold text-foreground pr-3 leading-tight flex-1">
                             {faq.question}
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-primary rounded-full pulse-glow"></div>
                             <div 
-                              className="w-7 h-7 flex items-center justify-center text-primary text-lg font-bold rounded-full bg-primary/10"
+                              className="w-6 h-6 flex items-center justify-center text-primary text-xl font-bold border border-primary"
                               data-testid={`faq-expand-mobile-${faq.id}`}
                             >
                               {openItems[faq.id] ? '−' : '+'}
@@ -314,8 +328,8 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                           </div>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="text-muted-foreground text-sm leading-relaxed bg-gray-50 p-4 rounded-md border-l-3 border-primary/60">
+                      <AccordionContent className="px-6 pb-5">
+                        <div className="text-foreground text-sm leading-relaxed bg-muted p-4 border-l-4 border-primary">
                           {faq.answer}
                         </div>
                       </AccordionContent>
@@ -331,11 +345,12 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
                 <button
                   onClick={handleLoadMore}
                   disabled={isAnimating}
-                  className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-50"
+                  className="group flex items-center gap-3 px-6 py-3 bg-primary text-primary-foreground border-2 border-black hover:bg-background hover:text-primary transition-all duration-300 disabled:opacity-50"
                   data-testid="load-more-mobile"
                 >
-                  <TechnicalLabel text="LOAD MORE" className="text-white font-bold text-sm" />
+                  <TechnicalLabel text="LOAD MORE" className="text-current font-bold text-sm" />
                   <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-current rounded-full pulse-glow"></div>
                     <ChevronDown 
                       className={`w-5 h-5 transition-transform duration-300 ${
                         isAnimating ? 'animate-spin' : 'group-hover:translate-y-1'
