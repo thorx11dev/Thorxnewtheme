@@ -211,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.clearCookie("connect.sid");
+      res.clearCookie("thorx.sid");
       res.json({
         success: true,
         message: "Logout successful"
