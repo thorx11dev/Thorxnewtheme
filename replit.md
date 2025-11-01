@@ -2,6 +2,25 @@
 
 THORX is a modern full-stack web application that serves as an "earning system" or rewards platform. The application is designed as a landing page with a registration system where users can sign up to earn money through various methods like watching ads, making referrals, and completing daily tasks. The project features a cinematic, industrial-themed user interface with animated sections and real-time statistics.
 
+## 🤖 Automated Setup for New Accounts
+
+This project is configured for **automatic setup** when imported to new Replit accounts!
+
+### What's Automated:
+- ✅ Dependency installation
+- ✅ Database migration (when DATABASE_URL exists)
+- ✅ Table creation
+- ✅ Session secret generation (temporary)
+
+### Required Manual Steps (One-time):
+1. **Provision PostgreSQL Database** (Tools → Database → Create)
+2. **Set SESSION_SECRET** (Tools → Secrets → Add `SESSION_SECRET`)
+3. **Click Run** button
+
+See [SETUP_NEW_ACCOUNT.md](SETUP_NEW_ACCOUNT.md) for detailed instructions.
+
+---
+
 ## Setup Status (October 3, 2025)
 
 ✅ **Completed:**
