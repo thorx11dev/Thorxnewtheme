@@ -212,13 +212,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user endpoint (no auth required)
   app.get("/api/user", async (req, res) => {
     try {
+      // Comprehensive session logging
+      console.log("Session check: {", 
+        "sessionExists:", !!req.session,
+        ", userId:", req.session?.userId || 'undefined',
+        ", sessionId:", req.session?.id || 'undefined',
+        ", cookieHeader:", !!req.headers.cookie,
+        ", user:", req.session?.user ? `{id: ${req.session.user.id}, email: ${req.session.user.email}}` : 'undefined',
+        "}");
+
       // Check if authenticated via anonymous token (iframe environment)
       if (req.anonymousUser) {
+        console.log("Returning anonymous token user:", req.anonymousUser.id);
         return res.json(req.anonymousUser);
       }
 
       // Check if it's an anonymous user via session (regular browser)
       if (req.session.userId && req.session.userId.startsWith('anonymous_')) {
+        console.log("Returning anonymous session user:", req.session.userId);
         // Return the anonymous user data from session
         const anonymousUser = req.session.anonymousUserData || {
           id: req.session.userId,
@@ -237,15 +248,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(anonymousUser);
       }
 
+      // Check if userId exists in session
+      if (!req.session.userId) {
+        console.log("No userId in session, returning 401");
+        return res.status(401).json({
+          message: "Not authenticated",
+          error: "NO_SESSION"
+        });
+      }
+
       // Regular authenticated user
-      const user = await storage.getUserById(req.session.userId!);
+      console.log("Fetching user from database with userId:", req.session.userId);
+      const user = await storage.getUserById(req.session.userId);
+      
       if (!user) {
+        console.log("User not found in database for userId:", req.session.userId);
         return res.status(404).json({
           message: "User not found",
           error: "USER_NOT_FOUND"
         });
       }
 
+      console.log("User found, returning user data for:", user.email);
       res.json({
         id: user.id,
         firstName: user.firstName,
@@ -1051,10 +1075,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: newUser.role
       };
 
+      console.log("Setting session for new user:", { 
+        userId: newUser.id, 
+        email: newUser.email,
+        sessionId: req.session.id 
+      });
+
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
+          if (err) {
+            console.error("Session save error during registration:", err);
+            reject(err);
+          } else {
+            console.log("Session saved successfully for user:", newUser.id);
+            resolve();
+          }
         });
       });
 
@@ -1109,10 +1144,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.role
       };
 
+      console.log("Setting session for login user:", { 
+        userId: user.id, 
+        email: user.email,
+        sessionId: req.session.id 
+      });
+
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
-          if (err) reject(err);
-          else resolve();
+          if (err) {
+            console.error("Session save error during login:", err);
+            reject(err);
+          } else {
+            console.log("Session saved successfully for user:", user.id);
+            resolve();
+          }
         });
       });
 
