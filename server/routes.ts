@@ -186,6 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   console.log("Session cookie config:", sessionConfig.cookie);
 
+  app.set('trust proxy', 1);
   app.use(session(sessionConfig));
 
   app.use((req, res, next) => {
@@ -306,8 +307,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user earnings endpoint (no auth required)
   app.get("/api/earnings", async (req, res) => {
     try {
+      // Check if user is authenticated
+      if (!req.session.userId) {
+        return res.status(401).json({
+          message: "Authentication required",
+          error: "UNAUTHORIZED"
+        });
+      }
+
       // Check if it's an anonymous user
-      if (req.session.userId!.startsWith('anonymous_')) {
+      if (req.session.userId.startsWith('anonymous_')) {
         return res.json({
           earnings: [],
           total: "0.00"
@@ -315,11 +324,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
-      const earnings = await storage.getUserEarnings(req.session.userId!, limit);
+      const earnings = await storage.getUserEarnings(req.session.userId, limit);
 
       res.json({
         earnings,
-        total: await storage.getUserTotalEarnings(req.session.userId!)
+        total: await storage.getUserTotalEarnings(req.session.userId)
       });
     } catch (error) {
       console.error("Get earnings error:", error);
@@ -333,16 +342,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user referrals endpoint (no auth required)
   app.get("/api/referrals", async (req, res) => {
     try {
+      // Check if user is authenticated
+      if (!req.session.userId) {
+        return res.status(401).json({
+          message: "Authentication required",
+          error: "UNAUTHORIZED"
+        });
+      }
+
       // Check if it's an anonymous user
-      if (req.session.userId!.startsWith('anonymous_')) {
+      if (req.session.userId.startsWith('anonymous_')) {
         return res.json({
           referrals: [],
           stats: { count: 0, totalEarned: "0.00" }
         });
       }
 
-      const referrals = await storage.getUserReferrals(req.session.userId!);
-      const stats = await storage.getReferralStats(req.session.userId!);
+      const referrals = await storage.getUserReferrals(req.session.userId);
+      const stats = await storage.getReferralStats(req.session.userId);
 
       res.json({
         referrals,
@@ -360,8 +377,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create ad view endpoint (no auth required)
   app.post("/api/ad-view", async (req, res) => {
     try {
+      // Check if user is authenticated
+      if (!req.session.userId) {
+        return res.status(401).json({
+          message: "Authentication required",
+          error: "UNAUTHORIZED"
+        });
+      }
+
       const adViewData = {
-        userId: req.session.userId!,
+        userId: req.session.userId,
         adId: req.body.adId,
         adType: req.body.adType,
         duration: req.body.duration || 0,
@@ -388,12 +413,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get today's ad views count (no auth required)
   app.get("/api/ad-views/today", async (req, res) => {
     try {
+      // Check if user is authenticated
+      if (!req.session.userId) {
+        return res.status(401).json({
+          message: "Authentication required",
+          error: "UNAUTHORIZED"
+        });
+      }
+
       // Check if it's an anonymous user
-      if (req.session.userId!.startsWith('anonymous_')) {
+      if (req.session.userId.startsWith('anonymous_')) {
         return res.json({ count: 0 });
       }
 
-      const count = await storage.getTodayAdViews(req.session.userId!);
+      const count = await storage.getTodayAdViews(req.session.userId);
       res.json({ count });
     } catch (error) {
       console.error("Get today ad views error:", error);

@@ -62,15 +62,57 @@ When you import this project from GitHub to a new Replit account:
 
 ### "DATABASE_URL not found"
 **Solution:** Provision PostgreSQL database (Step 1 above)
+- Click "Tools" in left sidebar
+- Search for "Database" or "PostgreSQL"
+- Click "Create Database"
+- Wait for provisioning to complete (30-60 seconds)
 
 ### "Session errors" or "Not authenticated"
-**Solution:** Set SESSION_SECRET in Secrets (Step 2 above)
+**Possible causes:**
+1. SESSION_SECRET not set (will auto-generate temporarily)
+2. Cookie issues in iframe environment
+3. Database connection issues
+
+**Solutions:**
+- Set SESSION_SECRET in Secrets (Step 2 above) for persistence
+- Clear browser cache and cookies
+- Check console logs for session save/reload errors
+- Verify DATABASE_URL is accessible
+
+### "Session save error" or "Session reload error"
+**Root cause:** Database connection issues with session store
+
+**Solutions:**
+```bash
+# 1. Verify database connection
+node -e "const {Pool} = require('pg'); const pool = new Pool({connectionString: process.env.DATABASE_URL}); pool.query('SELECT NOW()').then(r => {console.log('✅ Connected:', r.rows[0]); pool.end();}).catch(e => {console.error('❌ Error:', e.message); pool.end();})"
+
+# 2. Check if session table exists
+psql $DATABASE_URL -c "SELECT * FROM session LIMIT 1;"
+
+# 3. Re-run migrations
+npm run setup
+```
 
 ### "Migration failed"
 **Solution:** Run manually:
 ```bash
 npm run setup
 ```
+
+If still failing, check:
+- DATABASE_URL is set and correct
+- Database is accessible (not paused/sleeping)
+- Migrations directory exists
+
+### "userId is undefined after login/registration"
+**This should NOT happen anymore.** The session save/reload has been fixed with explicit promises.
+
+If you still see this:
+1. Check browser console for errors
+2. Check server logs for "Session save error" or "Session reload error"
+3. Verify cookie is being set (check DevTools → Application → Cookies)
+4. Ensure `trust proxy` is set correctly for Replit environment
 
 ## ⚡ Quick Start Checklist
 
@@ -85,11 +127,47 @@ npm run setup
 
 After setup, verify everything works:
 
-1. Application loads at the URL
-2. Can visit `/auth` page
-3. Can register a new account
-4. Can login successfully
-5. Dashboard loads with user data
+### Step-by-step Verification Checklist
+
+1. **Application loads**
+   - ✅ URL opens without errors
+   - ✅ No console errors in browser DevTools
+
+2. **Database tables exist**
+   ```bash
+   psql $DATABASE_URL -c "\dt"
+   ```
+   - ✅ Should see tables: users, earnings, advertisements, etc.
+
+3. **Session store works**
+   ```bash
+   psql $DATABASE_URL -c "SELECT COUNT(*) FROM session;"
+   ```
+   - ✅ Should return a count (even if 0)
+
+4. **Registration flow**
+   - ✅ Navigate to registration page
+   - ✅ Fill out form and submit
+   - ✅ Check console: should see "Session saved: {userId: ...}"
+   - ✅ Check console: should see "Session after reload: {userId: ...}"
+   - ✅ Should redirect to dashboard
+
+5. **Login flow**
+   - ✅ Navigate to login page
+   - ✅ Enter credentials and submit
+   - ✅ Check console: should see "Session saved: {userId: ...}"
+   - ✅ Should redirect to dashboard
+
+6. **Session persistence**
+   - ✅ After login, check `/api/user` endpoint
+   - ✅ Should return user data (not 401)
+   - ✅ Refresh page - should stay logged in
+   - ✅ Cookie should be visible in DevTools → Application → Cookies
+
+7. **Browser DevTools checks**
+   - ✅ Network tab: Check response headers for `Set-Cookie: thorx.sid=...`
+   - ✅ Application tab: Verify cookie exists with correct attributes
+   - ✅ Console: No errors related to sessions or authentication
 
 ## 💡 Pro Tips
 

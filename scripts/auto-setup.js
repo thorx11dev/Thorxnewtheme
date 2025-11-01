@@ -1,4 +1,3 @@
-
 #!/usr/bin/env node
 
 import { drizzle } from 'drizzle-orm/node-postgres';
