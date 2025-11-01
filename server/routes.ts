@@ -163,30 +163,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     isReplit
   });
 
-  // Configure session with proper cookie settings for iframe environments
   const sessionConfig = {
     store: new pgStore({
       conString: process.env.DATABASE_URL,
       createTableIfMissing: true,
       ttl: sessionTtl,
+      pruneSessionInterval: 60 * 60,
     }),
     secret: process.env.SESSION_SECRET || "thorx-secret-key-dev-only",
     resave: false,
-    saveUninitialized: true, // Allow saving uninitialized sessions for anonymous users
+    saveUninitialized: false,
+    rolling: true,
     cookie: {
       httpOnly: true,
-      // For iframe environments, we need secure cookies with sameSite none
       secure: isReplit || process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
-      sameSite: isReplit ? "none" as const : (process.env.NODE_ENV === "production" ? "strict" as const : "lax" as const),
-      // Ensure domain is not set for iframe compatibility
+      sameSite: isReplit ? "none" as const : "lax" as const,
       domain: undefined,
     },
+    name: 'thorx.sid',
   };
 
   console.log("Session cookie config:", sessionConfig.cookie);
 
   app.use(session(sessionConfig));
+
+  app.use((req, res, next) => {
+    console.log('Session Debug:', {
+      path: req.path,
+      sessionID: req.sessionID,
+      userId: req.session?.userId,
+      cookie: req.headers.cookie?.substring(0, 50),
+    });
+    next();
+  });
 
 
 

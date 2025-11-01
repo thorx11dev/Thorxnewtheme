@@ -5,30 +5,32 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
-// CORS configuration for cookie-based authentication
-// Only allow specific origins to prevent cross-site credential theft
 const allowedOrigins = [
   'http://localhost:5000',
   'https://localhost:5000',
   'http://127.0.0.1:5000',
   'https://127.0.0.1:5000',
-  ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
-  ...(process.env.REPL_SLUG && process.env.REPL_OWNER ? [`https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`] : []),
+  ...(process.env.REPLIT_DEV_DOMAIN ? [
+    `https://${process.env.REPLIT_DEV_DOMAIN}`,
+    `http://${process.env.REPLIT_DEV_DOMAIN}`
+  ] : []),
+  ...(process.env.REPL_SLUG && process.env.REPL_OWNER ? [
+    `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`,
+    `http://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+  ] : []),
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, or same-origin)
     if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked origin: ${origin}`);
+      console.warn(`CORS blocked: ${origin}`);
       callback(null, false);
     }
   },
-  credentials: true, // Allow credentials (cookies, authorization headers)
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['Set-Cookie'],
