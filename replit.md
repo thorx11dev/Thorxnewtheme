@@ -44,6 +44,12 @@ See [SETUP_NEW_ACCOUNT.md](SETUP_NEW_ACCOUNT.md) for detailed instructions.
 - All workflows running correctly with no errors
 - **Video Ad Networks Research Completed** (October 11, 2025) - Comprehensive integration guide for top 4 networks (Adsterra, Google Ad Manager, PropellerAds, Media.net) with Pakistan support
 - **CORS Authentication Fix** (November 1, 2025) - Resolved CORS blocking issue by adding 127.0.0.1:5000 variants to allowed origins for proper session establishment in Replit iframe environment
+- **Performance Optimizations** (December 15, 2025) - Major performance improvements implemented:
+  - React.lazy code splitting for all pages (Home, Auth, UserPortal, TeamPortal, HilltopAdsAdmin)
+  - Vite manualChunks configuration for vendor splitting (react, react-dom, tanstack-query, recharts, radix-ui)
+  - Initial bundle reduced to ~52KB (gzipped ~18KB)
+  - Recharts (410KB) loads on-demand only when UserPortal is accessed
+  - React.memo applied to frequently re-rendered components
 
 ⚠️ **Optional Configuration:**
 - **Supabase credentials** for full authentication features:
