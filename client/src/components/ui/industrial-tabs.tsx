@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { PlayCircle, Target, Users, CheckCircle } from "lucide-react";
@@ -20,7 +20,7 @@ interface IndustrialTabsProps {
   className?: string;
 }
 
-export default function IndustrialTabs({ tabs, activeTab, onTabChange, className }: IndustrialTabsProps) {
+const IndustrialTabs = memo(function IndustrialTabs({ tabs, activeTab, onTabChange, className }: IndustrialTabsProps) {
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
 
   const getTabStyles = (tab: TabData) => {
@@ -129,7 +129,9 @@ export default function IndustrialTabs({ tabs, activeTab, onTabChange, className
       </div>
     </div>
   );
-}
+});
+
+export default IndustrialTabs;
 
 // Tab data configuration for the work section
 export const WORK_TABS: TabData[] = [

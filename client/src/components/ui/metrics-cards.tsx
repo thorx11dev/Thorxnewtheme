@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { LucideIcon } from "lucide-react";
+import { memo, useMemo } from "react";
 
 interface MetricCardData {
   id: string;
@@ -21,7 +22,7 @@ interface MetricsCardsProps {
   className?: string;
 }
 
-export default function MetricsCards({ metrics, className }: MetricsCardsProps) {
+const MetricsCards = memo(function MetricsCards({ metrics, className }: MetricsCardsProps) {
   const getCardStyles = (variant: MetricCardData['variant']) => {
     switch (variant) {
       case 'orange':
@@ -163,7 +164,9 @@ export default function MetricsCards({ metrics, className }: MetricsCardsProps) 
       })}
     </div>
   );
-}
+});
+
+export default MetricsCards;
 
 // Loading skeleton for metrics cards
 export function MetricsCardsSkeleton({ count = 4 }: { count?: number }) {
