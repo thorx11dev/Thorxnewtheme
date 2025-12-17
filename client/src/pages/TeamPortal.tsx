@@ -1793,28 +1793,6 @@ export default function TeamPortal() {
         </div>
       </nav>
 
-      {/* Desktop Navigation Controls - Landing Page Style */}
-      <div className="arrow-keys-guide">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={prevSection}
-            className="arrow-key"
-            disabled={currentSection === 0}
-            data-testid="button-prev-section"
-          >
-            ←
-          </button>
-          <button
-            onClick={nextSection}
-            className="arrow-key"
-            disabled={currentSection === teamSections.length - 1}
-            data-testid="button-next-section"
-          >
-            →
-          </button>
-        </div>
-      </div>
-
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-background border-t-2 border-black md:hidden z-40" data-testid="team-mobile-navigation">
         <div className="flex justify-around">
