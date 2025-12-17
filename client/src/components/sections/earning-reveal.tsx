@@ -178,7 +178,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
               {/* Stats */}
               <div className="space-y-4">
                 <div className="text-4xl font-black counter-display text-white">
-                  <span ref={referralCounterRef} data-testid="referral-counter">15</span>% <span className="text-xl">+ 7.5%</span>
+                  <span ref={referralCounterRef} data-testid="referral-counter">15</span>%
                 </div>
                 
                 {/* Progress bars */}
