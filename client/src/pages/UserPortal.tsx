@@ -1345,22 +1345,6 @@ export default function UserPortal() {
         {/* Industrial Work Interface - Full Width */}
         <div className="industrial-video-frame p-4">
           <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
-            {/* Video Player Tabs Navigation */}
-            <TabsList className="grid grid-cols-4 gap-2 mb-6 bg-black/90 p-2 border-2 border-primary">
-              {WORK_TABS.map(tab => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="flex items-center justify-center gap-2 px-3 py-3 text-xs md:text-sm font-bold data-[state=active]:bg-primary data-[state=active]:text-white border border-transparent data-[state=active]:border-white"
-                  data-testid={`tab-${tab.id}`}
-                >
-                  <PlayCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">{tab.title}</span>
-                  <span className="sm:hidden">{tab.id.replace('player', 'P')}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            
             {WORK_TABS.map(tab => (
               <TabsContent key={tab.id} value={tab.id} className="mt-0">
                 <div className="space-y-4">
