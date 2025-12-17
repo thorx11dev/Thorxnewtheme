@@ -50,6 +50,11 @@ See [SETUP_NEW_ACCOUNT.md](SETUP_NEW_ACCOUNT.md) for detailed instructions.
   - Initial bundle reduced to ~52KB (gzipped ~18KB)
   - Recharts (410KB) loads on-demand only when UserPortal is accessed
   - React.memo applied to frequently re-rendered components
+- **Advanced AI Chatbot System** (December 17, 2025) - Production-grade chatbot fully independent of external AI APIs:
+  - **NLP Utilities** (`server/chatbot/nlp-utils.ts`): TF-IDF vectorization, cosine similarity, fuzzy matching (Levenshtein/Damerau-Levenshtein), N-gram similarity, sentiment analysis, bilingual text processing
+  - **Advanced Chatbot Service** (`server/chatbot/advanced-chatbot-service.ts`): Hybrid intent detection using exact matching, fuzzy matching, N-gram similarity, and TF-IDF semantic similarity with conversation memory and context tracking
+  - **Expanded Knowledge Base** (`server/chatbot/knowledge-base.json`): 21 intents with 409 patterns covering all platform features in English and Urdu
+  - Features: Human-like response generation, security boundaries for sensitive topics, sentiment analysis, suggested actions, escalation detection, conversation memory
 
 ⚠️ **Optional Configuration:**
 - **Supabase credentials** for full authentication features:
