@@ -1394,7 +1394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chatbot API routes - works with or without authentication
   app.post("/api/chat", async (req, res) => {
     try {
-      const { message } = req.body;
+      const { message, sessionId } = req.body;
 
       if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({
@@ -1403,11 +1403,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Try to get authenticated user, but don't require it
-      let userId = null;
+      let userId = 'anonymous';
       let userName = 'User';
       
-      // Check session for authenticated user
       if (req.session.userId) {
         userId = req.session.userId;
         const userProfile = await storage.getUserById(req.session.userId);
@@ -1416,18 +1414,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const { chatbotService } = await import('./chatbot/chatbot-service');
-      const botResponse = chatbotService.processMessage(message.trim(), userName);
+      const chatSessionId = sessionId || `session_${Date.now()}`;
 
-      // Only save to database if user is authenticated
-      if (userId) {
+      const { advancedChatbotService } = await import('./chatbot/advanced-chatbot-service');
+      const botResponse = advancedChatbotService.processMessage(
+        message.trim(), 
+        userName,
+        userId,
+        chatSessionId
+      );
+
+      if (userId !== 'anonymous') {
         try {
           await storage.createChatMessage({
             userId,
             message: message.trim(),
             sender: 'user',
             language: botResponse.language,
-            intent: botResponse.intent
+            intent: botResponse.intent,
+            sentiment: botResponse.sentiment,
+            metadata: { confidence: botResponse.confidence }
           });
 
           await storage.createChatMessage({
@@ -1435,23 +1441,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: botResponse.response,
             sender: 'support',
             language: botResponse.language,
-            intent: botResponse.intent
+            intent: botResponse.intent,
+            sentiment: 'neutral',
+            metadata: { 
+              confidence: botResponse.confidence,
+              suggestedActions: botResponse.suggestedActions,
+              isEscalation: botResponse.isEscalation
+            }
           });
         } catch (dbError) {
           console.error('Failed to save chat messages:', dbError);
-          // Continue anyway, user still gets response
         }
       }
 
       res.json({
         response: botResponse.response,
         language: botResponse.language,
-        intent: botResponse.intent
+        intent: botResponse.intent,
+        confidence: botResponse.confidence,
+        sentiment: botResponse.sentiment,
+        suggestedActions: botResponse.suggestedActions,
+        isEscalation: botResponse.isEscalation
       });
     } catch (error) {
       console.error("Chatbot error:", error);
       res.status(500).json({
         message: "Failed to process message",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  app.get("/api/chat/stats", async (req, res) => {
+    try {
+      const { advancedChatbotService } = await import('./chatbot/advanced-chatbot-service');
+      const stats = advancedChatbotService.getStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Chat stats error:", error);
+      res.status(500).json({
+        message: "Failed to fetch chat stats",
         error: "INTERNAL_ERROR"
       });
     }
