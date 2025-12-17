@@ -206,20 +206,20 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
         </div>
 
         {/* Referral Commission Info Card */}
-        <div className="split-card bg-muted border-2 border-black p-6 md:p-8 lg:p-12 text-center">
+        <div className="split-card bg-muted border-2 border-black rounded-md p-6 md:p-8 lg:p-12 text-center hover-elevate">
           <TechnicalLabel text="REFERRAL-COMMISSION" className="mb-4" />
-          <h3 className="text-2xl md:text-4xl font-black mb-4 text-black">MULTI-LEVEL EARNINGS</h3>
-          <div className="flex justify-center gap-8 mb-4">
-            <div>
+          <h3 className="text-2xl md:text-4xl font-black mb-6 text-black">MULTI-LEVEL EARNINGS</h3>
+          <div className="flex flex-wrap justify-center gap-6 md:gap-8 mb-6">
+            <div className="flex-1 min-w-max">
               <div className="text-4xl md:text-5xl font-black counter-display text-primary">15%</div>
               <p className="text-sm text-secondary mt-2">Direct Referral</p>
             </div>
-            <div>
+            <div className="flex-1 min-w-max">
               <div className="text-4xl md:text-5xl font-black counter-display text-black">7.5%</div>
               <p className="text-sm text-secondary mt-2">Second Level</p>
             </div>
           </div>
-          <p className="text-base md:text-lg text-secondary px-2">Earn commission when your referrals request payouts. Build your network and earn passively.</p>
+          <p className="text-base md:text-lg text-secondary max-w-2xl mx-auto">Earn commission when your referrals request payouts. Build your network and earn passively.</p>
         </div>
 
         {/* Continue Button */}
