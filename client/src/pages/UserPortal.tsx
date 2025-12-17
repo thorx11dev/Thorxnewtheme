@@ -354,7 +354,7 @@ export default function UserPortal() {
   const [isCompleted, setIsCompleted] = useState(false);
 
   // Enhanced work section states
-  const [activeWorkTab, setActiveWorkTab] = useState<string>("ads");
+  const [activeWorkTab, setActiveWorkTab] = useState<string>("player1");
   const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
 
@@ -1248,16 +1248,15 @@ export default function UserPortal() {
     };
 
     // Get current video tab data for player
+    const activeTabData = WORK_TABS.find(tab => tab.id === activeWorkTab);
     const currentVideoTab = {
       id: activeWorkTab,
-      title: WORK_TABS.find(tab => tab.id === activeWorkTab)?.title || "ADS",
-      icon: activeWorkTab === "ads" ? "📺" :
-            activeWorkTab === "surveys" ? "📊" :
-            activeWorkTab === "referrals" ? "👥" : "✅",
+      title: activeTabData?.title || "PLAYER 1",
+      icon: "play",
       color: "primary",
       videoUrl: `#${activeWorkTab}-video`,
       reward: "2.50",
-      description: WORK_TABS.find(tab => tab.id === activeWorkTab)?.description || "Watch and earn"
+      description: activeTabData?.description || "Watch video ads to earn rewards"
     };
 
     return (
@@ -1346,6 +1345,22 @@ export default function UserPortal() {
         {/* Industrial Work Interface - Full Width */}
         <div className="industrial-video-frame p-4">
           <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
+            {/* Video Player Tabs Navigation */}
+            <TabsList className="grid grid-cols-4 gap-2 mb-6 bg-black/90 p-2 border-2 border-primary">
+              {WORK_TABS.map(tab => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  className="flex items-center justify-center gap-2 px-3 py-3 text-xs md:text-sm font-bold data-[state=active]:bg-primary data-[state=active]:text-white border border-transparent data-[state=active]:border-white"
+                  data-testid={`tab-${tab.id}`}
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">{tab.title}</span>
+                  <span className="sm:hidden">{tab.id.replace('player', 'P')}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
             {WORK_TABS.map(tab => (
               <TabsContent key={tab.id} value={tab.id} className="mt-0">
                 <div className="space-y-4">
