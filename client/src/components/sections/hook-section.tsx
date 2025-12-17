@@ -25,9 +25,7 @@ export default function HookSection({ isActive, onAdvance }: HookSectionProps) {
         
         {/* Tagline */}
         <div className="px-4 md:px-2">
-          <p className="text-2xl md:text-3xl lg:text-4xl font-bold mb-10 md:mb-12 text-secondary leading-tight">
-            Watch Ads. Refer Friends. Earn PKR.
-          </p>
+          <p className="text-2xl md:text-3xl lg:text-4xl font-bold mb-10 md:mb-12 text-secondary leading-tight">Watch. Refer. Earn.</p>
         </div>
         
         {/* Action Prompt */}
