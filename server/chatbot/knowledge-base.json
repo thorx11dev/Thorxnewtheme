@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "version": "1.0.0",
-    "lastUpdated": "2025-10-03",
+    "version": "2.0.0",
+    "lastUpdated": "2025-12-17",
     "language": ["en", "ur"]
   },
   "intents": [
@@ -13,150 +13,201 @@
       },
       "responses": {
         "en": [
-          "Hello {name}! Welcome to THORX Support. How can I help you today?",
-          "Hi {name}! I'm here to assist you with anything you need.",
+          "Hello {name}! Welcome to Thorx Support. How can I help you today?",
+          "Hi {name}! I'm here to assist you with anything you need on Thorx.",
           "Greetings {name}! What can I do for you today?"
         ],
         "ur": [
-          "Assalam o Alaikum {name}! THORX Support mein aapka swagat hai. Main aapki kaise madad kar sakta hoon?",
+          "Assalam o Alaikum {name}! Thorx Support mein aapka swagat hai. Main aapki kaise madad kar sakta hoon?",
           "Hello {name}! Main aapki madad ke liye hazir hoon.",
           "Salam {name}! Aaj main aapke liye kya kar sakta hoon?"
         ]
       }
     },
     {
-      "id": "account_balance",
+      "id": "what_is_thorx",
       "patterns": {
-        "en": ["balance", "earnings", "money", "how much", "total earned", "available balance", "wallet", "payment"],
-        "ur": ["balance", "paise", "kitne paise", "kamai", "total kamai", "wallet", "payment"]
+        "en": ["what is thorx", "about thorx", "tell me about thorx", "thorx platform", "thorx.pro"],
+        "ur": ["thorx kya hai", "thorx ke bare mein", "thorx platform", "thorx batao"]
       },
       "responses": {
         "en": [
-          "Hi {name}! You can check your current balance and earnings in the Dashboard section. Your available balance is displayed at the top of the page.",
-          "Your earnings and balance information is available in the Dashboard. Navigate there to see your total earnings and available balance."
+          "Thorx is an online earning platform designed for Pakistani users. You earn money in PKR by watching video advertisements and inviting new users through our referral system. Our official domain is thorx.pro.",
+          "{name}, Thorx allows you to earn in PKR by watching video ads and referring friends. It's designed specifically for Pakistani users with local payment methods like JazzCash, EasyPaisa, and Bank Transfer."
         ],
         "ur": [
-          "{name}, aap apna balance aur earnings Dashboard section mein dekh sakte hain. Aapka available balance page ke upar dikhaya gaya hai.",
-          "Aapki earnings aur balance ki information Dashboard mein available hai. Wahan jakar aap apni total earnings aur available balance dekh sakte hain."
+          "Thorx Pakistani users ke liye ek online earning platform hai. Aap video ads dekh kar aur naye users ko refer kar ke PKR mein paise kama sakte hain. Hamari official domain thorx.pro hai.",
+          "{name}, Thorx par aap video ads dekh kar aur doston ko refer kar ke PKR mein kama sakte hain. Yeh khaas tor par Pakistani users ke liye hai jisme JazzCash, EasyPaisa, aur Bank Transfer support hai."
         ]
       }
     },
     {
       "id": "how_to_earn",
       "patterns": {
-        "en": ["how to earn", "make money", "earn more", "increase earnings", "watch ads", "how does it work", "earning method"],
+        "en": ["how to earn", "make money", "earn more", "increase earnings", "watch ads", "how does it work", "earning method", "kaise kamaon"],
         "ur": ["kaise kamaon", "paise kaise banaye", "zyada kaise kamaye", "ads kaise dekhen", "kaam kaise karta hai", "earning ka tareeqa"]
       },
       "responses": {
         "en": [
-          "You can earn money on THORX by: 1) Watching ads in the Work section, 2) Referring friends using your referral code, 3) Completing daily tasks. Navigate to the Work section to start earning!",
-          "{name}, there are multiple ways to earn: Watch video ads, complete tasks, and refer friends. Each ad you watch earns you money instantly!"
+          "You can earn on Thorx in two ways: 1) Watch video ads in the Work section using our 4 video players, 2) Invite friends through referrals and earn 15% of their earnings. Your earnings are in PKR!",
+          "{name}, earn by watching video advertisements and referring new users. The Work section has 4 video players connected to different ad networks. Referral earnings are 15% from direct referrals and 7.5% from their referrals!"
         ],
         "ur": [
-          "THORX par aap paise kama sakte hain: 1) Work section mein ads dekh kar, 2) Apne referral code se doston ko invite kar ke, 3) Daily tasks complete kar ke. Earning shuru karne ke liye Work section mein jayen!",
-          "{name}, kamai ke kai tareeqe hain: Video ads dekhiye, tasks complete kijiye, aur doston ko refer kijiye. Har ad dekhne par aapko foran paise milte hain!"
+          "Thorx par aap do tariqon se kama sakte hain: 1) Work section mein 4 video players se ads dekhein, 2) Doston ko refer karein aur unki kamai ka 15% payen. Aapki kamai PKR mein hoti hai!",
+          "{name}, video ads dekh kar aur naye users ko refer kar ke kamayein. Work section mein 4 video players hain. Referral se 15% direct aur 7.5% unke referrals se milta hai!"
         ]
       }
     },
     {
-      "id": "referral_code",
+      "id": "referral_system",
       "patterns": {
-        "en": ["referral", "refer friend", "referral code", "invite friends", "share code", "how to refer"],
-        "ur": ["referral", "dost ko bulao", "referral code", "invite kaise karen", "code share kaise karen", "refer kaise karen"]
+        "en": ["referral", "refer friend", "referral code", "invite friends", "share code", "how to refer", "referral commission", "15 percent", "7.5 percent"],
+        "ur": ["referral", "dost ko bulao", "referral code", "invite kaise karen", "code share kaise karen", "refer kaise karen", "referral commission"]
       },
       "responses": {
         "en": [
-          "Your referral code is displayed in the Referrals section. Click on it to copy and share with friends. You'll earn commission when they complete tasks!",
-          "{name}, go to the Referrals section to find your unique referral code. Share it with friends and earn when they join and work!"
+          "Thorx has a multi-level referral system: When you refer User B, you earn 15% of their earnings. If User B refers User C, you earn 7.5% of User C's earnings. Commission is credited when they request a payout!",
+          "{name}, go to the Referral section to find your code. Share it via WhatsApp, Instagram, or Facebook. You earn 15% from direct referrals and 7.5% from their referrals. Commission is credited when they request payout."
         ],
         "ur": [
-          "Aapka referral code Referrals section mein dikhaya gaya hai. Use copy karne ke liye click karein aur doston ke saath share karein. Jab wo tasks complete karenge tab aapko commission milega!",
-          "{name}, Referrals section mein jakar apna unique referral code paayen. Use doston ke saath share karein aur jab wo join ho kar kaam karein to aap kamayen!"
+          "Thorx ka multi-level referral system hai: Jab aap User B ko refer karein, aapko unki kamai ka 15% milta hai. Agar User B, User C ko refer kare, aapko User C ki kamai ka 7.5% milta hai. Commission tab milta hai jab wo payout request karein!",
+          "{name}, Referral section mein jakar apna code paayen. WhatsApp, Instagram, ya Facebook se share karein. Direct referrals se 15% aur unke referrals se 7.5% milta hai. Commission payout request par credit hota hai."
         ]
       }
     },
     {
-      "id": "password_reset",
+      "id": "account_balance",
       "patterns": {
-        "en": ["forgot password", "reset password", "change password", "password issue", "can't login", "lost password"],
-        "ur": ["password bhool gaya", "password reset", "password change", "password ki problem", "login nahi ho raha", "password kho gaya"]
+        "en": ["balance", "earnings", "money", "how much", "total earned", "available balance", "wallet", "my earnings"],
+        "ur": ["balance", "paise", "kitne paise", "kamai", "total kamai", "wallet"]
       },
       "responses": {
         "en": [
-          "To reset your password, please go to the Contact section and send us a message with your registered email. Our team will help you reset it within 24 hours.",
-          "For password reset assistance, please contact our support team through the Contact section. Include your email address for faster processing."
+          "Hi {name}! Check your earnings and balance in the Dashboard section. Your available balance in PKR is displayed at the top. You can see your performance, task progress, and user level there too.",
+          "Your earnings and balance information is in the Dashboard. Navigate there to see your total earnings, available balance, and current user level."
         ],
         "ur": [
-          "Password reset karne ke liye, Contact section mein jayen aur apne registered email ke saath message bhejiye. Hamari team 24 ghante mein aapki madad karegi.",
-          "Password reset ki madad ke liye, Contact section se hamari support team se rabta karein. Apna email address zaroor shamil karein taaki jaldi process ho sake."
+          "{name}, aap apna balance aur earnings Dashboard section mein dekh sakte hain. Aapka PKR mein available balance page ke upar dikhaya gaya hai. Wahan performance, task progress, aur user level bhi dekh sakte hain.",
+          "Aapki earnings aur balance ki information Dashboard mein available hai. Wahan jakar apni total earnings, available balance, aur current user level dekh sakte hain."
         ]
       }
     },
     {
-      "id": "withdrawal",
+      "id": "user_levels",
       "patterns": {
-        "en": ["withdraw", "withdrawal", "payout", "cash out", "transfer money", "get paid", "bank transfer"],
-        "ur": ["paise nikalna", "withdrawal", "payout", "cash out", "paise transfer", "payment lena", "bank transfer"]
+        "en": ["user level", "levels", "useless", "worker", "soldier", "captain", "general", "my level", "level up"],
+        "ur": ["user level", "levels", "mera level", "level kaise badhaye", "level up"]
       },
       "responses": {
         "en": [
-          "To withdraw your earnings, go to the Payout section. You can request a withdrawal once you reach the minimum threshold. Payments are processed within 3-5 business days.",
-          "{name}, navigate to the Payout section to request withdrawals. Make sure you've added your bank details for smooth processing!"
+          "Thorx has 5 performance levels: Useless, Worker, Soldier, Captain, and General. Each level unlocks new daily tasks. Your level increases based on your platform activity and performance!",
+          "{name}, the levels are: 1) Useless, 2) Worker, 3) Soldier, 4) Captain, 5) General. Complete daily tasks and watch more ads to level up and unlock new earning opportunities."
         ],
         "ur": [
-          "Apni kamai withdraw karne ke liye, Payout section mein jayen. Minimum threshold complete hone par aap withdrawal request kar sakte hain. Payments 3-5 business days mein process hote hain.",
-          "{name}, withdrawal request karne ke liye Payout section mein jayen. Payment smooth process hone ke liye apne bank details zaroor add kar lein!"
-        ]
-      }
-    },
-    {
-      "id": "account_info",
-      "patterns": {
-        "en": ["my account", "profile", "account details", "personal info", "update profile", "account settings"],
-        "ur": ["mera account", "profile", "account ki details", "personal info", "profile update", "account settings"]
-      },
-      "responses": {
-        "en": [
-          "Your account information is displayed in the Dashboard section. You can see your name, email, phone number, and THORX identity number there.",
-          "{name}, all your account details are in the Dashboard. For any changes to personal information, please contact support through the Contact section."
-        ],
-        "ur": [
-          "Aapke account ki information Dashboard section mein dikhai gayi hai. Wahan aap apna name, email, phone number, aur THORX identity number dekh sakte hain.",
-          "{name}, aapki saari account details Dashboard mein hain. Personal information mein koi badlav ke liye, Contact section se support team se rabta karein."
+          "Thorx mein 5 performance levels hain: Useless, Worker, Soldier, Captain, aur General. Har level par naye daily tasks unlock hote hain. Aapka level platform activity aur performance par depend karta hai!",
+          "{name}, levels yeh hain: 1) Useless, 2) Worker, 3) Soldier, 4) Captain, 5) General. Daily tasks complete karein aur zyada ads dekhein taake level up ho aur naye earning opportunities milein."
         ]
       }
     },
     {
       "id": "daily_tasks",
       "patterns": {
-        "en": ["daily task", "tasks", "daily bonus", "what tasks", "task list", "complete tasks"],
-        "ur": ["daily task", "tasks", "daily bonus", "kya tasks hain", "task list", "tasks complete kaise karen"]
+        "en": ["daily task", "tasks", "daily bonus", "what tasks", "task list", "complete tasks", "payout eligibility"],
+        "ur": ["daily task", "tasks", "daily bonus", "kya tasks hain", "task list", "tasks complete kaise karen", "payout ke liye"]
       },
       "responses": {
         "en": [
-          "Daily tasks are available in the Work section. Complete tasks like watching ads, logging in daily, and referring friends to earn bonus rewards!",
-          "{name}, check the Work section for daily tasks. Each completed task earns you extra money on top of your regular earnings!"
+          "Daily tasks are mandatory to qualify for payouts. Tasks may include: watching required video ads, subscribing to Thorx YouTube channel, watching a 30-second YouTube video, and other activities based on your level.",
+          "{name}, you must complete daily tasks to be eligible for payout. Check your tasks in the Dashboard. These include watching ads, YouTube activities, and level-based requirements."
         ],
         "ur": [
-          "Daily tasks Work section mein available hain. Ads dekhna, daily login, aur doston ko refer karna jaise tasks complete karke bonus rewards payen!",
-          "{name}, daily tasks ke liye Work section check karein. Har complete task se aapko regular earnings ke saath extra paise milte hain!"
+          "Daily tasks payout ke liye zaroori hain. Tasks mein shamil ho sakta hai: required video ads dekhna, Thorx YouTube channel subscribe karna, 30-second YouTube video dekhna, aur level ke mutabiq activities.",
+          "{name}, payout ke liye daily tasks complete karna zaroori hai. Dashboard mein apne tasks check karein. Yeh ads dekhna, YouTube activities, aur level-based requirements hain."
         ]
       }
     },
     {
-      "id": "contact_support",
+      "id": "withdrawal",
       "patterns": {
-        "en": ["contact", "support", "help", "customer service", "talk to human", "speak to team", "get help"],
-        "ur": ["contact", "support", "madad chahiye", "customer service", "team se baat", "help chahiye"]
+        "en": ["withdraw", "withdrawal", "payout", "cash out", "transfer money", "get paid", "bank transfer", "jazzcash", "easypaisa"],
+        "ur": ["paise nikalna", "withdrawal", "payout", "cash out", "paise transfer", "payment lena", "bank transfer", "jazzcash", "easypaisa"]
       },
       "responses": {
         "en": [
-          "For direct support, please visit the Contact section and fill out the form. Our team typically responds within 24 hours!",
-          "{name}, our support team is here to help! Go to the Contact section to send us a message and we'll get back to you soon."
+          "To withdraw, go to the Payout section. You can request via JazzCash, EasyPaisa, or Bank Transfer. Important: You must complete your daily tasks first to be eligible for payout!",
+          "{name}, navigate to Payout section to request withdrawal. Complete your daily tasks first to qualify. We support JazzCash, EasyPaisa, and Bank Transfer for Pakistani users."
         ],
         "ur": [
-          "Direct support ke liye, Contact section mein jayen aur form fill karein. Hamari team aksar 24 ghante mein jawab deti hai!",
-          "{name}, hamari support team aapki madad ke liye tayyar hai! Contact section mein jakar message bhejiye, hum jald hi aapko jawab denge."
+          "Withdraw karne ke liye Payout section mein jayen. Aap JazzCash, EasyPaisa, ya Bank Transfer se request kar sakte hain. Zaroori: Pehle daily tasks complete karein taake payout ke eligible hon!",
+          "{name}, withdrawal request ke liye Payout section mein jayen. Pehle daily tasks complete karein. Hum Pakistani users ke liye JazzCash, EasyPaisa, aur Bank Transfer support karte hain."
+        ]
+      }
+    },
+    {
+      "id": "registration",
+      "patterns": {
+        "en": ["register", "sign up", "create account", "new account", "join thorx", "how to register"],
+        "ur": ["register", "sign up", "account banana", "naya account", "thorx join", "register kaise karen"]
+      },
+      "responses": {
+        "en": [
+          "To register: Provide your Name, Email, Phone (optional), Password, and Invitation code (optional). A unique Thorx Identity is generated for you. Complete registration by verifying OTP sent to your email.",
+          "{name}, registration requires Name, Email, Password, and optionally Phone and Invitation code. After validation, you get a unique Thorx Identity. Verify email OTP to complete registration."
+        ],
+        "ur": [
+          "Register karne ke liye: Apna Name, Email, Phone (optional), Password, aur Invitation code (optional) dein. Aapke liye unique Thorx Identity banti hai. Email par OTP verify kar ke registration complete karein.",
+          "{name}, registration ke liye Name, Email, Password chahiye, aur optional Phone aur Invitation code. Validation ke baad aapko unique Thorx Identity milti hai. Email OTP verify kar ke complete karein."
+        ]
+      }
+    },
+    {
+      "id": "login",
+      "patterns": {
+        "en": ["login", "sign in", "log in", "access account", "cant login", "login problem"],
+        "ur": ["login", "sign in", "account access", "login nahi ho raha", "login problem"]
+      },
+      "responses": {
+        "en": [
+          "To login: Enter your Email or Name and Password. For security, an OTP is sent to your registered email. Login completes after OTP verification.",
+          "{name}, login using Email/Name and Password. We use multi-factor authentication - you'll receive OTP on your registered email for secure access."
+        ],
+        "ur": [
+          "Login karne ke liye: Apna Email ya Name aur Password daalein. Security ke liye, registered email par OTP aata hai. OTP verify karne ke baad login complete hota hai.",
+          "{name}, Email/Name aur Password se login karein. Hum multi-factor authentication use karte hain - secure access ke liye registered email par OTP aayega."
+        ]
+      }
+    },
+    {
+      "id": "video_players",
+      "patterns": {
+        "en": ["video player", "players", "work section", "watch videos", "ad players", "4 players"],
+        "ur": ["video player", "players", "work section", "videos dekhna", "ad players", "4 players"]
+      },
+      "responses": {
+        "en": [
+          "The Work section has 4 advanced video players, each connected to a different video ad network. Features include: Full Screen, Mute, and Auto-play. Watch ads on all players to maximize earnings!",
+          "{name}, go to Work section to find 4 video players. Each player connects to a different ad network. Use fullscreen, mute, or auto-play features as you prefer."
+        ],
+        "ur": [
+          "Work section mein 4 advanced video players hain, har ek alag video ad network se connected. Features: Full Screen, Mute, aur Auto-play. Zyada kamane ke liye sab players par ads dekhein!",
+          "{name}, Work section mein 4 video players hain. Har player alag ad network se connected hai. Apni pasand ke mutabiq fullscreen, mute, ya auto-play features use karein."
+        ]
+      }
+    },
+    {
+      "id": "user_portal",
+      "patterns": {
+        "en": ["user portal", "dashboard", "my account", "portal sections", "navigate"],
+        "ur": ["user portal", "dashboard", "mera account", "portal sections", "navigate kaise"]
+      },
+      "responses": {
+        "en": [
+          "The User Portal has 5 sections: 1) Dashboard - earnings and performance, 2) Work - 4 video players, 3) Referral - invite codes and sharing, 4) Payout - withdrawal requests, 5) Help - FAQs, AI chat, and contact.",
+          "{name}, navigate the User Portal: Dashboard shows earnings, Work has video players, Referral lets you invite friends, Payout for withdrawals, and Help for support."
+        ],
+        "ur": [
+          "User Portal mein 5 sections hain: 1) Dashboard - earnings aur performance, 2) Work - 4 video players, 3) Referral - invite codes aur sharing, 4) Payout - withdrawal requests, 5) Help - FAQs, AI chat, aur contact.",
+          "{name}, User Portal: Dashboard mein earnings, Work mein video players, Referral mein doston ko invite, Payout mein withdrawals, aur Help mein support milta hai."
         ]
       }
     },
@@ -168,64 +219,82 @@
       },
       "responses": {
         "en": [
-          "You can add your bank account details in the Payout section. We support bank transfers and popular mobile wallets. Navigate to Payout to set up your preferred method!",
-          "{name}, go to the Payout section to add your payment information. Make sure your details are correct to avoid any payment delays."
+          "Thorx supports 3 payment methods for Pakistani users: JazzCash, EasyPaisa, and Bank Transfer. Add your details in the Payout section to receive your earnings in PKR.",
+          "{name}, go to Payout section to add your payment information. We support JazzCash, EasyPaisa, and Bank Transfer. Make sure details are correct to avoid delays."
         ],
         "ur": [
-          "Aap apne bank account ki details Payout section mein add kar sakte hain. Hum bank transfers aur popular mobile wallets support karte hain. Apna pasandida method setup karne ke liye Payout mein jayen!",
-          "{name}, apni payment information add karne ke liye Payout section mein jayen. Payment mein koi delay na ho isliye apni details sahi daalein."
+          "Thorx Pakistani users ke liye 3 payment methods support karta hai: JazzCash, EasyPaisa, aur Bank Transfer. Payout section mein apni details add karein taake PKR mein earnings milein.",
+          "{name}, payment information add karne ke liye Payout section mein jayen. Hum JazzCash, EasyPaisa, aur Bank Transfer support karte hain. Delay se bachne ke liye details sahi daalein."
         ]
       }
     },
     {
-      "id": "ad_types",
+      "id": "contact_support",
       "patterns": {
-        "en": ["types of ads", "ad types", "what ads", "video ads", "banner ads", "ad categories"],
-        "ur": ["ads ki qismein", "ad types", "kya ads hain", "video ads", "banner ads", "ad categories"]
+        "en": ["contact", "support", "help", "customer service", "talk to human", "speak to team", "get help"],
+        "ur": ["contact", "support", "madad chahiye", "customer service", "team se baat", "help chahiye"]
       },
       "responses": {
         "en": [
-          "THORX offers three types of ads: 1) Video ads (highest earning), 2) Banner ads (quick and easy), 3) Interactive ads (fun and engaging). All available in the Work section!",
-          "You can watch different types of ads - videos, banners, and interactive ads. Each type has different earning rates. Check the Work section to start!"
+          "For help, go to the Help section: Area Guide has FAQs, Area Help has AI chatbot support (that's me!), and Area Contact lets you message the Thorx team directly.",
+          "{name}, the Help section has three areas: Guide for FAQs, Help for AI chat support, and Contact to message our team directly. We typically respond within 24 hours."
         ],
         "ur": [
-          "THORX par teen tarah ke ads hain: 1) Video ads (zyada kamai), 2) Banner ads (jaldi aur aasan), 3) Interactive ads (maza aur dilchasp). Sab Work section mein available hain!",
-          "Aap mukhtalif tarah ke ads dekh sakte hain - videos, banners, aur interactive ads. Har type ki alag earning rate hai. Shuru karne ke liye Work section check karein!"
+          "Madad ke liye Help section mein jayen: Area Guide mein FAQs hain, Area Help mein AI chatbot (main hoon!), aur Area Contact se Thorx team ko seedha message kar sakte hain.",
+          "{name}, Help section mein teen areas hain: Guide mein FAQs, Help mein AI chat support, aur Contact mein team ko seedha message. Hum aksar 24 ghante mein jawab dete hain."
         ]
       }
     },
     {
-      "id": "minimum_withdrawal",
+      "id": "thorx_identity",
       "patterns": {
-        "en": ["minimum withdrawal", "minimum payout", "how much to withdraw", "withdrawal limit", "minimum amount"],
-        "ur": ["minimum withdrawal", "minimum payout", "kitne se withdraw kar sakte", "withdrawal ki had", "minimum amount"]
+        "en": ["thorx identity", "my identity", "unique id", "identity number", "thorx id"],
+        "ur": ["thorx identity", "meri identity", "unique id", "identity number", "thorx id"]
       },
       "responses": {
         "en": [
-          "The minimum withdrawal amount and threshold details are displayed in the Payout section. Once you reach the minimum, you can request a payout anytime!",
-          "{name}, check the Payout section for minimum withdrawal requirements. Keep earning to reach the threshold!"
+          "Your Thorx Identity is a unique identifier automatically generated during registration. It's used to track your earnings, referrals, and account activity securely.",
+          "{name}, the Thorx Identity is your unique platform ID created at registration. You can view it in your Dashboard. It helps identify your account and track your activities."
         ],
         "ur": [
-          "Minimum withdrawal amount aur threshold ki details Payout section mein dikhayi gayi hain. Jab aap minimum tak pohanchein ge, tab kabhi bhi payout request kar sakte hain!",
-          "{name}, minimum withdrawal requirements ke liye Payout section check karein. Threshold tak pohanchne ke liye kamai jari rakhein!"
+          "Thorx Identity aapka unique identifier hai jo registration ke waqt automatically banta hai. Yeh aapki earnings, referrals, aur account activity ko secure tareeqe se track karta hai.",
+          "{name}, Thorx Identity aapki unique platform ID hai jo registration par banti hai. Dashboard mein dekh sakte hain. Yeh aapke account aur activities ko identify karta hai."
+        ]
+      }
+    },
+    {
+      "id": "security",
+      "patterns": {
+        "en": ["security", "safe", "secure", "otp", "verification", "protection", "data safe"],
+        "ur": ["security", "safe", "secure", "otp", "verification", "protection", "data safe"]
+      },
+      "responses": {
+        "en": [
+          "Thorx uses multi-factor authentication with Email OTP for both registration and login. Your data is protected with encryption and secure session management. Your account is safe!",
+          "{name}, we take security seriously. Every login requires OTP verification. Your data is encrypted and your sessions are secure. Always use a strong password."
+        ],
+        "ur": [
+          "Thorx registration aur login dono ke liye Email OTP ke saath multi-factor authentication use karta hai. Aapka data encryption se protected hai. Aapka account safe hai!",
+          "{name}, hum security ko seriously lete hain. Har login par OTP verification hoti hai. Aapka data encrypted hai aur sessions secure hain. Hamesha strong password use karein."
         ]
       }
     }
   ],
   "fallback": {
     "en": [
-      "I don't have specific information about that. Please visit the Contact section to message our support team directly - they'll be happy to help you!",
-      "I'm not sure about that query. For detailed assistance, please reach out to our support team through the Contact section.",
-      "That's outside my knowledge area. Our support team in the Contact section can provide you with accurate information about this."
+      "I don't have specific information about that. Please visit the Contact section in Help to message our support team directly - they'll assist you!",
+      "I'm not sure about that query. For detailed assistance, please reach out to our team through Help > Contact.",
+      "That's outside my knowledge area. Our support team in the Contact section can provide accurate information about this."
     ],
     "ur": [
-      "Mujhe is baare mein khaas information nahi hai. Meherbani karke Contact section mein jakar hamari support team ko seedha message bhejiye - wo khushi se aapki madad karenge!",
-      "Mujhe is sawaal ka yaqeen nahi hai. Tafseel madad ke liye, Contact section se hamari support team se rabta karein.",
+      "Mujhe is baare mein khaas information nahi hai. Help mein Contact section se hamari support team ko seedha message bhejiye - wo aapki madad karenge!",
+      "Mujhe is sawaal ka yaqeen nahi hai. Tafseel madad ke liye Help > Contact se hamari team se rabta karein.",
       "Ye meri knowledge ke bahar hai. Contact section mein hamari support team aapko is baare mein sahi information de sakti hai."
     ]
   },
   "security_blocked_topics": [
     "backend", "server", "database", "api", "source code", "infrastructure", "team email", "team phone", 
-    "admin panel", "credentials", "authentication mechanism", "security protocol", "payment processing details"
+    "admin panel", "credentials", "authentication mechanism", "security protocol", "payment processing details",
+    "internal system", "admin access", "founder", "owner details", "revenue model"
   ]
 }

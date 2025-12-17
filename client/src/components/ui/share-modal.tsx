@@ -269,12 +269,12 @@ export default function ShareModal({ isOpen, onClose, referralCode, userName = "
           <div className="bg-muted p-3 md:p-4 border border-muted-foreground/20">
             <div className="grid grid-cols-2 gap-4 text-center">
               <div>
-                <div className="text-lg font-black text-primary">25%</div>
-                <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs" />
+                <div className="text-lg font-black text-primary">15% + 7.5%</div>
+                <TechnicalLabel text="MULTI-LEVEL COMMISSION" className="text-muted-foreground text-xs" />
               </div>
               <div>
-                <div className="text-lg font-black text-foreground">∞</div>
-                <TechnicalLabel text="LIFETIME EARNINGS" className="text-muted-foreground text-xs" />
+                <div className="text-lg font-black text-foreground">2 LEVELS</div>
+                <TechnicalLabel text="L1 + L2 REFERRALS" className="text-muted-foreground text-xs" />
               </div>
             </div>
           </div>

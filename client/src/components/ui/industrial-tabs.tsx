@@ -136,35 +136,27 @@ export default IndustrialTabs;
 // Tab data configuration for the work section
 export const WORK_TABS: TabData[] = [
   {
-    id: "ads",
-    title: "ADS",
+    id: "player1",
+    title: "PLAYER 1",
     icon: PlayCircle,
-    description: "Watch video advertisements and earn instant rewards",
-    count: 25,
-    earnings: "$0.50 each"
+    description: "Video ad network player with fullscreen, mute, and auto-play features",
   },
   {
-    id: "surveys",
-    title: "SURVEYS", 
-    icon: Target,
-    description: "Complete market research surveys for higher payouts",
-    count: 8,
-    earnings: "$2.00 each"
+    id: "player2",
+    title: "PLAYER 2", 
+    icon: PlayCircle,
+    description: "Secondary video ad network for additional earning opportunities",
   },
   {
-    id: "referrals",
-    title: "REFERRALS",
-    icon: Users,
-    description: "Invite friends and earn commission on their activities",
-    count: 0,
-    earnings: "$5.00 each"
+    id: "player3",
+    title: "PLAYER 3",
+    icon: PlayCircle,
+    description: "Third video ad network player for diversified content",
   },
   {
-    id: "tasks",
-    title: "TASKS",
-    icon: CheckCircle,
-    description: "Complete daily challenges and bonus objectives",
-    count: 12,
-    earnings: "$1.00 each"
+    id: "player4",
+    title: "PLAYER 4",
+    icon: PlayCircle,
+    description: "Fourth video ad network for maximum earning potential",
   }
 ];

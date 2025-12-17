@@ -1470,7 +1470,7 @@ export default function UserPortal() {
             <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-referral-earnings">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</p>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-3 h-3 text-primary" />
-              <TechnicalLabel text="25% COMMISSION" className="text-primary/70 text-xs" />
+              <TechnicalLabel text="15% + 7.5% COMMISSION" className="text-primary/70 text-xs" />
             </div>
           </div>
 
@@ -1480,10 +1480,10 @@ export default function UserPortal() {
               <TrendingUp className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
               <TechnicalLabel text="COMMISSION RATE" className="text-muted-foreground text-xs" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-commission-rate">25%</p>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-commission-rate">15%</p>
             <div className="flex items-center gap-2">
               <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
-              <TechnicalLabel text="LIFETIME RATE" className="text-muted-foreground text-xs" />
+              <TechnicalLabel text="L1: 15% / L2: 7.5%" className="text-muted-foreground text-xs" />
             </div>
           </div>
 
@@ -1552,7 +1552,7 @@ export default function UserPortal() {
             </div>
 
             <div className="mt-3 md:mt-4 p-2 md:p-3 bg-muted border border-muted-foreground/20">
-              <TechnicalLabel text="COMMISSION: 25% of all referral earnings forever" className="text-muted-foreground text-center text-xs leading-tight" />
+              <TechnicalLabel text="COMMISSION: 15% Level 1 + 7.5% Level 2 (credited on payout request)" className="text-muted-foreground text-center text-xs leading-tight" />
             </div>
           </div>
 
@@ -2411,39 +2411,39 @@ export default function UserPortal() {
                       {[
                         {
                           id: "001",
-                          protocol: "PLATFORM-INIT",
-                          question: "How do I start earning on THORX?",
-                          answer: "Simply register your account, verify your email, navigate to the Work section, and start watching advertisements. Each completed ad earns you instant rewards."
+                          protocol: "EARNING-MODEL",
+                          question: "How do I start earning on Thorx?",
+                          answer: "Go to the Work section where you'll find 4 video players connected to different ad networks. Watch video advertisements to earn PKR. You can also invite friends through the Referral section to earn commission."
                         },
                         {
                           id: "002",
-                          protocol: "PAYMENT-PROC",
-                          question: "What is the minimum withdrawal amount?",
-                          answer: "The minimum withdrawal is PKR 100.00. We charge a processing fee of PKR 15.00 for each transaction to cover payment gateway costs."
+                          protocol: "DAILY-TASKS",
+                          question: "What are daily tasks and why are they important?",
+                          answer: "Daily tasks are mandatory activities you must complete to qualify for payouts. These may include watching a required number of video ads, subscribing to Thorx YouTube channel, or watching specific videos."
                         },
                         {
                           id: "003",
-                          protocol: "SECURITY-VER",
-                          question: "How long do withdrawals take to process?",
-                          answer: "Standard withdrawals are processed within 24-48 hours. JazzCash and EasyPaisa transfers are usually completed within 2-4 hours during business days."
+                          protocol: "PAYOUT-PROC",
+                          question: "How do I withdraw my earnings?",
+                          answer: "Go to the Payout section and select JazzCash, EasyPaisa, or Bank Transfer. Important: You must complete your daily tasks first to be eligible for payout requests."
                         },
                         {
                           id: "004",
-                          protocol: "NETWORK-GROWTH",
+                          protocol: "REFERRAL-SYSTEM",
                           question: "How does the referral system work?",
-                          answer: "Share your unique referral code with friends. You earn 25% commission on all their earnings forever. There's no limit to how much you can earn through referrals."
+                          answer: "You earn 15% commission from your direct referrals' earnings and 7.5% from their referrals' earnings. Commission is credited only when your referred users request a payout."
                         },
                         {
                           id: "005",
-                          protocol: "SECURITY-VER",
-                          question: "Is my personal information secure?",
-                          answer: "Yes, we use 256-bit encryption and follow international security standards. Your data is protected with bank-level security protocols."
+                          protocol: "USER-LEVELS",
+                          question: "What are user levels?",
+                          answer: "Thorx has 5 performance levels: Useless, Worker, Soldier, Captain, and General. Each level unlocks new daily tasks. Your level increases based on your platform activity and performance."
                         },
                         {
                           id: "006",
-                          protocol: "PLATFORM-INIT",
-                          question: "Can I use THORX on mobile devices?",
-                          answer: "Absolutely! THORX is fully responsive and optimized for smartphones and tablets. You can earn anywhere, anytime."
+                          protocol: "SECURITY-VER",
+                          question: "Is Thorx secure?",
+                          answer: "Yes, Thorx uses multi-factor authentication with Email OTP for registration and login. Your data is protected with encryption and secure session management."
                         }
                       ].map((faq) => (
                         <div

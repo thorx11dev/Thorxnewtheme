@@ -11,7 +11,6 @@ interface EarningRevealProps {
 export default function EarningReveal({ isActive, onAdvance }: EarningRevealProps) {
   const adsCounterRef = useRef<HTMLSpanElement>(null);
   const referralCounterRef = useRef<HTMLSpanElement>(null);
-  const dailyCounterRef = useRef<HTMLSpanElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -87,13 +86,10 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
 
   const animateCounters = () => {
     if (adsCounterRef.current) {
-      CounterDisplay.animateCounter(adsCounterRef.current, 15);
+      CounterDisplay.animateCounter(adsCounterRef.current, 4);
     }
     if (referralCounterRef.current) {
-      CounterDisplay.animateCounter(referralCounterRef.current, 250);
-    }
-    if (dailyCounterRef.current) {
-      CounterDisplay.animateCounter(dailyCounterRef.current, 50);
+      CounterDisplay.animateCounter(referralCounterRef.current, 15);
     }
   };
 
@@ -110,7 +106,7 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
             <TechnicalLabel text="REVENUE GENERATION METHODS" />
           </div>
           <h2 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight text-black mb-4">
-            EARN PKR IN 3 WAYS
+            EARN PKR IN 2 WAYS
           </h2>
           <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
         </div>
@@ -123,12 +119,12 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
             <div className="absolute top-4 left-4 text-white text-6xl font-black">01</div>
             
             <div className="mt-16 space-y-6">
-              <div className="text-white/80 text-sm font-semibold tracking-wider">WATCH ADS</div>
+              <div className="text-white/80 text-sm font-semibold tracking-wider">WATCH VIDEO ADS</div>
               
               {/* Stats */}
               <div className="space-y-4">
-                <div className="text-5xl font-black counter-display text-white">
-                  <span ref={adsCounterRef} data-testid="ads-counter">0</span>
+                <div className="text-4xl font-black counter-display text-white">
+                  <span ref={adsCounterRef} data-testid="ads-counter">4</span> <span className="text-2xl">PLAYERS</span>
                 </div>
                 
                 {/* Progress bars */}
@@ -177,12 +173,12 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
             </div>
             
             <div className="mt-16 space-y-6 relative z-10">
-              <div className="text-white/80 text-sm font-semibold tracking-wider">INVITE MEMBERS</div>
+              <div className="text-white/80 text-sm font-semibold tracking-wider">REFER FRIENDS</div>
               
               {/* Stats */}
               <div className="space-y-4">
-                <div className="text-5xl font-black counter-display text-white">
-                  <span ref={referralCounterRef} data-testid="referral-counter">2,628</span>
+                <div className="text-4xl font-black counter-display text-white">
+                  <span ref={referralCounterRef} data-testid="referral-counter">15</span>% <span className="text-xl">+ 7.5%</span>
                 </div>
                 
                 {/* Progress bars */}
@@ -209,17 +205,21 @@ export default function EarningReveal({ isActive, onAdvance }: EarningRevealProp
           </div>
         </div>
 
-        {/* Daily Rewards Card */}
+        {/* Referral Commission Info Card */}
         <div className="split-card bg-muted border-2 border-black p-6 md:p-8 lg:p-12 text-center">
-          <TechnicalLabel text="METHOD-003" className="mb-4" />
-          <h3 className="text-2xl md:text-4xl font-black mb-4 text-black">DAILY REWARDS</h3>
-          <div className="text-4xl md:text-6xl font-black counter-display text-black mb-4">
-            ₨<span ref={dailyCounterRef} data-testid="daily-counter">0</span>
+          <TechnicalLabel text="REFERRAL-COMMISSION" className="mb-4" />
+          <h3 className="text-2xl md:text-4xl font-black mb-4 text-black">MULTI-LEVEL EARNINGS</h3>
+          <div className="flex justify-center gap-8 mb-4">
+            <div>
+              <div className="text-4xl md:text-5xl font-black counter-display text-primary">15%</div>
+              <p className="text-sm text-secondary mt-2">Direct Referral</p>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-black counter-display text-black">7.5%</div>
+              <p className="text-sm text-secondary mt-2">Second Level</p>
+            </div>
           </div>
-          <div className="bg-orange-500 text-white px-4 py-2 rounded-full inline-block mb-4">
-            <TechnicalLabel text="COMING VERY SOON" className="text-white text-xs" />
-          </div>
-          <p className="text-base md:text-lg text-secondary px-2">Consistent engagement yields consistent returns. Login daily for bonus rewards.</p>
+          <p className="text-base md:text-lg text-secondary px-2">Earn commission when your referrals request payouts. Build your network and earn passively.</p>
         </div>
 
         {/* Continue Button */}

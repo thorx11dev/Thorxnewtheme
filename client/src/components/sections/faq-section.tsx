@@ -13,92 +13,91 @@ const allFaqData = [
     id: "001",
     protocol: "PLATFORM-INIT",
     question: "What is Thorx?",
-    answer: "Thorx operates as an advanced earning protocol system, enabling revenue generation through verified activities: video engagement, task completion, and network expansion. Platform specifications: Multi-channel monetization, real-time processing, enterprise-grade security."
+    answer: "Thorx is an online earning platform designed for Pakistani users. You can earn money in PKR by watching video advertisements and inviting new users through our referral system. Official domain: thorx.pro"
   },
   {
     id: "002", 
-    protocol: "PAYMENT-PROC",
-    question: "How can I get paid?",
-    answer: "Payment processing follows automated protocols: Video AD-revenue ($0.05–$0.50 per engagement), Task completion ($1.00–$5.00 per task), Referral network bonuses ($2.00–$10.00 per referral). Output channels: Bank transfer, mobile wallet, cryptocurrency."
+    protocol: "EARNING-MODEL",
+    question: "How do I earn money on Thorx?",
+    answer: "You earn on Thorx through two main methods: 1) Watching video advertisements through our 4 advanced video players connected to different ad networks, and 2) Inviting new users through the referral system. Your earnings are credited in PKR."
   },
   {
     id: "003",
-    protocol: "SECURITY-VER",
-    question: "Can I trust Thorx?",
-    answer: "Security verification complete. Platform metrics: 99.7% uptime, ~2.4M+ processed payments, enterprise-grade security practices. Multi-layer encryption, real-time fraud detection, transparent audit trails ensure maximum user protection."
+    protocol: "PAYMENT-PROC",
+    question: "How can I get paid?",
+    answer: "You can request withdrawals via JazzCash, EasyPaisa, or Bank Transfer. To be eligible for payout, you must complete your required daily tasks first. Navigate to the Payout section in your User Portal to request withdrawal."
   },
-  // Adding 12 more questions as requested
   {
     id: "004",
-    protocol: "NETWORK-GROWTH",
-    question: "How does the network expansion work?",
-    answer: "Network expansion is driven by user referrals. Each successful referral contributes to network growth and unlocks bonus rewards. The system tracks referrals through unique invite codes."
+    protocol: "REFERRAL-SYSTEM",
+    question: "How does the referral system work?",
+    answer: "Thorx uses a multi-level referral system: When you refer User B, you earn 15% of their earnings. If User B refers User C, you earn 7.5% of User C's earnings. Commission is credited only when the referred user requests a payout."
   },
   {
     id: "005",
-    protocol: "MONETIZATION-MODELS",
-    question: "What are the monetization models?",
-    answer: "Monetization includes video engagement (ad revenue), task completion (fixed rewards), and network growth (referral bonuses). Each model is designed for sustainable earning."
+    protocol: "USER-LEVELS",
+    question: "What are the user levels?",
+    answer: "Thorx has 5 performance levels: Useless, Worker, Soldier, Captain, and General. Each level unlocks new daily tasks and requirements. Your level is based on your platform activity and performance."
   },
   {
     id: "006",
-    protocol: "REAL-TIME-PROCESSING",
-    question: "Is the processing real-time?",
-    answer: "Yes, Thorx utilizes a real-time processing engine for all activities, ensuring immediate updates on earnings and network status."
+    protocol: "DAILY-TASKS",
+    question: "What are daily tasks?",
+    answer: "Daily tasks are mandatory activities to qualify for payouts. These may include: watching a required number of video ads, subscribing to Thorx YouTube channel, watching a 30-second YouTube video, and other performance-based activities."
   },
   {
     id: "007",
-    protocol: "ENTERPRISE-SECURITY",
-    question: "What security measures are in place?",
-    answer: "We employ enterprise-grade security, including multi-layer encryption, real-time fraud detection, and transparent audit trails to protect user data and transactions."
+    protocol: "REGISTRATION",
+    question: "How do I register on Thorx?",
+    answer: "To register, provide your Name, Email, Phone number (optional), Password, and an Invitation code (optional). Your email and password are validated, and a unique Thorx Identity is generated for you. Registration completes after OTP verification via email."
   },
   {
     id: "008",
-    protocol: "VIDEO-ENGAGEMENT",
-    question: "How much can I earn from video engagement?",
-    answer: "Earnings from video engagement range from $0.05 to $0.50 per engagement, depending on ad type and user interaction."
+    protocol: "LOGIN-SECURITY",
+    question: "How does login work?",
+    answer: "Log in using your Email or Name and Password. For security, an OTP is sent to your registered email. Login completes only after OTP verification, ensuring your account stays protected."
   },
   {
     id: "009",
-    protocol: "TASK-COMPLETION",
-    question: "What kind of tasks are available?",
-    answer: "Tasks vary and can include surveys, data entry, content review, and more. Rewards typically range from $1.00 to $5.00 per task."
+    protocol: "VIDEO-PLAYERS",
+    question: "What are the video players?",
+    answer: "The Work section contains 4 advanced video players, each connected to a different video ad network. Players feature Full Screen, Mute, and Auto-play options for convenient viewing."
   },
   {
     id: "010",
-    protocol: "REFERRAL-BONUSES",
-    question: "What are the referral bonuses?",
-    answer: "Referral bonuses start at $2.00 and can go up to $10.00 per successful referral, encouraging network growth."
+    protocol: "REFERRAL-SHARING",
+    question: "How do I invite friends?",
+    answer: "Go to the Referral section in your User Portal to copy your referral link, generate invitation codes, or share directly via WhatsApp, Instagram, Facebook, and other platforms."
   },
   {
     id: "011",
     protocol: "PAYOUT-CHANNELS",
-    question: "What are the available payout channels?",
-    answer: "Payouts can be received via bank transfer, mobile wallet, or cryptocurrency."
+    question: "What payout methods are available?",
+    answer: "Thorx supports three payout methods for Pakistani users: JazzCash, EasyPaisa, and Bank Transfer. Add your preferred payment details in the Payout section."
   },
   {
     id: "012",
-    protocol: "PLATFORM-METRICS",
-    question: "What are the platform's uptime metrics?",
-    answer: "The platform boasts a 99.7% uptime, ensuring consistent availability for all users."
+    protocol: "HELP-SUPPORT",
+    question: "How do I get help?",
+    answer: "The Help section has three areas: Area Guide for FAQs, Area Help for AI Chatbot support, and Area Contact for direct messaging to the Thorx team. We're here to assist you."
   },
   {
     id: "013",
-    protocol: "FRAUD-DETECTION",
-    question: "How is fraud detected?",
-    answer: "Real-time fraud detection mechanisms are integrated to identify and prevent suspicious activities, safeguarding the platform and its users."
+    protocol: "THORX-IDENTITY",
+    question: "What is Thorx Identity?",
+    answer: "Thorx Identity is a unique identifier automatically generated for each user during registration. It helps track your earnings, referrals, and account activity securely."
   },
   {
     id: "014",
-    protocol: "AUDIT-TRAILS",
-    question: "Are there transparent audit trails?",
-    answer: "Yes, transparent audit trails are maintained for all transactions and activities, providing accountability and security."
+    protocol: "PLATFORM-SECURITY",
+    question: "Is Thorx safe and secure?",
+    answer: "Yes, Thorx uses multi-factor authentication via Email OTP for both registration and login. Your data is protected with encryption and secure session management."
   },
   {
     id: "015",
-    protocol: "USER-PROTECTION",
-    question: "How is user data protected?",
-    answer: "User data is protected through multi-layer encryption and strict security protocols, ensuring privacy and safety."
+    protocol: "COMMISSION-CREDIT",
+    question: "When do I receive referral commission?",
+    answer: "Referral commissions are credited only when your referred user requests a payout. This ensures fair and verified commission distribution based on actual earnings."
   }
 ];
 

@@ -109,11 +109,11 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
     if (isMobile && !hasAnimated) return; // Wait for intersection on mobile
 
     const activityTexts = [
-      "Ahmad K. earned ₨250",
-      "Fatima S. referred 3 members", 
-      "Hassan M. completed daily tasks",
-      "Ayesha R. earned ₨180",
-      "Ali Z. reached milestone"
+      "User watched video ads",
+      "New member joined via referral", 
+      "Daily tasks completed",
+      "Payout request processed",
+      "User reached new level"
     ];
 
     const interval = setInterval(() => {
