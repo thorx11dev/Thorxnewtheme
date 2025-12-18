@@ -1550,8 +1550,22 @@ export default function UserPortal() {
               </div>
             </div>
 
-            <div className="mt-3 md:mt-4 p-2 md:p-3 bg-muted border border-muted-foreground/20">
-              <TechnicalLabel text="COMMISSION: 15% Level 1 + 7.5% Level 2 (credited on payout request)" className="text-muted-foreground text-center text-xs leading-tight" />
+            <div className="mt-4 md:mt-6 p-4 md:p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary rounded-md">
+              <div className="flex items-center justify-center gap-2 md:gap-3 mb-3">
+                <Zap className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+                <TechnicalLabel text="COMMISSION STRUCTURE" className="text-primary font-black text-xs md:text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 md:gap-3">
+                <div className="text-center">
+                  <div className="text-lg md:text-xl font-black text-primary mb-1">15%</div>
+                  <TechnicalLabel text="Level 1" className="text-muted-foreground text-xs" />
+                </div>
+                <div className="text-center">
+                  <div className="text-lg md:text-xl font-black text-primary mb-1">7.5%</div>
+                  <TechnicalLabel text="Level 2" className="text-muted-foreground text-xs" />
+                </div>
+              </div>
+              <TechnicalLabel text="Credited on payout request" className="text-muted-foreground text-center text-xs mt-3 block" />
             </div>
           </div>
 
