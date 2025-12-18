@@ -1550,22 +1550,20 @@ export default function UserPortal() {
               </div>
             </div>
 
-            <div className="mt-4 md:mt-6 p-4 md:p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary rounded-md">
-              <div className="flex items-center justify-center gap-2 md:gap-3 mb-3">
-                <Zap className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-                <TechnicalLabel text="COMMISSION STRUCTURE" className="text-primary font-black text-xs md:text-sm" />
-              </div>
-              <div className="grid grid-cols-2 gap-2 md:gap-3">
-                <div className="text-center">
-                  <div className="text-lg md:text-xl font-black text-primary mb-1">15%</div>
-                  <TechnicalLabel text="Level 1" className="text-muted-foreground text-xs" />
+            <div className="mt-4 md:mt-6 p-3 md:p-4 bg-muted/40 border border-muted-foreground/15 rounded-sm">
+              <div className="space-y-2">
+                <div className="flex justify-between items-baseline">
+                  <TechnicalLabel text="Level 1 Commission" className="text-muted-foreground text-xs md:text-sm" />
+                  <div className="text-lg md:text-xl font-black text-foreground">15%</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-lg md:text-xl font-black text-primary mb-1">7.5%</div>
-                  <TechnicalLabel text="Level 2" className="text-muted-foreground text-xs" />
+                <div className="flex justify-between items-baseline">
+                  <TechnicalLabel text="Level 2 Commission" className="text-muted-foreground text-xs md:text-sm" />
+                  <div className="text-lg md:text-xl font-black text-foreground">7.5%</div>
                 </div>
               </div>
-              <TechnicalLabel text="Credited on payout request" className="text-muted-foreground text-center text-xs mt-3 block" />
+              <div className="border-t border-muted-foreground/10 mt-2 pt-2">
+                <TechnicalLabel text="Credited upon payout request" className="text-muted-foreground text-xs" />
+              </div>
             </div>
           </div>
 
