@@ -135,15 +135,25 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black animate-in fade-in duration-300">
-      <div className="h-screen flex flex-col items-center justify-center relative px-4 md:px-8">
+    <div className="fixed inset-0 z-50 bg-black animate-in fade-in duration-300" onClick={onClose}>
+      <div className="h-screen flex flex-col items-center justify-center relative px-4 md:px-8" onClick={(e) => e.stopPropagation()}>
+
+        {/* Close Button - Upper Right Corner */}
+        <button
+          onClick={onClose}
+          className="absolute top-6 md:top-8 right-6 md:right-8 p-2 md:p-3 text-white hover:scale-125 hover:opacity-70 active:scale-110 transition-all duration-200 animate-in fade-in slide-in-from-top-4 duration-500 delay-200 z-10"
+          data-testid="button-close-modal"
+          aria-label="Close modal"
+        >
+          <X className="w-6 h-6 md:w-7 md:h-7" />
+        </button>
 
         {/* Center Content - Referral Link & Share Icons */}
         <div className="w-full max-w-2xl animate-in fade-in zoom-in duration-500">
           
           {/* Referral Link Display - Input Container Style */}
           <div className="text-center mb-12 md:mb-16">
-            <div className="bg-white/5 border border-white/20 rounded-lg p-6 md:p-8 backdrop-blur-sm animate-in fade-in duration-500 delay-100">
+            <div className="bg-white/5 border border-white/20 rounded-lg p-6 md:p-8 backdrop-blur-sm animate-in fade-in duration-500 delay-100 hover:border-white/40 transition-colors duration-300 cursor-pointer" onClick={handleCopyLink}>
               <input
                 type="text"
                 value={shareUrl}
@@ -158,64 +168,92 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
           <div className="flex justify-center items-center gap-6 md:gap-8 mb-16 md:mb-20 flex-wrap">
             {/* WhatsApp */}
             <button
-              onClick={() => handleShare('whatsapp')}
-              className="text-white hover:scale-110 hover:opacity-70 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('whatsapp');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(37,211,102,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 transform origin-center"
               data-testid="share-whatsapp"
               aria-label="Share on WhatsApp"
+              title="Share on WhatsApp"
             >
               <SiWhatsapp className="w-8 h-8 md:w-10 md:h-10" />
             </button>
             {/* Telegram */}
             <button
-              onClick={() => handleShare('telegram')}
-              className="text-white hover:scale-110 hover:opacity-70 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('telegram');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,136,204,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 transform origin-center"
               data-testid="share-telegram"
               aria-label="Share on Telegram"
+              title="Share on Telegram"
             >
               <SiTelegram className="w-8 h-8 md:w-10 md:h-10" />
             </button>
             {/* Messenger */}
             <button
-              onClick={() => handleShare('messenger')}
-              className="text-white hover:scale-110 hover:opacity-70 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('messenger');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,132,250,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 transform origin-center"
               data-testid="share-messenger"
               aria-label="Share on Messenger"
+              title="Share on Messenger"
             >
               <SiMessenger className="w-8 h-8 md:w-10 md:h-10" />
             </button>
             {/* Instagram */}
             <button
-              onClick={() => handleShare('instagram')}
-              className="text-white hover:scale-110 hover:opacity-70 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-250"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('instagram');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(224,33,103,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-250 transform origin-center"
               data-testid="share-instagram"
               aria-label="Share on Instagram"
+              title="Share on Instagram"
             >
               <SiInstagram className="w-8 h-8 md:w-10 md:h-10" />
             </button>
             {/* TikTok */}
             <button
-              onClick={() => handleShare('tiktok')}
-              className="text-white hover:scale-110 hover:opacity-70 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('tiktok');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,0,0,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 transform origin-center"
               data-testid="share-tiktok"
               aria-label="Share on TikTok"
+              title="Share on TikTok"
             >
               <SiTiktok className="w-8 h-8 md:w-10 md:h-10" />
             </button>
             {/* Facebook */}
             <button
-              onClick={() => handleShare('facebook')}
-              className="text-white hover:scale-110 hover:opacity-70 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-350"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('facebook');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(59,89,152,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-350 transform origin-center"
               data-testid="share-facebook"
               aria-label="Share on Facebook"
+              title="Share on Facebook"
             >
               <SiFacebook className="w-8 h-8 md:w-10 md:h-10" />
             </button>
             {/* Gmail */}
             <button
-              onClick={() => handleShare('gmail')}
-              className="text-white hover:scale-110 hover:opacity-70 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('gmail');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(221,75,57,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400 transform origin-center"
               data-testid="share-gmail"
               aria-label="Share via Gmail"
+              title="Share via Gmail"
             >
               <SiGmail className="w-8 h-8 md:w-10 md:h-10" />
             </button>
@@ -226,25 +264,22 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
         <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-500">
           <p className="text-white text-base md:text-lg lg:text-xl font-black tracking-widest">REFERRAL SYSTEM</p>
           <button
-            onClick={handleCopyLink}
-            className={`p-2 md:p-3 text-white transition-all duration-300 ${
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopyLink();
+            }}
+            className={`p-2 md:p-3 text-white transition-all duration-300 hover:scale-125 active:scale-95 transform ${
               copied 
-                ? 'scale-110 opacity-100' 
-                : 'hover:scale-110 hover:opacity-70 active:scale-95'
+                ? 'scale-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]' 
+                : ''
             }`}
             data-testid="button-copy-referral-link"
             aria-label="Copy referral link"
+            title="Copy referral link"
           >
             <Copy className="w-5 h-5 md:w-6 md:h-6" />
           </button>
         </div>
-
-        {/* Close on Background Click */}
-        <button
-          onClick={onClose}
-          className="absolute inset-0 w-full h-full cursor-default"
-          aria-label="Close modal"
-        />
       </div>
     </div>
   );
