@@ -141,7 +141,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
         {/* Close Button - Upper Right Corner */}
         <button
           onClick={onClose}
-          className="absolute top-6 md:top-8 right-6 md:right-8 p-2 md:p-3 text-white hover:scale-125 hover:opacity-70 active:scale-110 transition-all duration-200 animate-in fade-in slide-in-from-top-4 duration-500 delay-200 z-10"
+          className="absolute top-6 md:top-8 right-6 md:right-8 p-2 md:p-3 text-white hover:scale-125 hover:opacity-70 active:scale-110 transition-all duration-200 animate-in fade-in slide-in-from-top-4 duration-500 delay-200 z-10 cursor-white-pointer"
           data-testid="button-close-modal"
           aria-label="Close modal"
         >
@@ -153,12 +153,12 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
           
           {/* Referral Link Display - Input Container Style */}
           <div className="text-center mb-12 md:mb-16">
-            <div className="bg-white/5 border border-white/20 rounded-lg p-6 md:p-8 backdrop-blur-sm animate-in fade-in duration-500 delay-100 hover:border-white/40 transition-colors duration-300 cursor-pointer" onClick={handleCopyLink}>
+            <div className="bg-white/5 border border-white/20 rounded-lg p-6 md:p-8 backdrop-blur-sm animate-in fade-in duration-500 delay-100 hover:border-white/40 transition-colors duration-300 cursor-white-pointer" onClick={handleCopyLink}>
               <input
                 type="text"
                 value={shareUrl}
                 readOnly
-                className="w-full bg-transparent text-white text-center text-lg md:text-xl lg:text-2xl font-black break-all outline-none cursor-text select-all placeholder-white/40"
+                className="w-full bg-transparent text-white text-center text-lg md:text-xl lg:text-2xl font-black break-all outline-none cursor-white-pointer select-all placeholder-white/40"
                 data-testid="input-referral-link"
               />
             </div>
@@ -172,7 +172,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
                 e.stopPropagation();
                 handleShare('whatsapp');
               }}
-              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(37,211,102,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 transform origin-center"
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(37,211,102,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 transform origin-center cursor-white-pointer"
               data-testid="share-whatsapp"
               aria-label="Share on WhatsApp"
               title="Share on WhatsApp"
@@ -185,7 +185,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
                 e.stopPropagation();
                 handleShare('telegram');
               }}
-              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,136,204,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 transform origin-center"
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,136,204,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 transform origin-center cursor-white-pointer"
               data-testid="share-telegram"
               aria-label="Share on Telegram"
               title="Share on Telegram"
@@ -198,7 +198,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
                 e.stopPropagation();
                 handleShare('messenger');
               }}
-              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,132,250,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 transform origin-center"
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,132,250,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 transform origin-center cursor-white-pointer"
               data-testid="share-messenger"
               aria-label="Share on Messenger"
               title="Share on Messenger"
@@ -211,7 +211,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
                 e.stopPropagation();
                 handleShare('instagram');
               }}
-              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(224,33,103,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-250 transform origin-center"
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(224,33,103,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-250 transform origin-center cursor-white-pointer"
               data-testid="share-instagram"
               aria-label="Share on Instagram"
               title="Share on Instagram"
@@ -224,7 +224,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
                 e.stopPropagation();
                 handleShare('tiktok');
               }}
-              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,0,0,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 transform origin-center"
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,0,0,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 transform origin-center cursor-white-pointer"
               data-testid="share-tiktok"
               aria-label="Share on TikTok"
               title="Share on TikTok"
@@ -237,7 +237,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
                 e.stopPropagation();
                 handleShare('facebook');
               }}
-              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(59,89,152,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-350 transform origin-center"
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(59,89,152,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-350 transform origin-center cursor-white-pointer"
               data-testid="share-facebook"
               aria-label="Share on Facebook"
               title="Share on Facebook"
@@ -250,7 +250,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
                 e.stopPropagation();
                 handleShare('gmail');
               }}
-              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(221,75,57,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400 transform origin-center"
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(221,75,57,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400 transform origin-center cursor-white-pointer"
               data-testid="share-gmail"
               aria-label="Share via Gmail"
               title="Share via Gmail"
@@ -268,7 +268,7 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
               e.stopPropagation();
               handleCopyLink();
             }}
-            className={`p-2 md:p-3 text-white transition-all duration-300 hover:scale-125 active:scale-95 transform ${
+            className={`p-2 md:p-3 text-white transition-all duration-300 hover:scale-125 active:scale-95 transform cursor-white-pointer ${
               copied 
                 ? 'scale-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]' 
                 : ''
