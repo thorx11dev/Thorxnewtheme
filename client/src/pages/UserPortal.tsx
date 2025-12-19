@@ -91,7 +91,7 @@ import {
 } from 'recharts';
 import { SiWhatsapp, SiTelegram, SiMessenger, SiInstagram, SiTiktok, SiFacebook, SiGmail } from 'react-icons/si';
 
-// Share Modal Component
+// Share Modal Component - Loading Screen Design Standard
 function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen: boolean; onClose: () => void; referralCode: string; userName: string; toast: any }) {
   if (!isOpen) return null;
 
@@ -100,105 +100,135 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
 
   const handleShare = async (platform: string) => {
     try {
-      if (platform === 'copy') {
-        await navigator.clipboard.writeText(shareUrl);
-        toast({ title: "Link Copied!", description: "Referral link copied to clipboard." });
-      } else if (platform === 'whatsapp') {
+      if (platform === 'whatsapp') {
         window.open(`https://wa.me/?text=${encodeURIComponent(`${shareMessage} ${shareUrl}`)}`);
       } else if (platform === 'telegram') {
         window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${shareMessage}`)}`);
       } else if (platform === 'messenger') {
-        window.open(`fb-messenger://share?link=${encodeURIComponent(shareUrl)}&app_id=${encodeURIComponent(shareUrl)}`); // Note: Messenger sharing might require specific app integration or browser behavior. This is a common approach.
+        window.open(`fb-messenger://share?link=${encodeURIComponent(shareUrl)}&app_id=${encodeURIComponent(shareUrl)}`);
       } else if (platform === 'instagram') {
-        // Instagram sharing is typically done via the app, direct link sharing in stories/posts is limited.
-        // This might open the Instagram app for sharing to stories if configured.
         window.open(`https://www.instagram.com/create/?text=${encodeURIComponent(`${shareMessage}`)}&url=${encodeURIComponent(shareUrl)}`);
       } else if (platform === 'tiktok') {
-        // TikTok sharing is also primarily app-based. This might open the app.
         window.open(`https://www.tiktok.com/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${shareMessage}`)}`);
       } else if (platform === 'facebook') {
         window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareMessage)}`);
       } else if (platform === 'gmail') {
         window.open(`mailto:?subject=${encodeURIComponent('Invitation to Join THORX!')}&body=${encodeURIComponent(`${shareMessage}\n\nClick here to join: ${shareUrl}`)}`);
       }
-      onClose();
     } catch (error) {
       console.error("Sharing error:", error);
       toast({ title: "Sharing Failed", description: "Could not share via this platform. Please try again." });
     }
   };
 
-  // Thorx Design Standards: Minimal, visually attractive, responsive, clear hierarchy
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast({ title: "Link Copied!", description: "Referral link copied to clipboard." });
+    } catch (error) {
+      console.error("Copy error:", error);
+      toast({ title: "Copy Failed", description: "Could not copy link. Please try again." });
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm transition-opacity duration-300">
-      <div className="relative bg-background border-2 border-black p-6 md:p-8 shadow-xl shadow-primary/20 w-full max-w-md md:max-w-lg mx-4 rounded-lg">
-        {/* Close Button */}
-        <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors">
-          <X className="w-5 h-5 text-primary" />
+    <div className="fixed inset-0 z-50 bg-black animate-in fade-in duration-300">
+      <div className="h-screen flex flex-col items-center justify-center relative px-4 md:px-8">
+        
+        {/* Copy Button - Right Edge, Vertically Centered */}
+        <button
+          onClick={handleCopyLink}
+          className="absolute right-6 md:right-8 top-1/2 -translate-y-1/2 p-3 md:p-4 text-white hover:opacity-70 transition-opacity duration-200 animate-in fade-in slide-in-from-right-8 duration-500 delay-300"
+          data-testid="button-copy-referral-link"
+        >
+          <Copy className="w-6 h-6 md:w-8 md:h-8" />
         </button>
 
-        {/* Modal Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 bg-black text-white px-3 py-1 border-2 border-black mb-3">
-            <Gift className="w-4 h-4" />
-            <TechnicalLabel text="INVITE & EARN" className="text-white text-sm font-black" />
+        {/* Center Content - Referral Link & Share Icons */}
+        <div className="w-full max-w-2xl animate-in fade-in zoom-in duration-500">
+          
+          {/* Referral Link Display - Center */}
+          <div className="text-center mb-12 md:mb-16">
+            <div className="mb-6 md:mb-8">
+              <p className="text-white/60 text-xs md:text-sm tracking-widest mb-4">REFERRAL LINK</p>
+              <p className="text-white text-lg md:text-2xl lg:text-3xl font-black break-all cursor-text select-all">
+                {shareUrl}
+              </p>
+            </div>
           </div>
-          <h2 className="text-2xl md:text-3xl font-black text-foreground leading-tight">
-            SHARE THORX WITH FRIENDS
-          </h2>
-          <p className="text-muted-foreground text-xs mt-2">
-            Grow your network and earn together!
-          </p>
-        </div>
 
-        {/* Referral Code Display */}
-        <div className="bg-black text-white p-4 mb-6 border-2 border-primary text-center">
-          <TechnicalLabel text="YOUR UNIQUE REFERRAL CODE" className="text-primary mb-3 text-xs font-black uppercase" />
-          <div className="referral-code-display bg-primary text-black px-3 py-2 text-xl md:text-2xl font-black tracking-widest border-2 border-white rounded">
-            {referralCode}
+          {/* Social Share Icons - Below Referral Link */}
+          <div className="flex justify-center items-center gap-6 md:gap-8 mb-16 md:mb-20 flex-wrap">
+            {/* WhatsApp */}
+            <button
+              onClick={() => handleShare('whatsapp')}
+              className="text-white hover:opacity-70 transition-opacity duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100"
+              data-testid="share-whatsapp"
+            >
+              <SiWhatsapp className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Telegram */}
+            <button
+              onClick={() => handleShare('telegram')}
+              className="text-white hover:opacity-70 transition-opacity duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150"
+              data-testid="share-telegram"
+            >
+              <SiTelegram className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Messenger */}
+            <button
+              onClick={() => handleShare('messenger')}
+              className="text-white hover:opacity-70 transition-opacity duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200"
+              data-testid="share-messenger"
+            >
+              <SiMessenger className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Instagram */}
+            <button
+              onClick={() => handleShare('instagram')}
+              className="text-white hover:opacity-70 transition-opacity duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-250"
+              data-testid="share-instagram"
+            >
+              <SiInstagram className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* TikTok */}
+            <button
+              onClick={() => handleShare('tiktok')}
+              className="text-white hover:opacity-70 transition-opacity duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300"
+              data-testid="share-tiktok"
+            >
+              <SiTiktok className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Facebook */}
+            <button
+              onClick={() => handleShare('facebook')}
+              className="text-white hover:opacity-70 transition-opacity duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-350"
+              data-testid="share-facebook"
+            >
+              <SiFacebook className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Gmail */}
+            <button
+              onClick={() => handleShare('gmail')}
+              className="text-white hover:opacity-70 transition-opacity duration-200 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400"
+              data-testid="share-gmail"
+            >
+              <SiGmail className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
           </div>
         </div>
 
-        {/* Sharing Options */}
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-3 md:grid-cols-4 md:gap-4 lg:gap-5">
-          {/* Copy Link */}
-          <button onClick={() => handleShare('copy')} className="share-button group" data-testid="share-copy">
-            <Copy className="w-8 h-8 group-hover:scale-110 transition-transform" />
-          </button>
-          {/* WhatsApp */}
-          <button onClick={() => handleShare('whatsapp')} className="share-button group" data-testid="share-whatsapp">
-            <SiWhatsapp className="w-8 h-8 group-hover:scale-110 transition-transform" />
-          </button>
-          {/* Telegram */}
-          <button onClick={() => handleShare('telegram')} className="share-button group" data-testid="share-telegram">
-            <SiTelegram className="w-8 h-8 group-hover:scale-110 transition-transform" />
-          </button>
-          {/* Messenger */}
-          <button onClick={() => handleShare('messenger')} className="share-button group" data-testid="share-messenger">
-            <SiMessenger className="w-8 h-8 group-hover:scale-110 transition-transform" />
-          </button>
-          {/* Instagram */}
-          <button onClick={() => handleShare('instagram')} className="share-button group" data-testid="share-instagram">
-            <SiInstagram className="w-8 h-8 group-hover:scale-110 transition-transform" />
-          </button>
-          {/* TikTok */}
-          <button onClick={() => handleShare('tiktok')} className="share-button group" data-testid="share-tiktok">
-            <SiTiktok className="w-8 h-8 group-hover:scale-110 transition-transform" />
-          </button>
-          {/* Facebook */}
-          <button onClick={() => handleShare('facebook')} className="share-button group" data-testid="share-facebook">
-            <SiFacebook className="w-8 h-8 group-hover:scale-110 transition-transform" />
-          </button>
-          {/* Gmail */}
-          <button onClick={() => handleShare('gmail')} className="share-button group" data-testid="share-gmail">
-            <SiGmail className="w-8 h-8 group-hover:scale-110 transition-transform" />
-          </button>
+        {/* Footer - Bottom End */}
+        <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-500">
+          <p className="text-white text-sm md:text-base font-black tracking-widest">REFERRAL SYSTEM</p>
         </div>
 
-        {/* Footer Note */}
-        <div className="mt-6 text-center text-xs text-muted-foreground">
-          <TechnicalLabel text="Share your code and invite friends to earn more together!" className="text-muted-foreground" />
-        </div>
+        {/* Close on Background Click */}
+        <button
+          onClick={onClose}
+          className="absolute inset-0 w-full h-full cursor-default"
+          aria-label="Close modal"
+        />
       </div>
     </div>
   );
