@@ -2636,4 +2636,10 @@
   .cursor-orange-pointer {
     cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%23FF8C42"><path d="M5 1L5 19L9 15L12 21L15 20L12 14L19 14L5 1Z"/><circle cx="18" cy="6" r="4" stroke="%23FF8C42" stroke-width="1.5" fill="none"/></svg>') 0 0, pointer !important;
   }
+
+  /* Force orange cursor on ALL elements within share modal */
+  .share-modal-wrapper,
+  .share-modal-wrapper * {
+    cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%23FF8C42"><path d="M3 1L3 21L8 16L11 22L14 21L11 15L19 15L3 1Z"/></svg>') 0 0, auto !important;
+  }
 }
