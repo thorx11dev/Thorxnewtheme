@@ -135,8 +135,8 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black animate-in fade-in duration-300" onClick={onClose}>
-      <div className="h-screen flex flex-col items-center justify-center relative px-4 md:px-8" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black animate-in fade-in duration-300 cursor-white" onClick={onClose}>
+      <div className="h-screen flex flex-col items-center justify-center relative px-4 md:px-8 cursor-white" onClick={(e) => e.stopPropagation()}>
 
         {/* Close Button - Upper Right Corner */}
         <button

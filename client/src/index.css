@@ -2618,4 +2618,13 @@
     0%, 100% { transform: translateY(0); opacity: 0.5; }
     50% { transform: translateY(-3px); opacity: 1; }
   }
+
+  /* White cursor for dark backgrounds */
+  .cursor-white {
+    cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%23FFFFFF"><path d="M3 1L3 21L8 16L11 22L14 21L11 15L19 15L3 1Z"/></svg>') 0 0, auto;
+  }
+
+  .cursor-white-pointer {
+    cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%23FFFFFF"><path d="M5 1L5 19L9 15L12 21L15 20L12 14L19 14L5 1Z"/><circle cx="18" cy="6" r="4" stroke="%23FFFFFF" stroke-width="1.5" fill="none"/></svg>') 0 0, pointer;
+  }
 }
