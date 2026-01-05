@@ -127,8 +127,11 @@ export default function Home() {
                     currentSection >= 3 ? 'blur-sm opacity-70' : ''
                   }`}
                 >
-                  <div className="text-xs md:text-sm">
-                    <TechnicalLabel text="v 001" />
+                  <div className="flex items-center gap-2 text-xs md:text-sm">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <TechnicalLabel text="SYS_v001" className="font-mono tracking-widest opacity-80" />
+                    <div className="h-4 w-[1px] bg-black/20 mx-1" />
+                    <TechnicalLabel text="LIVE" className="text-green-600 font-bold" />
                   </div>
                 </div>
               )}
