@@ -470,8 +470,18 @@ export default function UserPortal() {
       const response = await apiRequest("GET", "/api/referrals");
       return await response.json() as {
         referrals: ReferralUser[];
+        multiLevelReferrals: any[];
         stats: { count: number; totalEarned: string }
       };
+    },
+    enabled: !!user,
+  });
+
+  const { data: leaderboardData } = useQuery({
+    queryKey: ["referrals", "leaderboard"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/referrals/leaderboard");
+      return await response.json() as any[];
     },
     enabled: !!user,
   });

@@ -359,16 +359,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const referrals = await storage.getUserReferrals(req.session.userId);
+      const multiLevelReferrals = await storage.getMultiLevelReferrals(req.session.userId);
       const stats = await storage.getReferralStats(req.session.userId);
 
       res.json({
         referrals,
+        multiLevelReferrals,
         stats
       });
     } catch (error) {
       console.error("Get referrals error:", error);
       res.status(500).json({
         message: "Failed to fetch referrals",
+        error: "INTERNAL_ERROR"
+      });
+    }
+  });
+
+  // Get referral leaderboard endpoint
+  app.get("/api/referrals/leaderboard", async (req, res) => {
+    try {
+      const leaderboard = await storage.getReferralLeaderboard();
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("Get leaderboard error:", error);
+      res.status(500).json({
+        message: "Failed to fetch leaderboard",
         error: "INTERNAL_ERROR"
       });
     }
