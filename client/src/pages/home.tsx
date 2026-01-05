@@ -128,8 +128,7 @@ export default function Home() {
                   }`}
                 >
                   <div className="text-xs md:text-sm">
-                    <TechnicalLabel text="ID: 571" />
-                    <TechnicalLabel text="v 2.47" />
+                    <TechnicalLabel text="v 001" />
                   </div>
                 </div>
               )}
