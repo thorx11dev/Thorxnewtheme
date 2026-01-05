@@ -454,10 +454,13 @@ export default function Auth() {
             
             {/* Right Section */}
             <div className="flex items-center">
-              <div className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2">
-                <div className="text-xs md:text-sm">
-                  <TechnicalLabel text="AUTH MODULE" />
-                  <TechnicalLabel text="v 2.47" />
+              <div
+                className="bg-white border-2 border-black px-2 py-1 md:px-4 md:py-2 transition-all duration-300"
+              >
+                <div className="flex items-center gap-3 text-xs md:text-sm">
+                  <TechnicalLabel text="SYS_v001" className="font-mono tracking-[0.2em] opacity-40" />
+                  <div className="h-3 w-[1px] bg-black/10" />
+                  <TechnicalLabel text="ACTIVE" className="font-bold tracking-wider" />
                 </div>
               </div>
             </div>
