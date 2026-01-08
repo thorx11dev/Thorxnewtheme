@@ -1456,7 +1456,7 @@ export default function UserPortal() {
     const [leaderboardTab, setLeaderboardTab] = useState<"l1" | "l2">("l1");
     
     // Move Hook here to avoid order issues
-    const { data: referralsData } = useQuery<ReferralResponse>({
+    const { data: referralsData } = useQuery<any>({
       queryKey: ['/api/referrals'],
     });
 
@@ -1857,12 +1857,12 @@ export default function UserPortal() {
                           <TechnicalLabel text={`${leader.referrals} TOTAL REFERRALS`} className="text-muted-foreground text-xs" />
                           <div className="flex gap-2 items-center bg-muted/30 px-2 py-0.5 rounded-sm">
                             <TechnicalLabel 
-                              text={`LEVEL 1: ${leader.l1}`} 
+                              text={`L1: ${leader.l1}`} 
                               className={`text-[10px] font-black ${leaderboardTab === 'l1' ? 'text-primary' : 'text-muted-foreground'}`} 
                             />
                             <div className="w-1 h-1 bg-muted-foreground/30 rounded-full"></div>
                             <TechnicalLabel 
-                              text={`LEVEL 2: ${leader.l2}`} 
+                              text={`L2: ${leader.l2}`} 
                               className={`text-[10px] font-black ${leaderboardTab === 'l2' ? 'text-primary' : 'text-muted-foreground'}`} 
                             />
                           </div>
@@ -1902,7 +1902,7 @@ export default function UserPortal() {
             </div>
 
             <div className="grid gap-3 md:gap-4">
-              {referralsData.referrals.map((referral, index) => (
+              {referralsData.referrals.map((referral: any, index: number) => (
                 <div key={referral.id} className="referral-network-card wireframe-section p-3 md:p-4 hover:bg-white transition-colors" data-testid={`referral-${referral.id}`}>
                   <div className="flex items-center justify-between flex-col md:flex-row gap-3 md:gap-0">
                     <div className="flex items-center space-x-3 md:space-x-4 w-full md:w-auto">
