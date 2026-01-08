@@ -1093,10 +1093,6 @@ export default function UserPortal() {
         {/* Hero Section */}
         <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
-              <Activity className="w-4 h-4 md:w-5 md:h-5" />
-              <TechnicalLabel text="DASHBOARD PROTOCOL v4.12" className="text-white text-xs md:text-sm" />
-            </div>
             <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               ASSALAM U ALAYKUM,<br />
               <span className="text-primary bg-primary/10 px-1 md:px-2 py-1 inline-block mt-2 text-lg md:text-4xl lg:text-5xl">{displayUser?.firstName || "GUEST"}</span>
