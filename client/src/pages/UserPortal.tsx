@@ -867,8 +867,10 @@ export default function UserPortal() {
 
   // Calculate real-time earnings breakdown from actual data
   const calculateEarningsBreakdown = () => {
+    // Check if we are inside a hook or functional component context
+    // These values are used for the chart, we should ensure they are stable
     const adViewsEarnings = (todayAdViews?.count || 0) * 2.5;
-    const referralEarnings = parseFloat(referralsData?.stats.totalEarned || '0');
+    const referralEarnings = parseFloat(referralsData?.stats?.totalEarned || '0');
     const totalEarnings = parseFloat(displayUser?.totalEarnings || '0');
 
     // Calculate remaining from other sources
@@ -1452,6 +1454,12 @@ export default function UserPortal() {
   // Enhanced Referrals Section - Dashboard Style
   function renderReferralsSection() {
     const [leaderboardTab, setLeaderboardTab] = useState<"l1" | "l2">("l1");
+    
+    // Move Hook here to avoid order issues
+    const { data: referralsData } = useQuery<ReferralResponse>({
+      queryKey: ['/api/referrals'],
+    });
+
     // Mock data for leadership board
     const leaderboardData = [
       {
