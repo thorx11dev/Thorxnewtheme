@@ -1451,6 +1451,7 @@ export default function UserPortal() {
 
   // Enhanced Referrals Section - Dashboard Style
   function renderReferralsSection() {
+    const [leaderboardTab, setLeaderboardTab] = useState<"l1" | "l2">("l1");
     // Mock data for leadership board
     const leaderboardData = [
       {
@@ -1493,6 +1494,10 @@ export default function UserPortal() {
         isCurrentUser: false
       }
     ];
+
+    // Sorting logic based on active tab
+    const sortedLeaderboard = [...leaderboardData].sort((a, b) => b[leaderboardTab] - a[leaderboardTab]);
+
 
     const getRankIcon = (rank: number) => {
       switch (rank) {
@@ -1731,11 +1736,36 @@ export default function UserPortal() {
         {/* Bottom Section - Leaderboard List (Blue highlighted in wireframe) */}
         <div className="wireframe-border bg-primary/5 p-4 md:p-6">
           <div className="border-b-2 border-primary pb-3 md:pb-4 mb-4 md:mb-6">
-            <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-2 md:gap-3">
                 <Trophy className="w-4 h-4 md:w-6 md:h-6 text-primary" />
                 <TechnicalLabel text="TOP REFERRERS LEADERBOARD" className="text-foreground text-sm md:text-lg font-black" />
               </div>
+              
+              {/* Tab Switcher */}
+              <div className="flex bg-black/5 p-1 border-2 border-black rounded-sm">
+                <button
+                  onClick={() => setLeaderboardTab("l1")}
+                  className={`px-3 py-1.5 text-xs font-black transition-all ${
+                    leaderboardTab === "l1" 
+                      ? "bg-primary text-black" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  LEVEL 1
+                </button>
+                <button
+                  onClick={() => setLeaderboardTab("l2")}
+                  className={`px-3 py-1.5 text-xs font-black transition-all ${
+                    leaderboardTab === "l2" 
+                      ? "bg-primary text-black" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  LEVEL 2
+                </button>
+              </div>
+
               <div className="bg-primary text-white px-2 md:px-3 py-1 border border-primary">
                 <TechnicalLabel text="LIVE RANKINGS" className="text-white text-xs" />
               </div>
@@ -1744,7 +1774,8 @@ export default function UserPortal() {
 
           {/* Mobile Optimized Leaderboard List */}
           <div className="mobile-leaderboard-list space-y-2 md:space-y-4">
-            {leaderboardData.map((leader, index) => (
+            {sortedLeaderboard.map((leader, index) => (
+
               <div key={leader.id} className="mobile-leaderboard-card bg-white border-2 border-black hover:bg-primary/5 transition-all duration-200 overflow-hidden">
                 {/* Mobile Card Layout */}
                 <div className="block md:hidden">
@@ -1762,8 +1793,14 @@ export default function UserPortal() {
                       </div>
                       <div className="flex gap-2">
                         <TechnicalLabel text={`${leader.referrals} TOTAL`} className="text-muted-foreground text-[10px]" />
-                        <TechnicalLabel text={`L1: ${leader.l1}`} className="text-primary text-[10px] font-bold" />
-                        <TechnicalLabel text={`L2: ${leader.l2}`} className="text-muted-foreground text-[10px]" />
+                        <TechnicalLabel 
+                          text={`L1: ${leader.l1}`} 
+                          className={`text-[10px] font-bold ${leaderboardTab === 'l1' ? 'text-primary' : 'text-muted-foreground'}`} 
+                        />
+                        <TechnicalLabel 
+                          text={`L2: ${leader.l2}`} 
+                          className={`text-[10px] font-bold ${leaderboardTab === 'l2' ? 'text-primary' : 'text-muted-foreground'}`} 
+                        />
                       </div>
                     </div>
                   </div>
@@ -1811,9 +1848,15 @@ export default function UserPortal() {
                         <div className="flex items-center gap-3 flex-wrap">
                           <TechnicalLabel text={`${leader.referrals} TOTAL REFERRALS`} className="text-muted-foreground text-xs" />
                           <div className="flex gap-2 items-center bg-muted/30 px-2 py-0.5 rounded-sm">
-                            <TechnicalLabel text={`LEVEL 1: ${leader.l1}`} className="text-primary text-[10px] font-black" />
+                            <TechnicalLabel 
+                              text={`LEVEL 1: ${leader.l1}`} 
+                              className={`text-[10px] font-black ${leaderboardTab === 'l1' ? 'text-primary' : 'text-muted-foreground'}`} 
+                            />
                             <div className="w-1 h-1 bg-muted-foreground/30 rounded-full"></div>
-                            <TechnicalLabel text={`LEVEL 2: ${leader.l2}`} className="text-muted-foreground text-[10px]" />
+                            <TechnicalLabel 
+                              text={`LEVEL 2: ${leader.l2}`} 
+                              className={`text-[10px] font-black ${leaderboardTab === 'l2' ? 'text-primary' : 'text-muted-foreground'}`} 
+                            />
                           </div>
                           <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
                           <TechnicalLabel text={`JOINED ${new Date(leader.joinDate).toLocaleDateString()}`} className="text-muted-foreground text-xs" />
