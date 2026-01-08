@@ -1459,6 +1459,8 @@ export default function UserPortal() {
         name: "Don Ivan",
         earnings: "2,450.00",
         referrals: 15,
+        l1: 10,
+        l2: 5,
         status: "ACTIVE",
         tier: "PLATINUM",
         joinDate: "2024-01-15",
@@ -1470,6 +1472,8 @@ export default function UserPortal() {
         name: "Saad Rauf",
         earnings: "1,890.50",
         referrals: 12,
+        l1: 8,
+        l2: 4,
         status: "ACTIVE",
         tier: "GOLD",
         joinDate: "2024-02-03",
@@ -1481,6 +1485,8 @@ export default function UserPortal() {
         name: "Zain Abbas",
         earnings: "1,425.75",
         referrals: 9,
+        l1: 6,
+        l2: 3,
         status: "ACTIVE",
         tier: "SILVER",
         joinDate: "2024-02-18",
@@ -1754,7 +1760,11 @@ export default function UserPortal() {
                       <div className="text-lg font-black text-foreground truncate">
                         {leader.name}
                       </div>
-                      <TechnicalLabel text={`${leader.referrals} REFERRALS`} className="text-muted-foreground text-xs" />
+                      <div className="flex gap-2">
+                        <TechnicalLabel text={`${leader.referrals} TOTAL`} className="text-muted-foreground text-[10px]" />
+                        <TechnicalLabel text={`L1: ${leader.l1}`} className="text-primary text-[10px] font-bold" />
+                        <TechnicalLabel text={`L2: ${leader.l2}`} className="text-muted-foreground text-[10px]" />
+                      </div>
                     </div>
                   </div>
 
@@ -1798,8 +1808,13 @@ export default function UserPortal() {
                         <div className="text-lg font-black text-foreground mb-1">
                           {leader.name}
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <TechnicalLabel text={`${leader.referrals} REFERRALS`} className="text-muted-foreground text-xs" />
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <TechnicalLabel text={`${leader.referrals} TOTAL REFERRALS`} className="text-muted-foreground text-xs" />
+                          <div className="flex gap-2 items-center bg-muted/30 px-2 py-0.5 rounded-sm">
+                            <TechnicalLabel text={`LEVEL 1: ${leader.l1}`} className="text-primary text-[10px] font-black" />
+                            <div className="w-1 h-1 bg-muted-foreground/30 rounded-full"></div>
+                            <TechnicalLabel text={`LEVEL 2: ${leader.l2}`} className="text-muted-foreground text-[10px]" />
+                          </div>
                           <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
                           <TechnicalLabel text={`JOINED ${new Date(leader.joinDate).toLocaleDateString()}`} className="text-muted-foreground text-xs" />
                         </div>
