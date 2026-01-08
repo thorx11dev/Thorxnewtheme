@@ -314,53 +314,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(referrals.createdAt));
   }
 
-  async getMultiLevelReferrals(userId: string, maxTier: number = 3): Promise<any[]> {
-    const results: any[] = [];
-    
-    // Recursive CTE or iterative approach for multi-level referrals
-    // For simplicity and compatibility with Neon/Postgres, we'll fetch level by level
-    let currentReferrerIds = [userId];
-    
-    for (let tier = 1; tier <= maxTier; tier++) {
-      if (currentReferrerIds.length === 0) break;
-      
-      const tierReferrals = await db
-        .select({
-          referral: referrals,
-          referred: users,
-        })
-        .from(referrals)
-        .innerJoin(users, eq(referrals.referredId, users.id))
-        .where(and(
-          sql`${referrals.referrerId} IN ${sql.raw('(' + currentReferrerIds.map(id => `'${id}'`).join(',') + ')')}`,
-          eq(referrals.tier, tier)
-        ));
-        
-      if (tierReferrals.length === 0) break;
-      
-      results.push(...tierReferrals.map(r => ({ ...r.referral, referred: r.referred, displayTier: tier })));
-      currentReferrerIds = tierReferrals.map(r => r.referred.id);
-    }
-    
-    return results;
-  }
-
-  async getReferralLeaderboard(limit = 10): Promise<any[]> {
-    return await db
-      .select({
-        id: users.id,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        referralCount: sql<number>`COUNT(${referrals.id})`,
-        totalEarned: sql<string>`COALESCE(SUM(${referrals.totalEarned}), '0.00')`
-      })
-      .from(users)
-      .leftJoin(referrals, eq(users.id, referrals.referrerId))
-      .groupBy(users.id)
-      .orderBy(desc(sql`COUNT(${referrals.id})`))
-      .limit(limit);
-  }
-
   async getReferralStats(userId: string): Promise<{ count: number; totalEarned: string }> {
     const [result] = await db
       .select({ 

@@ -470,18 +470,8 @@ export default function UserPortal() {
       const response = await apiRequest("GET", "/api/referrals");
       return await response.json() as {
         referrals: ReferralUser[];
-        multiLevelReferrals: any[];
         stats: { count: number; totalEarned: string }
       };
-    },
-    enabled: !!user,
-  });
-
-  const { data: leaderboardData } = useQuery({
-    queryKey: ["referrals", "leaderboard"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/referrals/leaderboard");
-      return await response.json() as any[];
     },
     enabled: !!user,
   });
@@ -1461,6 +1451,61 @@ export default function UserPortal() {
 
   // Enhanced Referrals Section - Dashboard Style
   function renderReferralsSection() {
+    // Mock data for leadership board
+    const leaderboardData = [
+      {
+        id: "1",
+        rank: 1,
+        name: "Don Ivan",
+        earnings: "2,450.00",
+        referrals: 15,
+        status: "ACTIVE",
+        tier: "PLATINUM",
+        joinDate: "2024-01-15",
+        isCurrentUser: false
+      },
+      {
+        id: "2",
+        rank: 2,
+        name: "Saad Rauf",
+        earnings: "1,890.50",
+        referrals: 12,
+        status: "ACTIVE",
+        tier: "GOLD",
+        joinDate: "2024-02-03",
+        isCurrentUser: false
+      },
+      {
+        id: "3",
+        rank: 3,
+        name: "Zain Abbas",
+        earnings: "1,425.75",
+        referrals: 9,
+        status: "ACTIVE",
+        tier: "SILVER",
+        joinDate: "2024-02-18",
+        isCurrentUser: false
+      }
+    ];
+
+    const getRankIcon = (rank: number) => {
+      switch (rank) {
+        case 1: return <Crown className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />;
+        case 2: return <Trophy className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />;
+        case 3: return <Medal className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />;
+        default: return <Star className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />;
+      }
+    };
+
+    const getTierColor = (tier: string) => {
+      switch (tier) {
+        case 'PLATINUM': return 'bg-gradient-to-r from-blue-600 to-purple-600 text-white';
+        case 'GOLD': return 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white';
+        case 'SILVER': return 'bg-gradient-to-r from-gray-400 to-gray-600 text-white';
+        default: return 'bg-black text-white';
+      }
+    };
+
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-0 relative z-10">
         {/* Hero Section - Dashboard Style */}
@@ -1482,66 +1527,6 @@ export default function UserPortal() {
             <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
           </div>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <Card className="bg-black border-white/20">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-500" />
-                LEADERBOARD
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {leaderboardData && Array.isArray(leaderboardData) ? (
-                  leaderboardData.map((entry, idx) => (
-                    <div key={entry.id} className="flex items-center justify-between p-3 border border-white/10 rounded-lg hover:border-white/30 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-white/40 font-mono">#{idx + 1}</span>
-                        <span className="text-white font-bold">{entry.firstName} {entry.lastName}</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-white font-mono">{entry.referralCount} REFS</div>
-                        <div className="text-xs text-white/40">${entry.totalEarned} EARNED</div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-white/40 font-mono">NO LEADERBOARD DATA</div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-black border-white/20">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                MY NETWORK (TIER 1-3)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {referralsData?.multiLevelReferrals && Array.isArray(referralsData.multiLevelReferrals) ? (
-                  referralsData.multiLevelReferrals.map((ref) => (
-                    <div key={ref.id} className="flex items-center justify-between p-3 border border-white/10 rounded-lg">
-                      <div className="flex flex-col">
-                        <span className="text-white font-bold">{ref.referred.firstName}</span>
-                        <span className="text-[10px] text-white/40 px-1.5 py-0.5 border border-white/10 rounded uppercase w-fit mt-1">
-                          Tier {ref.displayTier}
-                        </span>
-                      </div>
-                      <div className="text-white font-mono">${ref.totalEarned}</div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-white/40 font-mono">NO NETWORK DATA FOUND</div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Key Metrics Cards - Dashboard Layout */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
           {/* Total Referrals */}
