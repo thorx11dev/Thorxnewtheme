@@ -1344,10 +1344,6 @@ export default function UserPortal() {
         {/* Hero Section - Dashboard Style */}
         <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
           <div className="text-center mb-6 md:mb-8">
-            <div className="inline-flex items-center gap-2 bg-black text-white px-3 md:px-4 py-2 border-2 border-black mb-4">
-              <Briefcase className="w-4 h-4 md:w-5 md:h-5" />
-              <TechnicalLabel text="WORK PROTOCOL v3.21" className="text-white text-xs md:text-sm" />
-            </div>
             <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
               START <span className="text-primary">EARNING</span><br />
               WATCH & EARN REWARDS
