@@ -54,7 +54,7 @@ export function ProfileModal({ isOpen, onClose, user }: ProfileModalProps) {
             return res.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+            queryClient.invalidateQueries({ queryKey: ["auth"] });
             toast({ title: "Success", description: "Profile updated successfully." });
             onClose();
         },

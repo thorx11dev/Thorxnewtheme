@@ -95,10 +95,13 @@ function Router() {
   );
 }
 
+import ComicClickEffect from "@/components/ui/ComicClickEffect";
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <ComicClickEffect />
         <Toaster />
         <Router />
       </TooltipProvider>

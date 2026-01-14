@@ -15,6 +15,7 @@ import IndustrialTabs, { WORK_TABS } from "@/components/ui/industrial-tabs";
 import MetricsCards from "@/components/ui/metrics-cards";
 import { DailyGoalModal } from "@/components/ui/daily-goal-modal";
 import { ProfileModal } from "@/components/ui/profile-modal";
+import { cn } from "@/lib/utils";
 import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
 import { useLocation } from "wouter";
 import {
@@ -73,7 +74,9 @@ import {
   Share2,
   Link2,
   ExternalLink,
-  X,
+  User,
+  Shield,
+  Edit2,
   Settings
 } from "lucide-react";
 import {
@@ -1115,21 +1118,94 @@ export default function UserPortal() {
 
   // Dashboard Section
   function renderDashboardSection() {
+    const AVATARS = [
+      { id: "avatar1", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
+      { id: "avatar2", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" },
+      { id: "avatar3", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Luna" },
+      { id: "avatar4", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Max" },
+      { id: "avatar5", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie" },
+      { id: "avatar6", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver" },
+      { id: "avatar7", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma" },
+      { id: "avatar8", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack" },
+      { id: "avatar9", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mia" },
+      { id: "avatar10", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie" },
+    ];
+
+    const getRank = (earnings: number) => {
+      if (earnings < 100) return { title: "USELESS", icon: User, color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
+      if (earnings < 1000) return { title: "WORKER", icon: Shield, color: "text-blue-500", border: "border-blue-500", bg: "bg-blue-500" };
+      if (earnings < 5000) return { title: "SOLDIER", icon: Medal, color: "text-orange-500", border: "border-orange-500", bg: "bg-orange-500" };
+      return { title: "MAJOR", icon: Award, color: "text-red-500", border: "border-red-500", bg: "bg-red-500" };
+    };
+
+    const rank = getRank(Number(displayUser?.totalEarnings || 0));
+    const userAvatar = AVATARS.find(a => a.id === displayUser?.avatar)?.url || AVATARS[0].url;
+
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-0 relative z-10">
-        {/* Hero Section */}
-        <div className="wireframe-border p-4 md:p-8 mb-4 md:mb-8">
-          <div className="text-center mb-6 md:mb-8">
-            <h1 className="text-xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 tracking-tighter leading-tight px-1 md:px-2">
-              ASSALAM U ALAYKUM,<br />
-              <span className="text-primary bg-primary/10 px-1 md:px-2 py-1 inline-block mt-2 text-lg md:text-4xl lg:text-5xl">{displayUser?.firstName || "GUEST"}</span>
-            </h1>
-            <div className="max-w-3xl mx-auto mb-2">
-              <p className="text-xs md:text-lg text-muted-foreground leading-relaxed px-1 md:px-2">
-                Track your earnings • Monitor your progress in real-time
-              </p>
+        {/* User Identity Hero Section */}
+        <div className="wireframe-border p-6 md:p-10 mb-8 relative overflow-hidden group">
+          {/* Animated Background Element */}
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700" />
+
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10">
+            {/* Avatar with Premium Comic Border */}
+            <div className="relative">
+              <div className={cn(
+                "w-32 h-32 md:w-40 md:h-40 border-4 bg-black overflow-hidden shadow-[8px_8px_0px_#000] rotate-2 group-hover:rotate-0 transition-transform duration-500",
+                rank.border
+              )}>
+                <img
+                  src={userAvatar}
+                  alt="User Avatar"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className={cn(
+                "absolute -bottom-2 -right-2 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-black border-2 border-black shadow-[4px_4px_0px_#000]",
+                rank.bg.replace('bg-', 'bg-')
+              )}>
+                {rank.title}
+              </div>
             </div>
-            <Barcode className="w-24 md:w-32 lg:w-48 h-6 md:h-8 lg:h-10 mx-auto opacity-60" />
+
+            {/* User Info */}
+            <div className="flex-1 text-center md:text-left pt-2">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <TechnicalLabel text="OPERATIVE STATUS: ACTIVE" className="text-primary text-[10px]" />
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              </div>
+
+              <h1 className="text-4xl md:text-6xl font-black text-black mb-2 tracking-tighter uppercase leading-none">
+                {displayUser?.name || `${displayUser?.firstName} ${displayUser?.lastName}`}
+              </h1>
+
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-4">
+                <div className="flex items-center gap-2 px-4 py-2 bg-black text-white border-2 border-black shadow-[4px_4px_0px_#FF6B35]">
+                  <rank.icon className={cn("w-5 h-5", rank.color)} />
+                  <span className="text-xs font-black uppercase tracking-tighter">{rank.title} CLASS</span>
+                </div>
+
+                <div className="flex items-center gap-2 px-4 py-2 bg-white text-black border-2 border-black shadow-[4px_4px_0px_#000]">
+                  <Zap className="w-5 h-5 text-primary" />
+                  <span className="text-xs font-black uppercase tracking-tighter">LVL {Math.floor(Number(displayUser?.totalEarnings || 0) / 100) + 1}</span>
+                </div>
+
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-black border-2 border-black shadow-[4px_4px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:scale-95"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  <span className="text-xs font-black uppercase tracking-tighter">EDIT PROFILE</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Utility Barcode - Hidden on mobile */}
+            <div className="hidden lg:block pt-4 opacity-30">
+              <Barcode className="w-32 h-12" />
+              <div className="text-[8px] font-mono text-center mt-2 tracking-[0.3em]">THORX-ID: {displayUser?.id?.slice(0, 8)}</div>
+            </div>
           </div>
         </div>
 
