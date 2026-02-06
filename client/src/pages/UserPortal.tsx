@@ -1,0 +1,3416 @@
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ReferralTree } from "@/components/ui/referral-tree";
+import { useToast } from "@/hooks/use-toast";
+import TechnicalLabel from "@/components/ui/technical-label";
+import Barcode from "@/components/ui/barcode";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import EnhancedVideoPlayer from "@/components/ui/enhanced-video-player";
+import IndustrialTabs, { WORK_TABS } from "@/components/ui/industrial-tabs";
+import MetricsCards from "@/components/ui/metrics-cards";
+import { DailyGoalModal } from "@/components/ui/daily-goal-modal";
+import { ProfileModal } from "@/components/ui/profile-modal";
+import { MobileNavBar } from "@/components/ui/mobile-nav-bar";
+import { AdWebPanel } from "@/components/ui/ad-web-panel";
+import { cn } from "@/lib/utils";
+import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
+import { useLocation } from "wouter";
+import {
+  LogOut,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Calendar,
+  Clock,
+  ChevronRight,
+  ChevronLeft,
+  Eye,
+  Target,
+  Award,
+  ArrowUpRight,
+  ArrowRight,
+  ArrowLeft,
+  BarChart3,
+  PieChart,
+  Zap,
+  Copy,
+  CheckCircle2,
+  Wallet,
+  Activity,
+  Star,
+  Gift,
+  Play,
+  Pause,
+  Timer,
+  PlayCircle,
+  PauseCircle,
+  StopCircle,
+  Filter,
+  Flame,
+  HelpCircle,
+  MessageCircle,
+  Book,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
+  RotateCw,
+  Phone,
+  Mail,
+  CreditCard,
+  History,
+  Download,
+  Home,
+  Briefcase,
+  UserCheck,
+  HandHeart,
+  LifeBuoy,
+  Crown,
+  Trophy,
+  Medal,
+  Zap as ZapIcon,
+  TrendingDown,
+  RefreshCw,
+  Share2,
+  Link2,
+  ExternalLink,
+  User,
+  Shield,
+  Edit2,
+  Settings,
+  Network,
+  X,
+  Send
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
+import { SiWhatsapp, SiTelegram, SiMessenger, SiInstagram, SiTiktok, SiFacebook, SiGmail } from 'react-icons/si';
+
+// Interactive Divider Component
+const InteractiveDivider = ({ orientation = "horizontal", className = "" }: { orientation?: "horizontal" | "vertical", className?: string }) => {
+  const [isOrange, setIsOrange] = useState(false);
+
+  const handleClick = () => {
+    setIsOrange(true);
+    setTimeout(() => {
+      setIsOrange(false);
+    }, 3000); // 3 seconds for the progress bar animation
+  };
+
+  if (orientation === "vertical") {
+    return (
+      <div
+        onClick={handleClick}
+        className={cn(
+          "w-[2px] self-stretch bg-black cursor-pointer overflow-hidden relative",
+          className
+        )}
+      >
+        <AnimatePresence>
+          {isOrange && (
+            <motion.div
+              initial={{ scaleY: 0, opacity: 1 }}
+              animate={{ scaleY: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 3, ease: "linear" }}
+              style={{ transformOrigin: "top" }}
+              className="absolute inset-0 bg-primary"
+            />
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={handleClick}
+      className={cn(
+        "w-screen relative left-1/2 -translate-x-1/2 h-[2px] bg-black cursor-pointer overflow-hidden",
+        className
+      )}
+    >
+      <AnimatePresence>
+        {isOrange && (
+          <motion.div
+            initial={{ scaleX: 0, opacity: 1 }}
+            animate={{ scaleX: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 3, ease: "linear" }}
+            style={{ transformOrigin: "left" }}
+            className="absolute inset-0 bg-primary"
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Share Modal Component - Loading Screen Design Standard
+function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen: boolean; onClose: () => void; referralCode: string; userName: string; toast: any }) {
+  if (!isOpen) return null;
+
+  const shareUrl = `${window.location.origin}/?ref=${referralCode}`;
+  const shareMessage = `Hey ${userName}! Check out THORX and start earning. Use my code: ${referralCode}`;
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async (platform: string) => {
+    try {
+      if (platform === 'whatsapp') {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareMessage} ${shareUrl}`)}`, '_blank', 'noopener,noreferrer');
+      } else if (platform === 'telegram') {
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${shareMessage}`)}`, '_blank', 'noopener,noreferrer');
+      } else if (platform === 'messenger') {
+        window.open(`fb-messenger://share?link=${encodeURIComponent(shareUrl)}&app_id=${encodeURIComponent(shareUrl)}`, '_blank', 'noopener,noreferrer');
+      } else if (platform === 'instagram') {
+        window.open(`https://www.instagram.com/create/?text=${encodeURIComponent(`${shareMessage}`)}&url=${encodeURIComponent(shareUrl)}`, '_blank', 'noopener,noreferrer');
+      } else if (platform === 'tiktok') {
+        window.open(`https://www.tiktok.com/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${shareMessage}`)}`, '_blank', 'noopener,noreferrer');
+      } else if (platform === 'facebook') {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareMessage)}`, '_blank', 'noopener,noreferrer');
+      } else if (platform === 'gmail') {
+        window.open(`mailto:?subject=${encodeURIComponent('Invitation to Join THORX!')}&body=${encodeURIComponent(`${shareMessage}\n\nClick here to join: ${shareUrl}`)}`, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error("Sharing error:", error);
+      toast({ title: "Sharing Failed", description: "Could not share via this platform. Please try again." });
+    }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      toast({ title: "Link Copied!", description: "Referral link copied to clipboard." });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Copy error:", error);
+      toast({ title: "Copy Failed", description: "Could not copy link. Please try again." });
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black animate-in fade-in duration-300 share-modal-wrapper" onClick={onClose}>
+      <div className="h-screen flex flex-col items-center justify-center relative px-4 md:px-8" onClick={(e) => e.stopPropagation()}>
+
+        {/* Close Button - Upper Right Corner */}
+        <button
+          onClick={onClose}
+          className="absolute top-6 md:top-8 right-6 md:right-8 p-2 md:p-3 text-white hover:scale-125 hover:opacity-70 active:scale-110 transition-all duration-200 animate-in fade-in slide-in-from-top-4 duration-500 delay-200 z-10"
+          data-testid="button-close-modal"
+          aria-label="Close modal"
+        >
+          <X className="w-6 h-6 md:w-7 md:h-7" />
+        </button>
+
+        {/* Center Content - Referral Link & Share Icons */}
+        <div className="w-full max-w-2xl animate-in fade-in zoom-in duration-500">
+
+          {/* Referral Link Display - Input Container Style */}
+          <div className="text-center mb-12 md:mb-16">
+            <div className="bg-white/5 border border-white/20 rounded-lg p-6 md:p-8 backdrop-blur-sm animate-in fade-in duration-500 delay-100 hover:border-white/40 transition-colors duration-300" onClick={handleCopyLink}>
+              <input
+                type="text"
+                value={shareUrl}
+                readOnly
+                className="w-full bg-transparent text-white text-center text-lg md:text-xl lg:text-2xl font-black break-all outline-none select-all placeholder-white/40"
+                data-testid="input-referral-link"
+              />
+            </div>
+          </div>
+
+          {/* Social Share Icons - Below Referral Link */}
+          <div className="flex justify-center items-center gap-6 md:gap-8 mb-16 md:mb-20 flex-wrap">
+            {/* WhatsApp */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('whatsapp');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(37,211,102,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 transform origin-center"
+              data-testid="share-whatsapp"
+              aria-label="Share on WhatsApp"
+              title="Share on WhatsApp"
+            >
+              <SiWhatsapp className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Telegram */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('telegram');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,136,204,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 transform origin-center"
+              data-testid="share-telegram"
+              aria-label="Share on Telegram"
+              title="Share on Telegram"
+            >
+              <SiTelegram className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Messenger */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('messenger');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,132,250,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 transform origin-center"
+              data-testid="share-messenger"
+              aria-label="Share on Messenger"
+              title="Share on Messenger"
+            >
+              <SiMessenger className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Instagram */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('instagram');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(224,33,103,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-250 transform origin-center"
+              data-testid="share-instagram"
+              aria-label="Share on Instagram"
+              title="Share on Instagram"
+            >
+              <SiInstagram className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* TikTok */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('tiktok');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(0,0,0,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 transform origin-center"
+              data-testid="share-tiktok"
+              aria-label="Share on TikTok"
+              title="Share on TikTok"
+            >
+              <SiTiktok className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Facebook */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('facebook');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(59,89,152,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-350 transform origin-center"
+              data-testid="share-facebook"
+              aria-label="Share on Facebook"
+              title="Share on Facebook"
+            >
+              <SiFacebook className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+            {/* Gmail */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare('gmail');
+              }}
+              className="text-white hover:scale-125 hover:drop-shadow-[0_0_12px_rgba(221,75,57,0.6)] active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400 transform origin-center"
+              data-testid="share-gmail"
+              aria-label="Share via Gmail"
+              title="Share via Gmail"
+            >
+              <SiGmail className="w-8 h-8 md:w-10 md:h-10" />
+            </button>
+          </div>
+        </div>
+
+        {/* Footer - Bottom with Copy Button on Right */}
+        <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 md:gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-500">
+          <p className="text-white text-base md:text-lg lg:text-xl font-black tracking-widest">REFERRAL SYSTEM</p>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopyLink();
+            }}
+            className={`p-2 md:p-3 text-white transition-all duration-300 hover:scale-125 active:scale-95 transform ${copied
+              ? 'scale-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]'
+              : ''
+              }`}
+            data-testid="button-copy-referral-link"
+            aria-label="Copy referral link"
+            title="Copy referral link"
+          >
+            <Copy className="w-5 h-5 md:w-6 md:h-6" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// Animated Placeholder Component for Contact Form
+function AnimatedPlaceholder({ examples }: { examples: string[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentText, setCurrentText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    const example = examples[currentIndex];
+    let timeout: NodeJS.Timeout;
+
+    if (isTyping) {
+      if (currentText.length < example.length) {
+        timeout = setTimeout(() => {
+          setCurrentText(example.slice(0, currentText.length + 1));
+        }, 100);
+      } else {
+        timeout = setTimeout(() => setIsTyping(false), 1000);
+      }
+    } else {
+      if (currentText.length > 0) {
+        timeout = setTimeout(() => {
+          setCurrentText(currentText.slice(0, -1));
+        }, 50);
+      } else {
+        setCurrentIndex((prev) => (prev + 1) % examples.length);
+        setIsTyping(true);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [currentText, currentIndex, examples, isTyping]);
+
+  return (
+    <span className="text-muted-foreground">
+      {currentText}<span className="animate-pulse">|</span>
+    </span>
+  );
+}
+
+// Interfaces
+interface Earning {
+  id: string;
+  type: string;
+  amount: string;
+  description: string;
+  status: string;
+  createdAt: string;
+}
+
+interface ReferralUser {
+  id: string;
+  referrerId: string;
+  referredId: string;
+  status: string;
+  totalEarned: string;
+  createdAt: string;
+  referred: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    createdAt: string;
+  };
+}
+
+interface AdItem {
+  id: string;
+  title: string;
+  type: "video" | "banner" | "interactive";
+  duration: number;
+  reward: string;
+  description: string;
+  difficulty: "easy" | "medium" | "hard";
+  category: string;
+  thumbnail?: string;
+}
+
+// Sample data
+const availableAds: AdItem[] = [
+  {
+    id: "ad_001",
+    title: "CRYPTO TRADING PLATFORM",
+    type: "video",
+    duration: 30,
+    reward: "2.50",
+    description: "Watch this crypto trading platform advertisement",
+    difficulty: "easy",
+    category: "Finance",
+  },
+  {
+    id: "ad_002",
+    title: "MOBILE GAME DOWNLOAD",
+    type: "video",
+    duration: 15,
+    reward: "1.25",
+    description: "Download and try this exciting mobile game",
+    difficulty: "easy",
+    category: "Gaming",
+  },
+  {
+    id: "ad_003",
+    title: "E-COMMERCE DEAL",
+    type: "interactive",
+    duration: 45,
+    reward: "3.75",
+    description: "Interactive advertisement for latest e-commerce deals",
+    difficulty: "medium",
+    category: "Shopping",
+  },
+  {
+    id: "ad_004",
+    title: "FITNESS APP PROMOTION",
+    type: "video",
+    duration: 20,
+    reward: "1.75",
+    description: "Learn about this revolutionary fitness application",
+    difficulty: "easy",
+    category: "Health",
+  },
+];
+
+const sections = [
+  { id: "dashboard", name: "Dashboard", icon: Home },
+  { id: "work", name: "Work", icon: Briefcase },
+  { id: "referrals", name: "Referrals", icon: UserCheck },
+  { id: "payout", name: "Payout", icon: CreditCard },
+  { id: "help", name: "Help", icon: LifeBuoy },
+];
+
+export default function UserPortal() {
+  const { user, logout, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Share Modal State
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showReferralLink, setShowReferralLink] = useState(false);
+  const [showDailyGoalModal, setShowDailyGoalModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Current section state
+  const [currentSection, setCurrentSection] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // Work section states
+  const [selectedAd, setSelectedAd] = useState<AdItem | null>(null);
+  const [isWatching, setIsWatching] = useState(false);
+  const [watchProgress, setWatchProgress] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  // Enhanced work section states
+  const [activeWorkTab, setActiveWorkTab] = useState<string>("player1");
+  const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
+  // Enhanced work section configuration complete
+
+  const [completedAds, setCompletedAds] = useState<Set<string>>(new Set());
+
+  // Web Panel State
+  const [isWebPanelOpen, setIsWebPanelOpen] = useState(false);
+  const [webPanelData, setWebPanelData] = useState({
+    productUrl: "",
+    adId: "",
+    reward: "0.00"
+  });
+
+  const handleWebPanelComplete = () => {
+    // Finalize the ad completion
+    setCompletedVideos(prev => new Set(Array.from(prev).concat(webPanelData.adId)));
+
+    // Record ad view if needed (User might want this connected to backend)
+    recordAdViewMutation.mutate({
+      adId: webPanelData.adId,
+      adType: 'video_panel',
+      duration: 30, // 30s video + 30s panel
+      completed: true,
+      earnedAmount: webPanelData.reward
+    });
+
+    toast({
+      title: "Task Completed!",
+      description: `You earned $${webPanelData.reward} for your attention.`,
+      variant: "default",
+      className: "bg-green-600 text-white border-none"
+    });
+
+    setIsWebPanelOpen(false);
+  };
+
+
+  // Fetch user data
+  const { data: earningsData } = useQuery({
+    queryKey: ["earnings"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/earnings?limit=10");
+      return await response.json() as { earnings: Earning[]; total: string };
+    },
+    enabled: !!user,
+  });
+
+  const { data: referralsData } = useQuery({
+    queryKey: ["referrals"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/referrals");
+      return await response.json() as {
+        referrals: ReferralUser[];
+        stats: { count: number; totalEarned: string }
+      };
+    },
+    enabled: !!user,
+  });
+
+  const { data: commissionsData } = useQuery({
+    queryKey: ["commissions"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/commissions");
+      return await response.json() as { commissions: any[] };
+    },
+    enabled: !!user,
+  });
+
+  const { data: todayAdViews } = useQuery({
+    queryKey: ["ad-views", "today"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/ad-views/today");
+      return await response.json() as { count: number };
+    },
+    enabled: !!user,
+  });
+
+  // ============================================
+  // REAL-TIME ANALYTICS DATA QUERIES
+  // ============================================
+
+  // Dashboard statistics - comprehensive real-time data
+  const { data: dashboardStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["dashboard", "stats"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/dashboard/stats");
+      return await response.json();
+    },
+    enabled: !!user,
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+  });
+
+  // Earnings history for charts
+  const { data: earningsHistory } = useQuery({
+    queryKey: ["earnings", "history", "week"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/earnings/history?period=week");
+      return await response.json() as Array<{ date: string; amount: string }>;
+    },
+    enabled: !!user,
+    refetchInterval: 60000, // Auto-refresh every 60 seconds
+  });
+
+  // Referral leaderboard - ranked referrals
+  const {
+    data: referralLeaderboard,
+    isLoading: isReferralLoading,
+    isError: isReferralError,
+    error: referralError
+  } = useQuery({
+    queryKey: ["referrals", "leaderboard"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/referrals/leaderboard");
+      if (!response.ok) {
+        throw new Error("Failed to fetch referral tree");
+      }
+      return await response.json();
+    },
+    enabled: !!user,
+    retry: 2,
+    refetchInterval: 60000, // Auto-refresh every 60 seconds
+  });
+
+  // Transaction history - combined earnings/withdrawals/commissions
+  const { data: transactionHistory } = useQuery({
+    queryKey: ["transactions", "history"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/transactions/history?limit=50");
+      return await response.json();
+    },
+    enabled: !!user,
+  });
+
+  // Record ad view mutation
+  const recordAdViewMutation = useMutation({
+    mutationFn: async (data: {
+      adId: string;
+      adType: string;
+      duration: number;
+      completed: boolean;
+      earnedAmount: string;
+    }) => {
+      const response = await apiRequest("POST", "/api/ad-view", data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ad-views"] });
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+    },
+  });
+
+  // Chat and Help Section state
+  const [activeHelpTab, setActiveHelpTab] = useState("guide");
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 1,
+      text: "Hello! Welcome to THORX Support. I'm your AI assistant, here to explain our Halal earning model where you convert attention into currency. How can I assist you today?",
+      sender: "support",
+      timestamp: new Date(Date.now() - 5000).toISOString(),
+      avatar: "TS"
+    }
+  ]);
+  const [newMessage, setNewMessage] = useState<string>('');
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    description: ""
+  });
+  const [isContactSubmitting, setIsContactSubmitting] = useState(false);
+
+  // Handle contact form submission
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!contactForm.name || !contactForm.email || !contactForm.description) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all fields before submitting.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsContactSubmitting(true);
+
+    try {
+      const response = await apiRequest("POST", "/api/contact", {
+        name: contactForm.name,
+        email: contactForm.email,
+        description: contactForm.description
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Message Sent!",
+          description: "We'll get back to you within 24 hours."
+        });
+        setContactForm({ name: "", email: "", description: "" });
+      } else {
+        throw new Error("Failed to send message");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsContactSubmitting(false);
+    }
+  };
+
+  // Payout section states
+  const [currentStep, setCurrentStep] = useState(1);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [selectedMethod, setSelectedMethod] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState({
+    name: "",
+    number: "",
+    id: "",
+    iban: ""
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Referral section states
+  const [leaderboardTab, setLeaderboardTab] = useState<"l1" | "l2">("l1");
+
+  // Hero section interactive states (30s toggle)
+  const [isWorkHeroToggled, setIsWorkHeroToggled] = useState(false);
+  const [isReferralsHeroToggled, setIsReferralsHeroToggled] = useState(false);
+  const [isPayoutHeroToggled, setIsPayoutHeroToggled] = useState(false);
+  const [isHelpHeroToggled, setIsHelpHeroToggled] = useState(false);
+
+  const handleHeroToggle = (setter: any) => {
+    setter((prev: boolean) => !prev);
+  };
+
+  const chatMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      // Add auth token if available
+      if (user?.access_token) {
+        headers['Authorization'] = `Bearer ${user.access_token}`;
+      }
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ message: message.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      const supportMessage = {
+        id: chatMessages.length + 2,
+        text: data.response,
+        sender: "support",
+        timestamp: new Date().toISOString(),
+        avatar: "TS"
+      };
+      setChatMessages(prev => [...prev, supportMessage]);
+    },
+    onError: (error) => {
+      console.error("Chat error:", error);
+      const errorMessage = {
+        id: chatMessages.length + 2,
+        text: "Sorry, I'm having trouble connecting right now. Please try again or use the Contact section to reach our team.",
+        sender: "support",
+        timestamp: new Date().toISOString(),
+        avatar: "TS"
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    }
+  });
+
+  // Fetch chat history
+  const { data: chatHistoryData, isLoading: isChatHistoryLoading } = useQuery<{ messages: Array<{ id: number; text: string; sender: string; timestamp: string; avatar: string }> }>({
+    queryKey: ["chat-history"],
+    queryFn: async () => {
+      const headers: Record<string, string> = {};
+
+      // Add auth token if available
+      if (user?.access_token) {
+        headers['Authorization'] = `Bearer ${user.access_token}`;
+      }
+
+      const response = await fetch(`/api/chat/history?limit=50`, {
+        headers
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch chat history");
+      }
+      return await response.json() as { messages: Array<{ id: number; text: string; sender: string; timestamp: string; avatar: string }> };
+    },
+    enabled: !!user, // Only fetch if user exists
+  });
+
+  // Handle chat history data with useEffect
+  useEffect(() => {
+    if (chatHistoryData?.messages) {
+      setChatMessages([{
+        id: 1,
+        text: "Hello! Welcome to THORX Support. I'm your AI assistant, here to explain our Halal earning model where you convert attention into currency. How can I assist you today?",
+        sender: "support",
+        timestamp: new Date(Date.now() - 5000).toISOString(),
+        avatar: "TS"
+      }, ...chatHistoryData.messages.map((msg: { id: number; text: string; sender: string; timestamp: string; avatar: string }) => ({ ...msg, id: Date.now() + Math.random() }))]); // Append fetched messages
+    }
+  }, [chatHistoryData]);
+
+  // Handle sending a message
+  const handleSendMessage = async () => {
+    if (!newMessage || typeof newMessage !== 'string' || !newMessage.trim()) return;
+
+    const userMessage = {
+      id: Date.now(), // Simple unique ID
+      text: newMessage,
+      sender: "user",
+      timestamp: new Date().toISOString(),
+      avatar: user?.firstName?.charAt(0).toUpperCase() || "U"
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    const messageToSend = newMessage;
+    setNewMessage('');
+
+    try {
+      await chatMutation.mutateAsync(messageToSend);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      // Add an error message to the chat
+      const errorMessage = {
+        id: Date.now() + 1,
+        text: "Message failed to send. Please try again.",
+        sender: "support",
+        timestamp: new Date().toISOString(),
+        avatar: "TS"
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    }
+  };
+
+  // Navigation handlers
+  // Scroll to top on section change
+  useEffect(() => {
+    const activeSection = document.querySelector('.cinematic-section.active');
+    if (activeSection) {
+      activeSection.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  }, [currentSection]);
+
+  const navigateToSection = useCallback((index: number) => {
+    if (index >= 0 && index < sections.length && index !== currentSection) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentSection(index);
+        setIsTransitioning(false);
+      }, 150);
+    }
+  }, [currentSection]);
+
+  const nextSection = useCallback(() => {
+    navigateToSection((currentSection + 1) % sections.length);
+  }, [currentSection, navigateToSection]);
+
+  const prevSection = useCallback(() => {
+    navigateToSection((currentSection - 1 + sections.length) % sections.length);
+  }, [currentSection, navigateToSection]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case "ArrowLeft":
+          e.preventDefault();
+          prevSection();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          nextSection();
+          break;
+        case "Escape":
+          e.preventDefault();
+          setLocation("/");
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nextSection, prevSection, setLocation]);
+
+  // Ad watching timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isWatching && selectedAd && watchProgress < 100) {
+      interval = setInterval(() => {
+        setWatchProgress(prev => {
+          const newProgress = prev + (100 / selectedAd.duration);
+          if (newProgress >= 100) {
+            setIsWatching(false);
+            setIsCompleted(true);
+
+            recordAdViewMutation.mutate({
+              adId: selectedAd.id,
+              adType: selectedAd.type,
+              duration: selectedAd.duration,
+              completed: true,
+              earnedAmount: selectedAd.reward,
+            });
+
+            setCompletedAds(prev => new Set(Array.from(prev).concat(selectedAd.id)));
+
+            toast({
+              title: "Ad Completed! 🎉",
+              description: `You earned ${formatCurrency(selectedAd.reward)}`,
+              variant: "default",
+            });
+
+            return 100;
+          }
+          return newProgress;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isWatching, selectedAd, watchProgress, recordAdViewMutation, toast]);
+
+  // If no user data and not loading, show default guest user
+  const displayUser = user || {
+    id: "guest",
+    firstName: "Guest",
+    lastName: "User",
+    email: "guest@thorx.com",
+    identity: "GUEST_USER",
+    phone: "+92 300 0000000",
+    referralCode: "GUEST-CODE",
+    totalEarnings: "0.00",
+    availableBalance: "0.00",
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Utility functions
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatCurrency = (amount: string | number) => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return `PKR ${numAmount.toFixed(2)}`;
+  };
+
+  const copyReferralCode = () => {
+    navigator.clipboard.writeText(displayUser?.referralCode || 'GUEST-CODE');
+    toast({
+      title: "Copied!",
+      description: "Referral code copied to clipboard",
+    });
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getAdTypeIcon = (type: string) => {
+    switch (type) {
+      case 'video': return '🎥';
+      case 'banner': return '📰';
+      case 'interactive': return '🎮';
+      default: return '📺';
+    }
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      case 'medium': return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'hard': return 'bg-rose-100 text-rose-800 border-rose-300';
+      default: return 'bg-slate-100 text-slate-800 border-slate-300';
+    }
+  };
+
+  const getDifficultyColorDark = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-emerald-900/30 text-emerald-300 border-emerald-600';
+      case 'medium': return 'bg-amber-900/30 text-amber-300 border-amber-600';
+      case 'hard': return 'bg-rose-900/30 text-rose-300 border-rose-600';
+      default: return 'bg-slate-800 text-slate-300 border-slate-600';
+    }
+  };
+
+  const startWatching = (ad: AdItem) => {
+    setSelectedAd(ad);
+    setWatchProgress(0);
+    setIsCompleted(false);
+    setIsWatching(true);
+  };
+
+  // Real earnings chart data from API
+  const earningsChartData = earningsHistory && earningsHistory.length > 0
+    ? earningsHistory.map(item => ({
+      date: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
+      earnings: parseFloat(item.amount),
+      ads: 0, // Can be enhanced later
+      tasks: 0 // Can be enhanced later
+    }))
+    : [
+      { date: 'Mon', earnings: 0, ads: 0, tasks: 0 },
+      { date: 'Tue', earnings: 0, ads: 0, tasks: 0 },
+      { date: 'Wed', earnings: 0, ads: 0, tasks: 0 },
+      { date: 'Thu', earnings: 0, ads: 0, tasks: 0 },
+      { date: 'Fri', earnings: 0, ads: 0, tasks: 0 },
+      { date: 'Sat', earnings: 0, ads: 0, tasks: 0 },
+      { date: 'Sun', earnings: 0, ads: 0, tasks: 0 }
+    ];
+
+  // Calculate real-time earnings breakdown from actual data
+  const calculateEarningsBreakdown = () => {
+    // Check if we are inside a hook or functional component context
+    // These values are used for the chart, we should ensure they are stable
+    const adViewsEarnings = (todayAdViews?.count || 0) * 2.5;
+    const referralEarnings = parseFloat(referralsData?.stats?.totalEarned || '0');
+    const totalEarnings = parseFloat(displayUser?.totalEarnings || '0');
+
+    // Calculate remaining from other sources
+    const otherEarnings = totalEarnings - adViewsEarnings - referralEarnings;
+    const dailyTasksEarnings = Math.max(0, otherEarnings * 0.7);
+    const bonusesEarnings = Math.max(0, otherEarnings * 0.3);
+
+    const total = adViewsEarnings + referralEarnings + dailyTasksEarnings + bonusesEarnings;
+
+    // Theme-consistent color palette: Primary orange, black, beige accents, white
+    const chartColors = {
+      primary: '#FF6B35',      // Primary orange
+      secondary: '#000000',    // Black
+      tertiary: '#E8DCC4',     // Beige
+      quaternary: '#FFFFFF'    // White (with black border for visibility)
+    };
+
+    // Calculate percentages
+    if (total === 0) {
+      return [
+        { name: 'Ad Views', value: 65, color: chartColors.primary },
+        { name: 'Referrals', value: 25, color: chartColors.secondary },
+        { name: 'Daily Tasks', value: 7, color: chartColors.tertiary },
+        { name: 'Bonuses', value: 3, color: chartColors.quaternary }
+      ];
+    }
+
+    return [
+      {
+        name: 'Ad Views',
+        value: Math.round((adViewsEarnings / total) * 100),
+        color: chartColors.primary
+      },
+      {
+        name: 'Referrals',
+        value: Math.round((referralEarnings / total) * 100),
+        color: chartColors.secondary
+      },
+      {
+        name: 'Daily Tasks',
+        value: Math.round((dailyTasksEarnings / total) * 100),
+        color: chartColors.tertiary
+      },
+      {
+        name: 'Bonuses',
+        value: Math.round((bonusesEarnings / total) * 100),
+        color: chartColors.quaternary
+      }
+    ];
+  };
+
+  const earningTypesData = calculateEarningsBreakdown();
+
+  const dailyGoal = 50;
+  const currentProgress = parseFloat(displayUser?.totalEarnings || '0.00');
+  const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
+  const dailyLimit = 50;
+  const remainingAds = dailyLimit - (todayAdViews?.count || 0);
+
+  return (
+    <div className="min-h-screen bg-background relative">
+      {/* Industrial Grid Overlay */}
+      <div className="industrial-grid fixed inset-0 z-0" />
+
+      {/* Navigation Header */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white" role="navigation" aria-label="Main navigation">
+        <div className="max-w-[1600px] mx-auto px-4 md:px-12 h-20 md:h-24 flex items-center justify-between">
+          {/* Brand/Logo Area */}
+          <div className="flex items-center h-full">
+            <div className="flex flex-col cursor-pointer" onClick={() => navigateToSection(0)}>
+              <span className="text-2xl md:text-4xl font-black tracking-tighter text-black leading-none">THORX</span>
+            </div>
+
+            <InteractiveDivider orientation="vertical" className="mx-4 md:mx-8" />
+
+            {/* Desktop Navigation Link Indicators - Reference Design Match */}
+            <div className="hidden lg:flex items-center ml-6">
+              {/* Tabs moved to center */}
+            </div>
+          </div>
+
+          {/* Centered Desktop Navigation Tabs */}
+          <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center">
+            <div className="flex items-center bg-black/95 backdrop-blur-sm border border-white/10 rounded-full p-2 gap-2 shadow-2xl ring-1 ring-white/5">
+              {sections.map((section, index) => {
+                const Icon = section.icon;
+                const isActive = currentSection === index;
+                return (
+                  <motion.button
+                    key={section.id}
+                    onClick={() => navigateToSection(index)}
+                    layout
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    className={cn(
+                      "relative flex items-center justify-center rounded-full transition-all duration-300",
+                      isActive ? "bg-primary pr-6 pl-2 py-2" : "w-12 h-12 hover:bg-white/10"
+                    )}
+                    data-testid={`nav-tab-${section.id}`}
+                    aria-label={`Go to ${section.name}`}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    <motion.div
+                      layout="position"
+                      className={cn(
+                        "flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-300",
+                        isActive ? "bg-white/20 text-white" : "text-zinc-400 group-hover:text-white"
+                      )}
+                    >
+                      <Icon size={20} strokeWidth={2.5} />
+                    </motion.div>
+
+                    <AnimatePresence mode="popLayout">
+                      {isActive && (
+                        <motion.span
+                          initial={{ opacity: 0, width: 0, x: -10 }}
+                          animate={{ opacity: 1, width: "auto", x: 0 }}
+                          exit={{ opacity: 0, width: 0, x: -10 }}
+                          transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+                          className="ml-3 font-bold text-sm text-white whitespace-nowrap overflow-hidden tracking-wide"
+                        >
+                          {section.name.toUpperCase()}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <Button
+              onClick={() => setShowProfileModal(true)}
+              variant="outline"
+              size="sm"
+              className="border-3 border-black text-black bg-white hover:bg-primary shadow-[3px_3px_0px_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+              style={{ borderRadius: '0' }}
+              data-testid="button-profile"
+            >
+              <Settings className="w-5 h-5 stroke-[2px]" />
+            </Button>
+            <Button
+              onClick={() => logout()}
+              variant="outline"
+              size="sm"
+              className="border-3 border-black text-black bg-white hover:bg-rose-500 hover:text-white shadow-[3px_3px_0px_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+              style={{ borderRadius: '0' }}
+              data-testid="button-logout"
+            >
+              <LogOut className="w-5 h-5 stroke-[2px]" />
+            </Button>
+          </div>
+        </div>
+        <InteractiveDivider />
+      </nav >
+
+      {/* Desktop Navigation Controls - Landing Page Style (Hidden on Mobile for User Portal) */}
+      < div className="arrow-keys-guide hidden md:flex" >
+        <div className="flex items-center gap-3">
+          <button
+            onClick={prevSection}
+            className="arrow-key"
+            disabled={currentSection === 0}
+            data-testid="button-prev-section"
+          >
+            ←
+          </button>
+          <button
+            onClick={nextSection}
+            className="arrow-key"
+            disabled={currentSection === sections.length - 1}
+            data-testid="button-next-section"
+          >
+            →
+          </button>
+        </div>
+      </div >
+
+      {/* Mobile Bottom Tab Bar */}
+      {/* Mobile Bottom Tab Bar - REBUILT */}
+      <MobileNavBar
+        sections={sections}
+        currentSection={currentSection}
+        onSectionChange={navigateToSection}
+      />
+
+      {/* Section Content */}
+      <div className="pt-24 md:pt-24 pb-24 md:pb-12">
+        <AnimatePresence mode="wait">
+          <motion.section
+            key={sections[currentSection].id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{
+              duration: 0.5,
+              ease: [0.16, 1, 0.3, 1]
+            }}
+            className="cinematic-section active"
+            data-testid={`section-${sections[currentSection].id}`}
+          >
+            {currentSection === 0 && renderDashboardSection()}
+            {currentSection === 1 && renderWorkSection()}
+            {currentSection === 2 && renderReferralsSection()}
+            {currentSection === 3 && renderPayoutSection()}
+            {currentSection === 4 && renderHelpSection()}
+          </motion.section>
+        </AnimatePresence>
+      </div>
+
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={displayUser}
+      />
+
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        referralCode={displayUser?.referralCode || ""}
+        userName={displayUser?.firstName || ""}
+        toast={toast}
+      />
+
+      <DailyGoalModal
+        isOpen={showDailyGoalModal}
+        onClose={() => setShowDailyGoalModal(false)}
+        adsWatched={todayAdViews?.count || 0}
+        adsTarget={dailyLimit}
+      />
+
+      <AdWebPanel
+        isOpen={isWebPanelOpen}
+        productUrl={webPanelData.productUrl}
+        adId={webPanelData.adId}
+        reward={webPanelData.reward}
+        onComplete={handleWebPanelComplete}
+        onClose={() => setIsWebPanelOpen(false)}
+      />
+    </div >
+  );
+
+  // Dashboard Section
+  function renderDashboardSection() {
+    const AVATARS = [
+      { id: "avatar1", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
+      { id: "avatar2", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" },
+      { id: "avatar3", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Luna" },
+      { id: "avatar4", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Max" },
+      { id: "avatar5", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie" },
+      { id: "avatar6", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver" },
+      { id: "avatar7", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma" },
+      { id: "avatar8", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack" },
+      { id: "avatar9", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mia" },
+      { id: "avatar10", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie" },
+    ];
+
+    const getRank = (earnings: number) => {
+      if (earnings < 100) return { title: "USELESS", icon: User, color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
+      if (earnings < 1000) return { title: "WORKER", icon: Shield, color: "text-blue-500", border: "border-blue-500", bg: "bg-blue-500" };
+      if (earnings < 5000) return { title: "SOLDIER", icon: Medal, color: "text-orange-500", border: "border-orange-500", bg: "bg-orange-500" };
+      return { title: "MAJOR", icon: Award, color: "text-red-500", border: "border-red-500", bg: "bg-red-500" };
+    };
+
+    const rank = getRank(Number(displayUser?.totalEarnings || 0));
+
+    // Improved Avatar Logic:
+    // 1. Try to find ID in predefined list
+    // 2. If not found, check if it's a "custom" string (data: or http) by simply using it
+    // 3. Fallback to default
+    let userAvatar = AVATARS[0].url;
+
+    if (displayUser?.avatar) {
+      const predefined = AVATARS.find(a => a.id === displayUser.avatar);
+      if (predefined) {
+        userAvatar = predefined.url;
+      } else if (displayUser.avatar !== 'default' && displayUser.avatar.length > 20) {
+        // Assume it's a custom Base64 or URL
+        userAvatar = displayUser.avatar;
+      }
+    }
+
+    console.log("[UserPortal] Rendering with avatar:", {
+      displayUserAvatar: displayUser?.avatar ? displayUser.avatar.substring(0, 30) + "..." : "undefined",
+      resolvedUrl: userAvatar.substring(0, 50) + "...",
+      isLoading: isLoading,
+      isAuthenticated: !!user
+    });
+
+    return (
+      <motion.div
+        initial="initial"
+        animate="animate"
+        variants={{
+          animate: {
+            transition: {
+              staggerChildren: 0.05
+            }
+          }
+        }}
+        className="max-w-[1600px] mx-auto px-4 md:px-12 py-8 md:pt-4 md:pb-12 relative z-10 w-full"
+      >
+        {/* User Identity Hero Section */}
+        <motion.div
+          variants={{
+            initial: { opacity: 0, y: 20 },
+            animate: { opacity: 1, y: 0 }
+          }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="wireframe-border p-6 md:p-12 mb-12 relative overflow-hidden group shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-shadow duration-500"
+        >
+          {/* Animated Background Element */}
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700" />
+
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10">
+            {/* Avatar with Premium Comic Border */}
+            <div className="relative">
+              <div className={cn(
+                "w-32 h-32 md:w-40 md:h-40 border-4 bg-black overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.1)] rotate-2 group-hover:rotate-0 transition-transform duration-500",
+                rank.border
+              )}>
+                <img
+                  src={userAvatar}
+                  alt="User Avatar"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className={cn(
+                "absolute -bottom-2 -right-2 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-black border-2 border-black shadow-[0_4px_8px_rgba(0,0,0,0.15)]",
+                rank.bg.replace('bg-', 'bg-')
+              )}>
+                {rank.title}
+              </div>
+            </div>
+
+            {/* User Info */}
+            <div className="flex-1 text-center md:text-left pt-2">
+
+
+              <h1 className="text-4xl md:text-6xl font-black text-black mb-2 tracking-tighter uppercase leading-none">
+                {displayUser?.name || `${displayUser?.firstName} ${displayUser?.lastName}`}
+              </h1>
+
+
+            </div>
+
+            {/* Utility Barcode - Hidden on mobile */}
+
+          </div>
+        </motion.div>
+
+        <InteractiveDivider className="mb-12" />
+
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
+          {/* Total Earnings */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
+            data-testid="card-total-earnings"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Wallet className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-total-earnings">{formatCurrency(dashboardStats?.totalEarnings || displayUser?.totalEarnings || '0.00')}</p>
+          </motion.div>
+
+          {/* Available Balance */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
+            data-testid="card-available-balance"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <DollarSign className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-available-balance">{formatCurrency(dashboardStats?.availableBalance || displayUser?.availableBalance || '0.00')}</p>
+          </motion.div>
+
+          {/* Active Referrals */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+            data-testid="card-active-referrals"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Users className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
+              <TechnicalLabel text="ACTIVE REFERRALS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-referrals-count">{dashboardStats?.referralCount || referralsData?.stats.count || 0}</p>
+          </motion.div>
+
+          {/* Daily Progress */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+            data-testid="card-daily-goal"
+            onClick={() => setShowDailyGoalModal(true)}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Target className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-daily-progress">{Math.round(dashboardStats?.dailyGoalProgress || progressPercentage)}%</p>
+            <Progress value={dashboardStats?.dailyGoalProgress || progressPercentage} className="progress-enhanced h-2 mb-3" />
+          </motion.div>
+        </div>
+
+        <InteractiveDivider className="my-12" />
+
+        {/* Charts Section */}
+        <div className="grid lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
+          {/* Weekly Earnings Chart */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 20 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            whileHover={{ scale: 1.01 }}
+            className="group bg-card border-2 border-muted-foreground/20 hover:border-primary/30 transition-all duration-300 shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10 overflow-hidden"
+          >
+            <CardHeader className="border-b border-muted-foreground/20 group-hover:border-primary/30 transition-colors p-3 md:p-6 bg-white">
+              <CardTitle className="flex items-center justify-between">
+                <TechnicalLabel text="WEEKLY EARNINGS" className="text-foreground group-hover:text-primary/90 transition-colors text-xs md:text-sm" />
+                <div className="p-1 md:p-2 bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-all duration-300">
+                  <BarChart3 className="w-3 h-3 md:w-4 md:h-4 text-primary" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2 md:p-4">
+              <ResponsiveContainer width="100%" height={isMobile ? 200 : 280} minHeight={isMobile ? 180 : 250}>
+                <AreaChart data={earningsChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.2} />
+                  <XAxis
+                    dataKey="date"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={isMobile ? 8 : 10}
+                    fontFamily="var(--font-sans)"
+                    tickLine={false}
+                    axisLine={false}
+                    hide={isMobile}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={isMobile ? 8 : 10}
+                    fontFamily="var(--font-sans)"
+                    tickFormatter={(value) => isMobile ? `${value}` : `PKR ${value}`}
+                    tickLine={false}
+                    axisLine={false}
+                    hide={isMobile}
+                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Tooltip
+                    formatter={(value) => [`PKR ${value}`, 'Earnings']}
+                    labelFormatter={(label) => `Day: ${label}`}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '2px solid hsl(var(--primary))',
+                      borderRadius: '4px',
+                      color: 'hsl(var(--primary))',
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: isMobile ? '10px' : '12px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
+                    }}
+                    labelStyle={{ color: 'hsl(var(--primary))' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="earnings"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={isMobile ? 2 : 3}
+                    fill="url(#earningsGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </motion.div>
+
+          {/* Earnings Breakdown */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 20 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            whileHover={{ scale: 1.01 }}
+            className="group bg-card border-2 border-black hover:border-primary transition-all duration-300 shadow-[8px_8px_0px_#000] hover:shadow-[12px_12px_0px_#000] hover:shadow-primary/10 overflow-hidden"
+          >
+            <CardHeader className="border-b-2 border-black group-hover:border-primary transition-colors p-3 md:p-6 bg-white">
+              <CardTitle className="flex items-center justify-between">
+                <TechnicalLabel text="EARNINGS BREAKDOWN" className="text-foreground group-hover:text-primary/90 transition-colors text-xs md:text-sm" />
+                <div className="p-1 md:p-2 bg-primary/10 border-2 border-black group-hover:bg-primary/20 transition-all duration-300">
+                  <PieChart className="w-3 h-3 md:w-4 md:h-4 text-primary" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2 md:p-4">
+              <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+                {/* Pie Chart */}
+                <div className="flex-1 w-full flex justify-center">
+                  <ResponsiveContainer width="100%" height={isMobile ? 180 : 280} minHeight={isMobile ? 160 : 250}>
+                    <RechartsPieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                      <Pie
+                        data={earningTypesData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={isMobile ? 60 : 90}
+                        innerRadius={0}
+                        dataKey="value"
+                        stroke="#000000"
+                        strokeWidth={3}
+                        label={false}
+                      >
+                        {earningTypesData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={entry.color}
+                            stroke="#000000"
+                            strokeWidth={3}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string) => [`${value}%`, name]}
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          border: '3px solid #000000',
+                          borderRadius: '0px',
+                          padding: isMobile ? '8px' : '12px',
+                          fontFamily: 'var(--font-sans)',
+                          fontSize: isMobile ? '10px' : '13px',
+                          fontWeight: '900',
+                          boxShadow: '4px 4px 0px #000000'
+                        }}
+                        labelStyle={{
+                          color: '#000000',
+                          fontWeight: '900',
+                          marginBottom: '4px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          fontSize: isMobile ? '9px' : '11px'
+                        }}
+                        itemStyle={{
+                          color: 'hsl(var(--primary))',
+                          fontWeight: '900',
+                          fontSize: isMobile ? '9px' : '12px'
+                        }}
+                      />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Legend */}
+                <div className="w-full md:w-auto grid grid-cols-2 md:flex md:flex-col gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 bg-background border border-black md:border-2 hover:bg-primary/5 transition-colors">
+                  {earningTypesData.map((entry, index) => (
+                    <div key={`legend-${index}`} className="flex items-center gap-1.5 md:gap-2">
+                      <div
+                        className="w-3 h-3 md:w-4 md:h-4 border border-black md:border-2 flex-shrink-0"
+                        style={{ backgroundColor: entry.color }}
+                      />
+                      <div className="text-xs font-black text-foreground whitespace-nowrap">
+                        {entry.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </motion.div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Enhanced Work Section
+  function renderWorkSection() {
+    // Handle video completion
+    const handleVideoComplete = (tabId: string, earnings: string) => {
+      // Instead of completing immediately, open the Web Panel
+      const activeTabData = WORK_TABS.find(tab => tab.id === activeWorkTab);
+
+      setWebPanelData({
+        productUrl: activeTabData?.productUrl || "https://www.google.com", // Fallback if undefined
+        adId: tabId,
+        reward: earnings
+      });
+
+      setIsWebPanelOpen(true);
+
+      // Removed immediate toast
+    };
+
+    // Get current video tab data for player
+    const activeTabData = WORK_TABS.find(tab => tab.id === activeWorkTab);
+    const currentVideoTab = {
+      id: activeWorkTab,
+      title: activeTabData?.title || "PLAYER 1",
+      icon: "play",
+      color: "primary",
+      videoUrl: `#${activeWorkTab}-video`,
+      reward: "2.50",
+      description: activeTabData?.description || "Watch video ads to earn rewards"
+    };
+
+    return (
+      <motion.div
+        initial="initial"
+        animate="animate"
+        variants={{
+          animate: {
+            transition: {
+              staggerChildren: 0.05
+            }
+          }
+        }}
+        className="max-w-[1600px] mx-auto px-4 md:px-12 py-8 md:pt-4 md:pb-12 relative z-10 w-full"
+      >
+        <motion.div
+          initial={false}
+          animate={{
+            backgroundColor: isWorkHeroToggled ? "#ffffff" : "#000000",
+            borderColor: isWorkHeroToggled ? "#000000" : "#ffffff",
+            boxShadow: isWorkHeroToggled
+              ? "0 4px 20px rgba(0,0,0,0.06)"
+              : "0 8px 30px rgba(0,0,0,0.12)"
+          }}
+          transition={{
+            backgroundColor: { duration: 0.4 },
+            borderColor: { duration: 0.4 }
+          }}
+          onClick={() => handleHeroToggle(setIsWorkHeroToggled)}
+          className={cn(
+            "wireframe-border rounded-lg p-6 md:p-12 mb-0 relative overflow-hidden group border-4 cursor-pointer",
+            "h-[160px] md:h-[260px] flex items-center justify-center md:justify-start"
+          )}
+        >
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700" />
+          <div className="relative z-10 w-full text-center md:text-left">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {isWorkHeroToggled ? (
+                <motion.h1
+                  key="work-expanded"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="font-black tracking-tighter uppercase leading-none text-7xl md:text-9xl text-black"
+                >
+                  WORK
+                </motion.h1>
+              ) : (
+                <motion.h1
+                  layout
+                  key="work-collapsed"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="font-black tracking-tighter uppercase leading-none text-[10rem] md:text-9xl text-white"
+                >
+                  WORK
+                </motion.h1>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+
+        <InteractiveDivider className="my-12" />
+
+        {/* Key Metrics Cards - Exact Dashboard Layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
+          {/* Ads Watched */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
+            data-testid="card-work-ads-watched"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Eye className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="ADS WATCHED" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-ads-watched">
+              {dashboardStats?.adsWatchedToday || todayAdViews?.count || 0}
+            </p>
+          </motion.div>
+
+          {/* Remaining Ads */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
+            data-testid="card-work-remaining-ads"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Target className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="REMAINING ADS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-remaining-ads">
+              {remainingAds}
+            </p>
+          </motion.div>
+
+          {/* Today's Earnings */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+            data-testid="card-work-today-earnings"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <DollarSign className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
+              <TechnicalLabel text="TODAY'S EARNINGS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-work-today-earnings">
+              {formatCurrency(dashboardStats?.todayEarnings || (completedAds.size * 2.5))}
+            </p>
+          </motion.div>
+
+          {/* Daily Goal */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+            data-testid="card-work-daily-goal"
+            onClick={() => setShowDailyGoalModal(true)}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Award className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-work-daily-goal">
+              {Math.round((completedAds.size / dailyLimit) * 100)}%
+            </p>
+            <Progress value={Math.round((completedAds.size / dailyLimit) * 100)} className="progress-enhanced h-2 mb-3" />
+          </motion.div>
+        </div>
+
+        <InteractiveDivider className="my-12" />
+
+        {/* Industrial Work Interface - Full Width */}
+        <motion.div
+          variants={{
+            initial: { opacity: 0, y: 30 },
+            animate: { opacity: 1, y: 0 }
+          }}
+          className="industrial-video-frame p-6 border-4 border-black bg-white shadow-[0_12px_40px_rgba(0,0,0,0.1)]"
+        >
+          <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
+            {WORK_TABS.map(tab => (
+              <TabsContent key={tab.id} value={tab.id} className="mt-0">
+                <div className="space-y-4">
+                  {/* Enhanced Video Player for active tab */}
+                  {tab.id === activeWorkTab && (
+                    <EnhancedVideoPlayer
+                      tab={currentVideoTab}
+                      isActive={true}
+                      onComplete={handleVideoComplete}
+                      autoplay={false}
+                      isMobile={isMobile}
+                    />
+                  )}
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  // Enhanced Referrals Section - Dashboard Style
+  function renderReferralsSection() {
+    // Hooks moved to top level to avoid order issues
+
+    // Mock data for leadership board
+    const leaderboardData = [
+      {
+        id: "1",
+        rank: 1,
+        name: "Don Ivan",
+        earnings: "2,450.00",
+        referrals: 15,
+        l1: 10,
+        l2: 5,
+        status: "ACTIVE",
+        tier: "PLATINUM",
+        joinDate: "2024-01-15",
+        isCurrentUser: false
+      },
+      {
+        id: "2",
+        rank: 2,
+        name: "Saad Rauf",
+        earnings: "1,890.50",
+        referrals: 12,
+        l1: 8,
+        l2: 4,
+        status: "ACTIVE",
+        tier: "GOLD",
+        joinDate: "2024-02-03",
+        isCurrentUser: false
+      },
+      {
+        id: "3",
+        rank: 3,
+        name: "Zain Abbas",
+        earnings: "1,425.75",
+        referrals: 9,
+        l1: 6,
+        l2: 3,
+        status: "ACTIVE",
+        tier: "SILVER",
+        joinDate: "2024-02-18",
+        isCurrentUser: false
+      }
+    ];
+
+    // Sorting logic based on active tab
+    const sortedLeaderboard = [...leaderboardData].sort((a, b) => b[leaderboardTab] - a[leaderboardTab]);
+
+
+    const getRankIcon = (rank: number) => {
+      switch (rank) {
+        case 1: return <Crown className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />;
+        case 2: return <Trophy className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />;
+        case 3: return <Medal className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />;
+        default: return <Star className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />;
+      }
+    };
+
+    const getTierColor = (tier: string) => {
+      switch (tier) {
+        case 'PLATINUM': return 'bg-gradient-to-r from-blue-600 to-purple-600 text-white';
+        case 'GOLD': return 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white';
+        case 'SILVER': return 'bg-gradient-to-r from-gray-400 to-gray-600 text-white';
+        default: return 'bg-black text-white';
+      }
+    };
+
+    return (
+      <motion.div
+        initial="initial"
+        animate="animate"
+        variants={{
+          animate: {
+            transition: {
+              staggerChildren: 0.05
+            }
+          }
+        }}
+        className="max-w-[1600px] mx-auto px-4 md:px-12 py-8 md:pt-4 md:pb-12 relative z-10 w-full"
+      >
+        <motion.div
+          initial={false}
+          animate={{
+            backgroundColor: isReferralsHeroToggled ? "#ffffff" : "#000000",
+            borderColor: isReferralsHeroToggled ? "#000000" : "#ffffff",
+            boxShadow: isReferralsHeroToggled
+              ? "0 4px 20px rgba(0,0,0,0.06)"
+              : "0 8px 30px rgba(0,0,0,0.12)"
+          }}
+          transition={{
+            backgroundColor: { duration: 0.4 },
+            borderColor: { duration: 0.4 }
+          }}
+          onClick={() => handleHeroToggle(setIsReferralsHeroToggled)}
+          className={cn(
+            "wireframe-border rounded-lg p-6 md:p-12 mb-0 relative overflow-hidden group border-4 cursor-pointer",
+            "h-[160px] md:h-[260px] flex items-center justify-center md:justify-start"
+          )}
+        >
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700" />
+          <div className="relative z-10 w-full text-center md:text-left">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {isReferralsHeroToggled ? (
+                <motion.h1
+                  key="referrals-expanded"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="font-black tracking-tighter uppercase leading-none text-5xl md:text-8xl lg:text-9xl text-black"
+                >
+                  REFERRALS
+                </motion.h1>
+              ) : (
+                <motion.h1
+                  layout
+                  key="referrals-collapsed"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="font-black tracking-tighter uppercase leading-none text-[6.5rem] md:text-9xl text-white"
+                >
+                  REFERRALS
+                </motion.h1>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+
+        <InteractiveDivider className="my-12" />
+
+        {/* Key Metrics Cards - Dashboard Layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
+          {/* Total Referrals */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
+            data-testid="card-total-referrals"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Users className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="TOTAL REFERRALS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-referrals-count">{referralsData?.stats.count || 0}</p>
+          </motion.div>
+
+          {/* Referral Earnings */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
+            data-testid="card-referral-earnings"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <DollarSign className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="REFERRAL EARNINGS" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-referral-earnings">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</p>
+          </motion.div>
+
+          {/* Commission Rate */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+            data-testid="card-commission-rate"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <UserCheck className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
+              <TechnicalLabel text="Referral LVL 1" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-commission-rate">{referralsData?.stats.count || 0}</p>
+          </motion.div>
+
+          {/* Network Potential */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 15 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+            data-testid="card-network-potential"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Network className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="Referral LVL 2" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-network-potential">0</p>
+          </motion.div>
+        </div>
+
+        <InteractiveDivider className="my-12" />
+
+        {/* Middle Section - Invitation Area */}
+        <motion.div
+          variants={{
+            initial: { opacity: 0, y: 20 },
+            animate: { opacity: 1, y: 0 }
+          }}
+          className="grid grid-cols-1 gap-4 md:gap-8 mb-6 md:mb-8"
+        >
+          {/* Invitation Area */}
+          <div className="wireframe-section p-0 bg-transparent border-none shadow-none">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-stretch pt-2">
+              {/* Left Column: Referral Code */}
+              <div className="flex flex-col">
+                <div className="bg-white border-4 border-black p-5 md:p-10 relative overflow-hidden group h-full flex flex-col justify-center transition-all duration-300">
+                  <div className="relative z-10 w-full">
+                    <div className="flex flex-col gap-6 md:gap-8">
+                      <div className="text-center md:text-left">
+                        <p className="text-[10px] md:text-[11px] font-black uppercase text-black/40 mb-2 tracking-[0.2em]">
+                          {showReferralLink ? "YOUR NETWORK LINK" : "YOUR REFERRAL CODE"}
+                        </p>
+                        <div className="text-xl md:text-3xl font-black text-black tracking-tight break-all font-mono leading-none">
+                          {showReferralLink
+                            ? `${window.location.origin}/?ref=${displayUser?.referralCode}`
+                            : displayUser?.referralCode
+                          }
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-3">
+                        <Button
+                          onClick={async () => {
+                            const textToCopy = showReferralLink
+                              ? `${window.location.origin}/?ref=${displayUser?.referralCode}`
+                              : displayUser?.referralCode;
+                            try {
+                              await navigator.clipboard.writeText(textToCopy);
+                              toast({ title: "Copied!", description: showReferralLink ? "Referral link copied to clipboard." : "Referral code copied to clipboard." });
+                            } catch (error) {
+                              toast({ title: "Copy Failed", description: "Could not copy. Please try again.", variant: "destructive" });
+                            }
+                          }}
+                          className="w-full bg-primary hover:bg-black hover:text-white text-black h-12 md:h-14 text-sm font-black border-4 border-black transition-all shadow-[4px_4px_0px_#000] active:shadow-none active:translate-x-1 active:translate-y-1"
+                          data-testid="button-copy-referral"
+                        >
+                          <Copy className="w-4 h-4 mr-2" />
+                          COPY
+                        </Button>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowReferralLink(!showReferralLink)}
+                            className="w-full border-4 border-black text-black bg-white hover:bg-black hover:text-white h-12 md:h-14 font-black text-[10px] transition-all shadow-[4px_4px_0px_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                          >
+                            <Link2 className="w-4 h-4 mr-1" />
+                            {showReferralLink ? "CODE" : "LINK"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              const shareUrl = `${window.location.origin}/?ref=${displayUser?.referralCode}`;
+                              const message = `I’m earning real money by watching video ads and building a team on THORX.\n\nUse my referral link below to join and start earning:\n${shareUrl}`;
+                              window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+                            }}
+                            className="w-full border-4 border-black text-black bg-white hover:bg-black hover:text-white h-12 md:h-14 font-black text-[10px] transition-all shadow-[4px_4px_0px_#000] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-1" />
+                            SHARE
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: L1/L2 Rates */}
+              <div className="flex flex-col">
+                <div className="bg-white border-4 border-black p-5 md:p-10 relative overflow-hidden group h-full flex flex-col justify-center transition-all duration-300">
+                  <div className="space-y-6 md:space-y-8 relative z-10 w-full px-1">
+                    <div className="flex justify-between items-end border-b-4 border-black pb-4">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] md:text-[11px] font-black uppercase text-black tracking-[0.2em] mb-1">Level 1</span>
+                        <span className="text-base md:text-lg font-black text-black uppercase leading-tight">Direct<br />Referrals</span>
+                      </div>
+                      <span className="text-4xl md:text-5xl font-black text-black italic tracking-tighter leading-none">15%</span>
+                    </div>
+
+                    <div className="flex justify-between items-end pb-2">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] md:text-[11px] font-black uppercase text-black/40 tracking-[0.2em] mb-1">Level 2</span>
+                        <span className="text-base md:text-lg font-black text-black/60 uppercase leading-tight">Network<br />Referrals</span>
+                      </div>
+                      <span className="text-4xl md:text-5xl font-black text-black italic tracking-tighter leading-none">7.5%</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 md:mt-10 pt-4 border-t-2 border-black/10 relative z-10">
+                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] text-center">
+                      CREDITED UPON PAYOUT
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Divider Line instead of Header */}
+        <div className="mt-20 px-4 md:px-0 mb-12">
+          <InteractiveDivider className="mb-12" />
+
+          {/* HIERARCHICAL TREE LAYOUT */}
+          <div className="w-full">
+            {isReferralError ? (
+              <div className="bg-red-50 border-2 border-red-500 p-8 rounded-lg text-center">
+                <p className="font-bold text-red-600 mb-2">Failed to load network data</p>
+                <p className="text-sm text-red-500">{(referralError as Error)?.message || "Unknown error"}</p>
+              </div>
+            ) : isReferralLoading ? (
+              <div className="flex justify-center items-center py-12 p-8 rounded-lg">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                  className="w-8 h-8 border-4 border-black border-t-transparent rounded-full"
+                />
+              </div>
+            ) : (displayUser ? (
+              <div className="bg-white border-2 border-black p-4 md:p-8 rounded-lg overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.05)]">
+                <div className="mb-6 text-center border-b pb-4">
+                  <h3 className="font-black text-xl uppercase tracking-tighter">Network Hierarchy</h3>
+                  <p className="text-sm text-muted-foreground">Real-time visualization of your referral network</p>
+                </div>
+
+                <ReferralTree
+                  currentUser={{
+                    id: displayUser.id,
+                    firstName: displayUser.firstName,
+                    lastName: displayUser.lastName,
+                    rank: displayUser.rank,
+                    avatar: undefined
+                  }}
+                  referrals={referralLeaderboard || []}
+                />
+              </div>
+            ) : null)}
+          </div>
+        </div>
+
+        {/* Commission History Section */}
+        {
+          commissionsData?.commissions && commissionsData.commissions.length > 0 && (
+            <motion.div
+              variants={{
+                initial: { opacity: 0, scale: 0.98 },
+                animate: { opacity: 1, scale: 1 }
+              }}
+              className="mt-6 md:mt-8 wireframe-section p-4 md:p-6"
+            >
+              <div className="border-b-2 border-black pb-3 md:pb-4 mb-4 md:mb-6">
+                <TechnicalLabel text="COMMISSION HISTORY" className="text-foreground text-sm md:text-lg font-black" />
+              </div>
+
+              <div className="grid gap-3 md:gap-4">
+                {commissionsData.commissions.map((commission: any, index: number) => (
+                  <motion.div
+                    key={commission.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="wireframe-section p-3 md:p-4 bg-white/50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-black text-sm md:text-base">LEVEL {commission.level} COMMISSION</div>
+                        <div className="text-xs text-muted-foreground">{new Date(commission.createdAt).toLocaleDateString()}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-lg text-primary">+{formatCurrency(commission.amount)}</div>
+                        <div className={`text-[10px] font-black uppercase px-2 py-0.5 border inline-block mt-1 ${commission.status === 'paid' ? 'bg-green-100 border-green-500 text-green-700' :
+                          commission.status === 'pending' ? 'bg-yellow-100 border-yellow-500 text-yellow-700' :
+                            'bg-red-100 border-red-500 text-red-700'
+                          }`}>
+                          {commission.status}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )
+        }
+      </motion.div >
+    );
+  }
+
+  // Progressive Payout Section - Dashboard Style
+  function renderPayoutSection() {
+    // Static transaction history data
+    const staticHistoryItems = [
+      {
+        id: 'history_1',
+        date: '2024-01-15T10:30:00.000Z',
+        amount: '1250.00',
+        method: 'JazzCash',
+        status: 'COMPLETED',
+        transactionId: 'TX1000001'
+      },
+      {
+        id: 'history_2',
+        date: '2024-01-14T14:15:00.000Z',
+        amount: '890.50',
+        method: 'EasyPaisa',
+        status: 'PROCESSING',
+        transactionId: 'TX1000002'
+      },
+      {
+        id: 'history_3',
+        date: '2024-01-13T09:45:00.000Z',
+        amount: '2100.75',
+        method: 'Bank Transfer',
+        status: 'COMPLETED',
+        transactionId: 'TX1000003'
+      },
+      {
+        id: 'history_4',
+        date: '2024-01-12T16:20:00.000Z',
+        amount: '450.25',
+        method: 'JazzCash',
+        status: 'PENDING',
+        transactionId: 'TX1000004'
+      },
+      {
+        id: 'history_5',
+        date: '2024-01-11T11:30:00.000Z',
+        amount: '1850.00',
+        method: 'EasyPaisa',
+        status: 'COMPLETED',
+        transactionId: 'TX1000005'
+      }
+    ];
+
+    // Numeric keypad input handling
+    const handleNumberInput = (num: string) => {
+      if (withdrawAmount.length < 8) {
+        setWithdrawAmount(prev => prev + num);
+      }
+    };
+
+    const handleClear = () => {
+      setWithdrawAmount("");
+    };
+
+    const handleBackspace = () => {
+      setWithdrawAmount(prev => prev.slice(0, -1));
+    };
+
+    // Navigation handlers
+    const handleNext = () => {
+      if (canProceed()) {
+        if (currentStep < 3) setCurrentStep(prev => prev + 1);
+        else handleSubmit();
+      }
+    };
+
+    const handleBack = () => {
+      if (currentStep > 1) {
+        setCurrentStep(currentStep - 1);
+      }
+    };
+
+    const handleSubmit = async () => {
+      setIsProcessing(true);
+      try {
+        const payload = {
+          amount: withdrawAmount,
+          method: selectedMethod,
+          accountName: paymentDetails.name,
+          accountNumber: paymentDetails.number,
+          accountDetails: {
+            id: paymentDetails.id,
+            iban: paymentDetails.iban
+          }
+        };
+
+        const response = await apiRequest("POST", "/api/withdrawals", payload);
+
+        if (response.ok) {
+          toast({
+            title: "Payout Request Submitted!",
+            description: `Your withdrawal of ${formatCurrency(withdrawAmount)} has been submitted for processing.`,
+          });
+          queryClient.invalidateQueries({ queryKey: ["earnings"] }); // Refresh balance
+          // Reset form
+          setCurrentStep(1);
+          setWithdrawAmount("");
+          setSelectedMethod("");
+          setPaymentDetails({ name: "", number: "", id: "", iban: "" });
+        } else {
+          const error = await response.json();
+          toast({
+            title: "Submission Failed",
+            description: error.message || "Could not process withdrawal request.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Withdrawal error:", error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    // Payment method data
+    const paymentMethods = [
+      {
+        id: 'jazzcash',
+        name: 'JAZZ CASH',
+        LogoComponent: JazzCashLogo,
+        description: 'Mobile Wallet Transfer',
+        color: 'bg-gradient-to-r from-red-600 to-red-700',
+        processing: '2-4 hours'
+      },
+      {
+        id: 'easypaisa',
+        name: 'EASY PAISA',
+        LogoComponent: EasyPaisaLogo,
+        description: 'Digital Wallet Service',
+        color: 'bg-gradient-to-r from-green-600 to-green-700',
+        processing: '2-4 hours'
+      },
+    ];
+
+    // Get current step button states
+    const canProceed = () => {
+      if (currentStep === 1) return withdrawAmount && parseFloat(withdrawAmount) >= 100;
+      if (currentStep === 2) return selectedMethod;
+      if (currentStep === 3) {
+        return paymentDetails.name.trim() && paymentDetails.number.trim() && paymentDetails.id.trim();
+      }
+      return false;
+    };
+
+    return (
+      <motion.div
+        initial="initial"
+        animate="animate"
+        variants={{
+          animate: {
+            transition: {
+              staggerChildren: 0.05
+            }
+          }
+        }}
+        className="max-w-[1600px] mx-auto px-4 md:px-12 py-8 md:pt-4 md:pb-12 relative z-10 w-full"
+      >
+        {/* Hero Section - Dashboard Style */}
+        <motion.div
+          initial={false}
+          animate={{
+            backgroundColor: isPayoutHeroToggled ? "#ffffff" : "#000000",
+            borderColor: isPayoutHeroToggled ? "#000000" : "#ffffff",
+            boxShadow: isPayoutHeroToggled
+              ? "0 4px 20px rgba(0,0,0,0.06)"
+              : "0 8px 30px rgba(0,0,0,0.12)"
+          }}
+          transition={{
+            backgroundColor: { duration: 0.4 },
+            borderColor: { duration: 0.4 }
+          }}
+          onClick={() => handleHeroToggle(setIsPayoutHeroToggled)}
+          className={cn(
+            "wireframe-border rounded-lg p-6 md:p-12 mb-0 relative overflow-hidden group border-4 cursor-pointer",
+            "h-[160px] md:h-[260px] flex items-center justify-center md:justify-start"
+          )}
+        >
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700" />
+          <div className="relative z-10 w-full text-center md:text-left">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {isPayoutHeroToggled ? (
+                <motion.h1
+                  key="payout-expanded"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="font-black tracking-tighter uppercase leading-none text-6xl md:text-9xl text-black"
+                >
+                  PAYOUT
+                </motion.h1>
+              ) : (
+                <motion.h1
+                  layout
+                  key="payout-collapsed"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="font-black tracking-tighter uppercase leading-none text-[10rem] md:text-9xl text-white"
+                >
+                  PAYOUT
+                </motion.h1>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+
+        <InteractiveDivider className="my-12" />
+
+        {/* Main Content Area - Single Column Layout for Mobile, Two Column for Desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+          {/* Main Payout Interface - Full Width on Mobile, 2/3 width on Desktop */}
+          <motion.div
+            variants={{
+              initial: { opacity: 0, y: 20 },
+              animate: { opacity: 1, y: 0 }
+            }}
+            className="lg:col-span-2"
+          >
+            <div className="wireframe-border bg-gradient-to-br from-background to-muted/20 p-6 md:p-12 relative shadow-[12px_12px_0px_#000]">
+              {/* Current Balance Display */}
+              <div className="text-center mb-4 md:mb-6 lg:mb-8">
+              </div>
+
+              {/* Step Content Container - Mobile Optimized */}
+              <div className="min-h-[300px] md:min-h-[400px] flex flex-col justify-center overflow-hidden">
+                <AnimatePresence mode="wait">
+                  {/* Step 1: Amount Input with Numeric Keypad - Mobile Optimized */}
+                  {currentStep === 1 && (
+                    <motion.div
+                      key="step1"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="w-full max-w-sm md:max-w-lg mx-auto px-2 md:px-0"
+                    >
+                      <div className="text-center mb-4 md:mb-8">
+                        <div className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 min-h-[40px] md:min-h-[60px] flex items-center justify-center border-b-2 border-muted-foreground/30 pb-2 md:pb-4">
+                          ₨ {withdrawAmount || "0.00"}
+                        </div>
+                      </div>
+
+                      {/* Enhanced Numeric Keypad - Mobile Responsive */}
+                      <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-6 max-w-xs md:max-w-sm mx-auto">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                          <motion.button
+                            key={num}
+                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(var(--primary-rgb), 0.1)' }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleNumberInput(num.toString())}
+                            className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-background border-2 border-black text-lg md:text-xl lg:text-2xl font-black text-foreground transition-all duration-200"
+                          >
+                            {num}
+                          </motion.button>
+                        ))}
+                        <motion.button
+                          whileHover={{ scale: 1.02, backgroundColor: 'rgba(var(--primary-rgb), 0.1)' }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleNumberInput("0")}
+                          className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-background border-2 border-black text-lg md:text-xl lg:text-2xl font-black text-foreground transition-all duration-200 col-span-2"
+                        >
+                          0
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05, backgroundColor: 'rgba(var(--destructive-rgb), 0.1)' }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleBackspace}
+                          className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-destructive/10 border-2 border-destructive text-destructive transition-all duration-200 flex items-center justify-center"
+                        >
+                          ⌫
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step 2: Payment Method Selection - Mobile Optimized */}
+                  {currentStep === 2 && (
+                    <motion.div
+                      key="step2"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="w-full max-w-lg md:max-w-2xl mx-auto px-2 md:px-0"
+                    >
+                      <div className="text-center mb-4 md:mb-8">
+                        <div className="text-lg md:text-xl lg:text-2xl font-black text-primary mb-2">
+                          Withdrawing {formatCurrency(withdrawAmount)}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:gap-4 mb-4 md:mb-6">
+                        {paymentMethods.map((method) => {
+                          const LogoComponent = method.LogoComponent;
+                          const isSelected = selectedMethod === method.id;
+
+                          return (
+                            <motion.button
+                              key={method.id}
+                              whileHover={{ scale: 1.01, x: 5 }}
+                              whileTap={{ scale: 0.99 }}
+                              initial={false}
+                              animate={{
+                                backgroundColor: isSelected ? 'var(--primary)' : 'var(--background)',
+                                borderColor: isSelected ? 'var(--primary)' : 'rgb(0, 0, 0)',
+                                boxShadow: isSelected ? '4px 4px 0px #000' : '0px 0px 0px #000'
+                              }}
+                              transition={{ duration: 0.25, ease: "easeInOut" }}
+                              onClick={() => setSelectedMethod(method.id)}
+                              className={`payment-method-selection-card flex items-center p-3 md:p-4 lg:p-6 border-2 w-full transition-shadow duration-300 ${isSelected ? 'selected' : 'hover:shadow-[4px_4px_0px_#000]'}`}
+                            >
+                              <div className="mr-3 md:mr-4 lg:mr-6">
+                                <LogoComponent className="w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20" />
+                              </div>
+                              <div className="flex-1 text-left">
+                                <TechnicalLabel
+                                  text={method.name}
+                                  className={`font-black text-xs md:text-sm ${isSelected ? 'text-black' : 'text-foreground'
+                                    }`}
+                                />
+                              </div>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step 3: Payment Details Input - Mobile Optimized */}
+                  {currentStep === 3 && (
+                    <motion.div
+                      key="step3"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="w-full max-w-sm md:max-w-lg mx-auto px-2 md:px-0"
+                    >
+                      <div className="text-center mb-4 md:mb-8">
+                        {/* Header Removed */}
+                      </div>
+
+                      <div className="space-y-4 md:space-y-6">
+                        <div className="space-y-4">
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                          >
+                            <TechnicalLabel text="FULL NAME" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                value={paymentDetails.name}
+                                onChange={(e) => setPaymentDetails(prev => ({ ...prev, name: e.target.value }))}
+                                className="industrial-input h-12 md:h-14 text-sm md:text-base border-2 border-black focus:border-primary transition-colors"
+                              />
+                              {!paymentDetails.name && (
+                                <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                  <AnimatedPlaceholder examples={['John Doe', 'Ahmed Khan', 'Sarah Wilson']} />
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            <TechnicalLabel text="MOBILE NUMBER" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                value={paymentDetails.number}
+                                onChange={(e) => setPaymentDetails(prev => ({ ...prev, number: e.target.value }))}
+                                className="industrial-input h-12 md:h-14 text-sm md:text-base border-2 border-black focus:border-primary transition-colors"
+                              />
+                              {!paymentDetails.number && (
+                                <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                  <AnimatedPlaceholder examples={['03001234567', '03217654321', '03450000000']} />
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                          >
+                            <TechnicalLabel text="CNIC / ID NUMBER" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                value={paymentDetails.id}
+                                onChange={(e) => setPaymentDetails(prev => ({ ...prev, id: e.target.value }))}
+                                className="industrial-input h-12 md:h-14 text-sm md:text-base border-2 border-black focus:border-primary transition-colors"
+                              />
+                              {!paymentDetails.id && (
+                                <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                  <AnimatedPlaceholder examples={['35202-1234567-1', '61101-9876543-2', '12345-6789012-3']} />
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        </div>
+                      </div>
+
+                      {/* Payment Summary Area */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="mt-6 md:mt-8 pt-6 border-t-2 border-black/10"
+                      >
+                        <TechnicalLabel text="PAYOUT SUMMARY" className="mb-4 font-black text-xs md:text-sm" />
+                        <div className="bg-muted/10 border-2 border-black p-4 md:p-6 space-y-3">
+                          <div className="flex justify-between items-center text-sm md:text-base">
+                            <span className="font-bold text-muted-foreground">Total Earnings</span>
+                            <span className="font-black text-foreground">{formatCurrency(withdrawAmount || 0)}</span>
+                          </div>
+
+                          <div className="flex justify-between items-center text-sm md:text-base">
+                            <span className="font-bold text-muted-foreground flex items-center gap-2">
+                              Platform Fee
+                              <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">10%</span>
+                            </span>
+                            <span className="font-black text-red-500">-{formatCurrency((parseFloat(withdrawAmount || "0") * 0.10).toFixed(2))}</span>
+                          </div>
+
+                          <div className="my-2 border-t border-dashed border-black/20" />
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-xs md:text-sm">
+                              <span className="font-bold text-muted-foreground/70">Referral LVL 1</span>
+                              <span className="font-black text-muted-foreground/70">{formatCurrency(referralsData?.stats?.totalEarned || "0.00")}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs md:text-sm">
+                              <span className="font-bold text-muted-foreground/50">Referral LVL 2</span>
+                              <span className="font-black text-muted-foreground/50">{formatCurrency(0)}</span>
+                            </div>
+                          </div>
+
+                          <div className="my-2 border-t-2 border-black" />
+
+                          <div className="flex justify-between items-center text-base md:text-lg lg:text-xl">
+                            <span className="font-black text-black">FINAL PAYOUT</span>
+                            <span className="font-black text-primary bg-black px-2 py-0.5">
+                              {formatCurrency((parseFloat(withdrawAmount || "0") * 0.90).toFixed(2))}
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Navigation Buttons - Mobile Optimized */}
+              <div className="border-t-2 border-black pt-4 md:pt-6 mt-4 md:mt-8">
+                <div className="flex justify-end items-center gap-3">
+                  {currentStep === 1 && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleClear}
+                      className="flex items-center justify-center px-6 md:px-10 py-3 md:py-4 border-4 border-black bg-background font-black text-sm md:text-base hover:bg-black hover:text-white transition-all shadow-[4px_4px_0px_#000] active:shadow-none"
+                    >
+                      CLEAR ALL
+                    </motion.button>
+                  )}
+
+                  {currentStep > 1 && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setCurrentStep(prev => prev - 1)}
+                      className="flex items-center justify-center gap-2 px-6 md:px-10 py-3 md:py-4 border-4 border-black font-black text-sm md:text-base hover:bg-black hover:text-white transition-all shadow-[4px_4px_0px_#000] active:shadow-none"
+                    >
+                      <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+                      BACK
+                    </motion.button>
+                  )}
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={!canProceed() || (currentStep === 3 && isProcessing)}
+                    onClick={handleNext}
+                    className={`flex items-center gap-2 px-6 md:px-10 py-3 md:py-4 border-4 border-black font-black text-sm md:text-base transition-all ${canProceed() && !(currentStep === 3 && isProcessing)
+                      ? "bg-primary text-black shadow-[4px_4px_0px_#000] hover:translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0px_#000]"
+                      : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                      }`}
+                  >
+                    {isProcessing && currentStep === 3 ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        PROCESSING...
+                      </>
+                    ) : (
+                      <>
+                        {currentStep === 3 ? "SUBMIT WITHDRAWAL" : "CONTINUE"}
+                        <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Side Panel - Hidden on Mobile, Visible on Desktop */}
+          <div className="hidden lg:block lg:col-span-1 space-y-8">
+            {/* Professional History Button */}
+            <motion.div
+              variants={{
+                initial: { opacity: 0, x: 20 },
+                animate: { opacity: 1, x: 0 }
+              }
+              }
+              className="wireframe-border p-6 shadow-[0_8px_24px_rgba(0,0,0,0.06)] bg-white"
+            >
+              <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground font-black text-sm mb-4" />
+              <Button
+                onClick={() => setShowHistory(!showHistory)}
+                variant="outline"
+                className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-3 font-black shadow-[0_4px_12px_rgba(0,0,0,0.05)] active:shadow-none transition-all"
+              >
+                <History className="w-4 h-4 mr-2" />
+                {showHistory ? 'HIDE HISTORY' : 'VIEW HISTORY'}
+              </Button>
+
+              <AnimatePresence>
+                {showHistory && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-4 overflow-hidden border-t-2 border-black pt-4"
+                  >
+                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                      {staticHistoryItems.slice(0, 3).map((item, idx) => (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                          whileHover={{ x: 5, backgroundColor: 'rgba(var(--primary-rgb), 0.05)' }}
+                          className="p-3 border border-muted-foreground/20 bg-muted/10 transition-all cursor-default"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <TechnicalLabel text={item.method} className="text-foreground font-black text-xs" />
+                            <div className={`w-2 h-2 rounded-full ${item.status === 'COMPLETED' ? 'bg-green-500' :
+                              item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
+                              }`} />
+                          </div>
+                          <div className="text-sm font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
+                          <div className="text-xs text-muted-foreground">{formatDate(item.date)}</div>
+                        </motion.div>
+                      ))}
+                    </div>
+                    {staticHistoryItems.length > 3 && (
+                      <div className="text-center mt-3">
+                        <TechnicalLabel text={`+${staticHistoryItems.length - 3} MORE TRANSACTIONS`} className="text-muted-foreground text-xs" />
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Help & Support */}
+            <motion.div
+              variants={{
+                initial: { opacity: 0, x: 20 },
+                animate: { opacity: 1, x: 0 }
+              }
+              }
+              whileHover={{ scale: 1.02 }}
+              className="wireframe-border p-6 shadow-[0_8px_24px_rgba(0,0,0,0.06)] bg-white transition-all duration-300"
+            >
+              <TechnicalLabel text="NEED HELP?" className="text-foreground font-black text-sm mb-4" />
+              <div className="space-y-3">
+                <div className="text-xs text-muted-foreground leading-relaxed font-bold">
+                  • Processing time: 2-48 hours<br />
+                  • Processing fee: 10%<br />
+                  • 24/7 customer support
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-2 font-black text-xs shadow-[2px_2px_0px_#000] active:shadow-none transition-all"
+                  onClick={() => navigateToSection(4)} // Navigate to help section
+                >
+                  <HelpCircle className="w-3 h-3 mr-2" />
+                  GET SUPPORT
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Mobile Transaction History - Show Below Main Interface */}
+        <motion.div
+          variants={{
+            initial: { opacity: 0, y: 30 },
+            animate: { opacity: 1, y: 0 }
+          }}
+          className="lg:hidden mt-6"
+        >
+          <div className="wireframe-border p-3 md:p-4 bg-white shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
+            <TechnicalLabel text="TRANSACTION HISTORY" className="text-foreground font-black text-sm mb-4" />
+            <Button
+              onClick={() => setShowHistory(!showHistory)}
+              variant="outline"
+              className="w-full border-2 border-black text-foreground hover:bg-black hover:text-white py-2 md:py-3 font-black text-sm shadow-[0_4px_12px_rgba(0,0,0,0.05)] active:shadow-none transition-all"
+            >
+              <History className="w-3 h-3 md:w-4 md:h-4 mr-2" />
+              {showHistory ? 'HIDE HISTORY' : 'VIEW HISTORY'}
+            </Button>
+
+            <AnimatePresence>
+              {showHistory && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 overflow-hidden border-t-2 border-black pt-4"
+                >
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {staticHistoryItems.slice(0, 5).map((item, idx) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        whileHover={{ scale: 1.02 }}
+                        className="p-3 border border-muted-foreground/20 bg-muted/10 hover:bg-white transition-all"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <TechnicalLabel text={item.method} className="text-foreground font-black text-xs" />
+                          <div className={`w-2 h-2 rounded-full ${item.status === 'COMPLETED' ? 'bg-green-500' :
+                            item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
+                            }`} />
+                        </div>
+                        <div className="text-sm font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
+                        <div className="text-xs text-muted-foreground">{formatDate(item.date)}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono mt-1 pt-1 border-t border-black/5 flex items-center gap-1">
+                          <Barcode className="w-3 h-3" />
+                          #{item.transactionId}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  // Help Section
+  function renderHelpSection() {
+    const formatTime = (timestamp: string) => {
+      return new Date(timestamp).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    // Help section options for dropdown
+    const helpSectionOptions = [
+      { id: "guide", label: "AREA GUIDE", icon: Book },
+      { id: "help", label: "AREA HELP", icon: MessageCircle },
+      { id: "contact", label: "AREA CONTACT", icon: Phone }
+    ];
+
+    return (
+      <motion.div
+        initial="initial"
+        animate="animate"
+        variants={{
+          animate: {
+            transition: {
+              staggerChildren: 0.05
+            }
+          }
+        }}
+        className="max-w-[1600px] mx-auto px-4 md:px-12 py-8 md:pt-4 md:pb-12 relative z-10 w-full"
+      >
+        {/* Hero Section - Dashboard Style */}
+        <motion.div
+          initial={false}
+          animate={{
+            backgroundColor: isHelpHeroToggled ? "#ffffff" : "#000000",
+            borderColor: isHelpHeroToggled ? "#000000" : "#ffffff",
+            boxShadow: isHelpHeroToggled
+              ? "0 4px 20px rgba(0,0,0,0.06)"
+              : "0 8px 30px rgba(0,0,0,0.12)"
+          }}
+          transition={{
+            backgroundColor: { duration: 0.4 },
+            borderColor: { duration: 0.4 }
+          }}
+          onClick={() => handleHeroToggle(setIsHelpHeroToggled)}
+          className={cn(
+            "wireframe-border rounded-lg p-6 md:p-12 mb-0 relative overflow-hidden group border-4 cursor-pointer",
+            "h-[160px] md:h-[260px] flex items-center justify-center md:justify-start"
+          )}
+        >
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700" />
+          <div className="relative z-10 w-full text-center md:text-left">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {isHelpHeroToggled ? (
+                <motion.h1
+                  key="help-expanded"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="font-black tracking-tighter uppercase leading-none text-7xl md:text-9xl text-black"
+                >
+                  HELP
+                </motion.h1>
+              ) : (
+                <motion.h1
+                  layout
+                  key="help-collapsed"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="font-black tracking-tighter uppercase leading-none text-[11.5rem] md:text-9xl text-white"
+                >
+                  HELP
+                </motion.h1>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+
+        <InteractiveDivider className="my-12" />
+
+        {/* Navigation and Content */}
+        <motion.div
+          variants={{
+            initial: { opacity: 0, y: 20 },
+            animate: { opacity: 1, y: 0 }
+          }}
+          className="max-w-[1600px] mx-auto mb-12"
+        >
+          <div className="split-card bg-white border-3 border-black p-6 md:p-12 help-section-content shadow-[0_12px_40px_rgba(0,0,0,0.1)]">
+            {/* Desktop: Tabs, Mobile: Dropdown */}
+            <div className="w-full">
+              {/* Desktop Navigation */}
+              <div className="hidden md:block">
+                <Tabs value={activeHelpTab} onValueChange={setActiveHelpTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-4 md:mb-6 bg-muted border-2 border-black h-10 md:h-12">
+                    {helpSectionOptions.map((option) => (
+                      <TabsTrigger
+                        key={option.id}
+                        value={option.id}
+                        className="help-tab-button data-[state=active]:bg-black data-[state=active]:text-white font-black text-xs md:text-base h-full flex items-center justify-center px-1 md:px-2 transition-all duration-300"
+                      >
+                        {option.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              {/* Mobile Navigation Dropdown - Industrial Theme */}
+              <div className="md:hidden mb-4 help-dropdown-container">
+                <div className="help-dropdown-wrapper">
+                  <select
+                    value={activeHelpTab}
+                    onChange={(e) => setActiveHelpTab(e.target.value)}
+                    className="help-dropdown-industrial"
+                  >
+                    {helpSectionOptions.map((option) => (
+                      <option key={option.id} value={option.id} className="font-black bg-white text-black">
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Tab Content */}
+              <div className="mt-4 md:mt-6 help-main-content">
+                <AnimatePresence mode="wait">
+                  {/* Area Guide - FAQ Section Style */}
+                  {activeHelpTab === "guide" && (
+                    <motion.div
+                      key="guide"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="mt-0"
+                    >
+                      {/* Section Heading - Minimal and Clean */}
+                      <div className="text-center mb-8 md:mb-12">
+                        <div className="inline-block px-4 md:px-6 lg:px-8 py-6 md:py-8 mx-4">
+                          <h3 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-3 text-foreground">
+                            Frequently Asked
+                            <br />
+                            <span className="text-primary">Questions</span>
+                          </h3>
+
+                          <div className="h-1 w-16 bg-primary mx-auto mb-4"></div>
+
+                          <TechnicalLabel text="INSTANT ANSWERS TO YOUR THORX QUERIES" className="text-muted-foreground text-xs md:text-sm" />
+                        </div>
+                      </div>
+
+                      {/* FAQ Items - Landing Page Style */}
+                      <div className="space-y-4 md:space-y-6">
+                        {[
+                          {
+                            id: "001",
+                            protocol: "PLATFORM-OVERVIEW",
+                            question: "What is THORX?",
+                            answer: "THORX is an online earning platform designed specifically for Pakistani users, enabling them to convert their attention into real earnings in PKR. Official domain: thorx.pro. Our objective is to provide a halal and sustainable income opportunity through a transparent ecosystem."
+                          },
+                          {
+                            id: "002",
+                            protocol: "EARNING-MODEL",
+                            question: "How do I earn on THORX?",
+                            answer: "You earn by: 1) Watching video advertisements attentively using the THORX Ads Player, 2) Visiting advertiser product pages via the THORX Web Panel and staying for approximately 30 seconds while reading and scrolling, 3) Inviting new users through the referral system. Tasks convert to earnings only when you actively engage with both video ads and web panels."
+                          },
+                          {
+                            id: "003",
+                            protocol: "HALAL-ECOSYSTEM",
+                            question: "Is THORX earning Halal?",
+                            answer: "Yes. THORX operates within a halal-based earning model. All video advertisements follow strict content guidelines to ensure haram or inappropriate material is not promoted. Earnings are based on genuine work (attention and engagement), not passive income or interest. Auto-functioning without attention makes earnings haram."
+                          },
+                          {
+                            id: "004",
+                            protocol: "REFERRAL-SYSTEM",
+                            question: "How does the referral system work?",
+                            answer: "Multi-level system: When User A invites User B, User A earns 15% of User B's earnings. When User B invites User C, User A earns 7.5% and User B earns 15%. IMPORTANT: Commission is credited ONLY when the referred user requests a payout, not when they earn."
+                          },
+                          {
+                            id: "005",
+                            protocol: "RANKING-SYSTEM",
+                            question: "What are the user ranks?",
+                            answer: "Ranks based on BOTH total referrals AND total earnings: 1) Useless (new users, 50 ads), 2) Worker (10 refs + 25,000 PKR, 75 ads), 3) Soldier (15 refs + 35,000 PKR, 100 ads), 4) Captain (20 refs + 50,000 PKR, 125 ads), 5) General (25 refs + 100,000 PKR, 150 ads). Both conditions must be met to upgrade."
+                          },
+                          {
+                            id: "006",
+                            protocol: "PAYOUT-METHODS",
+                            question: "How do I withdraw my earnings?",
+                            answer: "Withdrawal options: JazzCash, EasyPaisa, or Bank Transfer. You MUST complete required daily tasks to be eligible for payouts. Navigate to the Payout section in your User Portal to request withdrawal. A 10% platform fee applies to every transaction."
+                          }
+                        ].map((faq, idx) => (
+                          <motion.div
+                            key={faq.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            whileHover={{ scale: 1.01, translateY: -2 }}
+                            className="split-card bg-background relative group transition-all duration-300 hover:shadow-[8px_8px_0px_#000]"
+                          >
+                            {/* Protocol Header */}
+                            <div className="px-4 md:px-8 py-3 md:py-4 bg-primary text-primary-foreground border-b-[3px] border-black">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 md:gap-4">
+                                  <TechnicalLabel text={`FAQ-${faq.id}`} className="text-white text-xs md:text-sm" />
+                                  <TechnicalLabel text={faq.protocol} className="text-white opacity-80 text-xs" />
+                                </div>
+                                <div className="w-12 md:w-16 h-3 md:h-4 opacity-60">
+                                  <Barcode />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Protocol Content */}
+                            <div className="bg-background p-4 md:p-6">
+                              <div className="mb-3 md:mb-4">
+                                <h4 className="text-base md:text-xl lg:text-2xl font-bold text-foreground leading-tight">
+                                  {faq.question}
+                                </h4>
+                              </div>
+                              <div className="text-foreground text-sm md:text-base leading-relaxed bg-muted p-3 md:p-6 border-l-4 border-primary">
+                                {faq.answer}
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t-2 border-black text-center">
+                        <TechnicalLabel text="NEED MORE HELP? USE AREA HELP FOR LIVE CHAT OR AREA CONTACT FOR DIRECT SUPPORT" className="text-muted-foreground text-xs md:text-sm" />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Area Help - Telegram/WhatsApp Style Chat */}
+                  {activeHelpTab === "help" && (
+                    <motion.div
+                      key="help"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="mt-0 chat-section-wrapper"
+                    >
+                      <div className="bg-white border-2 border-black overflow-hidden shadow-[12px_12px_0px_#000] rounded-lg">
+                        {/* Chat Header - Professional Branding */}
+                        <div className="bg-black text-white p-3 md:p-4 flex items-center justify-between border-b-2 border-black">
+                          <div className="flex items-center gap-3">
+                          </div>
+                          <div className="hidden md:block">
+                            <Barcode className="h-4 opacity-50 grayscale invert" />
+                          </div>
+                        </div>
+
+                        {/* Chat Messages Area */}
+                        <div className="chat-container bg-muted/30 h-[450px] md:h-[600px] p-4 md:p-6 space-y-4 md:space-y-6 overflow-y-auto custom-scrollbar relative">
+                          <div className="absolute inset-0 industrial-grid opacity-[0.03] pointer-events-none"></div>
+
+                          {chatMessages.map((message, idx) => (
+                            <motion.div
+                              key={message.id}
+                              initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              transition={{ delay: idx * 0.05 }}
+                              className={`flex items-start gap-2 md:gap-3 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div
+                                className={`chat-message max-w-[85%] md:max-w-[75%] px-4 md:px-5 py-3 md:py-4 border-2 border-black relative ${message.sender === 'user'
+                                  ? 'bg-primary text-black rounded-l-2xl rounded-tr-2xl shadow-[4px_4px_0px_#000]'
+                                  : 'bg-white text-black rounded-r-2xl rounded-tl-2xl shadow-[4px_4px_0px_#000]'
+                                  }`}
+                              >
+                                <p className="text-sm md:text-base font-bold leading-relaxed break-words">{message.text}</p>
+                                <div className={`flex items-center justify-end gap-1 mt-2 text-[10px] md:text-xs font-black ${message.sender === 'user' ? 'text-black/60' : 'text-muted-foreground'}`}>
+                                  {formatTime(message.timestamp)}
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+
+                        {/* Chat Input Area */}
+                        <div className="chat-input-wrapper bg-white border-t-2 border-black p-4 md:p-6">
+                          <div className="flex flex-row items-stretch gap-2 md:gap-3">
+                            <div className="relative flex-1 group">
+                              <input
+                                type="text"
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                placeholder="Type your message here..."
+                                className="chat-input w-full bg-muted/20 border-2 border-black text-black px-4 md:px-6 py-3 md:py-4 rounded font-bold text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground/50 transition-all"
+                                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                              />
+                            </div>
+                            <div className="flex">
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handleSendMessage}
+                                disabled={!newMessage.trim() || chatMutation.isPending}
+                                className="flex items-center justify-center bg-primary text-black px-4 md:px-8 py-3 md:py-4 border-4 border-black font-black text-sm md:text-base shadow-[4px_4px_0px_#000] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed transition-all aspect-square md:aspect-auto"
+                              >
+                                {chatMutation.isPending ? (
+                                  <RefreshCw className="w-5 h-5 animate-spin" />
+                                ) : (
+                                  <Send className="w-5 h-5 md:w-6 md:h-6" />
+                                )}
+                              </motion.button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Area Contact - Registration Form Style */}
+                  {activeHelpTab === "contact" && (
+                    <motion.div
+                      key="contact"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="mt-0"
+                    >
+                      <div className="text-center mb-6">
+                        <TechnicalLabel text="DIRECT TEAM CONTACT" className="mb-2" />
+                        <h3 className="text-2xl md:text-3xl font-black text-black">SEND US A MESSAGE</h3>
+                      </div>
+
+                      <div className="contact-form-container max-w-2xl mx-auto">
+                        <form onSubmit={handleContactSubmit} className="space-y-6">
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                          >
+                            <TechnicalLabel text="FULL NAME" className="mb-3 font-black" />
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                required
+                                value={contactForm.name}
+                                onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+                                className="contact-form-input border-2 border-black text-base md:text-lg py-3 md:py-3 min-h-[44px] rounded focus:border-primary transition-colors"
+                              />
+                              {!contactForm.name && (
+                                <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                  <AnimatedPlaceholder examples={['John Doe', 'Ahmed Khan', 'Sarah Wilson']} />
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            <TechnicalLabel text="EMAIL ADDRESS" className="mb-3 font-black" />
+                            <div className="relative">
+                              <Input
+                                type="email"
+                                required
+                                value={contactForm.email}
+                                onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+                                className="contact-form-input border-2 border-black text-base md:text-lg py-3 md:py-3 min-h-[44px] rounded focus:border-primary transition-colors"
+                              />
+                              {!contactForm.email && (
+                                <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+                                  <AnimatedPlaceholder examples={['your.email@gmail.com', 'contact@thorx.com', 'support@example.com']} />
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                          >
+                            <TechnicalLabel text="PROBLEM / DESCRIPTION" className="mb-3 font-black" />
+                            <div className="relative">
+                              <textarea
+                                required
+                                rows={isMobile ? 5 : 6}
+                                value={contactForm.description}
+                                onChange={(e) => setContactForm(prev => ({ ...prev, description: e.target.value }))}
+                                className="contact-form-textarea flex w-full border-2 border-black bg-background px-3 py-3 text-base md:text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus:border-primary focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 resize-vertical rounded min-h-[140px] line-height-relaxed transition-colors"
+                                placeholder=""
+                              />
+                              {!contactForm.description && (
+                                <div className="absolute top-3 left-3 pointer-events-none text-muted-foreground">
+                                  <AnimatedPlaceholder examples={['Describe your issue in detail...', 'Tell us what happened...', 'How can we help you today?']} />
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 }}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                          >
+                            <Button
+                              type="submit"
+                              disabled={isContactSubmitting}
+                              className="contact-form-submit w-full bg-black text-white text-base md:text-xl font-black py-4 hover:bg-primary hover:text-black transition-all border-2 border-black disabled:opacity-50 min-h-[50px] flex items-center justify-center rounded shadow-[8px_8px_0px_#000] active:shadow-none"
+                            >
+                              {isContactSubmitting ? (
+                                <span className="flex items-center justify-center">
+                                  <RefreshCw className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 animate-spin" />
+                                  <span className="text-sm md:text-base">SENDING MESSAGE...</span>
+                                </span>
+                              ) : (
+                                <span className="text-sm md:text-base">SEND MESSAGE TO TEAM →</span>
+                              )}
+                            </Button>
+                          </motion.div>
+                        </form>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
+}
