@@ -1515,7 +1515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register new user
   app.post("/api/register", async (req, res) => {
     try {
-      const { firstName, lastName, email, password, phone, identity, referralCode, role } = req.body;
+      const { id, firstName, lastName, email, password, phone, identity, referralCode, role } = req.body;
 
       // Validate required fields
       if (!firstName || !email || !password) {
@@ -1525,40 +1525,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Server-side comprehensive email validation with MX record check
-      const emailValidation = await validateEmailServer(email);
-      if (!emailValidation.valid) {
-        return res.status(400).json({
-          message: emailValidation.message,
-          error: "INVALID_EMAIL"
-        });
-      }
-
-      // Server-side phone validation with Pakistani operator prefix check
-      if (phone && phone.trim() !== '') {
-        const phoneValidation = validatePhoneServer(phone);
-        if (!phoneValidation.valid) {
-          return res.status(400).json({
-            message: phoneValidation.message,
-            error: "INVALID_PHONE"
-          });
-        }
-      }
-
-      // Validate and sanitize data
-      const validatedData = registerSchema.parse({
-        firstName,
-        lastName,
-        email,
-        password,
-        phone: phone && phone.trim() !== '' ? normalizePhoneNumber(phone) : phone,
-        identity,
-        referralCode,
-        role
-      });
-
-      // Check if email already exists
-      const existingUser = await storage.getUserByEmail(validatedData.email);
+      // Check for existing user
+      const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
         return res.status(400).json({
           message: "Email already registered",
@@ -1566,7 +1534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // PROPERLY RESOLVE REFERRAL CODE
+      // Resolve referral code
       let referredBy = undefined;
       if (referralCode) {
         const referrer = await storage.getUserByReferralCode(referralCode);
@@ -1577,10 +1545,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create user
       const newUser = await storage.createUser({
-        ...validatedData,
-        phone: validatedData.phone || "+1 555 0000000", // Ensure phone is always a string
-        name: `${validatedData.firstName} ${validatedData.lastName}`, // Required by type, but ignored by storage
-        passwordHash: validatedData.password, // Password will be hashed in storage layer
+        id, // Use provided ID (Firebase UID)
+        firstName,
+        lastName,
+        email,
+        phone: (phone && phone.trim() !== '') ? normalizePhoneNumber(phone) : "+1 555 0000000",
+        identity,
+        referralCode: referralCode || '',
+        role: role || 'user',
+        passwordHash: password, // "firebase_managed"
+        name: `${firstName} ${lastName}`,
         referredBy: referredBy
       });
 
@@ -1594,39 +1568,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: newUser.role || 'user'
       };
 
-      // Force save with explicit promise
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
-          if (err) {
-            console.error("Session save error:", err);
-            return reject(err);
-          }
-
-          // Verify data was set
-          console.log("Session saved:", {
-            userId: req.session.userId,
-            sessionId: req.session.id,
-            hasUser: !!req.session.user
-          });
-
-          resolve();
-        });
-      });
-
-      // Reload session to verify persistence
-      await new Promise<void>((resolve, reject) => {
-        req.session.reload((err) => {
-          if (err) {
-            console.error("Session reload error:", err);
-            return reject(err);
-          }
-
-          console.log("Session after reload:", {
-            userId: req.session.userId,
-            sessionId: req.session.id
-          });
-
-          resolve();
+          if (err) reject(err);
+          else resolve();
         });
       });
 
@@ -1642,31 +1587,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Registration error detailed:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          message: "Invalid registration data",
-          errors: error.errors
-        });
-      }
-
-      // DEBUG: Return actual error message to client to identify the issue
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      res.status(500).json({
-        message: "Registration failed: " + errorMessage,
-        error: "INTERNAL_ERROR",
-        details: errorMessage
-      });
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Registration failed" });
     }
   });
 
   // Login endpoint
   app.post("/api/login", async (req, res) => {
     try {
-      const { email, password } = loginSchema.parse(req.body);
+      const { email, password, firebaseUid } = req.body;
+      console.log(`[POST /api/login] Attempt for ${email}. FirebaseUID: ${firebaseUid}`);
 
-      // Validate user credentials
-      const user = await storage.validateUserPassword(email, password);
+      let user;
+      if (password === "firebase_managed" && firebaseUid) {
+        // 1. Try finding by ID (Firebase UID)
+        user = await storage.getUserById(firebaseUid);
+
+        // 2. Fallback: If not found by ID, try finding by email
+        if (!user) {
+          user = await storage.getUserByEmail(email);
+          if (user) {
+            console.log(`Found existing user ${email} for Firebase UID ${firebaseUid}. Linking...`);
+            // Attempt to update passwordHash to managed, but don't fail if it doesn't work
+            // We'll skip updating the ID for now to avoid foreign key constraint errors
+            try {
+              await storage.updateUser(user.id, {
+                passwordHash: 'firebase_managed'
+              });
+            } catch (e) {
+              console.error("Secondary: Failed to update passwordHash during linking:", e);
+            }
+          }
+        }
+      } else {
+        // Regular password login
+        user = await storage.validateUserPassword(email, password);
+      }
+
       if (!user) {
         return res.status(401).json({
           message: "Invalid email or password",
@@ -1684,39 +1641,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: user.role || 'user'
       };
 
-      // Force save with explicit promise
       await new Promise<void>((resolve, reject) => {
         req.session.save((err) => {
-          if (err) {
-            console.error("Session save error:", err);
-            return reject(err);
-          }
-
-          // Verify data was set
-          console.log("Session saved:", {
-            userId: req.session.userId,
-            sessionId: req.session.id,
-            hasUser: !!req.session.user
-          });
-
-          resolve();
-        });
-      });
-
-      // Reload session to verify persistence
-      await new Promise<void>((resolve, reject) => {
-        req.session.reload((err) => {
-          if (err) {
-            console.error("Session reload error:", err);
-            return reject(err);
-          }
-
-          console.log("Session after reload:", {
-            userId: req.session.userId,
-            sessionId: req.session.id
-          });
-
-          resolve();
+          if (err) reject(err);
+          else resolve();
         });
       });
 
@@ -1732,17 +1660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Login error:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          message: "Invalid login data",
-          errors: error.errors
-        });
-      }
-
-      res.status(500).json({
-        message: "Login failed",
-        error: "INTERNAL_ERROR"
-      });
+      res.status(500).json({ message: "Login failed" });
     }
   });
 

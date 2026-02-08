@@ -48,6 +48,8 @@ import { db } from "./db";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
+import { adminDb } from "./firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 export interface IStorage {
   // Legacy registration methods (keeping for backward compatibility)
@@ -212,8 +214,9 @@ export class DatabaseStorage implements IStorage {
 
   // User management methods
   async createUser(insertUser: InsertUser & { id?: string }): Promise<User> {
-    const hashedPassword = insertUser.passwordHash === 'supabase_managed'
-      ? 'supabase_managed' // Don't hash if managed by Supabase
+    const isManagedAuth = insertUser.passwordHash === 'supabase_managed' || insertUser.passwordHash === 'firebase_managed';
+    const hashedPassword = isManagedAuth
+      ? 'managed_auth' // Don't hash if managed by external provider
       : await bcrypt.hash(insertUser.passwordHash, 10); // Changed salt rounds to 10
     const referralCode = this.generateReferralCode();
 
@@ -241,12 +244,15 @@ export class DatabaseStorage implements IStorage {
       referralCode,
     };
 
-    // If external ID is provided (e.g., from Supabase), use it
+    // If external ID is provided (e.g., from Supabase/Firebase), use it
     if (insertUser.id) {
       userData.id = insertUser.id;
     }
 
     const [user] = await db.insert(users).values(userData).returning();
+
+    // Sync to Firestore immediately
+    await this.syncUserToFirestore(user.id);
 
     // If user was referred, create referral record
     if (insertUser.referredBy) {
@@ -303,6 +309,9 @@ export class DatabaseStorage implements IStorage {
 
     // Check for rank update
     await this.checkAndUpdateRank(userId);
+
+    // Sync to Firestore for real-time UI updates
+    await this.syncUserToFirestore(userId);
   }
 
   // Earnings methods
@@ -1314,6 +1323,31 @@ export class DatabaseStorage implements IStorage {
     return transactions
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .slice(0, limit);
+  }
+
+  // Sync helper to keep Firestore in sync with Postgres
+  private async syncUserToFirestore(userId: string): Promise<void> {
+    try {
+      const user = await this.getUserById(userId);
+      if (user) {
+        await adminDb.collection("users").doc(userId).set({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          identity: user.identity,
+          phone: user.phone || '',
+          referralCode: user.referralCode || '',
+          role: user.role || 'user',
+          availableBalance: user.availableBalance,
+          totalEarnings: user.totalEarnings,
+          rank: user.rank || 'Useless',
+          updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+        console.log(`Synced user ${userId} to Firestore`);
+      }
+    } catch (error) {
+      console.error(`Failed to sync user ${userId} to Firestore:`, error);
+    }
   }
 
   private generateReferralCode(): string {

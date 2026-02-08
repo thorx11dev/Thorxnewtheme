@@ -11,9 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import { useToast } from "@/hooks/use-toast";
-import { Delete, Eye, EyeOff, Info, Copy } from "lucide-react";
+import { Delete, Eye, EyeOff, Info } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
+import { auth } from "@/lib/firebase";
+import { saveUserProfile } from "@/lib/firestore";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from "firebase/auth";
 
 // Animated Placeholder Component
 function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: { examples: string[]; className?: string }) {
@@ -349,25 +355,45 @@ export default function Auth() {
 
     setIsSubmitting(true);
     try {
-      // Split name into firstName and lastName
+      // 1. Create user in Firebase
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        data.email,
+        data.password
+      );
+      const firebaseUser = userCredential.user;
+
+      // 2. Sync with local backend
       const nameParts = data.name.trim().split(' ');
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || nameParts[0];
 
-      const response = await apiRequest("POST", "/api/register", {
+      await apiRequest("POST", "/api/register", {
+        id: firebaseUser.uid, // Use Firebase UID
         firstName,
         lastName,
         email: data.email,
-        password: data.password,
+        password: "firebase_managed", // Don't store password locally
         phone: data.phone || '',
         identity: data.identity,
         referralCode: data.referralCode || '',
         role: data.role
       });
 
-      const result = await response.json();
+      // 3. Sync with Firestore for real-time data
+      await saveUserProfile(firebaseUser.uid, {
+        firstName,
+        lastName,
+        email: data.email,
+        identity: data.identity,
+        phone: data.phone || '',
+        referralCode: data.referralCode || '',
+        role: data.role,
+        availableBalance: "0.00",
+        totalEarnings: "0.00",
+        createdAt: new Date().toISOString()
+      });
 
-      // Invalidate auth query to fetch new user data
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
 
       toast({
@@ -375,7 +401,6 @@ export default function Auth() {
         description: `Welcome to THORX, ${firstName}!`,
       });
 
-      // Redirect based on role
       if (data.role === 'team' || data.role === 'founder') {
         setLocation("/team-portal");
       } else {
@@ -398,14 +423,36 @@ export default function Auth() {
 
     setIsSubmitting(true);
     try {
+      // 1. Login with Firebase
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        data.email,
+        data.password
+      );
+      const firebaseUser = userCredential.user;
+
+      // 2. Login with local backend (creates session)
       const response = await apiRequest("POST", "/api/login", {
         email: data.email,
-        password: data.password
+        password: "firebase_managed",
+        firebaseUid: firebaseUser.uid
       });
 
       const result = await response.json();
 
-      // Invalidate auth query to fetch new user data
+      // 3. Sync with Firestore (useful for existing users migrating)
+      if (result.user) {
+        await saveUserProfile(firebaseUser.uid, {
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+          email: result.user.email,
+          role: result.user.role,
+          availableBalance: result.user.availableBalance || "0.00",
+          totalEarnings: result.user.totalEarnings || "0.00",
+          rank: result.user.rank || "Useless"
+        });
+      }
+
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
 
       toast({
@@ -413,7 +460,6 @@ export default function Auth() {
         description: `Welcome back!`,
       });
 
-      // Redirect based on role
       if (result.user?.role === 'team' || result.user?.role === 'founder') {
         setLocation("/team-portal");
       } else {

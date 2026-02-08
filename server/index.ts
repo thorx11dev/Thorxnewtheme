@@ -10,6 +10,8 @@ const allowedOrigins = [
   'https://localhost:5000',
   'http://127.0.0.1:5000',
   'https://127.0.0.1:5000',
+  'https://thorx-35321.web.app',
+  'https://thorx-35321.firebaseapp.com',
   ...(process.env.REPLIT_DEV_DOMAIN ? [
     `https://${process.env.REPLIT_DEV_DOMAIN}`,
     `http://${process.env.REPLIT_DEV_DOMAIN}`
