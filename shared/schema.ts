@@ -307,6 +307,8 @@ export const dailyTasks = pgTable("daily_tasks", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+export type LeaderboardCache = typeof leaderboardCache.$inferSelect;
+export type InsertLeaderboardCache = typeof leaderboardCache.$inferInsert;
 
 // Records of task completions by users
 export const taskRecords = pgTable("task_records", {

@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { WaterfallAdPlayer } from "@/components/ads/HilltopAdsPlayer";
 
 interface AdWebPanelProps {
     isOpen: boolean;
@@ -109,12 +110,14 @@ export function AdWebPanel({
     const [currentUrl, setCurrentUrl] = useState(productUrl);
     const [inputUrl, setInputUrl] = useState(productUrl);
     const [loading, setLoading] = useState(false);
+    const [adCompleted, setAdCompleted] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setCurrentUrl(productUrl);
             setInputUrl(productUrl);
             setLoading(true);
+            setAdCompleted(false);
         }
     }, [isOpen, productUrl]);
 
@@ -227,64 +230,60 @@ export function AdWebPanel({
 
                         </div>
 
-import { WaterfallAdPlayer } from "@/components/ads/HilltopAdsPlayer";
+                        {/* Iframe Content */}
+                        <div className="flex-1 w-full bg-gray-50 relative" onMouseMove={handleActivity} onTouchMove={handleActivity}>
+                            {!adCompleted ? (
+                                <div className="absolute inset-0 z-50 bg-white flex flex-col items-center justify-center p-6 md:p-12">
+                                    <div className="w-full max-w-2xl">
+                                        <div className="mb-8 text-center">
+                                            <TechnicalLabel text="MONETIZATION PHASE" className="text-primary text-xs md:text-sm mb-2 tracking-[0.3em] font-black" />
+                                            <h2 className="text-2xl md:text-4xl font-black text-black uppercase tracking-tighter">Synchronizing Engine...</h2>
+                                            <p className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 border-t border-zinc-100 pt-2">Please wait for the advertisement to initialize</p>
+                                        </div>
 
-    const [adCompleted, setAdCompleted] = useState(false);
+                                        <div className="border-4 border-black p-2 bg-black shadow-[8px_8px_0px_#000]">
+                                            <WaterfallAdPlayer
+                                                onComplete={() => {
+                                                    setAdCompleted(true);
+                                                    setLoading(true);
+                                                }}
+                                                adFormat="video"
+                                            />
+                                        </div>
 
-    // Iframe Content
-    <div className="flex-1 w-full bg-gray-50 relative" onMouseMove={handleActivity} onTouchMove={handleActivity}>
-        {!adCompleted ? (
-            <div className="absolute inset-0 z-50 bg-white flex flex-col items-center justify-center p-6 md:p-12">
-                <div className="w-full max-w-2xl">
-                    <div className="mb-8 text-center">
-                        <TechnicalLabel text="MONETIZATION PHASE" className="text-primary text-xs md:text-sm mb-2 tracking-[0.3em] font-black" />
-                        <h2 className="text-2xl md:text-4xl font-black text-black uppercase tracking-tighter">Synchronizing Engine...</h2>
-                        <p className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 border-t border-zinc-100 pt-2">Please wait for the advertisement to initialize</p>
-                    </div>
-                    
-                    <div className="border-4 border-black p-2 bg-black shadow-[8px_8px_0px_#000]">
-                        <WaterfallAdPlayer 
-                            onComplete={() => {
-                                setAdCompleted(true);
-                                setLoading(true);
-                            }} 
-                            adFormat="video" 
-                        />
-                    </div>
-                    
-                    <div className="mt-8 flex items-center justify-center gap-4">
-                        <div className="h-px flex-1 bg-zinc-200" />
-                        <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest italic">Encrypted Secure Session</span>
-                        <div className="h-px flex-1 bg-zinc-200" />
-                    </div>
-                </div>
-            </div>
-        ) : (
-            <>
-                {loading && (
-                    <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/50 backdrop-blur-[2px]">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                )}
+                                        <div className="mt-8 flex items-center justify-center gap-4">
+                                            <div className="h-px flex-1 bg-zinc-200" />
+                                            <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest italic">Encrypted Secure Session</span>
+                                            <div className="h-px flex-1 bg-zinc-200" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {loading && (
+                                        <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/50 backdrop-blur-[2px]">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                        </div>
+                                    )}
 
-                {productUrl ? (
-                    <iframe
-                        ref={iframeRef}
-                        src={getProxyUrl(currentUrl)}
-                        className="w-full h-full border-none"
-                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-                        title="Browser Window"
-                        onLoad={() => setLoading(false)}
-                    />
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                        <ExternalLink className="w-12 h-12 mb-4 opacity-50" />
-                        <p className="text-lg font-medium">No URL Loaded</p>
-                    </div>
-                )}
-            </>
-        )}
-    </div>
+                                    {productUrl ? (
+                                        <iframe
+                                            ref={iframeRef}
+                                            src={getProxyUrl(currentUrl)}
+                                            className="w-full h-full border-none"
+                                            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                                            title="Browser Window"
+                                            onLoad={() => setLoading(false)}
+                                        />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                                            <ExternalLink className="w-12 h-12 mb-4 opacity-50" />
+                                            <p className="text-lg font-medium">No URL Loaded</p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </motion.div>
                 </>
             )}

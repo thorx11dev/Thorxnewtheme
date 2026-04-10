@@ -1,4 +1,5 @@
 import admin from "firebase-admin";
+const authProvider = (process.env.AUTH_PROVIDER || "firebase").toLowerCase();
 
 // To initialize Firebase Admin, you need a Service Account JSON.
 // You can get this from the Firebase Console:
@@ -6,7 +7,11 @@ import admin from "firebase-admin";
 
 const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-if (serviceAccountJson) {
+if (authProvider !== "firebase") {
+    console.log("Firebase Admin disabled (AUTH_PROVIDER is not firebase)");
+}
+
+if (authProvider === "firebase" && serviceAccountJson) {
     try {
         const serviceAccount = JSON.parse(serviceAccountJson);
         admin.initializeApp({
@@ -18,7 +23,7 @@ if (serviceAccountJson) {
         // Fallback to default if possible
         admin.initializeApp();
     }
-} else {
+} else if (authProvider === "firebase") {
     console.warn("FIREBASE_SERVICE_ACCOUNT_JSON not found. Some admin features may not work locally.");
     // Try initializing with default credentials (useful in some environments like GCP)
     try {
@@ -28,6 +33,6 @@ if (serviceAccountJson) {
     }
 }
 
-export const adminDb = admin.firestore();
-export const adminAuth = admin.auth();
+export const adminDb = admin.apps.length > 0 ? admin.firestore() : null;
+export const adminAuth = admin.apps.length > 0 ? admin.auth() : null;
 export default admin;

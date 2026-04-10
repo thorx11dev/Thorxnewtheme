@@ -82,6 +82,7 @@ export interface IStorage {
 
   // User management methods
   createUser(user: InsertUser & { id?: string }): Promise<User>; // Allow external ID (from Supabase)
+  getUser(id: string): Promise<User | undefined>;
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByReferralCode(referralCode: string): Promise<User | undefined>;
@@ -181,7 +182,7 @@ export interface IStorage {
   getTodayCompletedTasksByType(userId: string, type: string): Promise<number>;
   getTaskRecord(userId: string, taskId: string): Promise<TaskRecord | undefined>;
   createTaskRecord(record: InsertTaskRecord): Promise<TaskRecord>;
-  updateTaskRecord(id: string, updates: Partial<InsertTaskRecord>): Promise<TaskRecord | undefined>;
+  updateTaskRecord(id: string, updates: Partial<InsertTaskRecord> & { completedAt?: Date | null }): Promise<TaskRecord | undefined>;
 
   // HilltopAds configuration methods
   createHilltopAdsConfig(config: InsertHilltopAdsConfig): Promise<HilltopAdsConfig>;
@@ -404,6 +405,10 @@ export class DatabaseStorage implements IStorage {
   async getUserById(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    return this.getUserById(id);
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -856,6 +861,9 @@ export class DatabaseStorage implements IStorage {
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
         avatar: users.avatar,
+        rank: users.rank,
+        profilePicture: users.profilePicture,
+        permissions: users.permissions,
         teamKey: teamKeys,
       })
       .from(users)
@@ -932,7 +940,10 @@ export class DatabaseStorage implements IStorage {
           role: users.role,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
-          avatar: users.avatar
+          avatar: users.avatar,
+          rank: users.rank,
+          profilePicture: users.profilePicture,
+          permissions: users.permissions
         })
         .from(users)
         .orderBy(desc(users.createdAt));
@@ -1114,7 +1125,7 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
-  async updateTaskRecord(id: string, updates: Partial<InsertTaskRecord>): Promise<TaskRecord | undefined> {
+  async updateTaskRecord(id: string, updates: Partial<InsertTaskRecord> & { completedAt?: Date | null }): Promise<TaskRecord | undefined> {
     const [record] = await db.update(taskRecords).set(updates).where(eq(taskRecords.id, id)).returning();
     return record;
   }
@@ -1178,10 +1189,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(hilltopAdsZones.id, id))
       .returning();
     return updated;
-  }
-
-  async getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]> {
-    return await db.select().from(withdrawals).where(eq(withdrawals.userId, userId)).orderBy(desc(withdrawals.createdAt));
   }
 
   async createHilltopAdsStat(insertStat: InsertHilltopAdsStat): Promise<HilltopAdsStat> {
@@ -2485,6 +2492,7 @@ export class DatabaseStorage implements IStorage {
   // Sync helper to keep Firestore in sync with Postgres
   private async syncUserToFirestore(userId: string): Promise<void> {
     try {
+      if (!adminDb) return;
       const user = await this.getUserById(userId);
       if (user) {
         await adminDb.collection("users").doc(userId).set({
@@ -2543,6 +2551,7 @@ export class MemStorage {
   // Stub implementations for new methods (not used in production)
   async createUser(user: InsertUser): Promise<User> { throw new Error("Not implemented in MemStorage"); }
   async getUserById(id: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async getUser(id: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async getUserByEmail(email: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async getUserByReferralCode(referralCode: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async validateUserPassword(email: string, password: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
@@ -2562,7 +2571,7 @@ export class MemStorage {
   async getTodayCompletedTasksByType(userId: string, type: string): Promise<number> { return 0; }
   async getTaskRecord(userId: string, taskId: string): Promise<TaskRecord | undefined> { return undefined; }
   async createTaskRecord(record: InsertTaskRecord): Promise<TaskRecord> { throw new Error("Not implemented in MemStorage"); }
-  async updateTaskRecord(id: string, updates: Partial<InsertTaskRecord>): Promise<TaskRecord | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async updateTaskRecord(id: string, updates: Partial<InsertTaskRecord> & { completedAt?: Date | null }): Promise<TaskRecord | undefined> { throw new Error("Not implemented in MemStorage"); }
 
   // System Config Stubs
   async getSystemConfig(key: string): Promise<SystemConfig | undefined> { return undefined; }
@@ -2654,5 +2663,10 @@ export class MemStorage {
   }
 }
 
-// Use DatabaseStorage for production
+const dbProvider = (process.env.DB_PROVIDER || "postgres").toLowerCase();
+if (dbProvider === "insforge") {
+  console.log("[Storage] DB_PROVIDER=insforge detected. Using compatibility database adapter.");
+}
+
+// Compatibility default: keep DatabaseStorage active until Insforge DB cutover is complete.
 export const storage = new DatabaseStorage();

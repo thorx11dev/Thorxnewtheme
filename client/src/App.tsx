@@ -7,14 +7,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute, PublicOnlyRoute, TeamProtectedRoute } from "@/components/auth/ProtectedRoute";
 import ThorxLoadingScreen from "@/components/ui/thorx-loading-screen";
+import ComicClickEffect from "@/components/ui/ComicClickEffect";
 
 const Home = lazy(() => import("@/pages/home"));
-const Auth = lazy(() => import("@/pages/auth"));
-const UserPortal = lazy(() => import("@/pages/UserPortal"));
-const TeamPortal = lazy(() => import("@/pages/TeamPortal"));
+const Auth = lazy(() => import("@/features/auth/AuthPage"));
+const UserPortal = lazy(() => import("@/features/user-portal/UserPortalPage"));
+const TeamPortal = lazy(() => import("@/features/team-portal/TeamPortalPage"));
 const HilltopAdsAdmin = lazy(() => import("@/pages/HilltopAdsAdmin"));
-const TermsAndConditions = lazy(() => import("@/pages/TermsAndConditions"));
-const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
+const TermsAndConditions = lazy(() => import("@/features/legal/TermsPage"));
+const PrivacyPolicy = lazy(() => import("@/features/legal/PrivacyPage"));
 const AdLanding = lazy(() => import("@/pages/AdLanding"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
@@ -113,8 +114,6 @@ function Router() {
     </Suspense>
   );
 }
-
-import ComicClickEffect from "@/components/ui/ComicClickEffect";
 
 function ScrollToTop() {
   const [location] = useLocation();

@@ -2,30 +2,14 @@ import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { isOriginAllowed, runtimeConfig } from "./config/runtime";
 
 const app = express();
-
-const allowedOrigins = [
-  'http://localhost:5000',
-  'https://localhost:5000',
-  'http://127.0.0.1:5000',
-  'https://127.0.0.1:5000',
-  'https://thorx-35321.web.app',
-  'https://thorx-35321.firebaseapp.com',
-  ...(process.env.REPLIT_DEV_DOMAIN ? [
-    `https://${process.env.REPLIT_DEV_DOMAIN}`,
-    `http://${process.env.REPLIT_DEV_DOMAIN}`
-  ] : []),
-  ...(process.env.REPL_SLUG && process.env.REPL_OWNER ? [
-    `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`,
-    `http://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-  ] : []),
-];
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked: ${origin}`);
@@ -92,11 +76,10 @@ app.use((req, res, next) => {
   }
 
   // ALWAYS serve the app on port 5000
-  const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({
-    port,
+    port: runtimeConfig.port,
     host: "0.0.0.0",
   }, () => {
-    log(`serving on port ${port}`);
+    log(`serving on port ${runtimeConfig.port}`);
   });
 })();

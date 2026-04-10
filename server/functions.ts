@@ -3,12 +3,18 @@ import express from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { log } from "./vite";
+import { isOriginAllowed } from "./config/runtime";
 
 const app = express();
 
-// CORS Configuration for Production
+// CORS configuration for functions runtime
 app.use(cors({
-    origin: true, // In production, adjust this to your Firebase Hosting domain
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (isOriginAllowed(origin)) return callback(null, true);
+        console.warn(`CORS blocked (functions): ${origin}`);
+        return callback(null, false);
+    },
     credentials: true,
 }));
 

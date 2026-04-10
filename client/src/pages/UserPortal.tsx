@@ -3109,7 +3109,7 @@ export default function UserPortal() {
                   >
                     <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                       {withdrawalsHistory && withdrawalsHistory.length > 0 ? (
-                        withdrawalsHistory.slice(0, 5).map((item, idx) => (
+                        withdrawalsHistory.slice(0, 5).map((item: any, idx: number) => (
                           <motion.div
                             key={item.id}
                             initial={{ opacity: 0, x: -10 }}
@@ -3212,7 +3212,7 @@ export default function UserPortal() {
                 >
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                     {withdrawalsHistory && withdrawalsHistory.length > 0 ? (
-                      withdrawalsHistory.slice(0, 5).map((item, idx) => (
+                      withdrawalsHistory.slice(0, 5).map((item: any, idx: number) => (
                         <motion.div
                           key={item.id}
                           initial={{ opacity: 0, x: -10 }}

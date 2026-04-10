@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { auth } from "@/lib/firebase";
 import { subscribeToUserBalance } from "@/lib/firestore";
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { isInsforgeAuth } from "@/lib/auth-provider";
 
 export interface User {
   id: string;
@@ -36,6 +37,18 @@ export function useAuth() {
 
   // Monitor Firebase Auth State
   useEffect(() => {
+    if (isInsforgeAuth) {
+      setFirebaseUser({ uid: "insforge-session" });
+      setIsAuthLoading(false);
+      return;
+    }
+
+    if (!auth) {
+      setFirebaseUser(null);
+      setIsAuthLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       setIsAuthLoading(false);
@@ -46,15 +59,24 @@ export function useAuth() {
   }, [queryClient]);
 
   const { data: user, isLoading: isQueryLoading, error } = useQuery({
-    queryKey: ["auth", firebaseUser?.uid],
+    queryKey: ["auth", isInsforgeAuth ? "insforge-session" : firebaseUser?.uid],
     queryFn: async () => {
-      console.log("useAuth: Fetching user profile. Firebase user:", firebaseUser?.uid);
-      // If no Firebase user, we're not logged in
-      if (!firebaseUser) return null;
+      console.log("useAuth: Fetching user profile. Provider:", isInsforgeAuth ? "insforge" : "firebase");
+      // In Firebase mode, if there is no Firebase user, user is not logged in.
+      if (!isInsforgeAuth && !firebaseUser) return null;
 
       try {
         const response = await apiRequest("GET", "/api/user");
-        const data = await response.json();
+        const text = await response.text();
+        let data: any;
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch {
+          console.warn(
+            "useAuth: /api/user returned non-JSON (often wrong VITE_API_URL or API host serving the SPA).",
+          );
+          return null;
+        }
         console.log("useAuth: Profile fetch success:", data?.email);
         return data;
       } catch (error: any) {
@@ -65,13 +87,14 @@ export function useAuth() {
         throw error;
       }
     },
-    enabled: !isAuthLoading, // Only run query after Firebase initializes
+    enabled: !isAuthLoading,
     retry: false,
     staleTime: 0,
   });
 
   // Real-time Firestore Sync
   useEffect(() => {
+    if (isInsforgeAuth) return;
     if (!firebaseUser) return;
 
     const unsubscribe = subscribeToUserBalance(firebaseUser.uid, (firestoreData) => {
@@ -94,7 +117,9 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       setIsTransitioning(true);
-      await signOut(auth); // Sign out from Firebase
+      if (!isInsforgeAuth && auth) {
+        await signOut(auth);
+      }
       await apiRequest("POST", "/api/logout"); // Also clear server session
     },
     onSuccess: () => {
@@ -110,7 +135,7 @@ export function useAuth() {
   return {
     user,
     firebaseUser,
-    isAuthenticated: !!user && !!firebaseUser,
+    isAuthenticated: isInsforgeAuth ? !!user : (!!user && !!firebaseUser),
     isLoading: isAuthLoading || isQueryLoading || isTransitioning,
     error,
     logout: logoutMutation.mutate,

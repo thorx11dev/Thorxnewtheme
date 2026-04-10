@@ -10,6 +10,8 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "./validation";
 import { hilltopAdsService } from "./hilltopads-service";
+import { runtimeConfig } from "./config/runtime";
+import { handleProxyRequest } from "./modules/proxy/proxy-handler";
 
 // Extend session data type
 declare module "express-session" {
@@ -238,17 +240,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session management
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
+  const isProd = runtimeConfig.isProd;
 
   // Detect if we're running in Replit environment
   const isReplit = process.env.REPL_ID !== undefined || process.env.REPLIT_DB_URL !== undefined;
+  const sessionSecret = runtimeConfig.sessionSecret;
+  if (!sessionSecret && isProd) {
+    throw new Error("SESSION_SECRET must be set in production");
+  }
 
-  // Debug: Log environment detection
-  console.log("Environment detection:", {
-    NODE_ENV: process.env.NODE_ENV,
-    REPL_ID: !!process.env.REPL_ID,
-    REPLIT_DB_URL: !!process.env.REPLIT_DB_URL,
-    isReplit
-  });
+  const rawSameSite = runtimeConfig.sessionCookieSameSite;
+  const sameSite = (rawSameSite === "none" || rawSameSite === "strict" || rawSameSite === "lax")
+    ? rawSameSite
+    : "lax";
+
+  // Cross-site cookies require secure=true. Keep secure by default in production.
+  const cookieSecure = runtimeConfig.sessionCookieSecure || isProd || isReplit;
+
+  if (!isProd) {
+    console.log("Environment detection:", {
+      NODE_ENV: process.env.NODE_ENV,
+      REPL_ID: !!process.env.REPL_ID,
+      REPLIT_DB_URL: !!process.env.REPLIT_DB_URL,
+      isReplit,
+    });
+  }
 
   const sessionConfig = {
     store: new pgStore({
@@ -257,35 +273,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ttl: sessionTtl,
       pruneSessionInterval: 60 * 60,
     }),
-    secret: process.env.SESSION_SECRET || "thorx-secret-key-dev-only",
+    secret: sessionSecret || "thorx-secret-key-dev-only",
     resave: false,
     saveUninitialized: false,
     rolling: true,
     cookie: {
       httpOnly: true,
-      secure: isReplit, // Only set secure if definitely in Replit (HTTPS)
+      secure: cookieSecure,
       maxAge: sessionTtl,
-      sameSite: "lax" as const,
+      sameSite: sameSite as "lax" | "strict" | "none",
+      domain: runtimeConfig.sessionCookieDomain,
       path: '/'
     },
     name: 'thorx.sid',
   };
 
-  console.log("Session cookie config:", sessionConfig.cookie);
+  if (!isProd) {
+    console.log("Session cookie config:", sessionConfig.cookie);
+  }
 
   app.set('trust proxy', 1);
   app.use(session(sessionConfig));
   
-  // Custom Session Debugger Middleware
-  app.use((req, res, next) => {
-    console.log("Session Debug:", {
-      path: req.path,
-      sessionID: req.sessionID,
-      userId: req.session.userId,
-      cookie: req.session.cookie
+  // Custom session debugger middleware for development only.
+  if (!isProd) {
+    app.use((req, res, next) => {
+      console.log("Session Debug:", {
+        path: req.path,
+        sessionID: req.sessionID,
+        userId: req.session.userId,
+      });
+      next();
     });
-    next();
-  });
+  }
 
   // --- Team Invitation Endpoints ---
 
@@ -406,22 +426,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { action, payload } = req.body;
 
-      const user = await storage.getUser(id);
+      const user = await storage.getUserById(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
       if (action === "suspend") {
-        await storage.updateUser(id, { isActive: false });
+        await storage.updateUser(id, { isActive: false } as any);
       } else if (action === "adjust_balance" && payload && payload.amount) {
         const amount = parseFloat(payload.amount);
         const currentBalance = parseFloat(user.availableBalance || "0");
-        await storage.updateUser(id, { availableBalance: (currentBalance + amount).toString() });
+        await storage.updateUser(id, { availableBalance: (currentBalance + amount).toString() } as any);
       } else {
         return res.status(400).json({ message: "Invalid action or missing payload" });
       }
 
-      const updatedUser = await storage.getUser(id);
+      const updatedUser = await storage.getUserById(id);
       res.json(updatedUser);
     } catch (error) {
       console.error("User admin action error:", error);
@@ -847,7 +867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const userWithdrawals = await storage.getWithdrawalsByUser(userId);
+      const userWithdrawals = await storage.getWithdrawalsByUserId(userId);
       res.json(userWithdrawals);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch withdrawals" });
@@ -1169,73 +1189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
   app.get("/api/proxy", async (req, res) => {
     try {
-      const targetUrl = req.query.url as string;
-      if (!targetUrl) {
-        return res.status(400).send("Missing url parameter");
-      }
-
-      // Basic validation
-      try {
-        new URL(targetUrl);
-      } catch (e) {
-        return res.status(400).send("Invalid URL");
-      }
-
-      console.log(`[Proxy] Fetching: ${targetUrl}`);
-
-      // Dynamic import to ensure compatibility
-      const https = await import('https');
-      const http = await import('http');
-      const { URL: NodeURL } = await import('url');
-
-      const parsedUrl = new NodeURL(targetUrl);
-      const client = parsedUrl.protocol === 'https:' ? https : http;
-
-      const proxyReq = client.get(targetUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-      }, (proxyRes) => {
-        // Forward status
-        res.status(proxyRes.statusCode || 200);
-
-        // Copy significant headers
-        const headersToCopy = ['content-type', 'content-length', 'cache-control', 'expires', 'date', 'etag', 'last-modified'];
-
-        Object.keys(proxyRes.headers).forEach(key => {
-          if (headersToCopy.includes(key.toLowerCase()) && proxyRes.headers[key]) {
-            res.setHeader(key, proxyRes.headers[key]!);
-          }
-        });
-
-        // Security headers removal
-        res.removeHeader('X-Frame-Options');
-        res.removeHeader('Content-Security-Policy');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-
-        const contentType = proxyRes.headers['content-type'] || '';
-
-        if (contentType.includes('text/html')) {
-          let data = '';
-          proxyRes.on('data', chunk => data += chunk);
-          proxyRes.on('end', () => {
-            // Inject base tag
-            const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
-            if (!data.includes('<base')) {
-              data = data.replace(/<head>/i, `<head><base href="${baseUrl}/">`);
-            }
-            res.send(data);
-          });
-        } else {
-          // Pipe binary data directly
-          proxyRes.pipe(res);
-        }
-      });
-
-      proxyReq.on('error', (err) => {
-        console.error("Proxy Request Error:", err);
-        res.status(500).send("Proxy Error");
-      });
+      await handleProxyRequest(req, res);
 
     } catch (error) {
       console.error("Proxy wrapper error:", error);
@@ -1349,7 +1303,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Convert registration data to user data format
-      const { firstName, lastName, email, phone, passwordHash, identity, role } = validatedData;
+      const { email, phone } = validatedData;
+      const emailPrefix = email.split("@")[0] || "legacy";
+      const firstName = emailPrefix.slice(0, 20);
+      const lastName = "User";
+      const passwordHash = `legacy_${Date.now()}`;
+      const identity = `LEGACY_${Date.now()}`;
+      const role = "user";
 
       const user = await storage.createUser({
         firstName,
@@ -1391,7 +1351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { withdrawals } = await import("@shared/schema");
       const { sql, eq } = await import("drizzle-orm");
 
-      const [paidResult] = await pool.query(`
+      const paidResult = await pool.query(`
         SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as total
         FROM withdrawals
         WHERE status = 'completed'
@@ -2257,19 +2217,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Login endpoint
   app.post("/api/login", async (req, res) => {
     try {
-      const { email, password, firebaseUid } = req.body;
-      console.log(`[POST /api/login] Attempt for ${email}. FirebaseUID: ${firebaseUid}`);
+      const { email, password, firebaseUid, insforgeUid } = req.body;
+      const externalUid = insforgeUid || firebaseUid;
+      console.log(`[POST /api/login] Attempt for ${email}. ExternalUID: ${externalUid}`);
 
       let user;
-      if (password === "firebase_managed" && firebaseUid) {
-        // 1. Try finding by ID (Firebase UID)
-        user = await storage.getUserById(firebaseUid);
+      if (password === "firebase_managed" && externalUid) {
+        // 1. Try finding by external provider ID
+        user = await storage.getUserById(externalUid);
 
         // 2. Fallback: If not found by ID, try finding by email
         if (!user) {
           user = await storage.getUserByEmail(email);
           if (user) {
-            console.log(`Found existing user ${email} for Firebase UID ${firebaseUid}. Linking...`);
+            console.log(`Found existing user ${email} for provider UID ${externalUid}. Linking...`);
             // Attempt to update passwordHash to managed, but don't fail if it doesn't work
             // We'll skip updating the ID for now to avoid foreign key constraint errors
             try {
@@ -2334,7 +2295,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             action: "ADMIN_AUTH_SUCCESS",
             targetType: "system",
             targetId: user.id,
-            details: { role: user.role, method: firebaseUid ? 'firebase' : 'password' },
+            details: {
+              role: user.role,
+              method: insforgeUid ? 'insforge' : (firebaseUid ? 'firebase' : 'password')
+            },
             ipAddress: req.ip
           });
         } catch (e) {
@@ -2850,10 +2814,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Mark as completed
-      const updatedRecord = await storage.updateTaskRecord(record.id, { 
+      const updatedRecord = await storage.updateTaskRecord(record.id, {
         status: 'completed',
-        completedAt: new Date() as any
-      });
+        completedAt: new Date()
+      } as any);
 
       res.json({ success: true, record: updatedRecord });
     } catch (error) {

@@ -4,16 +4,16 @@ import {
     doc,
     setDoc,
     getDoc,
-    updateDoc,
-    query,
-    where,
-    getDocs,
+    type Firestore,
     onSnapshot,
     Timestamp,
     addDoc,
-    orderBy,
-    limit
 } from "firebase/firestore";
+
+function requireDb(): Firestore {
+    if (!db) throw new Error("Firestore is not initialized (enable Firebase auth and env keys).");
+    return db;
+}
 
 // Collection Names
 export const COLLECTIONS = {
@@ -26,7 +26,7 @@ export const COLLECTIONS = {
 
 // --- User Profile ---
 export const saveUserProfile = async (userId: string, data: any) => {
-    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    const userRef = doc(requireDb(), COLLECTIONS.USERS, userId);
     await setDoc(userRef, {
         ...data,
         updatedAt: Timestamp.now()
@@ -34,14 +34,14 @@ export const saveUserProfile = async (userId: string, data: any) => {
 };
 
 export const getUserProfile = async (userId: string) => {
-    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    const userRef = doc(requireDb(), COLLECTIONS.USERS, userId);
     const snap = await getDoc(userRef);
     return snap.exists() ? snap.data() : null;
 };
 
 // --- Earnings ---
 export const addEarningRecord = async (userId: string, amount: number, type: string, description: string) => {
-    const earningsRef = collection(db, COLLECTIONS.EARNINGS);
+    const earningsRef = collection(requireDb(), COLLECTIONS.EARNINGS);
     await addDoc(earningsRef, {
         userId,
         amount,
@@ -51,13 +51,14 @@ export const addEarningRecord = async (userId: string, amount: number, type: str
     });
 
     // Also update user summary balance
-    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    const userRef = doc(requireDb(), COLLECTIONS.USERS, userId);
     // Note: For real apps, use FieldValue.increment()
     // import { increment } from "firebase/firestore";
 };
 
 // --- Real-time Listeners ---
 export const subscribeToUserBalance = (userId: string, callback: (data: any) => void) => {
+    if (!db) return () => {};
     const userRef = doc(db, COLLECTIONS.USERS, userId);
     return onSnapshot(userRef, 
         (doc) => {

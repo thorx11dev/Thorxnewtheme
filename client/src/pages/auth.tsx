@@ -22,6 +22,7 @@ import {
   signInWithEmailAndPassword
 } from "firebase/auth";
 import { cn } from "@/lib/utils";
+import { isInsforgeAuth } from "@/lib/auth-provider";
 
 // Animated Placeholder Component
 function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: { examples: string[]; className?: string }) {
@@ -375,30 +376,45 @@ export default function Auth() {
 
     setIsSubmitting(true);
     try {
-      // 1. Create user in Firebase
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        data.email,
-        data.password
-      );
-      const firebaseUser = userCredential.user;
-
-      // 2. Sync with local backend
+      // Register with selected auth provider and establish backend profile/session.
       const nameParts = data.name.trim().split(' ');
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || nameParts[0];
 
-      await apiRequest("POST", "/api/register", {
-        id: firebaseUser.uid, // Use Firebase UID
-        firstName,
-        lastName,
-        email: data.email,
-        password: "firebase_managed", // Don't store password locally
-        phone: data.phone || '',
-        identity: data.identity,
-        referralCode: data.referralCode || '',
-        role: data.role
-      });
+      if (isInsforgeAuth) {
+        await apiRequest("POST", "/api/register", {
+          firstName,
+          lastName,
+          email: data.email,
+          password: data.password,
+          phone: data.phone || '',
+          identity: data.identity,
+          referralCode: data.referralCode || '',
+          role: data.role
+        });
+      } else {
+        if (!auth) {
+          throw new Error("Firebase auth is not configured (missing VITE_FIREBASE_* env).");
+        }
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          data.email,
+          data.password
+        );
+        const firebaseUser = userCredential.user;
+
+        await apiRequest("POST", "/api/register", {
+          id: firebaseUser.uid,
+          firstName,
+          lastName,
+          email: data.email,
+          password: "firebase_managed",
+          phone: data.phone || '',
+          identity: data.identity,
+          referralCode: data.referralCode || '',
+          role: data.role
+        });
+      }
 
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
 
@@ -429,27 +445,39 @@ export default function Auth() {
 
     setIsSubmitting(true);
     try {
-      // 1. Login with Firebase
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        data.email,
-        data.password
-      );
-      const firebaseUser = userCredential.user;
+      // Login strategy depends on selected auth provider.
+      let response: Response;
+      let providerUid: string | undefined;
+      if (isInsforgeAuth) {
+        response = await apiRequest("POST", "/api/login", {
+          email: data.email,
+          password: data.password
+        });
+      } else {
+        if (!auth) {
+          throw new Error("Firebase auth is not configured (missing VITE_FIREBASE_* env).");
+        }
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          data.email,
+          data.password
+        );
+        const firebaseUser = userCredential.user;
+        providerUid = firebaseUser.uid;
 
-      // 2. Login with local backend (creates session)
-      const response = await apiRequest("POST", "/api/login", {
-        email: data.email,
-        password: "firebase_managed",
-        firebaseUid: firebaseUser.uid
-      });
+        response = await apiRequest("POST", "/api/login", {
+          email: data.email,
+          password: "firebase_managed",
+          firebaseUid: firebaseUser.uid
+        });
+      }
 
       const result = await response.json();
 
-      // 3. Sync with Firestore (useful for existing users migrating)
-      if (result.user) {
+      // Sync with Firestore only when Firebase auth provider is active.
+      if (result.user && !isInsforgeAuth) {
         try {
-          await saveUserProfile(firebaseUser.uid, {
+          await saveUserProfile(providerUid || result.user.id, {
             firstName: result.user.firstName,
             lastName: result.user.lastName,
             email: result.user.email,
