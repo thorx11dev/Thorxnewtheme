@@ -1,6 +1,7 @@
-import React, { useMemo } from "react";
+import * as React from "react";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Crown } from "lucide-react";
+import { Crown, User, Shield, Medal, Award } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface NetworkUser {
@@ -10,6 +11,7 @@ interface NetworkUser {
     email: string;
     rank?: string;
     avatar?: string;
+    profilePicture?: string;
     level: number;
     referredBy: string;
     earningsFromUser: string;
@@ -18,10 +20,12 @@ interface NetworkUser {
 interface ReferralTreeProps {
     currentUser: {
         id: string;
-        firstName: string;
-        lastName: string;
+        firstName?: string;
+        lastName?: string;
+        name?: string;
         rank?: string;
         avatar?: string;
+        profilePicture?: string;
     };
     referrals: NetworkUser[];
 }
@@ -31,6 +35,25 @@ interface TreeNode {
     children: TreeNode[];
     isRoot?: boolean;
 }
+
+const AVATARS = [
+    { id: "avatar1", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
+    { id: "avatar2", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" },
+    { id: "avatar3", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Luna" },
+    { id: "avatar4", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Max" },
+    { id: "avatar5", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie" },
+    { id: "avatar6", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver" },
+    { id: "avatar7", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma" },
+    { id: "avatar8", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack" },
+    { id: "avatar9", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mia" },
+    { id: "avatar10", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie" },
+];
+
+const getRankDetails = (rankTitle?: string) => {
+    const title = rankTitle?.toUpperCase() || "USELESS";
+    // Force silver/zinc style for all ranks as requested
+    return { title: title, color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
+};
 
 export function ReferralTree({ currentUser, referrals }: ReferralTreeProps) {
     // Build the tree structure dynamically
@@ -72,7 +95,7 @@ export function ReferralTree({ currentUser, referrals }: ReferralTreeProps) {
     }, [currentUser, referrals]);
 
     return (
-        <div className="w-full flex justify-center bg-[#fdfbf7] p-4 md:p-8 min-h-[400px]">
+        <div className="w-full flex justify-center p-4 md:p-8 min-h-[400px]">
             {/* 
                 CSS Tree Implementation 
                 - Uses nested lists for hierarchy
@@ -97,16 +120,16 @@ export function ReferralTree({ currentUser, referrals }: ReferralTreeProps) {
                     transition: all 0.5s;
                 }
 
-                /* Connectors - Ultra Thin & Light */
+                /* Connectors - Bold & Visible */
                 .tf-tree li::before, .tf-tree li::after {
                     content: '';
                     position: absolute; top: 0; right: 50%;
-                    border-top: 1px solid #e5e7eb; /* Slate-200 - Very light */
+                    border-top: 2px solid #d1d5db; /* Gray-300 - Bolder */
                     width: 50%; height: 20px;
                 }
                 .tf-tree li::after {
                     right: auto; left: 50%;
-                    border-left: 1px solid #e5e7eb;
+                    border-left: 2px solid #d1d5db;
                 }
 
                 /* Single Child Fixes */
@@ -124,7 +147,7 @@ export function ReferralTree({ currentUser, referrals }: ReferralTreeProps) {
                 
                 /* Angular Elbow Connectors */
                 .tf-tree li:last-child::before {
-                    border-right: 1px solid #e5e7eb;
+                    border-right: 2px solid #d1d5db;
                     border-radius: 0;
                 }
                 .tf-tree li:first-child::after {
@@ -135,7 +158,7 @@ export function ReferralTree({ currentUser, referrals }: ReferralTreeProps) {
                 .tf-tree ul ul::before {
                     content: '';
                     position: absolute; top: 0; left: 50%;
-                    border-left: 1px solid #e5e7eb; /* Slate-200 */
+                    border-left: 2px solid #d1d5db; /* Gray-300 */
                     width: 0; height: 20px;
                 }
 
@@ -161,7 +184,7 @@ export function ReferralTree({ currentUser, referrals }: ReferralTreeProps) {
                     }
                     /* Simple vertical line for mobile if needed, or just stacking */
                     .tf-tree li {
-                        border-left: 1px solid #e5e7eb; /* Subtle indent line */
+                        border-left: 2px solid #d1d5db; /* Bolder indent line */
                         margin-left: 20px;
                         padding-left: 20px;
                     }
@@ -173,7 +196,7 @@ export function ReferralTree({ currentUser, referrals }: ReferralTreeProps) {
                 }
             `}</style>
 
-            <div className="tf-tree overflow-x-auto pb-12 w-full flex justify-center">
+            <div className="tf-tree overflow-visible pb-12 w-full flex justify-center">
                 <ul>
                     <TreeNodeComponent node={treeData} />
                 </ul>
@@ -212,68 +235,75 @@ function TreeNodeComponent({ node }: { node: TreeNode }) {
 
 function NodeCard({ node, isRoot }: { node: TreeNode; isRoot: boolean }) {
     const user = node.user as any;
-    const initials = `${user.firstName?.[0] || 'U'}${user.lastName?.[0] || ''}`;
 
-    // Determine card colors - Strict Minimalist Palette
+    const rank = getRankDetails(user.rank);
+
+    let userAvatar = AVATARS[0].url;
+    if (user.profilePicture) {
+        userAvatar = user.profilePicture;
+    } else if (user.avatar) {
+        const predefined = AVATARS.find(a => a.id === user.avatar);
+        if (predefined) {
+            userAvatar = predefined.url;
+        } else if (user.avatar !== 'default' && user.avatar.length > 20) {
+            userAvatar = user.avatar;
+        }
+    }
+
     const isCurrentUser = isRoot;
 
     return (
         <div className={cn(
             "flex flex-col items-center bg-white transition-all duration-300 relative group",
-            "w-[120px] md:w-[150px]", // Slightly wider for better breathing room
-            "border border-border/60", // Very subtle border default
-            "hover:border-primary/50 hover:shadow-sm", // Micro-interactivity
-            isCurrentUser
-                ? "border-primary/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
-                : "rounded-sm" // Slightly sharper corners for modern feel
+            "w-[140px] md:w-[180px]", // Slightly wider for the new avatar style
+            "border border-black/10", // Very subtle border default
+            "hover:border-primary/50 hover:shadow-lg",
+            isCurrentUser && "border-primary/40 shadow-sm"
         )}>
-            {/* Minimalist Crown for Root - No background, just icon */}
-            {isRoot && (
-                <div className="absolute top-2 right-2 text-primary">
-                    <Crown className="w-3 h-3 md:w-3.5 md:h-3.5 stroke-[2.5]" />
-                </div>
-            )}
+            {/* Top Section: Avatar with Comic Border & Rank Badge */}
+            <div className="pt-6 pb-2 flex justify-center w-full relative">
 
-            {/* Top Section: Avatar */}
-            <div className="pt-4 pb-2 flex justify-center w-full">
-                <Avatar className={cn(
-                    "w-10 h-10 md:w-12 md:h-12",
-                    isCurrentUser ? "ring-2 ring-primary/10 ring-offset-2" : "border border-gray-100"
-                )}>
-                    <AvatarImage src={user.avatar} className="object-cover grayscale hover:grayscale-0 transition-all duration-500" />
-                    <AvatarFallback className={cn(
-                        "text-[10px] md:text-xs font-medium tracking-wide",
-                        "bg-gray-50 text-gray-600"
+                <div className="relative group-hover:scale-105 transition-transform duration-500">
+                    <div className={cn(
+                        "w-20 h-20 md:w-24 md:h-24 border-4 bg-black overflow-hidden shadow-md rotate-2 group-hover:rotate-0 transition-transform duration-500",
+                        rank.border
                     )}>
-                        {initials}
-                    </AvatarFallback>
-                </Avatar>
+                        <img
+                            src={userAvatar}
+                            alt={`${user.firstName} ${user.lastName}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                // Fallback if image fails to load
+                                (e.target as HTMLImageElement).src = AVATARS[0].url;
+                            }}
+                        />
+                    </div>
+                    {/* Rank Badge - Overlapping bottom right - Match Dashboard exactly */}
+                    <div className={cn(
+                        "absolute -bottom-2 -right-2 px-2 py-0.5 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-black border-2 border-black shadow-sm z-10",
+                        rank.bg
+                    )}>
+                        {rank.title}
+                    </div>
+                </div>
             </div>
 
             {/* Info Section */}
-            <div className="pb-4 px-3 w-full text-center space-y-1.5">
+            <div className="pb-4 px-3 w-full text-center space-y-1">
                 <div className="space-y-0.5">
-                    <div className="font-semibold text-foreground text-xs md:text-[13px] truncate leading-tight tracking-tight">
-                        {user.firstName} {user.lastName}
+                    <div className="font-black text-black text-xs md:text-sm truncate uppercase tracking-tighter">
+                        {user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'USER'}
                     </div>
-                </div>
-
-                {/* Minimal Text-Only Badge */}
-                <div className={cn(
-                    "inline-flex items-center justify-center px-2 py-0.5 rounded text-[9px] font-medium uppercase tracking-[0.1em]",
-                    isCurrentUser
-                        ? "text-primary border border-primary/20 bg-primary/5"
-                        : "text-muted-foreground border border-transparent bg-gray-50/50"
-                )}>
-                    {user.rank || (isRoot ? "YOU" : "MEMBER")}
                 </div>
 
                 {/* Earnings (If any) - Minimal numeric display */}
                 {!isRoot && parseFloat(user.earningsFromUser) > 0 && (
-                    <div className="text-[10px] font-mono text-gray-500 pt-1">
-                        +${user.earningsFromUser}
+                    <div className="text-[10px] md:text-xs font-mono font-bold text-primary pt-1">
+                        +PKR {parseFloat(user.earningsFromUser).toFixed(2)}
                     </div>
                 )}
+
+                {/* Level indicators removed as requested */}
             </div>
         </div>
     );

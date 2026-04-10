@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +18,11 @@ import MetricsCards from "@/components/ui/metrics-cards";
 import { DailyGoalModal } from "@/components/ui/daily-goal-modal";
 import { ProfileModal } from "@/components/ui/profile-modal";
 import { MobileNavBar } from "@/components/ui/mobile-nav-bar";
+import { DesktopNavTabs } from "@/components/ui/desktop-nav-tabs";
 import { AdWebPanel } from "@/components/ui/ad-web-panel";
+import { WaterfallAdPlayer } from "@/components/ads/HilltopAdsPlayer";
+import { NotificationModal } from "@/components/ui/notification-modal";
+import { CommissionCalculator } from "@/components/ui/commission-calculator";
 import { cn } from "@/lib/utils";
 import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
 import { useLocation } from "wouter";
@@ -46,7 +50,7 @@ import {
   Activity,
   Star,
   Gift,
-  Play,
+  Play as PlayIcon,
   Pause,
   Timer,
   PlayCircle,
@@ -86,7 +90,12 @@ import {
   Settings,
   Network,
   X,
-  Send
+  Send,
+  Bell,
+  Plus,
+  Minus,
+  Maximize,
+  Lock
 } from "lucide-react";
 import {
   LineChart,
@@ -500,6 +509,9 @@ export default function UserPortal() {
   const [showReferralLink, setShowReferralLink] = useState(false);
   const [showDailyGoalModal, setShowDailyGoalModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [referralZoom, setReferralZoom] = useState(1);
+  const resetZoom = () => setReferralZoom(1);
 
   // Current section state
   const [currentSection, setCurrentSection] = useState(0);
@@ -584,14 +596,64 @@ export default function UserPortal() {
     enabled: !!user,
   });
 
-  const { data: commissionsData } = useQuery({
+  const { data: commissionsData, isLoading: isLoadingCommissions } = useQuery({
     queryKey: ["commissions"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/commissions");
-      return await response.json() as { commissions: any[] };
+      return await response.json();
     },
     enabled: !!user,
   });
+
+  // Dynamic System Configurations (Bulk Fetch)
+  const { data: sysConfig, isLoading: isConfigLoading } = useQuery({
+    queryKey: ["/api/config/bulk"],
+    queryFn: async () => {
+      const keys = ["MIN_PAYOUT", "SYSTEM_FEE", "L1_BONUS", "L2_BONUS"];
+      const results = await Promise.all(
+        keys.map(k => apiRequest("GET", `/api/config/${k}`).then(r => r.json()))
+      );
+      return Object.fromEntries(results.map(r => [r.key, r.value]));
+    },
+  });
+
+  const MIN_PAYOUT = parseFloat(sysConfig?.["MIN_PAYOUT"] ?? "100");
+  const SYSTEM_FEE_PERCENT = parseFloat(sysConfig?.["SYSTEM_FEE"] ?? "10");
+  const L1_BONUS_PERCENT = parseFloat(sysConfig?.["L1_BONUS"] ?? "15");
+  const L2_BONUS_PERCENT = parseFloat(sysConfig?.["L2_BONUS"] ?? "7.5");
+
+
+  const { data: payoutRules } = useQuery({
+    queryKey: ['/api/system-config/rank_payout_requirements'],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/system-config/rank_payout_requirements");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  const { data: cpaTasksCompletedToday } = useQuery({
+    queryKey: ['/api/tasks/completed/today/internal'],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/tasks/completed/today/internal");
+      return res.json() as Promise<{ count: number }>;
+    },
+    enabled: !!user,
+  });
+
+  const commissions = commissionsData?.commissions || [];
+
+  const { data: notificationsData, isLoading: isLoadingNotifications } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/notifications");
+      return await response.json() as any[];
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
+
+  const notifications = notificationsData || [];
 
   const { data: todayAdViews } = useQuery({
     queryKey: ["ad-views", "today"],
@@ -616,6 +678,27 @@ export default function UserPortal() {
     enabled: !!user,
     refetchInterval: 30000, // Auto-refresh every 30 seconds
   });
+
+  // Auto rank refresh: silently re-evaluate rank on portal load
+  // This corrects any stale rank without requiring user action
+  useEffect(() => {
+    if (!user || user.id === 'guest') return;
+    const refreshRank = async () => {
+      try {
+        const response = await apiRequest("POST", "/api/rank/refresh");
+        const data = await response.json();
+        if (data.updated) {
+          // Invalidate auth cache so the new rank shows in the header
+          queryClient.invalidateQueries({ queryKey: ["auth"] });
+        }
+      } catch {
+        // Silently fail — rank refresh is non-critical
+      }
+    };
+    refreshRank();
+  }, [user?.id]); // Only re-run when a different user logs in
+
+  const activeRefsCount = dashboardStats?.referralCount || referralsData?.stats.count || 0;
 
   // Earnings history for charts
   const { data: earningsHistory } = useQuery({
@@ -645,7 +728,58 @@ export default function UserPortal() {
     },
     enabled: !!user,
     retry: 2,
-    refetchInterval: 60000, // Auto-refresh every 60 seconds
+    refetchInterval: 60000,
+  });
+
+  const { data: tasksWithRecords } = useQuery<any[]>({
+    queryKey: ["/api/tasks"],
+    enabled: !!user && user.id !== 'guest',
+  });
+
+  const userRank = (user?.rank || "Useless").toLowerCase();
+
+  const incompleteMandatory = (tasksWithRecords || []).filter((tr) => {
+    if (!tr || !tr.task) return false;
+    const isTargeted = tr.task.targetRank.toLowerCase() === "useless" || tr.task.targetRank.toLowerCase() === userRank;
+    const isCompleted = tr.record?.status === 'completed';
+    return tr.task.isActive && tr.task.isMandatory && isTargeted && !isCompleted;
+  });
+  
+  // Fetch rank requirements from system config
+  const rankReqs = useMemo(() => {
+    if (payoutRules?.value && payoutRules.value[userRank]) {
+      return payoutRules.value[userRank] as { minAds: number; minTasks: number };
+    }
+    // Default fallbacks if no config is set yet
+    const defaults: Record<string, { minAds: number; minTasks: number }> = {
+      useless: { minAds: 5, minTasks: 0 },
+      worker: { minAds: 10, minTasks: 1 },
+      soldier: { minAds: 15, minTasks: 2 },
+      captain: { minAds: 20, minTasks: 3 },
+      general: { minAds: 30, minTasks: 5 }
+    };
+    return defaults[userRank] || { minAds: 5, minTasks: 0 };
+  }, [payoutRules, userRank]);
+  
+  const adsWatchedTodayCount = todayAdViews?.count || 0;
+  const cpaCompletedCount = cpaTasksCompletedToday?.count || 0;
+
+  const isPayoutLocked = incompleteMandatory.length > 0 || 
+                         adsWatchedTodayCount < rankReqs.minAds || 
+                         cpaCompletedCount < rankReqs.minTasks;
+
+  const { data: withdrawalsHistory, error: withdrawalsError } = useQuery<any>({
+    queryKey: ["/api/withdrawals"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/withdrawals");
+      if (!response.ok) {
+        const err = await response.json();
+        throw err;
+      }
+      return await response.json();
+    },
+    enabled: currentSection === 3 && !!user && user.id !== 'guest',
+    retry: false,
   });
 
   // Transaction history - combined earnings/withdrawals/commissions
@@ -744,7 +878,7 @@ export default function UserPortal() {
   const [paymentDetails, setPaymentDetails] = useState({
     name: "",
     number: "",
-    id: "",
+    email: "",
     iban: ""
   });
   const [isProcessing, setIsProcessing] = useState(false);
@@ -984,6 +1118,7 @@ export default function UserPortal() {
     referralCode: "GUEST-CODE",
     totalEarnings: "0.00",
     availableBalance: "0.00",
+    profilePicture: null,
     isActive: true,
     createdAt: new Date().toISOString(),
   };
@@ -1131,8 +1266,8 @@ export default function UserPortal() {
   const dailyGoal = 50;
   const currentProgress = parseFloat(displayUser?.totalEarnings || '0.00');
   const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
-  const dailyLimit = 50;
-  const remainingAds = dailyLimit - (todayAdViews?.count || 0);
+  const dailyLimit = rankReqs.minAds;
+  const remainingAds = Math.max(0, dailyLimit - (todayAdViews?.count || 0));
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -1156,56 +1291,42 @@ export default function UserPortal() {
             </div>
           </div>
 
-          {/* Centered Desktop Navigation Tabs */}
           <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center">
-            <div className="flex items-center bg-black/95 backdrop-blur-sm border border-white/10 rounded-full p-2 gap-2 shadow-2xl ring-1 ring-white/5">
-              {sections.map((section, index) => {
-                const Icon = section.icon;
-                const isActive = currentSection === index;
-                return (
-                  <motion.button
-                    key={section.id}
-                    onClick={() => navigateToSection(index)}
-                    layout
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    className={cn(
-                      "relative flex items-center justify-center rounded-full transition-all duration-300",
-                      isActive ? "bg-primary pr-6 pl-2 py-2" : "w-12 h-12 hover:bg-white/10"
-                    )}
-                    data-testid={`nav-tab-${section.id}`}
-                    aria-label={`Go to ${section.name}`}
-                    aria-current={isActive ? 'page' : undefined}
-                  >
-                    <motion.div
-                      layout="position"
-                      className={cn(
-                        "flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-300",
-                        isActive ? "bg-white/20 text-white" : "text-zinc-400 group-hover:text-white"
-                      )}
-                    >
-                      <Icon size={20} strokeWidth={2.5} />
-                    </motion.div>
-
-                    <AnimatePresence mode="popLayout">
-                      {isActive && (
-                        <motion.span
-                          initial={{ opacity: 0, width: 0, x: -10 }}
-                          animate={{ opacity: 1, width: "auto", x: 0 }}
-                          exit={{ opacity: 0, width: 0, x: -10 }}
-                          transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
-                          className="ml-3 font-bold text-sm text-white whitespace-nowrap overflow-hidden tracking-wide"
-                        >
-                          {section.name.toUpperCase()}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </motion.button>
-                );
-              })}
-            </div>
+            <DesktopNavTabs
+              activeTab={currentSection <= 1 ? currentSection : currentSection + 1}
+              onChange={(index) => {
+                if (index !== null) {
+                  const targetIndex = index <= 1 ? index : index - 1;
+                  navigateToSection(targetIndex);
+                }
+              }}
+              tabs={[
+                { title: sections[0].name, icon: sections[0].icon },
+                { title: sections[1].name, icon: sections[1].icon },
+                { type: "separator" },
+                { title: sections[2].name, icon: sections[2].icon },
+                { title: sections[3].name, icon: sections[3].icon },
+                { title: sections[4].name, icon: sections[4].icon },
+              ]}
+            />
           </div>
 
           <div className="flex items-center space-x-3">
+            <Button
+              onClick={() => setShowNotificationModal(true)}
+              variant="outline"
+              size="sm"
+              className="relative border-3 border-black text-black bg-white hover:bg-orange-500 hover:text-white shadow-[3px_3px_0px_#000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+              style={{ borderRadius: '0' }}
+            >
+              <Bell className="w-5 h-5 stroke-[2px]" />
+              {commissions?.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </span>
+              )}
+            </Button>
             <Button
               onClick={() => setShowProfileModal(true)}
               variant="outline"
@@ -1289,6 +1410,15 @@ export default function UserPortal() {
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
         user={displayUser}
+        activeRefsCount={activeRefsCount}
+      />
+
+      <NotificationModal
+        isOpen={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+        commissions={commissions}
+        notifications={notifications}
+        isLoading={isLoadingCommissions || isLoadingNotifications}
       />
 
       <ShareModal
@@ -1303,7 +1433,9 @@ export default function UserPortal() {
         isOpen={showDailyGoalModal}
         onClose={() => setShowDailyGoalModal(false)}
         adsWatched={todayAdViews?.count || 0}
-        adsTarget={dailyLimit}
+        adsTarget={rankReqs.minAds}
+        cpaCount={cpaCompletedCount}
+        cpaTarget={rankReqs.minTasks}
       />
 
       <AdWebPanel
@@ -1332,22 +1464,29 @@ export default function UserPortal() {
       { id: "avatar10", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie" },
     ];
 
-    const getRank = (earnings: number) => {
-      if (earnings < 100) return { title: "USELESS", icon: User, color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
-      if (earnings < 1000) return { title: "WORKER", icon: Shield, color: "text-blue-500", border: "border-blue-500", bg: "bg-blue-500" };
-      if (earnings < 5000) return { title: "SOLDIER", icon: Medal, color: "text-orange-500", border: "border-orange-500", bg: "bg-orange-500" };
-      return { title: "MAJOR", icon: Award, color: "text-red-500", border: "border-red-500", bg: "bg-red-500" };
+
+    const getRank = (rankTitle?: string) => {
+      const title = rankTitle?.toUpperCase() || "USELESS";
+      // Force all ranks to use the Silver (Zinc-500) style as requested
+      const silver = { color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
+      if (title === "GENERAL") return { title: "GENERAL", icon: Crown, ...silver };
+      if (title === "CAPTAIN") return { title: "CAPTAIN", icon: Trophy, ...silver };
+      if (title === "SOLDIER") return { title: "SOLDIER", icon: Medal, ...silver };
+      if (title === "WORKER") return { title: "WORKER", icon: Shield, ...silver };
+      return { title: "USELESS", icon: User, ...silver };
     };
 
-    const rank = getRank(Number(displayUser?.totalEarnings || 0));
+    const rank = getRank(displayUser?.rank);
 
     // Improved Avatar Logic:
-    // 1. Try to find ID in predefined list
-    // 2. If not found, check if it's a "custom" string (data: or http) by simply using it
+    // 1. Prioritize uploaded profile picture
+    // 2. Try to find ID in predefined list
     // 3. Fallback to default
     let userAvatar = AVATARS[0].url;
 
-    if (displayUser?.avatar) {
+    if (displayUser?.profilePicture) {
+      userAvatar = displayUser.profilePicture;
+    } else if (displayUser?.avatar) {
       const predefined = AVATARS.find(a => a.id === displayUser.avatar);
       if (predefined) {
         userAvatar = predefined.url;
@@ -1417,7 +1556,6 @@ export default function UserPortal() {
               <h1 className="text-4xl md:text-6xl font-black text-black mb-2 tracking-tighter uppercase leading-none">
                 {displayUser?.name || `${displayUser?.firstName} ${displayUser?.lastName}`}
               </h1>
-
 
             </div>
 
@@ -2241,22 +2379,61 @@ export default function UserPortal() {
                 />
               </div>
             ) : (displayUser ? (
-              <div className="bg-white border-2 border-black p-4 md:p-8 rounded-lg overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.05)]">
-                <div className="mb-6 text-center border-b pb-4">
-                  <h3 className="font-black text-xl uppercase tracking-tighter">Network Hierarchy</h3>
-                  <p className="text-sm text-muted-foreground">Real-time visualization of your referral network</p>
+              <div className="bg-white border-2 border-black rounded-xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.05)] relative min-h-[600px]">
+                {/* Zoom Controls Overlay */}
+                <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2">
+                  <Button 
+                    size="icon" 
+                    variant="outline" 
+                    className="w-10 h-10 bg-white border-2 border-black shadow-[2px_2px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all text-black font-black"
+                    onClick={() => setReferralZoom(prev => Math.min(prev + 0.1, 2))}
+                    title="Zoom In"
+                  >
+                    <Plus size={18} />
+                  </Button>
+                  <Button 
+                    size="icon" 
+                    variant="outline" 
+                    className="w-10 h-10 bg-white border-2 border-black shadow-[2px_2px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all text-black font-black"
+                    onClick={() => setReferralZoom(prev => Math.max(prev - 0.1, 0.3))}
+                    title="Zoom Out"
+                  >
+                    <Minus size={18} />
+                  </Button>
+                  <Button 
+                    size="icon"
+                    variant="outline" 
+                    className="w-10 h-10 bg-white border-2 border-black shadow-[2px_2px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all text-black font-black"
+                    onClick={resetZoom}
+                    title="Fit to Screen"
+                  >
+                    <Maximize size={18} />
+                  </Button>
                 </div>
 
-                <ReferralTree
-                  currentUser={{
-                    id: displayUser.id,
-                    firstName: displayUser.firstName,
-                    lastName: displayUser.lastName,
-                    rank: displayUser.rank,
-                    avatar: undefined
-                  }}
-                  referrals={referralLeaderboard || []}
-                />
+                <div className="w-full h-full overflow-auto scrollbar-hide p-8 cursor-grab active:cursor-grabbing">
+                  <div 
+                    style={{ 
+                      transform: `scale(${referralZoom})`,
+                      transformOrigin: 'top center',
+                      transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                    className="w-full h-full min-w-max min-h-[500px]"
+                  >
+                    <ReferralTree
+                      currentUser={{
+                        id: displayUser.id,
+                        firstName: displayUser.firstName,
+                        lastName: displayUser.lastName,
+                        name: displayUser.name,
+                        rank: displayUser.rank,
+                        avatar: displayUser.avatar,
+                        profilePicture: (displayUser as any).profilePicture
+                      }}
+                      referrals={referralLeaderboard || []}
+                    />
+                  </div>
+                </div>
               </div>
             ) : null)}
           </div>
@@ -2312,49 +2489,120 @@ export default function UserPortal() {
 
   // Progressive Payout Section - Dashboard Style
   function renderPayoutSection() {
+    if (isPayoutLocked) {
+      return (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-5xl mx-auto px-4 py-8 md:py-12"
+        >
+          <div className="wireframe-border bg-white p-8 md:p-12 relative overflow-hidden shadow-[12px_12px_0px_rgba(0,0,0,0.05)]">
+            {/* Background Decoration */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-zinc-100 -mr-16 -mt-16 rotate-45 z-0" />
+            
+            <div className="relative z-10">
+              {/* Header Optimized for Desktop and Mobile */}
+              <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 mb-12 border-b-2 border-zinc-100 pb-12">
+                <div className="flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left">
+                  <div className="w-20 h-20 bg-zinc-400 border-4 border-black flex items-center justify-center shadow-[6px_6px_0px_#000] shrink-0">
+                    <Lock className="text-black w-10 h-10" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-black mb-2">Payout locked</h2>
+                    <p className="text-zinc-500 font-bold text-xs md:text-sm uppercase tracking-widest leading-relaxed max-w-md">
+                      you need to complete your daily tasks to unlock the payout
+                    </p>
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={() => setShowDailyGoalModal(true)}
+                  className="bg-zinc-400 hover:bg-black hover:text-white text-black font-black text-xs tracking-widest uppercase h-14 md:h-16 px-8 md:px-12 rounded-none border-4 border-black shadow-[6px_6px_0px_#000] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all shrink-0"
+                >
+                  View details
+                </Button>
+              </div>
+
+              {/* Minimalist "tasks list" Container */}
+              <div className="border-4 border-black bg-zinc-50 overflow-hidden shadow-[8px_8px_0px_#000]">
+                {/* Protocol Header */}
+                <div className="bg-black p-4 flex justify-between items-center">
+                  <span className="text-white font-black text-[10px] md:text-xs uppercase tracking-[0.3em]">tasks list</span>
+                  <span className="bg-white text-black px-3 py-1 font-black text-[10px] uppercase tracking-widest">
+                    {(adsWatchedTodayCount < rankReqs.minAds ? 1 : 0) + (cpaCompletedCount < rankReqs.minTasks ? 1 : 0) + incompleteMandatory.length} Items
+                  </span>
+                </div>
+
+                {/* Scrollable list with max-height of ~3 items */}
+                <div className="divide-y-2 divide-black/5 max-h-[300px] overflow-y-auto custom-scrollbar touch-pan-y">
+                  {/* Engine A Requirement */}
+                  {adsWatchedTodayCount < rankReqs.minAds && (
+                    <div className="p-4 md:p-6 flex items-center justify-between hover:bg-white transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-black text-white flex items-center justify-center shrink-0 font-black text-xs md:text-sm">
+                          1
+                        </div>
+                        <div>
+                          <p className="font-black text-xs md:text-sm uppercase tracking-tight text-black">Complete {rankReqs.minAds} Engine A Tasks</p>
+                          <p className="text-[10px] font-black text-zinc-400">{adsWatchedTodayCount} / {rankReqs.minAds}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-black transition-colors shrink-0 ml-4">Required</span>
+                    </div>
+                  )}
+
+                  {/* Engine B Requirement */}
+                  {cpaCompletedCount < rankReqs.minTasks && (
+                    <div className="p-4 md:p-6 flex items-center justify-between hover:bg-white transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-black text-white flex items-center justify-center shrink-0 font-black text-xs md:text-sm">
+                          {(adsWatchedTodayCount < rankReqs.minAds ? 1 : 0) + 1}
+                        </div>
+                        <div>
+                          <p className="font-black text-xs md:text-sm uppercase tracking-tight text-black">Complete {rankReqs.minTasks} Engine B Tasks</p>
+                          <p className="text-[10px] font-black text-zinc-400">{cpaCompletedCount} / {rankReqs.minTasks}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-black transition-colors shrink-0 ml-4">Required</span>
+                    </div>
+                  )}
+
+                  {/* Dynamic Mandatory Tasks */}
+                  {incompleteMandatory.map((tr: any, idx: number) => {
+                    const baseIndex = (adsWatchedTodayCount < rankReqs.minAds ? 1 : 0) + (cpaCompletedCount < rankReqs.minTasks ? 1 : 0);
+                    return (
+                      <div key={tr.task.id} className="p-4 md:p-6 flex items-center justify-between hover:bg-white transition-colors group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-black text-white flex items-center justify-center shrink-0 font-black text-xs md:text-sm">
+                            {baseIndex + idx + 1}
+                          </div>
+                          <div>
+                            <p className="font-black text-xs md:text-sm uppercase tracking-tight text-black">{tr.task.title}</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-black transition-colors shrink-0 ml-4">Required</span>
+                      </div>
+                    );
+                  })}
+                  
+                  {/* Success State if somehow locked but no list (backup) */}
+                  {incompleteMandatory.length === 0 && adsWatchedTodayCount >= rankReqs.minAds && cpaCompletedCount >= rankReqs.minTasks && (
+                    <div className="p-12 text-center">
+                      <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-4" />
+                      <p className="font-black text-sm uppercase tracking-widest text-black">All Requirements Met</p>
+                      <p className="text-xs font-bold uppercase text-zinc-400 mt-2">Payout is becoming available...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
     // Static transaction history data
-    const staticHistoryItems = [
-      {
-        id: 'history_1',
-        date: '2024-01-15T10:30:00.000Z',
-        amount: '1250.00',
-        method: 'JazzCash',
-        status: 'COMPLETED',
-        transactionId: 'TX1000001'
-      },
-      {
-        id: 'history_2',
-        date: '2024-01-14T14:15:00.000Z',
-        amount: '890.50',
-        method: 'EasyPaisa',
-        status: 'PROCESSING',
-        transactionId: 'TX1000002'
-      },
-      {
-        id: 'history_3',
-        date: '2024-01-13T09:45:00.000Z',
-        amount: '2100.75',
-        method: 'Bank Transfer',
-        status: 'COMPLETED',
-        transactionId: 'TX1000003'
-      },
-      {
-        id: 'history_4',
-        date: '2024-01-12T16:20:00.000Z',
-        amount: '450.25',
-        method: 'JazzCash',
-        status: 'PENDING',
-        transactionId: 'TX1000004'
-      },
-      {
-        id: 'history_5',
-        date: '2024-01-11T11:30:00.000Z',
-        amount: '1850.00',
-        method: 'EasyPaisa',
-        status: 'COMPLETED',
-        transactionId: 'TX1000005'
-      }
-    ];
+    const historyItems = withdrawalsHistory || [];
 
     // Numeric keypad input handling
     const handleNumberInput = (num: string) => {
@@ -2394,7 +2642,7 @@ export default function UserPortal() {
           accountName: paymentDetails.name,
           accountNumber: paymentDetails.number,
           accountDetails: {
-            id: paymentDetails.id,
+            email: paymentDetails.email,
             iban: paymentDetails.iban
           }
         };
@@ -2411,7 +2659,7 @@ export default function UserPortal() {
           setCurrentStep(1);
           setWithdrawAmount("");
           setSelectedMethod("");
-          setPaymentDetails({ name: "", number: "", id: "", iban: "" });
+          setPaymentDetails({ name: "", number: "", email: "", iban: "" });
         } else {
           const error = await response.json();
           toast({
@@ -2454,10 +2702,11 @@ export default function UserPortal() {
 
     // Get current step button states
     const canProceed = () => {
-      if (currentStep === 1) return withdrawAmount && parseFloat(withdrawAmount) >= 100;
+      if (isConfigLoading) return false;
+      if (currentStep === 1) return withdrawAmount && parseFloat(withdrawAmount) >= MIN_PAYOUT;
       if (currentStep === 2) return selectedMethod;
       if (currentStep === 3) {
-        return paymentDetails.name.trim() && paymentDetails.number.trim() && paymentDetails.id.trim();
+        return paymentDetails.name.trim() && paymentDetails.number.trim() && paymentDetails.email.trim();
       }
       return false;
     };
@@ -2666,7 +2915,7 @@ export default function UserPortal() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
                           >
-                            <TechnicalLabel text="FULL NAME" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                            <TechnicalLabel text="Full Name" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
                             <div className="relative">
                               <Input
                                 type="text"
@@ -2687,7 +2936,7 @@ export default function UserPortal() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
                           >
-                            <TechnicalLabel text="MOBILE NUMBER" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                            <TechnicalLabel text="Phone/WhatsApp" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
                             <div className="relative">
                               <Input
                                 type="text"
@@ -2708,17 +2957,17 @@ export default function UserPortal() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
                           >
-                            <TechnicalLabel text="CNIC / ID NUMBER" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
+                            <TechnicalLabel text="Email" className="text-foreground mb-2 md:mb-3 text-xs md:text-sm font-black" />
                             <div className="relative">
                               <Input
-                                type="text"
-                                value={paymentDetails.id}
-                                onChange={(e) => setPaymentDetails(prev => ({ ...prev, id: e.target.value }))}
+                                type="email"
+                                value={paymentDetails.email}
+                                onChange={(e) => setPaymentDetails(prev => ({ ...prev, email: e.target.value }))}
                                 className="industrial-input h-12 md:h-14 text-sm md:text-base border-2 border-black focus:border-primary transition-colors"
                               />
-                              {!paymentDetails.id && (
+                              {!paymentDetails.email && (
                                 <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                                  <AnimatedPlaceholder examples={['35202-1234567-1', '61101-9876543-2', '12345-6789012-3']} />
+                                  <AnimatedPlaceholder examples={['user@example.com', 'support@thorx.site', 'payout@thorx.site']} />
                                 </div>
                               )}
                             </div>
@@ -2736,37 +2985,37 @@ export default function UserPortal() {
                         <TechnicalLabel text="PAYOUT SUMMARY" className="mb-4 font-black text-xs md:text-sm" />
                         <div className="bg-muted/10 border-2 border-black p-4 md:p-6 space-y-3">
                           <div className="flex justify-between items-center text-sm md:text-base">
-                            <span className="font-bold text-muted-foreground">Total Earnings</span>
-                            <span className="font-black text-foreground">{formatCurrency(withdrawAmount || 0)}</span>
+                            <span className="font-bold text-muted-foreground">Requested Amount</span>
+                            <span className="font-black text-foreground">{formatCurrency(withdrawAmount || "0")}</span>
                           </div>
 
                           <div className="flex justify-between items-center text-sm md:text-base">
                             <span className="font-bold text-muted-foreground flex items-center gap-2">
                               Platform Fee
-                              <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">10%</span>
+                              <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">{SYSTEM_FEE_PERCENT}%</span>
                             </span>
-                            <span className="font-black text-red-500">-{formatCurrency((parseFloat(withdrawAmount || "0") * 0.10).toFixed(2))}</span>
+                            <span className="font-black text-red-500">-{formatCurrency((parseFloat(withdrawAmount || "0") * (SYSTEM_FEE_PERCENT / 100)).toFixed(2))}</span>
                           </div>
 
                           <div className="my-2 border-t border-dashed border-black/20" />
 
                           <div className="space-y-1">
                             <div className="flex justify-between items-center text-xs md:text-sm">
-                              <span className="font-bold text-muted-foreground/70">Referral LVL 1</span>
-                              <span className="font-black text-muted-foreground/70">{formatCurrency(referralsData?.stats?.totalEarned || "0.00")}</span>
+                              <span className="text-white font-bold opacity-60">Level 1 Bonus Applied</span>
+                              <span className="text-white font-black">{L1_BONUS_PERCENT}% Distribution</span>
                             </div>
                             <div className="flex justify-between items-center text-xs md:text-sm">
-                              <span className="font-bold text-muted-foreground/50">Referral LVL 2</span>
-                              <span className="font-black text-muted-foreground/50">{formatCurrency(0)}</span>
+                              <span className="text-white font-bold opacity-60">Level 2 Bonus Applied</span>
+                              <span className="text-white font-black">{L2_BONUS_PERCENT}% Distribution</span>
                             </div>
                           </div>
 
                           <div className="my-2 border-t-2 border-black" />
 
                           <div className="flex justify-between items-center text-base md:text-lg lg:text-xl">
-                            <span className="font-black text-black">FINAL PAYOUT</span>
-                            <span className="font-black text-primary bg-black px-2 py-0.5">
-                              {formatCurrency((parseFloat(withdrawAmount || "0") * 0.90).toFixed(2))}
+                            <span className="font-black text-amber-500 uppercase tracking-tighter">Net to Receive</span>
+                            <span className="font-black text-primary bg-black px-3 py-2 text-2xl">
+                              {formatCurrency((parseFloat(withdrawAmount || "0") * (1 - SYSTEM_FEE_PERCENT / 100)).toFixed(2))}
                             </span>
                           </div>
                         </div>
@@ -2859,35 +3108,50 @@ export default function UserPortal() {
                     className="mt-4 overflow-hidden border-t-2 border-black pt-4"
                   >
                     <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                      {staticHistoryItems.slice(0, 3).map((item, idx) => (
-                        <motion.div
-                          key={item.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          whileHover={{ x: 5, backgroundColor: 'rgba(var(--primary-rgb), 0.05)' }}
-                          className="p-3 border border-muted-foreground/20 bg-muted/10 transition-all cursor-default"
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <TechnicalLabel text={item.method} className="text-foreground font-black text-xs" />
-                            <div className={`w-2 h-2 rounded-full ${item.status === 'COMPLETED' ? 'bg-green-500' :
-                              item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
-                              }`} />
-                          </div>
-                          <div className="text-sm font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
-                          <div className="text-xs text-muted-foreground">{formatDate(item.date)}</div>
-                        </motion.div>
-                      ))}
+                      {withdrawalsHistory && withdrawalsHistory.length > 0 ? (
+                        withdrawalsHistory.slice(0, 5).map((item, idx) => (
+                          <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className="bg-muted/5 border border-black/5 p-3 group hover:border-black/20 transition-all border-l-4 border-l-black"
+                          >
+                            <div className="flex justify-between items-start mb-1">
+                              <TechnicalLabel text={item.method} className="text-foreground font-black text-xs" />
+                              <div className={cn(
+                                "text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter whitespace-nowrap",
+                                item.status === 'pending' ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
+                                  item.status === 'completed' ? "bg-green-500/10 text-green-600 border border-green-500/20" :
+                                    "bg-red-500/10 text-red-600 border border-red-500/20"
+                              )}>
+                                {item.status === 'pending' ? 'PENDING' : item.status === 'completed' ? 'TRANSFERRED' : 'REJECTED'}
+                              </div>
+                            </div>
+                            <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)}</div>
+                            <div className="text-[10px] text-muted-foreground">{formatDate(item.createdAt)}</div>
+                          </motion.div>
+                        ))
+                      ) : (
+                        <div className="text-center py-6">
+                          <div className="text-xs text-muted-foreground italic">No payout history yet.</div>
+                        </div>
+                      )}
                     </div>
-                    {staticHistoryItems.length > 3 && (
+                    {withdrawalsHistory && withdrawalsHistory.length > 5 && (
                       <div className="text-center mt-3">
-                        <TechnicalLabel text={`+${staticHistoryItems.length - 3} MORE TRANSACTIONS`} className="text-muted-foreground text-xs" />
+                        <TechnicalLabel text={`+${withdrawalsHistory.length - 5} MORE TRANSACTIONS`} className="text-muted-foreground text-xs" />
                       </div>
                     )}
                   </motion.div>
                 )}
               </AnimatePresence>
             </motion.div>
+
+            {/* Advanced Commission Calculator */}
+            <div className="hidden lg:block">
+              <CommissionCalculator />
+            </div>
 
             {/* Help & Support */}
             <motion.div
@@ -2947,30 +3211,42 @@ export default function UserPortal() {
                   className="mt-4 overflow-hidden border-t-2 border-black pt-4"
                 >
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                    {staticHistoryItems.slice(0, 5).map((item, idx) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                        whileHover={{ scale: 1.02 }}
-                        className="p-3 border border-muted-foreground/20 bg-muted/10 hover:bg-white transition-all"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <TechnicalLabel text={item.method} className="text-foreground font-black text-xs" />
-                          <div className={`w-2 h-2 rounded-full ${item.status === 'COMPLETED' ? 'bg-green-500' :
-                            item.status === 'PROCESSING' ? 'bg-yellow-500' : 'bg-orange-500'
-                            }`} />
-                        </div>
-                        <div className="text-sm font-black text-primary mb-1">{formatCurrency(item.amount)}</div>
-                        <div className="text-xs text-muted-foreground">{formatDate(item.date)}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono mt-1 pt-1 border-t border-black/5 flex items-center gap-1">
-                          <Barcode className="w-3 h-3" />
-                          #{item.transactionId}
-                        </div>
-                      </motion.div>
-                    ))}
+                    {withdrawalsHistory && withdrawalsHistory.length > 0 ? (
+                      withdrawalsHistory.slice(0, 5).map((item, idx) => (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          whileHover={{ scale: 1.02 }}
+                          className="p-3 border border-muted-foreground/20 bg-muted/10 hover:bg-white transition-all"
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <TechnicalLabel text={item.method} className="text-foreground font-black text-xs" />
+                            <div className={cn(
+                              "text-[8px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-tighter whitespace-nowrap",
+                              item.status === 'pending' ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
+                                item.status === 'completed' ? "bg-green-500/10 text-green-600 border border-green-500/20" :
+                                  "bg-red-500/10 text-red-600 border border-red-500/20"
+                            )}>
+                              {item.status === 'pending' ? 'PENDING' : item.status === 'completed' ? 'TRANSFERRED' : 'REJECTED'}
+                            </div>
+                          </div>
+                          <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)}</div>
+                          <div className="text-[10px] text-muted-foreground">{formatDate(item.createdAt)}</div>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <div className="text-center py-6">
+                        <div className="text-xs text-muted-foreground italic">No payout history yet.</div>
+                      </div>
+                    )}
                   </div>
+                  {withdrawalsHistory && withdrawalsHistory.length > 5 && (
+                    <div className="text-center mt-3">
+                      <TechnicalLabel text={`+${withdrawalsHistory.length - 5} MORE TRANSACTIONS`} className="text-muted-foreground text-xs" />
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -3165,7 +3441,7 @@ export default function UserPortal() {
                             id: "005",
                             protocol: "RANKING-SYSTEM",
                             question: "What are the user ranks?",
-                            answer: "Ranks based on BOTH total referrals AND total earnings: 1) Useless (new users, 50 ads), 2) Worker (10 refs + 25,000 PKR, 75 ads), 3) Soldier (15 refs + 35,000 PKR, 100 ads), 4) Captain (20 refs + 50,000 PKR, 125 ads), 5) General (25 refs + 100,000 PKR, 150 ads). Both conditions must be met to upgrade."
+                            answer: "Ranks based on BOTH total referrals AND total earnings: 1) Useless (new users), 2) Worker (5 refs + 2,500 PKR), 3) Soldier (10 refs + 5,000 PKR), 4) Captain (15 refs + 10,000 PKR), 5) General (25 refs + 25,000 PKR). Both conditions must be met to upgrade."
                           },
                           {
                             id: "006",

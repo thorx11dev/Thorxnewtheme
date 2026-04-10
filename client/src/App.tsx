@@ -23,6 +23,7 @@ function PageLoader() {
 }
 
 function Router() {
+  const [location] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [showLoadingScreen, setShowLoadingScreen] = useState(true);
 
@@ -30,19 +31,22 @@ function Router() {
     if (!isLoading) {
       const timer = setTimeout(() => {
         setShowLoadingScreen(false);
-      }, 1800);
+      }, 300); // Reduced delay for faster UX
       return () => clearTimeout(timer);
     }
   }, [isLoading]);
 
-  if (isLoading || showLoadingScreen) {
-    return <ThorxLoadingScreen message="INITIALIZING THORX SYSTEM" duration={1800} />;
+  // Skip loading screen specifically for auth page
+  const isAuthPage = location === "/auth";
+
+  if ((isLoading || showLoadingScreen) && !isAuthPage) {
+    return <ThorxLoadingScreen message="INITIALIZING THORX SYSTEM" duration={300} />;
   }
 
   const getPortalComponent = () => {
     if (!isAuthenticated) return <Home />;
 
-    if (user?.role === 'team' || user?.role === 'founder') {
+    if (user?.role === 'team' || user?.role === 'founder' || user?.role === 'admin') {
       return <TeamPortal />;
     } else {
       return <UserPortal />;

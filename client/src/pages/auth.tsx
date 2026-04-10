@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -20,6 +21,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
 } from "firebase/auth";
+import { cn } from "@/lib/utils";
 
 // Animated Placeholder Component
 function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: { examples: string[]; className?: string }) {
@@ -240,6 +242,16 @@ const calculatePasswordStrength = (password: string): { level: number; label: st
   }
 };
 
+// Sleek minimal tag-style label
+const FieldTag = ({ children, className }: { children: ReactNode, className?: string }) => (
+  <div className={cn(
+    "inline-flex items-center px-2 py-0.5 bg-black text-white text-[10px] font-black tracking-[0.15em] uppercase rounded-sm mb-1 line-height-1",
+    className
+  )}>
+    {children}
+  </div>
+);
+
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   identity: z.string().min(1, "Identity is required"),
@@ -256,7 +268,7 @@ const registerSchema = z.object({
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
   confirmPassword: z.string(),
   referralCode: z.string().optional(),
-  role: z.enum(["user", "team", "founder"]).default("user")
+  role: z.enum(["user", "team", "founder", "admin"]).default("user")
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"]
@@ -285,6 +297,14 @@ export default function Auth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const firstInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAnimationComplete = () => {
+    // Small delay to ensure browser focus is ready
+    setTimeout(() => {
+      firstInputRef.current?.focus();
+    }, 100);
+  };
 
   // Identity generation function
   const generateThorxIdentity = (firstName: string, lastName: string): string => {
@@ -380,20 +400,6 @@ export default function Auth() {
         role: data.role
       });
 
-      // 3. Sync with Firestore for real-time data
-      await saveUserProfile(firebaseUser.uid, {
-        firstName,
-        lastName,
-        email: data.email,
-        identity: data.identity,
-        phone: data.phone || '',
-        referralCode: data.referralCode || '',
-        role: data.role,
-        availableBalance: "0.00",
-        totalEarnings: "0.00",
-        createdAt: new Date().toISOString()
-      });
-
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
 
       toast({
@@ -401,7 +407,7 @@ export default function Auth() {
         description: `Welcome to THORX, ${firstName}!`,
       });
 
-      if (data.role === 'team' || data.role === 'founder') {
+      if (data.role === 'team' || data.role === 'founder' || data.role === 'admin') {
         setLocation("/team-portal");
       } else {
         setLocation("/user-portal");
@@ -442,15 +448,19 @@ export default function Auth() {
 
       // 3. Sync with Firestore (useful for existing users migrating)
       if (result.user) {
-        await saveUserProfile(firebaseUser.uid, {
-          firstName: result.user.firstName,
-          lastName: result.user.lastName,
-          email: result.user.email,
-          role: result.user.role,
-          availableBalance: result.user.availableBalance || "0.00",
-          totalEarnings: result.user.totalEarnings || "0.00",
-          rank: result.user.rank || "Useless"
-        });
+        try {
+          await saveUserProfile(firebaseUser.uid, {
+            firstName: result.user.firstName,
+            lastName: result.user.lastName,
+            email: result.user.email,
+            role: result.user.role,
+            availableBalance: result.user.availableBalance || "0.00",
+            totalEarnings: result.user.totalEarnings || "0.00",
+            rank: result.user.rank || "Useless"
+          });
+        } catch (fsSyncError) {
+          console.warn("Non-fatal: Firestore sync failed due to permissions or rules timeout.", fsSyncError);
+        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
@@ -460,7 +470,7 @@ export default function Auth() {
         description: `Welcome back!`,
       });
 
-      if (result.user?.role === 'team' || result.user?.role === 'founder') {
+      if (result.user?.role === 'team' || result.user?.role === 'founder' || result.user?.role === 'admin') {
         setLocation("/team-portal");
       } else {
         setLocation("/user-portal");
@@ -478,7 +488,13 @@ export default function Auth() {
   };
 
   return (
-    <div className="auth-page">
+    <motion.div
+      className="auth-page overflow-x-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      onAnimationComplete={handleAnimationComplete}
+    >
       {/* Industrial Grid Overlay */}
       <div className="industrial-grid" />
 
@@ -528,18 +544,23 @@ export default function Auth() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
           {/* Technical Header */}
           <div className="text-center mb-4 md:mb-6">
-            <div className="mb-2">
-              <TechnicalLabel text="LOGIN / REGISTER" />
-            </div>
-            <h2 className="text-2xl md:text-5xl lg:text-6xl font-black tracking-tight text-black mb-4">
-              GET STARTED
-            </h2>
-            <Barcode className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
+            <Barcode variant="bold" className="w-32 md:w-48 h-8 md:h-10 mx-auto" />
           </div>
 
           {/* Auth Card */}
-          <div className="max-w-4xl mx-auto mb-8 px-2 md:px-0">
-            <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-8 overflow-visible">
+          <motion.div
+            className="w-full max-w-3xl mx-auto mb-8 px-2 md:px-0"
+            initial={{ y: -1000, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            transition={{
+              type: "spring",
+              damping: 14,      // Slightly more damped for a "real" physics feel
+              stiffness: 120,    // Lower stiffness for a more weighted, natural fall
+              mass: 1,
+              delay: 0.2
+            }}
+          >
+            <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-10 overflow-visible w-full">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6 md:mb-8 bg-muted border-2 border-black">
                   <TabsTrigger
@@ -558,27 +579,29 @@ export default function Auth() {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="register" className="space-y-6 md:space-y-8 overflow-visible">
-                  <div className="text-center mb-6 md:mb-8">
-                    <TechnicalLabel text="REGISTRATION PROTOCOL" className="mb-3" />
-                    <h3 className="text-xl md:text-3xl font-black text-black mt-2">SECURE YOUR EARNING ACCESS</h3>
-                  </div>
-
+                <TabsContent value="register" className="space-y-6 md:space-y-8 overflow-visible min-h-[auto] md:min-h-[650px]">
                   <Form {...registerForm}>
                     <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-6 md:space-y-8 overflow-visible">
-                      {/* Name and Identity Fields - Side by Side */}
+                      {/* Name and Email Fields - Side by Side */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         {/* Name Field */}
                         <FormField
                           control={registerForm.control}
                           name="name"
                           render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel className="technical-label block mb-2">NAME</FormLabel>
+                            <FormItem className="space-y-2">
+                              <FormLabel className="block p-0 m-0 border-none shadow-none bg-transparent">
+                                <FieldTag>Full Name</FieldTag>
+                              </FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input
                                     {...field}
+                                    ref={(e) => {
+                                      field.ref(e);
+                                      // @ts-ignore
+                                      firstInputRef.current = e;
+                                    }}
                                     className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
                                     data-testid="input-register-name"
                                   />
@@ -594,48 +617,15 @@ export default function Auth() {
                           )}
                         />
 
-                        {/* Identity Field - Auto Generated */}
-                        <FormField
-                          control={registerForm.control}
-                          name="identity"
-                          render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel className="technical-label block mb-2">THORX IDENTITY</FormLabel>
-                              <div className="space-y-2">
-                                <FormControl>
-                                  <div className="relative">
-                                    <Input
-                                      {...field}
-                                      readOnly
-                                      className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 bg-black text-white cursor-not-allowed"
-                                      data-testid="input-register-identity"
-                                    />
-                                    {!field.value && (
-                                      <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
-                                        <AnimatedPlaceholder examples={['THORX_JD_MASTER_4521', 'ALPHA_AK_BUILDER_7832', 'CORE_HS_GENIUS_2941']} />
-                                      </div>
-                                    )}
-                                  </div>
-                                </FormControl>
-                                <div className="text-xs text-muted-foreground mt-2 px-1">
-                                  <TechnicalLabel text="Formal Platform Identifier (Fixed)" className="text-xs" />
-                                </div>
-                              </div>
-                              <FormMessage className="mt-2" />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      {/* Email and Phone Fields - Side by Side */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                         {/* Email Field */}
                         <FormField
                           control={registerForm.control}
                           name="email"
                           render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel className="technical-label block mb-2">EMAIL</FormLabel>
+                            <FormItem className="space-y-2">
+                              <FormLabel className="block p-0 m-0 border-none shadow-none bg-transparent">
+                                <FieldTag>Email Address</FieldTag>
+                              </FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input
@@ -665,52 +655,43 @@ export default function Auth() {
                             </FormItem>
                           )}
                         />
+                      </div>
 
-                        {/* Phone Field */}
-                        <FormField
-                          control={registerForm.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel className="technical-label block mb-2 flex items-center gap-2">
-                                PHONE NUMBER
-                                <div className="group relative inline-flex">
-                                  <Info className="w-4 h-4 text-primary/70 hover:text-primary transition-colors cursor-help" />
-                                  <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                    (Optional)
-                                  </span>
-                                </div>
-                              </FormLabel>
+                      {/* Identity Field - Full Width */}
+                      <FormField
+                        control={registerForm.control}
+                        name="identity"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <FormLabel className="block p-0 m-0 border-none shadow-none bg-transparent">
+                              <FieldTag>Identity (Generated)</FieldTag>
+                            </FormLabel>
+                            <div className="space-y-2">
                               <FormControl>
                                 <div className="relative">
                                   <Input
                                     {...field}
-                                    onChange={(e) => {
-                                      field.onChange(e);
-                                      const validation = validatePhone(e.target.value);
-                                      setPhoneValidation(validation);
-                                    }}
-                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200"
-                                    data-testid="input-register-phone"
+                                    readOnly
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 bg-black text-white cursor-not-allowed"
+                                    data-testid="input-register-identity"
                                   />
                                   {!field.value && (
                                     <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
-                                      <AnimatedPlaceholder examples={['+92 300 1234567', '03001234567', '+92 321 9876543']} />
+                                      <AnimatedPlaceholder examples={['THORX_JD_MASTER_4521', 'ALPHA_AK_BUILDER_7832', 'CORE_HS_GENIUS_2941']} />
                                     </div>
                                   )}
                                 </div>
                               </FormControl>
-                              {!phoneValidation.valid && field.value && field.value.trim() !== '' && (
-                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-l-4 border-red-500 rounded">
-                                  <span className="text-red-600 text-base font-bold mt-0.5">⚠</span>
-                                  <p className="text-sm text-red-900 leading-relaxed font-medium">{phoneValidation.message}</p>
-                                </div>
-                              )}
-                              <FormMessage className="mt-2" />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                              <div className="text-xs text-muted-foreground mt-2 px-1">
+                                <TechnicalLabel text="FIXED" className="text-xs" />
+                              </div>
+                            </div>
+                            <FormMessage className="mt-2" />
+                          </FormItem>
+                        )}
+                      />
+
+
 
                       {/* Password Fields */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -718,8 +699,10 @@ export default function Auth() {
                           control={registerForm.control}
                           name="password"
                           render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel className="technical-label block mb-2">PASSWORD</FormLabel>
+                            <FormItem className="space-y-2">
+                              <FormLabel className="block p-0 m-0 border-none shadow-none bg-transparent">
+                                <FieldTag>Security Password</FieldTag>
+                              </FormLabel>
                               <FormControl>
                                 <div className="space-y-2">
                                   <div className="relative">
@@ -804,8 +787,10 @@ export default function Auth() {
                           control={registerForm.control}
                           name="confirmPassword"
                           render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <FormLabel className="technical-label block mb-2">CONFIRM PASSWORD</FormLabel>
+                            <FormItem className="space-y-2">
+                              <FormLabel className="block p-0 m-0 border-none shadow-none bg-transparent">
+                                <FieldTag>Confirm Password</FieldTag>
+                              </FormLabel>
                               <FormControl>
                                 <div className="relative">
                                   <Input
@@ -839,77 +824,122 @@ export default function Auth() {
                         />
                       </div>
 
-                      {/* Referral Code */}
-                      <FormField
-                        control={registerForm.control}
-                        name="referralCode"
-                        render={({ field }) => (
-                          <FormItem className="space-y-3">
-                            <FormLabel className="technical-label block mb-2 flex items-center gap-2">
-                              REFERRAL CODE
-                              <div className="group relative inline-flex">
-                                <Info className="w-4 h-4 text-primary/70 hover:text-primary transition-colors cursor-help" />
-                                <span className="absolute left-6 top-1/2 -translate-y-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                  Optional Field
-                                </span>
-                              </div>
-                            </FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input
-                                  {...field}
-                                  className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 pr-12 bg-primary text-white"
-                                  data-testid="input-register-referral"
-                                />
-                                {!field.value && (
-                                  <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none pr-12">
-                                    <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} className="text-white" />
-                                  </div>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      const text = await navigator.clipboard.readText();
-                                      registerForm.setValue('referralCode', text.trim());
-                                      toast({
-                                        title: "Pasted!",
-                                        description: "Referral code pasted from clipboard",
-                                      });
-                                    } catch (err) {
-                                      toast({
-                                        title: "Paste failed",
-                                        description: "Unable to read from clipboard",
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10 p-2 rounded-md bg-white/10 backdrop-blur-sm group"
-                                  data-testid="button-paste-referral"
-                                  aria-label="Paste referral code"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="text-white"
+                      {/* Optional Fields Section */}
+                      <div className="relative py-4">
+                        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                          <div className="w-full border-t-2 border-black/10"></div>
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-[#F5F5F3] px-2 text-[10px] font-black tracking-[0.2em] text-black/20 uppercase">OPTIONAL</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                        {/* Phone Field */}
+                        <FormField
+                          control={registerForm.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel className="block p-0 m-0 border-none shadow-none bg-transparent">
+                                <FieldTag>Phone/WhatsApp</FieldTag>
+                              </FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input
+                                    {...field}
+                                    onChange={(e) => {
+                                      field.onChange(e);
+                                      const validation = validatePhone(e.target.value);
+                                      setPhoneValidation(validation);
+                                    }}
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 transition-colors duration-200"
+                                    data-testid="input-register-phone"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
+                                      <AnimatedPlaceholder examples={['+92 300 1234567', '03001234567', '+92 321 9876543']} />
+                                    </div>
+                                  )}
+                                </div>
+                              </FormControl>
+                              {!phoneValidation.valid && field.value && field.value.trim() !== '' && (
+                                <div className="flex items-start gap-2 mt-2 p-3 bg-red-50 border-l-4 border-red-500 rounded">
+                                  <span className="text-red-600 text-base font-bold mt-0.5">⚠</span>
+                                  <p className="text-sm text-red-900 leading-relaxed font-medium">{phoneValidation.message}</p>
+                                </div>
+                              )}
+                              <FormMessage className="mt-2" />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Referral Code */}
+                        <FormField
+                          control={registerForm.control}
+                          name="referralCode"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel className="block p-0 m-0 border-none shadow-none bg-transparent">
+                                <FieldTag>Referral Code (Optional)</FieldTag>
+                              </FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input
+                                    {...field}
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 pr-12 bg-primary text-white"
+                                    data-testid="input-register-referral"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none pr-12">
+                                      <AnimatedPlaceholder examples={['THORX-A1B2', 'THORX-X9Y8', 'THORX-K3M7']} className="text-white" />
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        const text = await navigator.clipboard.readText();
+                                        registerForm.setValue('referralCode', text.trim());
+                                        toast({
+                                          title: "Pasted!",
+                                          description: "Referral code pasted from clipboard",
+                                        });
+                                      } catch (err) {
+                                        toast({
+                                          title: "Paste failed",
+                                          description: "Unable to read from clipboard",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10 p-2 rounded-md bg-white/10 backdrop-blur-sm group"
+                                    data-testid="button-paste-referral"
+                                    aria-label="Paste referral code"
                                   >
-                                    <rect width="8" height="4" x="8" y="2" rx="1.5" ry="1.5" />
-                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </FormControl>
-                            <FormMessage className="mt-2" />
-                          </FormItem>
-                        )}
-                      />
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="18"
+                                      height="18"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      className="text-white"
+                                    >
+                                      <rect width="8" height="4" x="8" y="2" rx="1.5" ry="1.5" />
+                                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </FormControl>
+                              <FormMessage className="mt-2" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       <div className="pt-4">
                         <Button
@@ -918,7 +948,7 @@ export default function Auth() {
                           className="w-full bg-black text-white text-lg md:text-xl font-black py-4 md:py-5 hover:bg-primary transition-colors border-2 border-black disabled:opacity-50 disabled:cursor-not-allowed"
                           data-testid="button-register-submit"
                         >
-                          {isSubmitting ? "PROCESSING..." : "CREATE ACCOUNT & START EARNING →"}
+                          {isSubmitting ? "PROCESSING..." : "Enter"}
                         </Button>
                       </div>
                     </form>
@@ -950,127 +980,130 @@ export default function Auth() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="login" className="space-y-4 md:space-y-6 overflow-visible">
-                  <div className="text-center mb-4 md:mb-6">
-                    <TechnicalLabel text="USER LOGIN" className="mb-2" />
-                    <h3 className="text-xl md:text-3xl font-black text-black">WELCOME BACK</h3>
-                  </div>
-
-                  <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4 md:space-y-6 overflow-visible">
-                      <FormField
-                        control={loginForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="technical-label">EMAIL ADDRESS</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input
-                                  {...field}
-                                  type="email"
-                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3"
-                                  data-testid="input-login-email"
-                                />
-                                {!field.value && (
-                                  <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-                                    <AnimatedPlaceholder examples={['john@gmail.com', 'user@thorx.com', 'earner@example.com']} />
-                                  </div>
-                                )}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={loginForm.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="technical-label">PASSWORD</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input
-                                  type={showPassword ? "text" : "password"}
-                                  {...field}
-                                  className="border-2 border-black text-base md:text-lg py-2 md:py-3 pr-10"
-                                  data-testid="input-login-password"
-                                />
-                                {!field.value && (
-                                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none pr-10">
-                                    <AnimatedPlaceholder examples={['Enter your password', 'Your secure password', 'Login password']} />
-                                  </div>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => setShowPassword(!showPassword)}
-                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 z-10 p-1.5 rounded-sm hover:bg-muted/50 transition-all duration-200 group"
-                                  data-testid="button-toggle-login-password"
-                                >
-                                  {showPassword ? (
-                                    <EyeOff className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                                  ) : (
-                                    <Eye className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <TabsContent value="login" className="space-y-6 md:space-y-8 overflow-visible min-h-[auto] w-full">
+                  <div className="max-w-[480px] mx-auto w-full space-y-6 md:space-y-8">
+                    <Form {...loginForm}>
+                      <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-6 md:space-y-8 overflow-visible">
+                        <FormField
+                          control={loginForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel className="block p-0 m-0 border-none shadow-none bg-transparent">
+                                <FieldTag>Email Address</FieldTag>
+                              </FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input
+                                    {...field}
+                                    type="email"
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4"
+                                    data-testid="input-login-email"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-0 flex items-center px-4 pointer-events-none">
+                                      <AnimatedPlaceholder examples={['john@gmail.com', 'user@thorx.com', 'earner@example.com']} />
+                                    </div>
                                   )}
-                                </button>
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                                </div>
+                              </FormControl>
+                              <FormMessage className="mt-2" />
+                            </FormItem>
+                          )}
+                        />
 
-                      {/* Forgot Password */}
-                      <div className="text-right">
-                        <button
-                          type="button"
-                          className="text-primary hover:text-black transition-colors font-semibold text-sm border-b border-primary hover:border-black"
-                          onClick={() => {
-                            toast({
-                              title: "Password Reset",
-                              description: "Password reset functionality will be available soon.",
-                            });
-                          }}
-                          data-testid="button-forgot-password"
-                        >
-                          FORGOT PASSWORD?
-                        </button>
-                      </div>
+                        <FormField
+                          control={loginForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem className="space-y-2">
+                              <FormLabel className="block p-0 m-0 border-none shadow-none bg-transparent">
+                                <FieldTag>Security Password</FieldTag>
+                              </FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input
+                                    type={showPassword ? "text" : "password"}
+                                    {...field}
+                                    className="border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 pr-12"
+                                    data-testid="input-login-password"
+                                  />
+                                  {!field.value && (
+                                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none pr-12">
+                                      <AnimatedPlaceholder examples={['Enter your password', 'Your secure password', 'Login password']} />
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 p-1.5 rounded-sm hover:bg-muted/50 transition-all duration-200 group"
+                                    data-testid="button-toggle-login-password"
+                                  >
+                                    {showPassword ? (
+                                      <EyeOff className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                    ) : (
+                                      <Eye className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                    )}
+                                  </button>
+                                </div>
+                              </FormControl>
+                              <FormMessage className="mt-2" />
+                            </FormItem>
+                          )}
+                        />
 
-                      <Button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full bg-primary text-white text-lg md:text-xl font-black py-3 md:py-4 hover:bg-black transition-colors border-2 border-black disabled:opacity-50 disabled:cursor-not-allowed"
-                        data-testid="button-login-submit"
-                      >
-                        {isSubmitting ? "LOGGING IN..." : "LOGIN →"}
-                      </Button>
-                    </form>
-                  </Form>
+                        {/* Forgot Password */}
+                        <div className="text-right">
+                          <button
+                            type="button"
+                            className="text-primary hover:text-black transition-colors font-semibold text-sm border-b border-primary hover:border-black"
+                            onClick={() => {
+                              toast({
+                                title: "Password Reset",
+                                description: "Password reset functionality will be available soon.",
+                              });
+                            }}
+                            data-testid="button-forgot-password"
+                          >
+                            FORGOT PASSWORD?
+                          </button>
+                        </div>
 
-                  {/* Direct Portal Access */}
-                  <div className="mt-6 pt-6 border-t-2 border-black">
-                    <div className="text-center space-y-4">
-                      <TechnicalLabel text="OR NAVIGATE TO PORTAL" className="text-muted-foreground" />
-                      <div className="grid grid-cols-2 gap-4">
-                        <Button
-                          onClick={() => setLocation("/portal")}
-                          variant="outline"
-                          className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-lg font-black py-3"
-                          data-testid="button-user-portal"
-                        >
-                          USER PORTAL →
-                        </Button>
-                        <Button
-                          onClick={() => setLocation("/team")}
-                          variant="outline"
-                          className="w-full border-2 border-black text-black hover:bg-black hover:text-white text-lg font-black py-3"
-                          data-testid="button-team-portal"
-                        >
-                          TEAM PORTAL →
-                        </Button>
+                        <div className="pt-4">
+                          <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="w-full bg-primary text-white text-lg md:text-xl font-black py-4 md:py-5 hover:bg-black transition-colors border-2 border-black disabled:opacity-50 disabled:cursor-not-allowed"
+                            data-testid="button-login-submit"
+                          >
+                            {isSubmitting ? "LOGGING IN..." : "Enter"}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+
+                    {/* Direct Portal Access */}
+                    <div className="mt-8 pt-8 border-t-2 border-black">
+                      <div className="text-center space-y-5">
+                        <TechnicalLabel text="OR NAVIGATE TO PORTAL" className="text-muted-foreground" />
+                        <div className="grid grid-cols-2 gap-4 md:gap-5">
+                          <Button
+                            onClick={() => setLocation("/portal")}
+                            variant="outline"
+                            className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-base md:text-lg font-black py-3 md:py-4"
+                            data-testid="button-user-portal"
+                          >
+                            USER PORTAL →
+                          </Button>
+                          <Button
+                            onClick={() => setLocation("/team")}
+                            variant="outline"
+                            className="w-full border-2 border-black text-black hover:bg-black hover:text-white text-base md:text-lg font-black py-3 md:py-4"
+                            data-testid="button-team-portal"
+                          >
+                            TEAM PORTAL →
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1080,13 +1113,7 @@ export default function Auth() {
               {/* Security Badge */}
               <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t-2 border-black">
                 <div className="flex items-center justify-center space-x-2 md:space-x-4">
-                  <div className="bg-black text-white px-2 md:px-3 py-1">
-                    <TechnicalLabel text="SECURE & ENCRYPTED" className="text-white text-xs" />
-                  </div>
-                  <Barcode className="w-12 md:w-16 h-3 md:h-4" />
-                  <div className="bg-primary text-white px-2 md:px-3 py-1">
-                    <TechnicalLabel text="PROTECTED" className="text-white text-xs" />
-                  </div>
+                  <Barcode variant="bold" className="w-12 md:w-16 h-3 md:h-4" />
                 </div>
               </div>
 
@@ -1112,9 +1139,9 @@ export default function Auth() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-    </div>
+          </motion.div>
+        </div >
+      </section >
+    </motion.div >
   );
 }

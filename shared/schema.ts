@@ -42,6 +42,8 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
   avatar: text("avatar").default("default"),
   rank: text("rank").default("Useless"),
+  profilePicture: text("profile_picture"),
+  permissions: jsonb("permissions").default('[]'),
 }, (table) => [
   index("users_email_idx").on(table.email),
   index("users_referral_code_idx").on(table.referralCode),
@@ -54,6 +56,41 @@ export const users = pgTable("users", {
   // Prevent self-referral
   sql`CONSTRAINT check_no_self_referral CHECK (id != referred_by)`,
 ]);
+
+// Team invitations table for secure onboarding
+export const teamInvitations = pgTable("team_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull(),
+  role: text("role").notNull().default("team"),
+  permissions: jsonb("permissions").notNull().default('[]'),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  consumedAt: timestamp("consumed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("invitations_email_idx").on(table.email),
+  index("invitations_token_idx").on(table.token),
+  index("invitations_expires_at_idx").on(table.expiresAt),
+]);
+
+export const insertTeamInvitationSchema = createInsertSchema(teamInvitations);
+export type TeamInvitation = typeof teamInvitations.$inferSelect;
+export type InsertTeamInvitation = z.infer<typeof insertTeamInvitationSchema>;
+
+// Global system configuration table
+export const systemConfig = pgTable("system_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),
+  value: jsonb("value").notNull(),
+  description: text("description"),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSystemConfigSchema = createInsertSchema(systemConfig);
+export type SystemConfig = typeof systemConfig.$inferSelect;
+export type InsertSystemConfig = z.infer<typeof insertSystemConfigSchema>;
 
 // Earnings transactions table
 export const earnings = pgTable("earnings", {
@@ -70,6 +107,25 @@ export const earnings = pgTable("earnings", {
   index("earnings_type_idx").on(table.type),
   index("earnings_status_idx").on(table.status),
   index("earnings_created_at_idx").on(table.createdAt),
+]);
+
+// Leaderboard cache for high-performance enterprise analytics
+export const leaderboardCache = pgTable("leaderboard_cache", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  globalRank: integer("global_rank").notNull(),
+  performanceScore: decimal("performance_score", { precision: 10, scale: 2 }).notNull(),
+  earningsScore: decimal("earnings_score", { precision: 10, scale: 2 }).notNull(),
+  teamScore: decimal("team_score", { precision: 10, scale: 2 }).notNull(),
+  activeScore: decimal("active_score", { precision: 10, scale: 2 }).notNull(),
+  healthScore: decimal("health_score", { precision: 10, scale: 2 }).notNull(),
+  level1Count: integer("level1_count").default(0),
+  level2Count: integer("level2_count").default(0),
+  recordedAt: timestamp("recorded_at").defaultNow(),
+}, (table) => [
+  index("leaderboard_rank_idx").on(table.globalRank),
+  index("leaderboard_user_id_idx").on(table.userId),
+  index("leaderboard_recorded_at_idx").on(table.recordedAt),
 ]);
 
 // Advertisements catalog table
@@ -237,6 +293,34 @@ export const userCredentials = pgTable("user_credentials", {
   index("user_credentials_email_idx").on(table.email),
 ]);
 
+// Daily Tasks for unlocking payouts and engaging users
+export const dailyTasks = pgTable("daily_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  type: text("type").notNull(), // 'video', 'social', 'internal', etc.
+  actionUrl: text("action_url"), // URL to visit
+  secretCode: text("secret_code"), // Code required to pass verification
+  instructions: text("instructions"), // How to do the task
+  targetRank: text("target_rank").default("Useless"), // minimum rank to see it
+  isActive: boolean("is_active").default(true),
+  isMandatory: boolean("is_mandatory").default(false), // controls payout access
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Records of task completions by users
+export const taskRecords = pgTable("task_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  taskId: varchar("task_id").notNull().references(() => dailyTasks.id, { onDelete: "cascade" }),
+  status: text("status").default("completed"),
+  clickedAt: timestamp("clicked_at"), // track when they clicked for the delay verification
+  completedAt: timestamp("completed_at").defaultNow(),
+}, (table) => [
+  index("task_records_user_id_idx").on(table.userId),
+  index("task_records_task_id_idx").on(table.taskId)
+]);
+
 // Chat messages for support chatbot
 export const chatMessages = pgTable("chat_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -286,6 +370,39 @@ export const hilltopAdsZones = pgTable("hilltop_ads_zones", {
   index("hilltop_ads_zones_ad_format_idx").on(table.adFormat),
 ]);
 
+// Audit logs for administrative actions
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").notNull().references(() => users.id),
+  action: text("action").notNull(), // e.g., "APPROVE_WITHDRAWAL", "UPDATE_USER_BALANCE", "BAN_USER"
+  targetType: text("target_type").notNull(), // e.g., "withdrawal", "user", "ad"
+  targetId: varchar("target_id").notNull(),
+  details: jsonb("details").notNull().default(sql`'{}'::jsonb`),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("audit_logs_admin_id_idx").on(table.adminId),
+  index("audit_logs_action_idx").on(table.action),
+  index("audit_logs_target_type_idx").on(table.targetType),
+  index("audit_logs_target_id_idx").on(table.targetId),
+  index("audit_logs_created_at_idx").on(table.createdAt),
+]);
+
+// Internal notes for team collaboration
+export const internalNotes = pgTable("internal_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").notNull().references(() => users.id),
+  targetType: text("target_type").notNull(), // "user", "withdrawal"
+  targetId: varchar("target_id").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("internal_notes_admin_id_idx").on(table.adminId),
+  index("internal_notes_target_type_idx").on(table.targetType),
+  index("internal_notes_target_id_idx").on(table.targetId),
+  index("internal_notes_created_at_idx").on(table.createdAt),
+]);
+
 // HilltopAds statistics table
 export const hilltopAdsStats = pgTable("hilltop_ads_stats", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -333,6 +450,25 @@ export const rankLogs = pgTable("rank_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("rank_logs_user_idx").on(table.userId),
+]);
+
+// Notifications table for system and administrative alerts
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").default("info"), // "financial", "system", "earning", "payout"
+  adminName: text("admin_name"),
+  adminRole: text("admin_role"),
+  amount: decimal("amount", { precision: 10, scale: 2 }),
+  adjustmentType: text("adjustment_type"), // "credit" or "debit"
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("notifications_user_id_idx").on(table.userId),
+  index("notifications_type_idx").on(table.type),
+  index("notifications_created_at_idx").on(table.createdAt),
 ]);
 
 // Define relations
@@ -472,7 +608,6 @@ export const commissionLogsRelations = relations(commissionLogs, ({ one }) => ({
     references: [withdrawals.id],
   }),
 }));
-
 export const rankLogsRelations = relations(rankLogs, ({ one }) => ({
   user: one(users, {
     fields: [rankLogs.userId],
@@ -536,6 +671,8 @@ export const insertWithdrawalSchema = createInsertSchema(withdrawals).omit({
   transactionId: true,
   processedAt: true,
   rejectionReason: true,
+  fee: true,
+  netAmount: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -659,6 +796,9 @@ export type HilltopAdsConfig = typeof hilltopAdsConfig.$inferSelect;
 export type InsertHilltopAdsZone = z.infer<typeof insertHilltopAdsZoneSchema>;
 export type HilltopAdsZone = typeof hilltopAdsZones.$inferSelect;
 
+export type InsertHilltopAdsStat = z.infer<typeof insertHilltopAdsStatSchema>;
+export type HilltopAdsStat = typeof hilltopAdsStats.$inferSelect;
+
 export const insertCommissionLogSchema = createInsertSchema(commissionLogs).omit({
   id: true,
   createdAt: true,
@@ -675,3 +815,49 @@ export const insertRankLogSchema = createInsertSchema(rankLogs).omit({
 
 export type InsertRankLog = z.infer<typeof insertRankLogSchema>;
 export type RankLog = typeof rankLogs.$inferSelect;
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+
+export const insertInternalNoteSchema = createInsertSchema(internalNotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInternalNote = z.infer<typeof insertInternalNoteSchema>;
+export type InternalNote = typeof internalNotes.$inferSelect;
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+export const insertDailyTaskSchema = createInsertSchema(dailyTasks, {
+  instructions: z.string().nullable().optional(),
+  actionUrl: z.string().nullable().optional(),
+  secretCode: z.string().nullable().optional(),
+  targetRank: z.string().default("Useless"),
+  isMandatory: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDailyTask = z.infer<typeof insertDailyTaskSchema>;
+export type DailyTask = typeof dailyTasks.$inferSelect;
+
+export const insertTaskRecordSchema = createInsertSchema(taskRecords).omit({
+  id: true,
+  completedAt: true,
+});
+export type InsertTaskRecord = z.infer<typeof insertTaskRecordSchema>;
+export type TaskRecord = typeof taskRecords.$inferSelect;

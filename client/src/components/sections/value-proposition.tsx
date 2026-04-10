@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { RulerCarousel } from "@/components/ui/ruler-carousel";
 import TextBlockAnimation from "@/components/ui/text-block-animation";
+import { CinematicBlockReveal } from "@/components/ui/cinematic-block-reveal";
+import { VariableFontHoverByRandomLetter } from "@/components/ui/variable-font-hover";
 
 // Interactive Divider Component (recreated from UserPortal.tsx)
 const InteractiveDivider = ({ orientation = "horizontal", className = "" }: { orientation?: "horizontal" | "vertical", className?: string }) => {
@@ -95,15 +97,15 @@ export default function ValueProposition({ isActive }: { isActive: boolean }) {
     const stakeholders = [
         {
             label: "FOR USERS",
-            description: "Get paid in PKR for watching short videos and visiting verified websites. With a low $5 minimum payout and direct support for JazzCash and EasyPaisa, THORX turns your daily attention into a reliable and sustainable income stream."
+            description: "Convert your time into Halal PKR earnings. Navigate our Engine A video players or complete high-paying CPE offers from Engine B. Withdraw your secure earnings directly to JazzCash and EasyPaisa after completing your daily tasks."
         },
         {
-            label: "FOR AD NETWORKS",
-            description: "Scale your network with genuine human engagement. Our '30-second attention rule' ensures verified interactions from a logged-in Pakistan audience, eliminating bot traffic and delivering superior eCPM for your video ad inventory."
+            label: "FOR VAST NETWORKS",
+            description: "Scale your video ad network with genuine human engagement. Our massive 'ENTER' button verification ensures 100% human interactions from a logged-in Pakistan audience, eliminating bot traffic and delivering superior eCPM without clickjacking bans."
         },
         {
-            label: "FOR ADVERTISERS",
-            description: "Reach the active Pakistan market through a platform that guarantees user attention. Every task is 'Revenue Verified,' requiring active engagement to ensure your marketing budget delivers real, measurable ROI and brand impact."
+            label: "FOR CPA NETWORKS",
+            description: "Deploy Cost-Per-Engagement (CPE) offers to an active, verified Pakistani market. Our AI Web Panel tracks 15-second human behavior (scrolling & touches) to guarantee zero bots, delivering real app installs, leads, and measurable ROI."
         }
     ];
 
@@ -116,11 +118,17 @@ export default function ValueProposition({ isActive }: { isActive: boolean }) {
             <div className="mx-auto container max-w-7xl">
                 {/* Section Header */}
                 <div className="text-left mb-16 md:mb-24">
-                    <TextBlockAnimation blockColor="#ff6b00" animateOnScroll={false} trigger={isActive}>
-                        <h2 className="text-6xl md:text-7xl lg:text-8xl font-black text-black dark:text-white uppercase tracking-tighter leading-none">
-                            Value Proposition
-                        </h2>
-                    </TextBlockAnimation>
+                    <CinematicBlockReveal
+                        trigger={isActive}
+                        blockColor="#ff6b00"
+                    >
+                        <VariableFontHoverByRandomLetter
+                            label="VALUE PROPOSITION"
+                            className="font-black uppercase tracking-tighter text-4xl md:text-7xl lg:text-8xl leading-none text-black dark:text-white"
+                            fromFontVariationSettings="'wght' 900, 'slnt' 0"
+                            toFontVariationSettings="'wght' 400, 'slnt' -10"
+                        />
+                    </CinematicBlockReveal>
                 </div>
 
                 {/* Grid Layout */}

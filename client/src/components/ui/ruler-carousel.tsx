@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, animate } from "framer-motion";
 import { Rewind, FastForward } from "lucide-react";
 
 export interface CarouselItem {
@@ -70,110 +70,93 @@ export function RulerCarousel({
 }) {
     const infiniteItems = createInfiniteItems(originalItems);
     const itemsPerSet = originalItems.length;
+    // Responsive width logic
+    const [itemWidth, setItemWidth] = useState(400);
+    const gap = 100;
+    const itemWidthWithGap = itemWidth + gap;
 
     // Start with the middle set, first item
     const [activeIndex, setActiveIndex] = useState(itemsPerSet);
-    const [isResetting, setIsResetting] = useState(false);
-    const previousIndexRef = useRef(itemsPerSet);
+    const [isAnimating, setIsAnimating] = useState(false);
 
-    const handleItemClick = (newIndex: number) => {
-        if (isResetting) return;
+    // Use motion value for direct control
+    const x = useMotionValue(-(activeIndex * itemWidthWithGap + itemWidth / 2));
 
-        // Find the original item index
-        const targetOriginalIndex = newIndex % itemsPerSet;
+    const performMove = async (newIndex: number) => {
+        if (isAnimating) return;
+        setIsAnimating(true);
 
-        // Find all instances of this item across the 3 copies
-        const possibleIndices = [
-            targetOriginalIndex, // First copy
-            targetOriginalIndex + itemsPerSet, // Second copy
-            targetOriginalIndex + itemsPerSet * 2, // Third copy
-        ];
+        const targetX = -(newIndex * itemWidthWithGap + itemWidth / 2);
 
-        // Find the closest index to current position
-        let closestIndex = possibleIndices[0];
-        let smallestDistance = Math.abs(possibleIndices[0] - activeIndex);
+        // Animate to the target position
+        await animate(x, targetX, {
+            type: "spring",
+            stiffness: 150,
+            damping: 25,
+            restDelta: 0.5
+        });
 
-        for (const index of possibleIndices) {
-            const distance = Math.abs(index - activeIndex);
-            if (distance < smallestDistance) {
-                smallestDistance = distance;
-                closestIndex = index;
-            }
+        // Check if we need to jump back to middle set for infinite feel
+        let finalIndex = newIndex;
+        if (newIndex >= itemsPerSet * 2) {
+            finalIndex = newIndex - itemsPerSet;
+            const finalX = -(finalIndex * itemWidthWithGap + itemWidth / 2);
+            x.set(finalX);
+        } else if (newIndex < itemsPerSet) {
+            finalIndex = newIndex + itemsPerSet;
+            const finalX = -(finalIndex * itemWidthWithGap + itemWidth / 2);
+            x.set(finalX);
         }
 
-        previousIndexRef.current = activeIndex;
-        setActiveIndex(closestIndex);
+        setActiveIndex(finalIndex);
+        setIsAnimating(false);
+    };
+
+    const handleItemClick = (newIndex: number) => {
+        if (isAnimating) return;
+        performMove(newIndex);
     };
 
     const handlePrevious = () => {
-        if (isResetting) return;
-        setActiveIndex((prev) => prev - 1);
+        if (isAnimating) return;
+        performMove(activeIndex - 1);
     };
 
     const handleNext = () => {
-        if (isResetting) return;
-        setActiveIndex((prev) => prev + 1);
+        if (isAnimating) return;
+        performMove(activeIndex + 1);
     };
-
-    // Handle infinite scrolling
-    useEffect(() => {
-        if (isResetting) return;
-
-        // If we're in the first set, jump to the equivalent position in the middle set
-        if (activeIndex < itemsPerSet) {
-            setIsResetting(true);
-            setTimeout(() => {
-                setActiveIndex(activeIndex + itemsPerSet);
-                setIsResetting(false);
-            }, 0);
-        }
-        // If we're in the last set, jump to the equivalent position in the middle set
-        else if (activeIndex >= itemsPerSet * 2) {
-            setIsResetting(true);
-            setTimeout(() => {
-                setActiveIndex(activeIndex - itemsPerSet);
-                setIsResetting(false);
-            }, 0);
-        }
-    }, [activeIndex, itemsPerSet, isResetting]);
 
     // Add keyboard navigation
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (isResetting) return;
+            if (isAnimating) return;
 
             if (event.key === "ArrowLeft") {
                 event.preventDefault();
-                setActiveIndex((prev) => prev - 1);
+                handlePrevious();
             } else if (event.key === "ArrowRight") {
                 event.preventDefault();
-                setActiveIndex((prev) => prev + 1);
+                handleNext();
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isResetting]);
-
-    // Responsive width logic
-    const [itemWidth, setItemWidth] = useState(400);
-    const gap = 100;
+    }, [activeIndex, isAnimating]);
 
     useEffect(() => {
         const handleResize = () => {
-            if (window.innerWidth < 768) {
-                setItemWidth(280);
-            } else {
-                setItemWidth(400);
-            }
+            const newWidth = window.innerWidth < 768 ? 280 : 400;
+            setItemWidth(newWidth);
+            // Update x value on resize to maintain centering
+            const newWidthWithGap = newWidth + gap;
+            x.set(-(activeIndex * newWidthWithGap + newWidth / 2));
         };
         handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    const itemWidthWithGap = itemWidth + gap;
-    const targetX = -(activeIndex * itemWidthWithGap);
+    }, [activeIndex, gap]);
 
     // Get current page info
     const currentPage = (activeIndex % itemsPerSet) + 1;
@@ -191,20 +174,7 @@ export function RulerCarousel({
 
                     <motion.div
                         className="flex items-center absolute left-1/2 top-0 bottom-0"
-                        animate={{
-                            x: -(activeIndex * itemWidthWithGap + itemWidth / 2)
-                        }}
-                        initial={false}
-                        transition={
-                            isResetting
-                                ? { duration: 0 }
-                                : {
-                                    type: "spring",
-                                    stiffness: 150,
-                                    damping: 25,
-                                    mass: 1,
-                                }
-                        }
+                        style={{ x }}
                     >
                         {infiniteItems.map((item, index) => {
                             const isActive = index === activeIndex;
@@ -221,15 +191,11 @@ export function RulerCarousel({
                                         scale: isActive ? 1.1 : 0.8,
                                         opacity: isActive ? 1 : 0.3,
                                     }}
-                                    transition={
-                                        isResetting
-                                            ? { duration: 0 }
-                                            : {
-                                                type: "spring",
-                                                stiffness: 300,
-                                                damping: 30,
-                                            }
-                                    }
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 30,
+                                    }}
                                     style={{
                                         width: `${itemWidth}px`,
                                         marginRight: `${gap}px`
@@ -247,14 +213,14 @@ export function RulerCarousel({
                 </div>
             </div>
 
-            <div className="flex items-center justify-center gap-8 mt-12 bg-black/5 dark:bg-white/5 px-6 py-3 rounded-full backdrop-blur-sm border border-black/10 dark:border-white/10">
+            <div className="flex items-center justify-center gap-6 mt-10 bg-black/5 dark:bg-white/5 px-5 py-2.5 rounded-full backdrop-blur-sm border border-black/10 dark:border-white/10">
                 <button
                     onClick={handlePrevious}
-                    disabled={isResetting}
+                    disabled={isAnimating}
                     className="flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
                     aria-label="Previous item"
                 >
-                    <Rewind className="w-6 h-6 text-primary" />
+                    <Rewind className="w-5 h-5 text-black dark:text-white" />
                 </button>
 
                 <div className="flex items-center gap-3">
@@ -271,11 +237,11 @@ export function RulerCarousel({
 
                 <button
                     onClick={handleNext}
-                    disabled={isResetting}
+                    disabled={isAnimating}
                     className="flex items-center justify-center cursor-pointer hover:scale-125 transition-transform"
                     aria-label="Next item"
                 >
-                    <FastForward className="w-6 h-6 text-primary" />
+                    <FastForward className="w-5 h-5 text-black dark:text-white" />
                 </button>
             </div>
         </div>

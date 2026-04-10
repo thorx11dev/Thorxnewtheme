@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 // For this design, I'll wrap content in a div or anchor if a link is provided.
 import { Play, Users, Clock, ShieldCheck, TrendingUp, Plus } from "lucide-react";
 import TextBlockAnimation from "@/components/ui/text-block-animation";
+import { CinematicBlockReveal } from "@/components/ui/cinematic-block-reveal";
+import { VariableFontHoverByRandomLetter } from "@/components/ui/variable-font-hover";
 
 // Simplified content mapping
 // Card 1: Watch Ads
@@ -115,11 +117,17 @@ export default function EarningReveal({ isActive, onAdvance }: { isActive: boole
         >
             <div className="mx-auto container max-w-7xl">
                 <div className="mb-12 md:mb-16 text-left">
-                    <TextBlockAnimation blockColor="#000" animateOnScroll={false} trigger={isActive}>
-                        <h2 className="text-6xl md:text-7xl font-black text-black dark:text-white uppercase tracking-tight leading-none">
-                            OUR FEATURES
-                        </h2>
-                    </TextBlockAnimation>
+                    <CinematicBlockReveal
+                        trigger={isActive}
+                        blockColor="#000"
+                    >
+                        <VariableFontHoverByRandomLetter
+                            label="OUR FEATURES"
+                            className="font-black uppercase tracking-tighter text-4xl md:text-7xl lg:text-8xl leading-none text-black dark:text-white"
+                            fromFontVariationSettings="'wght' 900, 'slnt' 0"
+                            toFontVariationSettings="'wght' 400, 'slnt' -10"
+                        />
+                    </CinematicBlockReveal>
                 </div>
 
                 {/* Responsive Grid */}

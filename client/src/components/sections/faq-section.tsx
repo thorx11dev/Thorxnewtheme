@@ -4,9 +4,9 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowDown } from "lucide-react";
 import TechnicalLabel from "@/components/ui/technical-label";
-import TextBlockAnimation from "@/components/ui/text-block-animation";
+import { VariableFontHoverByRandomLetter } from "@/components/ui/variable-font-hover";
+import { CinematicBlockReveal } from "@/components/ui/cinematic-block-reveal";
 
 // Interactive Divider Component
 const InteractiveDivider = ({ orientation = "horizontal", className = "" }: { orientation?: "horizontal" | "vertical", className?: string }) => {
@@ -77,155 +77,227 @@ const allFaqData = [
     id: "001",
     protocol: "PLATFORM-OVERVIEW",
     question: "What is THORX?",
-    answer: "THORX is an online earning platform designed specifically for Pakistani users, enabling them to convert their attention into real earnings in PKR. Official domain: thorx.pro. Our objective is to provide a halal and sustainable income opportunity through a transparent ecosystem where the entire community can earn together."
+    answer: "THORX is an online earning platform designed specifically for Pakistani users, enabling them to convert their attention into real earnings in PKR. Official domain: thorx.pro. We operate a dual-engine architecture offering transparent earning opportunities."
   },
   {
     id: "002",
     protocol: "EARNING-MODEL",
     question: "How do I earn on THORX?",
-    answer: "You earn by: 1) Watching video advertisements attentively using the THORX Ads Player, 2) Visiting advertiser product pages via the THORX Web Panel and staying for approximately 30 seconds while reading and scrolling, 3) Inviting new users through the referral system. Tasks convert to earnings only when you actively engage with both video ads and web panels."
+    answer: "You earn through two main systems: 1) Engine A (watching video ads in our 4 VAST players), and 2) Engine B (completing high-paying CPE offers). All tasks are verified by our AI Web Panel, tracking 15-second active engagement. Finally, invite new users to earn 15% / 7.5% referral commissions."
   },
   {
     id: "003",
     protocol: "ATTENTION-REQUIREMENT",
     question: "What does 'Turn Attention into Currency' mean?",
-    answer: "THORX requires genuine attention and engagement. After watching a video ad completely, you must visit the advertiser's product page and stay for approximately 30 seconds, actively reading and scrolling. Tasks will NOT convert to earnings without real interaction. Auto-functioning without attention makes earnings haram."
+    answer: "THORX requires genuine attention and engagement. Whether clicking a video ad or an offer, you must visit the advertiser's product page via our AI Web Panel and stay for 15+ seconds, actively reading and scrolling. Auto-functioning without attention makes earnings haram."
   },
   {
     id: "004",
     protocol: "HALAL-ECOSYSTEM",
     question: "Is THORX earning Halal?",
-    answer: "Yes. THORX operates within a halal-based earning model. All video advertisements follow strict content guidelines to ensure haram or inappropriate material is not promoted. Earnings are based on genuine work (attention and engagement), not passive income or interest."
+    answer: "Yes. THORX follows a strict halal-based earning model. All video advertisements and CPE offers undergo content filtering. Furthermore, earnings are based on genuine work (human attention and engagement), not passive income, interest, or gambling."
   },
   {
     id: "005",
     protocol: "REFERRAL-SYSTEM",
     question: "How does the referral system work?",
-    answer: "Multi-level system: When User A invites User B, User A earns 15% of User B's earnings. When User B invites User C, User A earns 7.5% and User B earns 15%. IMPORTANT: Commission is credited ONLY when the referred user requests a payout, not when they earn."
+    answer: "Multi-level system: Level 1 pays 15%, Level 2 pays 7.5%. IMPORTANT: Commission is credited ONLY when the referred user successfully requests a payout. This ensures maximum safety, value, and cash flow for the ecosystem."
   },
   {
     id: "006",
     protocol: "RANKING-SYSTEM",
     question: "What are the user ranks?",
-    answer: "Ranks based on BOTH total referrals AND total earnings: 1) Useless (new users, 50 ads), 2) Worker (10 refs + 25,000 PKR, 75 ads), 3) Soldier (15 refs + 35,000 PKR, 100 ads), 4) Captain (20 refs + 50,000 PKR, 125 ads), 5) General (25 refs + 100,000 PKR, 150 ads). Both conditions must be met to upgrade."
+    answer: "We use a Dual-Requirement Ranking System (Referrals AND Earnings) that unlocks withdrawal priorities. 1) Useless (Priority 5), 2) Worker (5 Refs + 2,500 PKR, P4), 3) Soldier (10 Refs + 5,000 PKR, P3), 4) Captain (15 Refs + 10,000 PKR, P2), 5) General (25 Refs + 25,000 PKR, P1)."
   },
   {
     id: "007",
     protocol: "DAILY-TASKS",
-    question: "What are daily tasks?",
-    answer: "Mandatory tasks (required for payout eligibility): watching required video ads based on rank, watching a YouTube video for 30+ seconds, watching a specific YouTube video and submitting verification code. Optional tasks: subscribing to THORX YouTube, TikTok, and Instagram channels."
+    question: "What are daily tasks and why are they mandatory?",
+    answer: "Daily Tasks are your Payout Gatekeeper. You MUST complete your assigned tasks (watching specific numbers of ads or doing CPE offers) to unlock the payout page. If tasks are incomplete, the withdrawal system is mathematically locked."
   },
   {
     id: "008",
-    protocol: "REGISTRATION-FLOW",
-    question: "How do I register?",
-    answer: "Provide: Full Name, Email Address, Password, Password Confirmation, and Invitation Code (optional). A unique THORX Identity is generated for you. An OTP is sent to your email. Registration completes only after OTP verification."
+    protocol: "ENGINE-A",
+    question: "What is Engine A (Video Ads)?",
+    answer: "Engine A is our VAST Video Waterfall system. It uses 4 custom players connected to multiple ad networks. If one lacks an ad, the next loads instantly. To prevent bot bans, you must click a massive 'ENTER' button after the video to verify human presence."
   },
   {
     id: "009",
-    protocol: "PAYOUT-METHODS",
-    question: "How do I withdraw my earnings?",
-    answer: "Withdrawal options: JazzCash, EasyPaisa, or Bank Transfer. You MUST complete required daily tasks to be eligible for payouts. Navigate to the Payout section in your User Portal to request withdrawal."
+    protocol: "ENGINE-B",
+    question: "What is Engine B (CPE Offerwall)?",
+    answer: "Engine B is our high-profit Cost-Per-Engagement Offerwall pulling tasks from top CPA networks. It features Smart-Cap logic: if an offer needs 1,000 users, we temporarily reserve your slot to ensure no user wastes time on full campaigns."
   },
   {
     id: "010",
-    protocol: "USER-PORTAL",
-    question: "What is the User Portal?",
-    answer: "The User Portal has 5 sections: 1) Dashboard (earnings summary, rank, analytics), 2) Work (4 advanced video ad players), 3) Referral (view invited users, copy links, generate codes), 4) Payout (withdrawal via JazzCash/EasyPaisa), 5) Help (FAQs, AI Chatbot, Contact team)."
+    protocol: "WEB-PANEL",
+    question: "What is the AI Web Panel?",
+    answer: "The AI Web Panel is our core tracker. You are routed here when completing any task. You must stay for at least 15 seconds while the AI tracks scrolling, touch events, and tab visibility to guarantee zero bot traffic. Pass the test, get paid."
   },
   {
     id: "011",
-    protocol: "VIDEO-PLAYERS",
-    question: "What are the video players?",
-    answer: "The Work section includes 4 advanced video ad players, each connected to a different ad network. Features: Full-screen mode, Mute option, Auto-functioning support. You must watch ads completely and then visit product pages to complete tasks."
+    protocol: "USER-PORTAL",
+    question: "What is the User Portal?",
+    answer: "The User Portal has 5 sections: 1) Dashboard (earnings, rank, analytics), 2) Work (Engine A video players + Engine B CPE Offerwall), 3) Referral (network tracking), 4) Payout (JazzCash/EasyPaisa), 5) Help (FAQs, AI Chatbot, Contact team)."
   },
   {
     id: "012",
-    protocol: "AUTO-FUNCTION-WARNING",
-    question: "Can I use auto-functioning features?",
-    answer: "WARNING: Auto-functioning exists to simplify actions, NOT to replace attention. If you enable auto-functioning without actively paying attention, the earnings generated will be considered haram. Users must remain attentive at all times while completing tasks."
+    protocol: "PAYOUT-METHODS",
+    question: "How do I withdraw my earnings?",
+    answer: "Withdrawals are processed via JazzCash, EasyPaisa, or Bank Transfer. You MUST complete your required daily tasks to unlock the payout page. Higher ranks like General and Captain get their payouts processed first."
   },
   {
     id: "013",
-    protocol: "THORX-IDENTITY",
-    question: "What is THORX Identity?",
-    answer: "THORX Identity is a unique identifier automatically generated during registration. It securely tracks your earnings, referral network, and all account activity. It never changes and is displayed in your Dashboard."
+    protocol: "AUTO-FUNCTION-WARNING",
+    question: "Can I use auto-functioning bots?",
+    answer: "WARNING: Auto-functioning bots or scripts are totally banned. Any attempt to use bots will automatically fail the AI Web Panel 15-second tracking test and will result in a permanent shadow-ban from CPE offers."
   },
   {
     id: "014",
     protocol: "SECURITY",
     question: "Is THORX secure?",
-    answer: "Yes. THORX uses multi-factor authentication via Email OTP for both registration and login. Your data is encrypted and protected with secure session management. Sessions automatically expire for additional protection."
+    answer: "Yes. THORX uses multi-factor authentication via Email OTP for registration. We also feature advanced ad-fraud prevention mechanisms, ensuring our publisher accounts and your earnings remain safe from malicious networks."
   },
   {
     id: "015",
     protocol: "VALUE-PROPOSITION",
     question: "How does THORX create value?",
-    answer: "For Users: Convert genuine attention into halal earnings. For Ad Networks: Higher-quality leads from real engagement. For Advertisers: Users visit product pages for ~30 seconds, leading to better engagement, higher lead quality, and improved conversion rates."
+    answer: "For Users: Convert genuine attention into halal earnings. For VAST Networks: High-quality leads without clickjacking. For CPA Networks: Verified human engagement on CPE offers, meaning real App Installs and Action completions."
   }
 ];
 
 const INITIAL_COUNT = 4;
 
+interface FAQCellProps {
+  faq: typeof allFaqData[0];
+  index: number;
+}
+
+const FAQCell = ({ faq, index }: FAQCellProps) => (
+  <div className="p-8 md:p-12 h-full flex flex-col space-y-6 relative group transition-colors duration-300 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+    <div className="flex justify-between items-center">
+      <div className="bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-sm">
+        <TechnicalLabel
+          text={faq.protocol}
+          className="text-black/40 dark:text-white/40 text-[8px] md:text-[9px] font-black tracking-widest"
+        />
+      </div>
+      <span className="text-[10px] md:text-xs font-mono opacity-20 font-black">ID://{faq.id}</span>
+    </div>
+
+    <div className="space-y-4">
+      <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter leading-none group-hover:text-primary transition-colors duration-300">
+        {faq.question}
+      </h3>
+      <div className="w-12 h-0.5 bg-primary/30" />
+      <p className="text-sm md:text-base text-black/70 dark:text-white/70 font-bold leading-relaxed">
+        {faq.answer}
+      </p>
+    </div>
+  </div>
+);
+
 export default function FAQSection({ isActive }: FAQSectionProps) {
   const [showAll, setShowAll] = useState(false);
-
-  const displayedFaqs = showAll ? allFaqData : allFaqData.slice(0, INITIAL_COUNT);
 
   return (
     <section
       className={`cinematic-section ${isActive ? 'active' : ''} bg-[#EAE5DD] dark:bg-black pt-44 md:pt-[320px] pb-24 px-4 overflow-y-auto`}
       data-testid="faq-section"
     >
-      <div className="container mx-auto max-w-4xl">
-        <div className="mb-12 md:mb-16">
-          <TechnicalLabel text="KNOWLEDGE BASE" className="text-black/40 dark:text-white/40 mb-2" />
-          <TextBlockAnimation blockColor="#ff6b00" animateOnScroll={false} trigger={isActive}>
-            <h2 className="text-5xl md:text-8xl font-black text-black dark:text-white uppercase tracking-tight leading-none text-left">
-              FAQ<span className="text-primary">.</span>
-            </h2>
-          </TextBlockAnimation>
-          <div className="mt-4 w-24 h-1 bg-primary" />
+      <div className="container mx-auto max-w-7xl">
+        <div className="text-left mb-16 md:mb-24">
+          <CinematicBlockReveal
+            trigger={isActive}
+            blockColor="#ff6b00"
+          >
+            <VariableFontHoverByRandomLetter
+              label="FAQ."
+              className="font-black uppercase tracking-tighter text-4xl md:text-7xl lg:text-8xl leading-none text-black dark:text-white"
+              fromFontVariationSettings="'wght' 900, 'slnt' 0"
+              toFontVariationSettings="'wght' 400, 'slnt' -10"
+            />
+          </CinematicBlockReveal>
         </div>
 
-        <div className="space-y-0 border-[3px] border-black/10 dark:border-white/10 rounded-xl overflow-hidden bg-white/5 backdrop-blur-sm shadow-2xl">
-          <Accordion type="single" collapsible className="w-full">
-            {displayedFaqs.map((faq, index) => (
-              <React.Fragment key={faq.id}>
-                <AccordionItem
-                  value={`item-${index}`}
-                  className="border-none px-6 md:px-10 transition-all duration-300 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] data-[state=open]:bg-black/[0.03] dark:data-[state=open]:bg-white/[0.03]"
-                >
-                  <AccordionTrigger className="text-left py-8 md:py-10 text-xl md:text-3xl font-black hover:text-primary transition-colors hover:no-underline uppercase tracking-tight [&>svg]:size-6">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-lg md:text-2xl text-black/70 dark:text-white/70 pb-10 md:pb-14 font-bold leading-relaxed pt-2">
-                    <div className="pl-6 border-l-[3px] border-primary/30">
-                      {faq.answer}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-                {index < displayedFaqs.length - 1 && (
-                  <InteractiveDivider className="opacity-30" />
+        <div className="border-[3px] border-black/10 dark:border-white/10 rounded-xl overflow-hidden bg-white/5 backdrop-blur-sm shadow-2xl">
+          {/* Main Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+            {allFaqData.slice(0, INITIAL_COUNT).map((faq, index) => (
+              <div key={faq.id} className="relative flex flex-col h-full overflow-hidden">
+                <FAQCell faq={faq} index={index} />
+
+                {/* Vertical Divider (Desktop) */}
+                {index % 2 === 0 && (
+                  <InteractiveDivider
+                    orientation="vertical"
+                    className="hidden lg:block absolute right-0 top-0 bottom-0 opacity-30"
+                  />
                 )}
-              </React.Fragment>
+
+                {/* Horizontal Divider (Mobile Always, Desktop only between rows) */}
+                <InteractiveDivider
+                  orientation="horizontal"
+                  className={cn(
+                    "opacity-30",
+                    index < 2 ? "lg:hidden" : "" // Hide horizontal divider on desktop's first row
+                  )}
+                />
+              </div>
             ))}
-          </Accordion>
+          </div>
+
+          {/* Hidden Grid Area */}
+          <AnimatePresence>
+            {showAll && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden border-t-[3px] border-black/10 dark:border-white/10"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-2">
+                  {allFaqData.slice(INITIAL_COUNT).map((faq, index) => (
+                    <div key={faq.id} className="relative flex flex-col h-full overflow-hidden">
+                      <FAQCell faq={faq} index={index + INITIAL_COUNT} />
+
+                      {/* Vertical Divider (Desktop) */}
+                      {index % 2 === 0 && (
+                        <InteractiveDivider
+                          orientation="vertical"
+                          className="hidden lg:block absolute right-0 top-0 bottom-0 opacity-30"
+                        />
+                      )}
+
+                      {/* Horizontal Divider */}
+                      {index < allFaqData.length - INITIAL_COUNT - 1 && (
+                        <InteractiveDivider
+                          orientation="horizontal"
+                          className="opacity-30"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {!showAll && (
-          <div className="mt-16 group">
-            <div className="flex items-center gap-4 md:gap-8 w-full">
-              <InteractiveDivider className="flex-1 opacity-20" />
-              <button
-                onClick={() => setShowAll(true)}
-                className="flex-shrink-0 flex items-center gap-4 px-8 py-4 bg-black dark:bg-white text-white dark:text-black hover:bg-primary dark:hover:bg-primary dark:hover:text-white transition-all duration-300 rounded-full"
-              >
-                <TechnicalLabel text="REVEAL FULL DATASET" className="font-black text-xs" />
-                <ArrowDown className="size-4 animate-bounce" />
-              </button>
-              <InteractiveDivider className="flex-1 opacity-20" />
-            </div>
+          <div className="mt-16 flex flex-col items-center">
+            <button
+              onClick={() => setShowAll(true)}
+              className="flex items-center gap-3 group p-6 transition-all duration-300 hover:scale-110"
+              aria-label="Show more questions"
+            >
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="size-4 md:size-6 bg-black dark:bg-white rounded-full transition-all duration-300 group-hover:bg-primary group-hover:shadow-[0_0_20px_rgba(255,107,0,0.6)]"
+                />
+              ))}
+            </button>
           </div>
         )}
       </div>

@@ -1,36 +1,82 @@
 {
   "metadata": {
-    "version": "4.0.0",
-    "lastUpdated": "2026-01-28",
-    "language": ["en", "ur"],
-    "description": "Official Knowledge Base for Thorx AI Support Assistant - Halal & Attention-Based Model"
+    "version": "4.1.0",
+    "lastUpdated": "2026-03-25",
+    "language": [
+      "en",
+      "ur"
+    ],
+    "description": "Official Knowledge Base for Thorx AI Support Assistant - Dual Engine Halal Ad-Tech Platform"
   },
   "intents": [
     {
       "id": "greeting",
       "patterns": {
-        "en": ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "greetings", "assalam", "howdy", "yo", "whats up", "sup", "hola"],
-        "ur": ["salam", "assalam o alaikum", "kaise hain", "kya hal hai", "adaab", "hello ji", "salam bhai", "aoa"]
+        "en": [
+          "hello",
+          "hi",
+          "hey",
+          "good morning",
+          "good afternoon",
+          "good evening",
+          "greetings",
+          "assalam",
+          "howdy",
+          "yo",
+          "whats up",
+          "sup",
+          "hola"
+        ],
+        "ur": [
+          "salam",
+          "assalam o alaikum",
+          "kaise hain",
+          "kya hal hai",
+          "adaab",
+          "hello ji",
+          "salam bhai",
+          "aoa"
+        ]
       },
       "responses": {
         "en": [
           "Hello {name}! Welcome to THORX. I'm your AI assistant, here to explain our Halal earning model where you convert attention into currency. How can I assist you today?",
-          "Hi {name}! Welcome to the THORX community. I can help you understand how to earn by watching ads attentively and building your team. What would you like to know?",
-          "Greetings {name}! I'm here to support your earning journey on THORX. Whether it's about our attention-based tasks or the referral system, feel free to ask!"
+          "Hi {name}! Welcome to the THORX community. I can help you understand how to earn by watching video ads (Engine A), completing CPE tasks (Engine B), and building your team. What would you like to know?",
+          "Greetings {name}! I'm here to support your earning journey on THORX. Whether it's about the AI Web Panel, Daily Tasks, or the dual-requirement ranking system, feel free to ask!"
         ],
         "ur": [
           "Assalam o Alaikum {name}! THORX mein khushamdeed. Main aapka AI assistant hoon aur hamare Halal earning model ke baare mein batane ke liye yahan hoon. Aaj main aapki kaise madad kar sakta hoon?",
-          "Hello {name}! THORX community mein swagat hai. Main aapko bata sakta hoon ke kaise tawajjo se ads dekh kar aur team bana kar kamaya ja sakta hai. Aap kya jaanna chahenge?",
-          "Salam {name}! Main THORX par aapki earning journey mein madad ke liye hoon. Chahe attention-based tasks hon ya referral system, befikr hokar poochein!"
+          "Hello {name}! THORX community mein swagat hai. Main aapko bata sakta hoon ke kaise video ads (Engine A) dekh kar aur CPE tasks (Engine B) poore kar ke kamaya ja sakta ہے۔ Aap kya jaanna chahenge?",
+          "Salam {name}! Main THORX par aapki earning journey mein madad ke liye hoon. Chahe AI Web Panel ho, Daily Tasks hon ya naya ranking system, befikr hokar poochein!"
         ]
       },
-      "followUp": ["what_is_thorx", "how_to_earn"]
+      "followUp": [
+        "what_is_thorx",
+        "how_to_earn"
+      ]
     },
     {
       "id": "farewell",
       "patterns": {
-        "en": ["bye", "goodbye", "see you", "take care", "thanks bye", "later", "gotta go", "talk later", "cya"],
-        "ur": ["allah hafiz", "khuda hafiz", "phir milenge", "bye", "chalta hoon", "baad mein"]
+        "en": [
+          "bye",
+          "goodbye",
+          "see you",
+          "take care",
+          "thanks bye",
+          "later",
+          "gotta go",
+          "talk later",
+          "cya"
+        ],
+        "ur": [
+          "allah hafiz",
+          "khuda hafiz",
+          "phir milenge",
+          "bye",
+          "chalta hoon",
+          "baad mein"
+        ]
       },
       "responses": {
         "en": [
@@ -46,199 +92,439 @@
       }
     },
     {
-      "id": "thanks",
-      "patterns": {
-        "en": ["thank you", "thanks", "appreciate it", "thanks a lot", "thank u", "thx", "ty", "helpful", "great help"],
-        "ur": ["shukriya", "meharbani", "bohot shukriya", "thanks", "jazakallah", "allah aapko jaza de"]
-      },
-      "responses": {
-        "en": [
-          "You're welcome {name}! We value transparency and trust above all. Let me know if you need anything else.",
-          "My pleasure {name}! It's my job to ensure you understand our Halal earning model clearly.",
-          "Glad I could help {name}! Don't hesitate to ask more about our platform rules or features."
-        ],
-        "ur": [
-          "{name}, koi baat nahi! Hum transparency aur bharose ko sab se upar rakhte hain. Batayein agar kuch aur chahiye.",
-          "{name}, meri khushi hai! Mera kaam hai ke aap hamare Halal earning model ko saaf taur par samjhein.",
-          "{name}, khushi hui madad kar ke! Platform rules ya features ke baare mein aur sawal poochne se na ghabrayein."
-        ]
-      }
-    },
-    {
       "id": "what_is_thorx",
       "patterns": {
-        "en": ["what is thorx", "about thorx", "tell me about thorx", "thorx platform", "thorx.pro", "explain thorx", "thorx kya hai", "what does thorx do", "how thorx works", "is thorx real"],
-        "ur": ["thorx kya hai", "thorx ke bare mein", "thorx platform", "thorx batao", "thorx samjhao", "thorx kaise kaam karta hai", "kya thorx asli hai"]
+        "en": [
+          "what is thorx",
+          "about thorx",
+          "tell me about thorx",
+          "thorx platform",
+          "thorx.pro",
+          "explain thorx",
+          "thorx kya hai",
+          "what does thorx do",
+          "how thorx works",
+          "is thorx real"
+        ],
+        "ur": [
+          "thorx kya hai",
+          "thorx ke bare mein",
+          "thorx platform",
+          "thorx batao",
+          "thorx samjhao",
+          "thorx kaise kaam karta hai",
+          "kya thorx asli hai"
+        ]
       },
       "responses": {
         "en": [
-          "THORX is an online earning platform designed specifically for Pakistani users, operating on the domain thorx.pro. Our objective is to provide a **halal and sustainable income opportunity**. You earn by converting your attention into currency: actively watching video ads and visiting product pages via our Web Panel. We also offer a 2-level referral system where you earn commissions when your team withdraws their earnings.",
-          "{name}, THORX offers a transparent ecosystem for Pakistanis to earn together. Unlike other platforms, we require **active engagement**—watching ads and visiting advertiser pages for ~30 seconds—to generate revenue. This ensures the income is legitimate and Halal. We support withdrawals via JazzCash, EasyPaisa, and Bank Transfer.",
-          "THORX is a platform where attention meets opportunity. We distinguish ourselves by a strict **Halal-based earning model**. No fake claims—you must fundamentally perform tasks (watching videos, visiting sites) to earn PKR. You can also build a team and earn 15% (Level 1) and 7.5% (Level 2) commissions based on their payouts."
+          "THORX is an advanced \"Attention-as-a-Service\" platform designed for Pakistanis. We operate two main earning engines: Engine A (VAST Video Ads Waterfall) and Engine B (High-profit CPE Offerwall). You earn Halal income by giving verified human attention to these tasks via our AI Web Panel tracker.",
+          "{name}, THORX offers a transparent ecosystem for Pakistanis to earn together. Unlike other platforms, we require **active engagement** for 15+ seconds on advertiser landing pages. Our AI verifies this attention to generate legimate revenue. We support payouts via JazzCash and EasyPaisa.",
+          "THORX is where verified attention meets opportunity. We filter out bots and guarantee our advertisers human traffic, allowing us to pay you premium rates in PKR. We also feature a highly profitable 2-level referral system (15% L1, 7.5% L2) triggered upon withdrawals."
         ],
         "ur": [
-          "THORX ek online earning platform hai jo khaas Pakistani users ke liye design kiya gaya hai (official domain: thorx.pro). Hamara maqsad **halal aur sustainable aamdani** ka zariya banna hai. Aap apni tawajjo se kamate hain: video ads dekh kar aur Web Panel ke zariye product pages visit kar ke. Hum 2-level referral system bhi offer karte hain jahan aapko tab commission milti hai jab aapki team withdraw karti hai.",
-          "{name}, THORX Pakistanion ke liye ek shafaf ecosystem hai. Doosre platforms ke bar-aks, hum **active engagement** maangte hain—ads dekhna aur advertiser pages par ~30 seconds rukna—taake revenue generate ho. Yeh earning ko legitimate aur Halal banata hai. Hum JazzCash, EasyPaisa aur Bank Transfer support karte hain.",
-          "THORX wo jagah hai jahan tawajjo se mauqa milta hai. Hum apne **Halal-based earning model** ki wajah se alag hain. Koi jhootay wade nahi—aapko PKR kamane ke liye tasks (videos dekhna, sites visit karna) perform karne honge. Aap team bana kar unke payouts par 15% (Level 1) aur 7.5% (Level 2) commission bhi kama sakte hain."
+          "THORX ek advanced \"Attention-as-a-Service\" platform hai. Hum do blocks chalate hain: Engine A (Video Ads) aur Engine B (CPE Offers). Aap hamare AI Web Panel ke zariye in tasks ko tawajjo de kar Halal aamdani kamate hain.",
+          "{name}, THORX Pakistanion ke liye ek shafaf ecosystem hai. Yahan aapko advertiser ke page par 15+ seconds ki **active engagement** deni hoti hai jo hamara AI verify karta hai, taake kamai Halal aur jaiz ho. Hum JazzCash aur EasyPaisa support karte hain.",
+          "THORX wo jagah hai jahan tawajjo se mauqa milta hai. Hum bots ko rokte hain aur advertisers ko human traffic ki guarantee dete hain, is liye aapko PKR mein behtar rate milta hai. Sath hi 2-level referral system (15% L1, 7.5% L2) bhi mojood hai."
         ]
       },
-      "followUp": ["how_to_earn", "referral_system", "halal_model"]
+      "followUp": [
+        "engine_a",
+        "engine_b",
+        "how_to_earn"
+      ]
     },
     {
       "id": "halal_model",
       "patterns": {
-        "en": ["is this halal", "halal", "haram", "islamic", "sharia", "is earning halal", "ad content", "bad ads"],
-        "ur": ["kya ye halal hai", "halal", "haram", "islamic", "sharia", "kya kamai halal hai", "gande ads", "bura content"]
+        "en": [
+          "is this halal",
+          "halal",
+          "haram",
+          "islamic",
+          "sharia",
+          "is earning halal",
+          "ad content",
+          "bad ads"
+        ],
+        "ur": [
+          "kya ye halal hai",
+          "halal",
+          "haram",
+          "islamic",
+          "sharia",
+          "kya kamai halal hai",
+          "gande ads",
+          "bura content"
+        ]
       },
       "responses": {
         "en": [
-          "Yes, {name}, THORX operates within a **Halal-based earning model**. We strictly curate our video advertisements to ensure NO haram or inappropriate material is promoted. Furthermore, earnings are based on **real attention and effort** (watching ads, visiting pages for 30s), not passive or fake clicks, satisfying the requirement for genuine work.",
-          "We take this seriously. THORX ensures that 1) All ad content covers strict guidelines to avoid haram material, and 2) Income is generated through active user engagement (work), not interest or gambling. Users must remain attentively watching; auto-functioning without attention is considered haram.",
-          "Transparency is key to our Halal model. You satisfy advertisers by giving genuine attention to their products (visiting pages for ~30 seconds). This exchange of value makes the earning legitimate. We also filter out all inappropriate ad content."
+          "Yes, {name}, THORX operates within a **Halal-based earning model**. We strictly curate our video advertisements and CPE offers to ensure NO haram or inappropriate material is promoted.",
+          "We take this seriously. THORX ensures that: 1) All ad content covers strict guidelines, and 2) Income is generated through active user engagement (real work inside our AI Web Panel), not interest or gambling.",
+          "Transparency is key to our Halal model. You satisfy advertisers by giving genuine attention to their products (visiting pages for ~15 seconds). This exchange of value makes the earning legitimate."
         ],
         "ur": [
-          "Ji haan, {name}, THORX ek **Halal-based earning model** par chalta hai. Hum sakhti se video advertisements check karte hain taake koi haram ya namunasib mawad promote na ho. Iske ilawa, kamai **asli tawajjo aur mehnat** (ads dekhna, 30s ke liye pages visit karna) par mabni hai, na ke jhooti clicks par, jo ke halal rizq ke liye zaroori hai.",
-          "Hum is baat ko sanjeedgi se lete hain. THORX yakeeni banata hai ke 1) Tamam ad content guidelines follow kare aur haram mawad se pak ho, aur 2) Aamdani active engagement (kaam) se aaye, sood ya juway se nahi. Users ko tawajjo se dekhna lazmi hai; bina dihan diye auto-functioning haram samjhi jati hai.",
-          "Hamare Halal model ki bunyad shafafiyat hai. Aap advertisers ko unki products par asli tawajjo de kar (pages par ~30 seconds ruk kar) value dete hain. Yeh len-den kamai ko legitimate banata hai. Hum namunasib ads ko filter bhi karte hain."
+          "Ji haan, {name}, THORX ek **Halal-based earning model** par chalta hai. Hum sakhti se video advertisements aur CPE offers check karte hain taake koi haram ya namunasib mawad promote na ho.",
+          "Hum is baat ko sanjeedgi se lete hain. THORX yakeeni banata hai ke aamdani active engagement (AI Web Panel mein asli kaam) se aaye, sood ya juway se nahi. Bina dihan diye auto-functioning haram samjhi jati hai.",
+          "Hamare Halal model ki bunyad shafafiyat hai. Aap advertisers ko unki products par asli tawajjo de kar (~15 seconds ruk kar) value dete hain. Yeh len-den kamai ko legitimate banata hai."
         ]
       },
-      "followUp": ["how_to_earn", "auto_functioning"]
+      "followUp": [
+        "how_to_earn",
+        "web_panel"
+      ]
     },
     {
       "id": "how_to_earn",
       "patterns": {
-        "en": ["how to earn", "make money", "earning method", "tasks", "work", "what do i do", "watch ads", "visit pages"],
-        "ur": ["kaise kamaon", "paise kaise banaye", "earning ka tareeqa", "kaam kya hai", "ads dekhna", "pages visit karna"]
+        "en": [
+          "how to earn",
+          "make money",
+          "earning method",
+          "tasks",
+          "work",
+          "what do i do",
+          "watch ads",
+          "visit pages"
+        ],
+        "ur": [
+          "kaise kamaon",
+          "paise kaise banaye",
+          "earning ka tareeqa",
+          "kaam kya hai",
+          "ads dekhna",
+          "pages visit karna"
+        ]
       },
       "responses": {
         "en": [
-          "Earning on THORX requires active participation, {name}. Here are the steps:\n1. **Watch Videos**: Use the 4 ad players in the 'Work' section. Watch ads completely.\n2. **Visit Products**: After the video, visit the advertiser's product page via the THORX Web Panel.\n3. **Engage**: Stay on the page for ~30 seconds, read, and scroll. This completes one task.\n4. **Refer**: Invite others to earn commissions.",
-          "To earn, go to the **Work** section. You must watch video ads completely and then visit the advertised product page for approximately 30 seconds. Real interaction (scrolling/reading) is required for the task to convert into earnings. Earning without genuine attention violates our policies.",
-          "Maximize your earnings by using all 4 video players in the Work section. Remember: The core task is **Attention**. Watch the ad -> Click to visit -> Stay & Scroll for 30s. This value exchange pays you in PKR. You can also complete Daily Tasks to maintain payout eligibility."
+          "Earning on THORX requires active participation, {name}. You can earn through two main systems:\n1. **Engine A (Video Ads)**: Watch short videos fully and click the 'ENTER' button to verify your presence.\n2. **Engine B (CPE Offerwall)**: Complete high-paying engagement tasks sourced from global networks.\nBoth methods require passing the 15-second tracking test inside our **AI Web Panel**.",
+          "To earn, go to the Work section. You must actively engage with either video ads or CPE offers. Our AI Web Panel tracks your scrolling and reading behavior to ensure you are paying attention. If you pass the 15-second tracking rule, your balance is credited instantly."
         ],
         "ur": [
-          "THORX par kamane ke liye active rehna zaroori hai, {name}. Tareeqa yeh hai:\n1. **Videos Dekhein**: 'Work' section mein 4 ad players use karein. Ads poori dekhein.\n2. **Products Visit**: Video ke baad, THORX Web Panel se advertiser ka page visit karein.\n3. **Engage**: Page par ~30 seconds rukein, parhein aur scroll karein. Yeh ek task complete karta hai.\n4. **Refer**: Doosron ko invite kar ke commission kamayein.",
-          "Kamane ke liye **Work** section mein jayen. Aapko video ads poori dekhni hongi aur phir advertised product page par taqreeban 30 seconds rukna hoga. Asli interaction (scrolling/reading) zaroori hai taake task earnings mein convert ho. Bina tawajjo ke kamana hamari policies ke khilaf hai.",
-          "Work section mein charon video players use kar ke kamai barhayein. Yaad rakhein: Asli cheez **Tawajjo** hai. Ad dekhein -> Visit karein -> 30s Rukein & Scroll karein. Is value ke badle aapko PKR milte hain. Payout eligibility ke liye Daily Tasks bhi complete karein."
+          "THORX par kamane ke liye active rehna zaroori hai, {name}. Kamai ke do tareeqay hain:\n1. **Engine A (Video Ads)**: Pura video dekhein aur human presence verify karne ke liye 'ENTER' button dabayein.\n2. **Engine B (CPE Offers)**: Globally sourced high-paying engagement tasks poore karein.\nDono mein kamyabi ke liye hamare **AI Web Panel** ka 15-second tracking test pass karna lazmi hai.",
+          "Kamane ke liye Work section mein jayen. Aapko video ads ya CPE offers par active rehna hoga. Hamara AI Web Panel aapki scrolling check karta hai. Agar aap 15-second ka test pass karte hain, toh aapki balance fauran badh jati hai."
         ]
       },
-      "followUp": ["referral_system", "daily_tasks", "video_players"]
+      "followUp": [
+        "engine_a",
+        "engine_b",
+        "web_panel"
+      ]
+    },
+    {
+      "id": "engine_a",
+      "patterns": {
+        "en": [
+          "engine a",
+          "video ad",
+          "waterfall",
+          "video player",
+          "watch video"
+        ],
+        "ur": [
+          "engine a",
+          "video ad",
+          "waterfall",
+          "video player",
+          "video dekhne"
+        ]
+      },
+      "responses": {
+        "en": [
+          "**Engine A** is our VAST Video Waterfall system. It uses 4 custom, lightning-fast video players connected to premium ad networks. If one network is empty, the next loads in milliseconds! To prevent bot bans, videos do NOT automatically redirect. You must click the massive 'ENTER' button at the end to claim your reward."
+        ],
+        "ur": [
+          "**Engine A** hamara VAST Video Waterfall system hai. Badi ad networks se connect hokar yeh 4 tez players chalata hai. Bot ban se bachne ke liye, video khatam hone par aapko khud screen par anay wale bade 'ENTER' button par click karna hota hai apna inam lene ke liye."
+        ]
+      },
+      "followUp": [
+        "engine_b",
+        "web_panel"
+      ]
+    },
+    {
+      "id": "engine_b",
+      "patterns": {
+        "en": [
+          "engine b",
+          "cpe",
+          "offerwall",
+          "engagement task",
+          "surveys",
+          "offers"
+        ],
+        "ur": [
+          "engine b",
+          "cpe",
+          "offerwall",
+          "tasks",
+          "offers"
+        ]
+      },
+      "responses": {
+        "en": [
+          "**Engine B** is our high-profit Cost-Per-Engagement (CPE) Offerwall. It pulls tasks from top CPA networks. We use Smart-Cap logic: if an offer needs 1,000 users, we temporarily reserve your slot when you click it. Once the cap hits zero, the offer vanishes so no user wastes their time on full campaigns."
+        ],
+        "ur": [
+          "**Engine B** ek high-paying Cost-Per-Engagement (CPE) Offerwall hai jahan hum top CPA networks se tasks layte hain. Ismein Smart-Cap logic use hoti hai – agar offer poori hojaye toh wo screen se ghaib ho jati hai taake kisi ka waqt zaya na ho."
+        ]
+      },
+      "followUp": [
+        "engine_a",
+        "web_panel"
+      ]
+    },
+    {
+      "id": "web_panel",
+      "patterns": {
+        "en": [
+          "web panel",
+          "ai panel",
+          "tracker",
+          "15 seconds",
+          "15s rule",
+          "tracking"
+        ],
+        "ur": [
+          "web panel",
+          "ai panel",
+          "tracker",
+          "15 seconds",
+          "tracking kaise",
+          "check"
+        ]
+      },
+      "responses": {
+        "en": [
+          "**The THORX AI Web Panel** is our secret sauce. When you click an ad or offer, you land in our custom browser panel. You must stay for at least 15 seconds. The AI tracks real human behavior like scrolling and touch events to guarantee zero bot traffic. If you pass, you get paid instantly!"
+        ],
+        "ur": [
+          "**THORX AI Web Panel** hamara tracker hai. Jab aap kisi ad par click karte hain toh aap is panel mein jate hain jahan aapko kam az kam 15 seconds rukna hota hai. AI aapki scrolling aur touch movement judge karta hai bot traffic rokne ke liye. Agar pass hue, toh paisay fauran account mein!"
+        ]
+      },
+      "followUp": [
+        "how_to_earn"
+      ]
     },
     {
       "id": "referral_system",
       "patterns": {
-        "en": ["referral", "invite", "commission", "team", "network", "15%", "7.5%", "percentage", "affiliate", "invite code"],
-        "ur": ["referral", "invite", "commission", "team", "network", "percent", "dost ko bulao", "code"]
+        "en": [
+          "referral",
+          "invite",
+          "commission",
+          "team",
+          "network",
+          "15%",
+          "7.5%",
+          "percentage",
+          "affiliate",
+          "invite code"
+        ],
+        "ur": [
+          "referral",
+          "invite",
+          "commission",
+          "team",
+          "network",
+          "percent",
+          "dost ko bulao",
+          "code"
+        ]
       },
       "responses": {
         "en": [
-          "Our Multi-Level Referral System allows you to earn from your team's success. \n- **Level 1 (Direct)**: You earn **15%** of User B's earnings.\n- **Level 2 (Indirect)**: You earn **7.5%** of User C's earnings.\n**Important**: Commission is credited ONLY when your referral requests a payout.",
-          "Grow your team to earn passive income! When you invite User A, you get 15% of their earnings. If A invites B, you get 7.5% of B's earnings. Note: To ensure sustainability, these commissions are paid out when your team members successfully withdraw their earnings.",
-          "You can find your invitation code in the **Referral** section. Share it via WhatsApp! Remember the rule: You earn 15% from direct referrals and 7.5% from their referrals. Commissions are credited at the time of their **payout request**, ensuring the earnings are real and verified."
+          "Our Multi-Level Referral System pays 15% (Level 1) and 7.5% (Level 2). \n**Important**: Commission is credited ONLY when your referral requests a payout. This ensures maximum safety, value, and cash flow for the ecosystem.",
+          "Grow your team to earn passive income! You earn 15% from direct referrals and 7.5% from indirect. To ensure long-term stability, we distribute this commission at the moment your team members successfully withdraw, directly from our platform margin."
         ],
         "ur": [
-          "Hamara Multi-Level Referral System aapko team ki kamyabi se kamane ka mauqa deta hai.\n- **Level 1 (Direct)**: Aap User B ki kamai ka **15%** kamate hain.\n- **Level 2 (Indirect)**: Aap User C ki kamai ka **7.5%** kamate hain.\n**Zaroori**: Commission tab credit hoti hai jab aapka referral payout request karta hai.",
-          "Passive income ke liye team banayein! Jab aap User A ko invite karte hain, aapko unki kamai ka 15% milta hai. Agar A kisi B ko invite kare, to aapko B ki kamai ka 7.5% milta hai. Note: Sustainability ke liye, yeh commissions tab milti hain jab aapki team members apne paise withdraw karte hain.",
-          "Aap apna invitation code **Referral** section mein pa sakte hain. WhatsApp par share karein! Rule yaad rakhein: Direct referrals se 15% aur unke referrals se 7.5%. Commissions unke **payout request** ke waqt credit hoti hain, taake yakeeni ho ke kamai asli hai."
+          "Hamara Multi-Level Referral System aapko Level 1 par 15% aur Level 2 par 7.5% deta hai.\n**Zaroori**: Commission sirf tab credit hoti hai jab aapka referral payout request (JazzCash/Easypaisa) karta hai, jo system ko safe rakhta hai.",
+          "Passive income ke liye team banayein! Direct referrals se 15% aur unke referrals se 7.5%. Sustainability ke liye, yeh commissions unke withdrawal ke waqt process hoti hain."
         ]
       },
-      "followUp": ["how_to_earn", "user_levels"]
+      "followUp": [
+        "user_levels"
+      ]
     },
     {
       "id": "daily_tasks",
       "patterns": {
-        "en": ["daily task", "mandatory", "requirements", "payout eligibility", "optional tasks", "youtube", "subscribe"],
-        "ur": ["daily task", "lazmi", "requirements", "payout ke liye", "optional tasks", "youtube", "subscribe"]
+        "en": [
+          "daily task",
+          "mandatory",
+          "requirements",
+          "payout eligibility",
+          "optional tasks",
+          "youtube",
+          "gatekeeper",
+          "locked"
+        ],
+        "ur": [
+          "daily task",
+          "lazmi",
+          "requirements",
+          "payout ke liye",
+          "optional tasks",
+          "locked payout"
+        ]
       },
       "responses": {
         "en": [
-          "Daily Tasks are divided into **Mandatory** and **Optional**. To be eligible for any payout, you MUST complete mandatory tasks: 1) Watch required number of ads (based on Rank), 2) Watch a YouTube video (30s+), 3) Watch a video for verification code. Optional tasks like subscribing to channels boost your profile.",
-          "Check your Dashboard for today's tasks. **Mandatory tasks** (like watching specific ads and validating codes) are required to unlock withdrawals. Optional tasks include subscribing to our YouTube, TikTok, or Instagram channels.",
-          "You cannot request a payout without completing your Mandatory Daily Tasks. These usually involve watching ads corresponding to your Rank (e.g., Worker = 75 ads) and verifying engagement on a specific YouTube video."
+          "Daily Tasks act as our **Payout Gatekeeper**. Your payout page is mathematically LOCKED by the system until your Daily Mandatory Tasks are complete. These tasks ensure constant platform engagement and usually include watching Video Ads (Engine A), completing CPE Offers (Engine B), and verifying codes."
         ],
         "ur": [
-          "Daily Tasks **Mandatory (Lazmi)** aur **Optional** mein taqseem hain. Payout ke liye aapko mandatory tasks poore karne HONGE: 1) Required ads dekhna (Rank ke mutabiq), 2) YouTube video dekhna (30s+), 3) Code verification wali video dekhna. Optional tasks jaise channels subscribe karna aapki profile behtar karte hain.",
-          "Aaj ke tasks ke liye Dashboard check karein. **Mandatory tasks** (jaise ads dekhna aur codes validate karna) withdrawal unlock karne ke liye zaroori hain. Optional tasks mein hamare YouTube, TikTok ya Instagram channels subscribe karna shamil hai.",
-          "Aap Mandatory Daily Tasks poore kiye bina payout request nahi kar sakte. Is mein aam tour par aapke Rank ke mutabiq ads dekhna (e.g., Worker = 75 ads) aur specific YouTube video par engagement verify karna shamil hai."
+          "Daily Tasks hamara **Payout Gatekeeper** hain. Jab tak aap apne aaj kay Mandatory Tasks poore nahi karte, aapka withdrawal page mathematically LOCKED rehta hai. In tasks mein Engine A aur Engine B kay zariye ads dekhna aur codes dalna shamil ho sakta hai."
         ]
       },
-      "followUp": ["user_levels", "withdrawal"]
+      "followUp": [
+        "withdrawal",
+        "user_levels"
+      ]
     },
     {
       "id": "user_levels",
       "patterns": {
-        "en": ["rank", "level", "useless", "worker", "soldier", "captain", "general", "upgrade", "promotion"],
-        "ur": ["rank", "level", "useless", "worker", "soldier", "captain", "general", "upgrade", "promotion"]
+        "en": [
+          "rank",
+          "level",
+          "useless",
+          "worker",
+          "soldier",
+          "captain",
+          "general",
+          "upgrade",
+          "promotion",
+          "priority"
+        ],
+        "ur": [
+          "rank",
+          "level",
+          "useless",
+          "worker",
+          "soldier",
+          "captain",
+          "general",
+          "upgrade",
+          "promotion",
+          "priority"
+        ]
       },
       "responses": {
         "en": [
-          "Ranks are based on Total Referrals AND Total Earnings. Both must be met to upgrade:\n1. **Useless**: New users (50 ads mandatory).\n2. **Worker**: 10 Refs + 25k PKR (75 ads).\n3. **Soldier**: 15 Refs + 35k PKR (100 ads).\n4. **Captain**: 20 Refs + 50k PKR (125 ads).\n5. **General**: 25 Refs + 100k PKR (150 ads).",
-          "{name}, your Rank determines your mandatory ad workload and status. Starting at 'Useless', you can rise to 'General' by inviting active users and earning more. For example, to become a 'Captain', you need 20 active referrals and 50,000 PKR total earnings.",
-          "Upgrading requires balance. You need BOTH a team (referrals) and personal performance (earnings). The higher your rank, the more mandatory ads you must watch daily: Useless (50) -> Worker (75) -> Soldier (100) -> Captain (125) -> General (150)."
+          "THORX uses a **Dual-Requirement Ranking System**. You must hit BOTH referral bounds and personal earning bounds to upgrade. Upgrading unlocks better withdrawal priorities (1 to 5)!\n1. **Useless**: Priority 5.\n2. **Worker**: 5 Invites AND 2,500 PKR earned (Priority 4).\n3. **Soldier**: 10 Invites AND 5,000 PKR earned (Priority 3).\n4. **Captain**: 15 Invites AND 10,000 PKR earned (Priority 2).\n5. **General**: 25 Invites AND 25,000 PKR earned (Priority 1 = Fastest payouts)."
         ],
         "ur": [
-          "Ranks Total Referrals AUR Total Earnings donon par mabni hain. Upgrade ke liye donon poore hone chahiye:\n1. **Useless**: Naye users (50 ads lazmi).\n2. **Worker**: 10 Refs + 25k PKR (75 ads).\n3. **Soldier**: 15 Refs + 35k PKR (100 ads).\n4. **Captain**: 20 Refs + 50k PKR (125 ads).\n5. **General**: 25 Refs + 100k PKR (150 ads).",
-          "{name}, aapka Rank aapke lazmi ad workload aur status ka tayyun karta hai. 'Useless' se shuru ho kar aap 'General' ban sakte hain. Misal ke tour par, 'Captain' banne ke liye 20 active referrals aur 50,000 PKR total earnings chahiye.",
-          "Upgrade ke liye balance zaroori hai. Aapko TEAM (referrals) aur PERSONAL PERFORMANCE (earnings) donon chahiye. Rank jitna ooncha, utne zyada ads rozana dekhne honge: Useless (50) -> Worker (75) -> Soldier (100) -> Captain (125) -> General (150)."
+          "THORX ka **Dual-Requirement Ranking System** fake referrals rokta hai. Rank barhane kay liye invites AUR earnings donon zaroori hain:\n1. **Useless**: Priority 5.\n2. **Worker**: 5 Invites AUR 2,500 PKR kamana zaruri (Priority 4).\n3. **Soldier**: 10 Invites AUR 5,000 PKR (Priority 3).\n4. **Captain**: 15 Invites AUR 10,000 PKR (Priority 2).\n5. **General**: 25 Invites AUR 25,000 PKR (Priority 1 = Sab se tez withdrawals)."
         ]
       },
-      "followUp": ["daily_tasks", "referral_system"]
+      "followUp": [
+        "daily_tasks",
+        "withdrawal"
+      ]
     },
     {
       "id": "withdrawal",
       "patterns": {
-        "en": ["withdraw", "payout", "jazzcash", "easypaisa", "bank transfer", "cash out", "payment"],
-        "ur": ["withdraw", "payout", "jazzcash", "easypaisa", "bank transfer", "paise nikalna", "payment"]
+        "en": [
+          "withdraw",
+          "payout",
+          "jazzcash",
+          "easypaisa",
+          "bank transfer",
+          "cash out",
+          "payment"
+        ],
+        "ur": [
+          "withdraw",
+          "payout",
+          "jazzcash",
+          "easypaisa",
+          "bank transfer",
+          "paise nikalna",
+          "payment"
+        ]
       },
       "responses": {
         "en": [
-          "You can request withdrawals via **JazzCash**, **EasyPaisa**, or **Bank Transfer**. Go to the Payout section. \n**Rule**: You must complete all daily mandatory tasks to be eligible for a payout request today.",
-          "Ready to cash out? Ensure your Daily Tasks are done first! Then select JazzCash, EasyPaisa, or Bank Transfer in the Payout tab. We process payments to support the Pakistani community specifically.",
-          "Payouts are unlocked by performance. Complete your daily mandatory ads and verifications, then request your withdrawal to your preferred local account (JazzCash/EasyPaisa). Referral commissions will also be credited to your upline at this time."
+          "You can request withdrawals via **JazzCash**, **EasyPaisa**, or **Bank Transfer**. \n**Crucial Rule**: The withdrawal page is securely locked until you complete your assigned Daily Tasks for the day. High-ranking users (Generals, Captains) get their payouts processed first due to priority."
         ],
         "ur": [
-          "Aap **JazzCash**, **EasyPaisa**, ya **Bank Transfer** ke zariye withdrawal request kar sakte hain. Payout section mein jayen. \n**Rule**: Aaj payout request ke liye aapko tamaam daily mandatory tasks poore karne honge.",
-          "Cash out ke liye tayyar? Pehle yakeeni banayein ke Daily Tasks ho chuke hain! Phir Payout tab mein JazzCash, EasyPaisa ya Bank Transfer chunein. Hum khaas Pakistani community ke liye payments process karte hain.",
-          "Payouts performance se unlock hote hain. Apne daily mandatory ads aur verifications poore karein, phir apne pasandida local account (JazzCash/EasyPaisa) mein withdrawal request karein. Is waqt aapke upline ko bhi referral commission milega."
+          "Aap **JazzCash**, **EasyPaisa**, ya **Bank Transfer** se payout le saktay hain. \n**Crucial Rule**: Payout page bilkul LOCK rehta hai jab tak aaj kay Daily Tasks poore na hon. Oonchay rank walay users (General/Captain) ki payment pehlay process hoti hai priority rules kay mutabiq."
         ]
       },
-      "followUp": ["daily_tasks", "referral_system"]
+      "followUp": [
+        "daily_tasks",
+        "user_levels"
+      ]
     },
     {
       "id": "auto_functioning",
       "patterns": {
-        "en": ["auto", "automatic", "bot", "script", "auto play", "cheat", "cheat code"],
-        "ur": ["auto", "automatic", "bot", "script", "khud kar", "cheat", "jugaad"]
+        "en": [
+          "auto",
+          "automatic",
+          "bot",
+          "script",
+          "auto play",
+          "cheat",
+          "cheat code"
+        ],
+        "ur": [
+          "auto",
+          "automatic",
+          "bot",
+          "script",
+          "khud kar",
+          "cheat",
+          "jugaad"
+        ]
       },
       "responses": {
         "en": [
-          "**Warning**: Auto-functioning or using scripts to watch ads is strictly prohibited. The 'Auto-function' feature in our players is to simplify actions, NOT to replace attention. If you use it without actively paying attention, the earnings are considered **haram** and your account may be banned.",
-          "THORX requires active human attention. Enabling auto-features and walking away defeats the purpose and makes the income illegitimate (Haram). You must remain attentive while the system runs. We monitor for bot-like activity.",
-          "Do not use cheats or bots. Our objective is attention-based currency. Using auto-clickers without looking at the screen violates the Halal earning agreement. Keep it fair and honest!"
+          "**Warning**: Auto-functioning bots or scripts are totally banned and will automatically fail the AI Web Panel 15-second tracking test. Any attempt to use bots will result in a permanent shadow-ban from CPE offers."
         ],
         "ur": [
-          "**Warning**: Auto-functioning ya scripts use karna sakhti se mana hai. Players mein 'Auto-function' feature sahulat ke liye hai, tawajjo hatane ke liye NAHI. Agar aap bina dihan diye isay use karein, to kamai **Haram** samjhi jayegi aur account ban ho sakta hai.",
-          "THORX ko active human tawajjo chahiye. Auto-features on kar ke chale jana maqsad khatam kar deta hai aur aamdani ko najaiz (Haram) banata hai. Jab system chale to aapko attentive rehna hoga. Hum bot-like activity monitor karte hain.",
-          "Cheats ya bots use na karein. Hamara maqsad attention-based currency hai. Bina screen dekhe auto-clickers use karna Halal earning agreement ki khilaf warzi hai. Imaandari rakhein!"
+          "**Warning**: Auto-functioning bots aur scripts strictly sakhti say manna hain. Hamara AI Web Panel 15-second tracking test bots ko pakkar lega aur apka account block hojaye ga CPE offers kay liye."
         ]
       }
     }
   ],
   "fallback": {
     "en": [
-      "I didn't quite catch that, {name}. Could you rephrase? I can help with Earning rules, Referrals, Ranks, or Payouts.",
-      "I'm not sure, but remember: THORX is about converting attention to currency. Ask me about 'How to earn' or 'Is this Halal'!",
-      "I can't answer that specifically, but our Support Team in the 'Area Contact' section can help with complex account issues."
+      "I didn't quite catch that, {name}. I can help with Earning rules, Engine A, Engine B, or the Payout lock systems.",
+      "I'm not sure, but remember: THORX is about converting human attention to currency. Ask me about the 'AI Web Panel' or 'How to rank up'!"
     ],
     "ur": [
-      "Maine sahi se samjha nahi, {name}. Kya aap dubara pooch sakte hain? Main Earning rules, Referrals, Ranks, ya Payouts mein madad kar sakta hoon.",
-      "Mujhe yakeen nahi, lekin yaad rakhein: THORX tawajjo ko paison mein badalne ka naam hai. Mujhse 'Kamana kaise hai' ya 'Kya ye Halal hai' ke baare mein poochein!",
-      "Main iska specific jawab nahi de sakta, lekin 'Area Contact' section mein hamari Support Team complex issues mein madad kar sakti hai."
+      "Maine sahi se samjha nahi, {name}. Kya aap dubara pooch sakte hain? Main Engine A, Engine B, ya Payout locks mein madad kar sakta hoon.",
+      "Mujhe yakeen nahi, lekin yaad rakhein: THORX mein human attention paison mein tabdeel hoti hai. Mujhse 'AI Web Panel' ya 'Rank UP kaise karein' poochein!"
     ]
   },
   "security_blocked_topics": [
-    "backend", "server", "database", "api", "source code", "infrastructure", "admin panel", "credentials", "payment processing details",
-    "internal system", "admin access", "founder", "owner details", "revenue model", "profit margin", "employee", "staff", "technical stack", 
-    "encryption key", "sql", "query", "hack", "exploit", "vulnerability"
+    "backend",
+    "server",
+    "database",
+    "api",
+    "source code",
+    "infrastructure",
+    "admin panel",
+    "credentials",
+    "payment processing details",
+    "internal system",
+    "admin access",
+    "founder",
+    "owner details",
+    "revenue model",
+    "profit margin",
+    "employee",
+    "staff",
+    "technical stack",
+    "encryption key",
+    "sql",
+    "query",
+    "hack",
+    "exploit",
+    "vulnerability"
   ]
 }

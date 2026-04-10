@@ -42,10 +42,34 @@ import {
   type InsertWithdrawal,
   type RankLog,
   type InsertRankLog,
-  rankLogs
+  rankLogs,
+  type AuditLog,
+  type InsertAuditLog,
+  auditLogs,
+  internalNotes,
+  type InternalNote,
+  type InsertInternalNote,
+  teamInvitations,
+  type TeamInvitation,
+  type InsertTeamInvitation,
+  systemConfig,
+  type SystemConfig,
+  type InsertSystemConfig,
+  notifications,
+  type Notification,
+  type InsertNotification,
+  dailyTasks,
+  type DailyTask,
+  type InsertDailyTask,
+  taskRecords,
+  type TaskRecord,
+  type InsertTaskRecord,
+  leaderboardCache,
+  type LeaderboardCache,
+  type InsertLeaderboardCache,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, or, sql, inArray, ilike, gte, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { adminDb } from "./firebase-admin";
@@ -64,6 +88,11 @@ export interface IStorage {
   validateUserPassword(email: string, password: string): Promise<User | undefined>;
   updateUser(userId: string, updates: Partial<InsertUser>): Promise<User | undefined>;
   updateUserEarnings(userId: string, amount: string): Promise<void>;
+  generatePasswordResetToken(email: string): Promise<string | undefined>;
+  resetPasswordWithToken(token: string, newPassword: string): Promise<boolean>;
+
+  // System config helper
+  getSystemConfigValue<T>(key: string, defaultValue: T): Promise<T>;
 
   // Earnings methods
   createEarning(earning: InsertEarning): Promise<Earning>;
@@ -94,14 +123,22 @@ export interface IStorage {
   // Team functionality methods
   // Team emails for inbox functionality
   createTeamEmail(teamEmail: InsertTeamEmail): Promise<TeamEmail>;
+  updateTeamEmail(id: string, updates: Partial<TeamEmail>): Promise<TeamEmail | undefined>;
   getTeamEmails(type?: 'inbound' | 'outbound', limit?: number): Promise<TeamEmail[]>;
   getTeamEmailsByUser(userId: string, limit?: number): Promise<TeamEmail[]>;
+  deleteTeamEmail(id: string): Promise<boolean>;
 
   // Team keys for managing team member access
   createTeamKey(teamKey: InsertTeamKey): Promise<TeamKey>;
   getTeamKeysByUser(userId: string): Promise<TeamKey[]>;
   updateTeamKey(keyId: string, updates: Partial<InsertTeamKey>): Promise<TeamKey | undefined>;
   getTeamMembers(): Promise<Array<User & { teamKey: TeamKey | null }>>;
+  
+  // Team Invitations
+  createTeamInvitation(invitation: InsertTeamInvitation): Promise<TeamInvitation>;
+  getTeamInvitationByToken(token: string): Promise<TeamInvitation | undefined>;
+  consumeTeamInvitation(invitationId: string): Promise<void>;
+  updateUserPermissions(userId: string, permissions: string[]): Promise<User | undefined>;
 
   // User credentials storage for team data management
   createUserCredential(credential: InsertUserCredential): Promise<UserCredential>;
@@ -112,14 +149,39 @@ export interface IStorage {
 
   // Team-specific user methods
   getUsersByRole(role: 'user' | 'team' | 'founder'): Promise<User[]>;
-  getTotalUsersCount(): Promise<number>;
-  getActiveUsersCount(): Promise<number>;
-  getTotalEarningsSum(): Promise<string>;
   getAllUsers(): Promise<User[]>; // Added method to fetch all users
+  getUsersCountInRange(since: Date): Promise<number>;
+  getEarningsSumInRange(since: Date): Promise<string>;
+  getAnalyticsData(since: Date): Promise<any[]>;
+  
+  // Scalable Data Architecture methods
+  getUsersPaginated(params: { page: number, limit: number, search?: string, sort?: string, sortOrder?: 'asc' | 'desc', ids?: string[] }): Promise<{ users: User[], totalCount: number }>;
+  getAuditLogsPaginated(params: { page: number, limit: number, search?: string, ids?: string[], period?: string }): Promise<{ logs: AuditLog[], totalCount: number }>;
+  getWithdrawalsPaginated(params: { page: number, limit: number, search?: string, status?: string, ids?: string[] }): Promise<{ withdrawals: Array<Withdrawal & { user: User }>, totalCount: number }>;
+  bulkUpdateWithdrawalStatus(ids: string[], status: string, adminId: string): Promise<void>;
+  
+  // System Config
+  getSystemConfig(key: string): Promise<SystemConfig | undefined>;
+  getAllSystemConfigs(): Promise<SystemConfig[]>;
+  updateSystemConfig(key: string, value: any, adminId: string): Promise<SystemConfig | undefined>;
+  createSystemConfig(config: InsertSystemConfig): Promise<SystemConfig>;
 
   // Chat messages methods
   createChatMessage(chatMessage: InsertChatMessage): Promise<ChatMessage>;
   getUserChatHistory(userId: string, limit?: number): Promise<ChatMessage[]>;
+
+  // Daily Tasks & Completions
+  getDailyTasks(): Promise<DailyTask[]>;
+  getDailyTask(id: string): Promise<DailyTask | undefined>;
+  createDailyTask(task: InsertDailyTask): Promise<DailyTask>;
+  updateDailyTask(id: string, updates: Partial<InsertDailyTask>): Promise<DailyTask | undefined>;
+  deleteDailyTask(id: string): Promise<void>;
+  
+  getDailyTasksForUser(userId: string): Promise<Array<{ task: DailyTask, record: TaskRecord | null }>>;
+  getTodayCompletedTasksByType(userId: string, type: string): Promise<number>;
+  getTaskRecord(userId: string, taskId: string): Promise<TaskRecord | undefined>;
+  createTaskRecord(record: InsertTaskRecord): Promise<TaskRecord>;
+  updateTaskRecord(id: string, updates: Partial<InsertTaskRecord>): Promise<TaskRecord | undefined>;
 
   // HilltopAds configuration methods
   createHilltopAdsConfig(config: InsertHilltopAdsConfig): Promise<HilltopAdsConfig>;
@@ -145,8 +207,10 @@ export interface IStorage {
 
   // Withdrawals
   createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal>;
+  getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]>; // Added for missing routes.ts logic
+  getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]>;
   getCheckPendingWithdrawal(userId: string): Promise<Withdrawal | undefined>;
-  processWithdrawal(withdrawalId: string, adminId: string): Promise<Withdrawal>;
+  processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal>;
   rejectWithdrawal(withdrawalId: string, adminId: string, reason: string): Promise<Withdrawal>;
 
   // Ranking System
@@ -183,17 +247,89 @@ export interface IStorage {
     date: Date;
     description: string;
   }>>;
+
+  // Admin Features (Platinum Suite)
+  getLeaderboardInsights(limit?: number, offset?: number): Promise<{
+    globalRanking: any[];
+    topReferrers: any[];
+    anomalies: any[];
+    totalCount: number;
+    lastUpdated: Date;
+  }>;
+  refreshLeaderboardCache(): Promise<void>;
+  getAdminWithdrawals(): Promise<Array<Withdrawal & { user: User }>>;
+  updateWithdrawalStatus(id: string, status: string, adminId: string, transactionId?: string, rejectionReason?: string): Promise<Withdrawal>;
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(limit?: number): Promise<AuditLog[]>;
+  createInternalNote(note: InsertInternalNote): Promise<InternalNote>;
+  getInternalNotes(targetType: string, targetId: string): Promise<Array<InternalNote & { admin: { firstName: string, lastName: string } }>>;
+  adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string): Promise<User>;
+  deleteUser(userId: string): Promise<void>;
+
+  // Notifications
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getUserNotifications(userId: string): Promise<Notification[]>;
 }
 
 const RANKS = [
-  { name: "Useless", min: 0, max: 25000 },
-  { name: "Worker", min: 25000, max: 50000 },
-  { name: "Soldier", min: 50000, max: 75000 },
-  { name: "Captain", min: 75000, max: 100000 },
-  { name: "General", min: 100000, max: Infinity },
+  { name: "Useless", minEarned: 0, minRefs: 0, priority: 5 },
+  { name: "Worker", minEarned: 2500, minRefs: 5, priority: 4 },
+  { name: "Soldier", minEarned: 5000, minRefs: 10, priority: 3 },
+  { name: "Captain", minEarned: 10000, minRefs: 15, priority: 2 },
+  { name: "General", minEarned: 25000, minRefs: 25, priority: 1 },
 ];
 
 export class DatabaseStorage implements IStorage {
+  constructor() {
+    this.bootstrapConfig().catch(err => {
+      console.error("Critical: Failed to bootstrap system configuration:", err);
+    });
+  }
+
+  private async bootstrapConfig() {
+    const defaults = [
+      { key: "MIN_PAYOUT", value: 100, description: "Minimum PKR required for withdrawal" },
+      { key: "SYSTEM_FEE", value: 10, description: "Platform percentage fee per payout" },
+      { key: "L1_BONUS", value: 15, description: "Direct referral commission percentage" },
+      { key: "L2_BONUS", value: 7.5, description: "Network (L2) referral commission percentage" },
+      { 
+        key: "AD_NETWORKS", 
+        value: [
+          { id: "hilltop-1", name: "HilltopAds", zoneId: "default", type: "video", priority: 1, isActive: true },
+          { id: "adsterra-1", name: "Adsterra", zoneId: "default", type: "video", priority: 2, isActive: true }
+        ], 
+        description: "Waterfall priority list for Video Ad Providers" 
+      },
+      { 
+        key: "CPA_NETWORKS", 
+        value: [
+          { id: "cpalead-1", name: "CPALead", apiKey: "default", type: "cpa", priority: 1, isActive: true }
+        ], 
+        description: "Waterfall priority list for CPA Task Providers" 
+      }
+    ];
+
+    for (const def of defaults) {
+      const existing = await this.getSystemConfig(def.key);
+      if (!existing) {
+        await db.insert(systemConfig).values({
+          key: def.key,
+          value: def.value,
+          description: def.description,
+          updatedAt: new Date()
+        });
+        console.log(`[Bootstrap] Initialized missing config key: ${def.key}`);
+      }
+    }
+  }
+
+  // System config helper implementation
+  async getSystemConfigValue<T>(key: string, defaultValue: T): Promise<T> {
+    const config = await this.getSystemConfig(key);
+    if (!config) return defaultValue;
+    return config.value as T;
+  }
+
   // Legacy registration methods
   async createRegistration(insertRegistration: InsertRegistration): Promise<Registration> {
     // This method is kept for backward compatibility but not used in new system
@@ -284,8 +420,13 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserByEmail(email);
     if (!user) return undefined;
 
-    const isValid = await bcrypt.compare(password, user.passwordHash);
-    return isValid ? user : undefined;
+    try {
+      const isValid = await bcrypt.compare(password, user.passwordHash);
+      return isValid ? user : undefined;
+    } catch (error) {
+      console.error(`Bcrypt comparison failed for ${email}:`, error);
+      return undefined;
+    }
   }
 
   async updateUser(userId: string, updates: Partial<InsertUser>): Promise<User | undefined> {
@@ -294,17 +435,68 @@ export class DatabaseStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
+
+    if (updatedUser) {
+      // Sync to Firestore for real-time UI updates
+      await this.syncUserToFirestore(userId);
+    }
     return updatedUser;
   }
 
-  async updateUserEarnings(userId: string, amount: string): Promise<void> {
+  async generatePasswordResetToken(email: string): Promise<string | undefined> {
+    const user = await this.getUserByEmail(email);
+    if (!user) return undefined;
+
+    const token = randomUUID();
+
     await db
       .update(users)
       .set({
-        totalEarnings: sql`${users.totalEarnings} + ${amount}`,
-        availableBalance: sql`${users.availableBalance} + ${amount}`,
-        updatedAt: new Date(),
+        verificationToken: token,
+        updatedAt: new Date()
       })
+      .where(eq(users.id, user.id));
+
+    return token;
+  }
+
+  async resetPasswordWithToken(token: string, newPassword: string): Promise<boolean> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.verificationToken, token));
+
+    if (!user) return false;
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await db
+      .update(users)
+      .set({
+        passwordHash: hashedPassword,
+        verificationToken: null, // clear token after use
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, user.id));
+
+    return true;
+  }
+
+  async updateUserEarnings(userId: string, amount: string, toPending: boolean = false): Promise<void> {
+    const updateObj: Record<string, any> = {
+      totalEarnings: sql`${users.totalEarnings} + ${amount}`,
+      updatedAt: new Date(),
+    };
+
+    if (toPending) {
+      updateObj.pendingBalance = sql`${users.pendingBalance} + ${amount}`;
+    } else {
+      updateObj.availableBalance = sql`${users.availableBalance} + ${amount}`;
+    }
+
+    await db
+      .update(users)
+      .set(updateObj)
       .where(eq(users.id, userId));
 
     // Check for rank update
@@ -314,14 +506,44 @@ export class DatabaseStorage implements IStorage {
     await this.syncUserToFirestore(userId);
   }
 
+  async releasePendingBalance(userId: string, amount: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        pendingBalance: sql`${users.pendingBalance} - ${amount}`,
+        availableBalance: sql`${users.availableBalance} + ${amount}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    await this.syncUserToFirestore(userId);
+  }
+
   // Earnings methods
   async createEarning(insertEarning: InsertEarning): Promise<Earning> {
-    const [earning] = await db.insert(earnings).values(insertEarning).returning();
+    return await db.transaction(async (tx) => {
+      const [earning] = await tx.insert(earnings).values(insertEarning).returning();
 
-    // Update user's total earnings (which also checks rank)
-    await this.updateUserEarnings(insertEarning.userId, insertEarning.amount);
+      const toPending = insertEarning.status === 'pending';
+      const updateObj: Record<string, any> = {
+        totalEarnings: sql`${users.totalEarnings} + ${insertEarning.amount}`,
+        updatedAt: new Date(),
+      };
 
-    return earning;
+      if (toPending) {
+        updateObj.pendingBalance = sql`${users.pendingBalance} + ${insertEarning.amount}`;
+      } else {
+        updateObj.availableBalance = sql`${users.availableBalance} + ${insertEarning.amount}`;
+      }
+
+      await tx.update(users).set(updateObj).where(eq(users.id, insertEarning.userId));
+
+      return earning;
+    }).then(async (earning) => {
+      await this.checkAndUpdateRank(insertEarning.userId);
+      await this.syncUserToFirestore(insertEarning.userId);
+      return earning;
+    });
   }
 
   async getUserEarnings(userId: string, limit = 50): Promise<Earning[]> {
@@ -348,12 +570,13 @@ export class DatabaseStorage implements IStorage {
 
     // Create corresponding earning record
     if (insertAdView.completed && insertAdView.earnedAmount) {
+      // Ad views always go to pending first
       await this.createEarning({
         userId: insertAdView.userId,
         type: "ad_view",
         amount: insertAdView.earnedAmount,
         description: `Watched ${insertAdView.adType} ad`,
-        status: "completed",
+        status: "pending",
       });
     }
 
@@ -515,19 +738,65 @@ export class DatabaseStorage implements IStorage {
   // Team emails for inbox functionality
   async createTeamEmail(insertTeamEmail: InsertTeamEmail): Promise<TeamEmail> {
     const [teamEmail] = await db.insert(teamEmails).values(insertTeamEmail).returning();
+
+    // Cross-Portal Notification Sync: If this is an outbound reply to a user, create a notification
+    if (insertTeamEmail.type === 'outbound') {
+      try {
+        const user = await this.getUserByEmail(insertTeamEmail.toEmail);
+        if (user) {
+          await this.createNotification({
+            userId: user.id,
+            title: "Support Response",
+            message: `A team member has replied to your inquiry: "${insertTeamEmail.subject.substring(0, 50)}${insertTeamEmail.subject.length > 50 ? '...' : ''}"`,
+            type: "system",
+            isRead: false
+          });
+        }
+      } catch (notifyError) {
+        console.warn("Non-fatal: Failed to sync notification for outbound email.", notifyError);
+      }
+    }
+
     return teamEmail;
   }
 
-  async getTeamEmails(type?: 'inbound' | 'outbound', limit = 50): Promise<TeamEmail[]> {
+  async updateTeamEmail(id: string, updates: Partial<TeamEmail>): Promise<TeamEmail | undefined> {
+    const [updatedEmail] = await db
+      .update(teamEmails)
+      .set(updates)
+      .where(eq(teamEmails.id, id))
+      .returning();
+    return updatedEmail;
+  }
+
+  async deleteTeamEmail(id: string): Promise<boolean> {
+    const result = await db.delete(teamEmails).where(eq(teamEmails.id, id));
+    return true; // Drizzle return count for delete is driver-dependent
+  }
+
+  async getTeamEmails(type?: 'inbound' | 'outbound', limit = 50): Promise<(TeamEmail & { fromUserRank?: string | null })[]> {
+    let query = db
+      .select({
+        id: teamEmails.id,
+        fromUserId: teamEmails.fromUserId,
+        toEmail: teamEmails.toEmail,
+        fromEmail: teamEmails.fromEmail,
+        subject: teamEmails.subject,
+        content: teamEmails.content,
+        status: teamEmails.status,
+        type: teamEmails.type,
+        attachments: teamEmails.attachments,
+        createdAt: teamEmails.createdAt,
+        fromUserRank: users.rank
+      })
+      .from(teamEmails)
+      .leftJoin(users, sql`LOWER(${teamEmails.fromEmail}) = LOWER(${users.email})`);
+
     if (type) {
-      return await db.select().from(teamEmails)
-        .where(eq(teamEmails.type, type))
-        .orderBy(desc(teamEmails.createdAt))
-        .limit(limit);
+      query = query.where(eq(teamEmails.type, type)) as any;
     }
-    return await db.select().from(teamEmails)
-      .orderBy(desc(teamEmails.createdAt))
-      .limit(limit);
+
+    return await query.orderBy(desc(teamEmails.createdAt)).limit(limit);
   }
 
   async getTeamEmailsByUser(userId: string, limit = 50): Promise<TeamEmail[]> {
@@ -591,7 +860,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .leftJoin(teamKeys, eq(users.id, teamKeys.userId))
-      .where(eq(users.role, 'team'))
+      .where(inArray(users.role, ['team', 'admin', 'founder']))
       .orderBy(desc(users.createdAt));
   }
 
@@ -701,31 +970,81 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(users.createdAt));
   }
 
-  async getTotalUsersCount(): Promise<number> {
+  async getUsersCountInRange(since: Date): Promise<number> {
     const [result] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(users)
-      .where(eq(users.role, 'user'));
+      .where(
+        since.getTime() === 0
+          ? eq(users.role, 'user')
+          : and(eq(users.role, 'user'), gte(users.createdAt, since))
+      );
 
     return result?.count || 0;
   }
 
-  async getActiveUsersCount(): Promise<number> {
+  async getEarningsSumInRange(since: Date): Promise<string> {
     const [result] = await db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(users)
-      .where(and(eq(users.role, 'user'), eq(users.isActive, true)));
-
-    return result?.count || 0;
-  }
-
-  async getTotalEarningsSum(): Promise<string> {
-    const [result] = await db
-      .select({ total: sql<string>`COALESCE(SUM(${users.totalEarnings}), '0.00')` })
-      .from(users)
-      .where(eq(users.role, 'user'));
+      .select({ total: sql<string>`COALESCE(SUM(${earnings.amount}), '0.00')` })
+      .from(earnings)
+      .where(
+        since.getTime() === 0
+          ? eq(earnings.status, 'completed')
+          : and(eq(earnings.status, 'completed'), gte(earnings.createdAt, since))
+      );
 
     return result?.total || "0.00";
+  }
+
+  async getAnalyticsData(since: Date): Promise<any[]> {
+    const isToday = (Date.now() - since.getTime()) < 24 * 60 * 60 * 1000 + 1000;
+    const format = isToday ? 'YYYY-MM-DD HH24:00' : 'YYYY-MM-DD';
+
+    const formatStr = sql.raw(`'${format}'`);
+
+    const registrations = await db
+      .select({ 
+        date: sql<string>`TO_CHAR(${users.createdAt}, ${formatStr})`, 
+        count: sql<number>`COUNT(*)` 
+      })
+      .from(users)
+      .where(
+        since.getTime() === 0
+          ? eq(users.role, 'user')
+          : and(eq(users.role, 'user'), gte(users.createdAt, since))
+      )
+      .groupBy(sql`TO_CHAR(${users.createdAt}, ${formatStr})`)
+      .orderBy(sql`TO_CHAR(${users.createdAt}, ${formatStr})`);
+
+    const revenue = await db
+      .select({ 
+        date: sql<string>`TO_CHAR(${earnings.createdAt}, ${formatStr})`, 
+        amount: sql<string>`SUM(${earnings.amount})` 
+      })
+      .from(earnings)
+      .where(
+        since.getTime() === 0
+          ? eq(earnings.status, 'completed')
+          : and(eq(earnings.status, 'completed'), gte(earnings.createdAt, since))
+      )
+      .groupBy(sql`TO_CHAR(${earnings.createdAt}, ${formatStr})`)
+      .orderBy(sql`TO_CHAR(${earnings.createdAt}, ${formatStr})`);
+
+    // Merge datasets into a unified timeline
+    const mergedMap = new Map<string, any>();
+    registrations.forEach(r => {
+      mergedMap.set(r.date, { date: r.date, count: Number(r.count), amount: 0 });
+    });
+    
+    revenue.forEach(rev => {
+      if (mergedMap.has(rev.date)) {
+        mergedMap.get(rev.date).amount = Number(rev.amount);
+      } else {
+        mergedMap.set(rev.date, { date: rev.date, count: 0, amount: Number(rev.amount) });
+      }
+    });
+
+    return Array.from(mergedMap.values()).sort((a,b) => a.date.localeCompare(b.date));
   }
 
   async createChatMessage(insertChatMessage: InsertChatMessage): Promise<ChatMessage> {
@@ -744,6 +1063,80 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(chatMessages.createdAt))
       .limit(limit);
   }
+
+  // --- Daily Tasks Methods ---
+  async getDailyTasks(): Promise<DailyTask[]> {
+    return await db.select().from(dailyTasks).orderBy(desc(dailyTasks.createdAt));
+  }
+
+  async getDailyTask(id: string): Promise<DailyTask | undefined> {
+    const [task] = await db.select().from(dailyTasks).where(eq(dailyTasks.id, id));
+    return task;
+  }
+
+  async createDailyTask(insertTask: InsertDailyTask): Promise<DailyTask> {
+    const [task] = await db.insert(dailyTasks).values(insertTask).returning();
+    return task;
+  }
+
+  async updateDailyTask(id: string, updates: Partial<InsertDailyTask>): Promise<DailyTask | undefined> {
+    const [task] = await db.update(dailyTasks).set(updates).where(eq(dailyTasks.id, id)).returning();
+    return task;
+  }
+
+  async deleteDailyTask(id: string): Promise<void> {
+    await db.delete(dailyTasks).where(eq(dailyTasks.id, id));
+  }
+
+  // --- Task Records Methods ---
+  async getDailyTasksForUser(userId: string): Promise<{ task: DailyTask, record: TaskRecord | null }[]> {
+    // Return all daily tasks. Also left join to get the record for this specific user.
+    const results = await db
+      .select({
+        task: dailyTasks,
+        record: taskRecords
+      })
+      .from(dailyTasks)
+      .leftJoin(taskRecords, and(eq(taskRecords.taskId, dailyTasks.id), eq(taskRecords.userId, userId)));
+    return results;
+  }
+
+  async getTaskRecord(userId: string, taskId: string): Promise<TaskRecord | undefined> {
+    const [record] = await db
+      .select()
+      .from(taskRecords)
+      .where(and(eq(taskRecords.userId, userId), eq(taskRecords.taskId, taskId)));
+    return record;
+  }
+
+  async createTaskRecord(insertRecord: InsertTaskRecord): Promise<TaskRecord> {
+    const [record] = await db.insert(taskRecords).values(insertRecord).returning();
+    return record;
+  }
+
+  async updateTaskRecord(id: string, updates: Partial<InsertTaskRecord>): Promise<TaskRecord | undefined> {
+    const [record] = await db.update(taskRecords).set(updates).where(eq(taskRecords.id, id)).returning();
+    return record;
+  }
+
+  async getTodayCompletedTasksByType(userId: string, type: string): Promise<number> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(taskRecords)
+      .innerJoin(dailyTasks, eq(taskRecords.taskId, dailyTasks.id))
+      .where(and(
+        eq(taskRecords.userId, userId),
+        eq(dailyTasks.type, type),
+        eq(taskRecords.status, 'completed'),
+        gte(taskRecords.completedAt, todayStart)
+      ));
+
+    return Number(result[0]?.count || 0);
+  }
+
 
   async createHilltopAdsConfig(insertConfig: InsertHilltopAdsConfig): Promise<HilltopAdsConfig> {
     const [config] = await db.insert(hilltopAdsConfig).values(insertConfig).returning();
@@ -781,10 +1174,14 @@ export class DatabaseStorage implements IStorage {
   async updateHilltopAdsZone(id: string, updates: Partial<InsertHilltopAdsZone>): Promise<HilltopAdsZone | undefined> {
     const [updated] = await db
       .update(hilltopAdsZones)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ status: updates.status, updatedAt: new Date() })
       .where(eq(hilltopAdsZones.id, id))
       .returning();
     return updated;
+  }
+
+  async getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]> {
+    return await db.select().from(withdrawals).where(eq(withdrawals.userId, userId)).orderBy(desc(withdrawals.createdAt));
   }
 
   async createHilltopAdsStat(insertStat: InsertHilltopAdsStat): Promise<HilltopAdsStat> {
@@ -838,20 +1235,46 @@ export class DatabaseStorage implements IStorage {
       .where(eq(commissionLogs.triggerWithdrawalId, withdrawalId));
   }
 
-  async getCommissionLogsByBeneficiary(userId: string): Promise<CommissionLog[]> {
-    return await db
-      .select()
+  async getCommissionLogsByBeneficiary(userId: string): Promise<any[]> {
+    const results = await db
+      .select({
+        id: commissionLogs.id,
+        beneficiaryId: commissionLogs.beneficiaryId,
+        sourceUserId: commissionLogs.sourceUserId,
+        triggerWithdrawalId: commissionLogs.triggerWithdrawalId,
+        amount: commissionLogs.amount,
+        rate: commissionLogs.rate,
+        level: commissionLogs.level,
+        status: commissionLogs.status,
+        metadata: commissionLogs.metadata,
+        createdAt: commissionLogs.createdAt,
+        updatedAt: commissionLogs.updatedAt,
+        sourceUser: {
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email
+        }
+      })
       .from(commissionLogs)
+      .innerJoin(users, eq(commissionLogs.sourceUserId, users.id))
       .where(eq(commissionLogs.beneficiaryId, userId))
       .orderBy(desc(commissionLogs.createdAt));
+
+    return results;
   }
 
   // Withdrawals with Commission Logic
   async createWithdrawal(insertWithdrawal: InsertWithdrawal): Promise<Withdrawal> {
+    // 0. Fetch Dynamic Configuration
+    const minPayout = await this.getSystemConfigValue("MIN_PAYOUT", 100);
+    const systemFeeRate = await this.getSystemConfigValue("SYSTEM_FEE", 10) / 100;
+    const l1Rate = await this.getSystemConfigValue("L1_BONUS", 15) / 100;
+    const l2Rate = await this.getSystemConfigValue("L2_BONUS", 7.5) / 100;
+
     // Validate minimum withdrawal amount
     const amount = parseFloat(insertWithdrawal.amount);
-    if (amount < 100) {
-      throw new Error("Minimum withdrawal amount is 100 PKR");
+    if (amount < minPayout) {
+      throw new Error(`Minimum payout requirement not met. Threshold: ${minPayout} PKR`);
     }
     if (amount <= 0) {
       throw new Error("Withdrawal amount must be positive");
@@ -859,65 +1282,111 @@ export class DatabaseStorage implements IStorage {
 
     // Start a transaction to ensure integrity
     return await db.transaction(async (tx) => {
-      // 1. Create Withdrawal Record
-      const [withdrawal] = await tx.insert(withdrawals).values(insertWithdrawal).returning();
-
-      // 2. Determine Commissions (15% L1, 7.5% L2)
-      // Get the user to find their upline
+      // 1. Fetch user state inside transaction for atomic verification
       const [user] = await tx.select().from(users).where(eq(users.id, insertWithdrawal.userId));
-
       if (!user) {
-        throw new Error("User not found");
+        throw new Error("User not found in registry.");
       }
 
-      if (user && user.referredBy) {
-        // Level 1 Referrer
-        const amountL1 = (amount * 0.15).toFixed(2);
+      // 2. Atomic Balance Verification
+      const currentBalance = parseFloat(user.availableBalance || "0");
+      if (currentBalance < amount) {
+        throw new Error(`Insufficient balance. Current treasury: ${currentBalance} PKR.`);
+      }
 
-        // Validate commission amount
-        if (parseFloat(amountL1) > 0) {
+      // 3. Atomic Pending Check
+      const [pending] = await tx
+        .select()
+        .from(withdrawals)
+        .where(and(eq(withdrawals.userId, insertWithdrawal.userId), eq(withdrawals.status, "pending")))
+        .limit(1);
+      
+      if (pending) {
+        throw new Error("Synchronization Error: A pending payout request already exists for this node.");
+      }
+
+      // 4. Calculate Fee and Net Amount
+      // Net = Total - SystemFee - L1Bonus - L2Bonus (Referral bonuses are carved out of the requested amount)
+      const feeAmount = (amount * systemFeeRate).toFixed(2);
+      const l1BonusAmount = user.referredBy ? (amount * l1Rate) : 0;
+      
+      // Determine L2 beneficiary
+      let l2BeneficiaryId: string | null = null;
+      if (user.referredBy) {
+        const [referrerL1] = await tx.select().from(users).where(eq(users.id, user.referredBy));
+        if (referrerL1 && referrerL1.referredBy) {
+          l2BeneficiaryId = referrerL1.referredBy;
+        }
+      }
+      const l2BonusAmount = l2BeneficiaryId ? (amount * l2Rate) : 0;
+
+      const netAmount = (amount - parseFloat(feeAmount) - l1BonusAmount - l2BonusAmount).toFixed(2);
+
+      // 5. Create Withdrawal Record
+      const [withdrawal] = await tx.insert(withdrawals).values({
+        ...insertWithdrawal,
+        fee: feeAmount,
+        netAmount: netAmount,
+        status: "pending"
+      }).returning();
+
+      // 6. Securely deduct balance inside transaction
+      await tx.update(users).set({
+        availableBalance: sql`${users.availableBalance} - ${insertWithdrawal.amount}`,
+        updatedAt: new Date()
+      }).where(eq(users.id, insertWithdrawal.userId));
+
+      // 7. Determine Commissions
+      if (user.referredBy) {
+        // Level 1 Referrer
+        if (l1BonusAmount > 0) {
           await tx.insert(commissionLogs).values({
             beneficiaryId: user.referredBy,
             sourceUserId: user.id,
             triggerWithdrawalId: withdrawal.id,
-            amount: amountL1,
-            rate: "0.1500",
+            amount: l1BonusAmount.toFixed(2),
+            rate: l1Rate.toFixed(4),
             level: 1,
-            status: "pending", // Only released when withdrawal is completed
+            status: "pending", 
             metadata: {
               withdrawalAmount: insertWithdrawal.amount,
-              calculatedAt: new Date().toISOString()
+              calculatedAt: new Date().toISOString(),
+              configUsed: { l1Rate, systemFeeRate }
             }
           });
         }
 
-        // Check for Level 2
-        const [referrerL1] = await tx.select().from(users).where(eq(users.id, user.referredBy));
-        if (referrerL1 && referrerL1.referredBy) {
-          // Level 2 Referrer
-          const amountL2 = (amount * 0.075).toFixed(2);
-
-          // Validate commission amount
-          if (parseFloat(amountL2) > 0) {
-            await tx.insert(commissionLogs).values({
-              beneficiaryId: referrerL1.referredBy,
-              sourceUserId: user.id,
-              triggerWithdrawalId: withdrawal.id,
-              amount: amountL2,
-              rate: "0.0750",
-              level: 2,
-              status: "pending",
-              metadata: {
-                withdrawalAmount: insertWithdrawal.amount,
-                calculatedAt: new Date().toISOString()
-              }
-            });
-          }
+        // Level 2 Referrer
+        if (l2BeneficiaryId && l2BonusAmount > 0) {
+          await tx.insert(commissionLogs).values({
+            beneficiaryId: l2BeneficiaryId,
+            sourceUserId: user.id,
+            triggerWithdrawalId: withdrawal.id,
+            amount: l2BonusAmount.toFixed(2),
+            rate: l2Rate.toFixed(4),
+            level: 2,
+            status: "pending",
+            metadata: {
+              withdrawalAmount: insertWithdrawal.amount,
+              calculatedAt: new Date().toISOString(),
+              configUsed: { l2Rate, systemFeeRate }
+            }
+          });
         }
       }
 
       return withdrawal;
+    }).then(async (withdrawal) => {
+      await this.syncUserToFirestore(insertWithdrawal.userId);
+      return withdrawal;
     });
+  }
+
+  async getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]> {
+    return await db.select()
+      .from(withdrawals)
+      .where(eq(withdrawals.userId, userId))
+      .orderBy(desc(withdrawals.createdAt));
   }
 
   async getCheckPendingWithdrawal(userId: string): Promise<Withdrawal | undefined> {
@@ -930,13 +1399,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Process (approve) withdrawal and release commissions
-  async processWithdrawal(withdrawalId: string, adminId: string): Promise<Withdrawal> {
+  async processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal> {
     return await db.transaction(async (tx) => {
       // 1. Update withdrawal status
       const [withdrawal] = await tx
         .update(withdrawals)
         .set({
           status: "completed",
+          transactionId: transactionId || null,
+          processedAt: new Date(),
           updatedAt: new Date()
         })
         .where(eq(withdrawals.id, withdrawalId))
@@ -1002,6 +1473,8 @@ export class DatabaseStorage implements IStorage {
         .update(withdrawals)
         .set({
           status: "rejected",
+          rejectionReason: reason,
+          processedAt: new Date(),
           updatedAt: new Date()
         })
         .where(eq(withdrawals.id, withdrawalId))
@@ -1047,10 +1520,20 @@ export class DatabaseStorage implements IStorage {
       if (!user) throw new Error("User not found");
 
       const totalEarnings = parseFloat(user.totalEarnings || "0");
+
+      // Count direct active referrals
+      const [{ count: refCount }] = await tx
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(eq(users.referredBy, user.id));
+
+      const activeRefs = Number(refCount) || 0;
+
       let newRank = "Useless";
 
+      // Evaluate Rank based on BOTH earnings and referrals thresholds
       for (const rank of RANKS) {
-        if (totalEarnings >= rank.min) {
+        if (totalEarnings >= rank.minEarned && activeRefs >= rank.minRefs) {
           newRank = rank.name;
         }
       }
@@ -1194,11 +1677,18 @@ export class DatabaseStorage implements IStorage {
         startDate.setMonth(now.getMonth() - 12);
         groupByFormat = 'YYYY-MM';
         break;
+      default:
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        groupByFormat = 'YYYY-MM-DD';
+        break;
     }
+
+    const sqlFormat = sql.raw(`'${groupByFormat}'`);
 
     const results = await db
       .select({
-        date: sql<string>`TO_CHAR(${earnings.createdAt}, ${groupByFormat})`,
+        date: sql<string>`TO_CHAR(${earnings.createdAt}, ${sqlFormat})`,
         amount: sql<string>`COALESCE(SUM(${earnings.amount}), '0.00')`
       })
       .from(earnings)
@@ -1206,8 +1696,9 @@ export class DatabaseStorage implements IStorage {
         eq(earnings.userId, userId),
         sql`${earnings.createdAt} >= ${startDate}`
       ))
-      .groupBy(sql`TO_CHAR(${earnings.createdAt}, ${groupByFormat})`)
-      .orderBy(sql`TO_CHAR(${earnings.createdAt}, ${groupByFormat})`);
+      .groupBy(sql`TO_CHAR(${earnings.createdAt}, ${sqlFormat})`)
+      .orderBy(sql`TO_CHAR(${earnings.createdAt}, ${sqlFormat})`);
+
     return results;
   }
 
@@ -1215,46 +1706,66 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`[ReferralTree] Fetching network for user: ${userId}`);
 
-      // 1. Get all Level 1 Referees (Directly referred by userId)
+      // 1. Get Top Level 1 Referees (Directly referred by userId)
       const level1Users = await db
         .select({
-          user: users,
-          totalEarnings: sql<string>`'0.00'` // Simplified for debugging
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          avatar: users.avatar,
+          rank: users.rank,
+          createdAt: users.createdAt,
+          referredBy: users.referredBy,
+          totalEarnings: users.totalEarnings,
+          profilePicture: users.profilePicture
         })
         .from(users)
-        .where(eq(users.referredBy, userId));
+        .where(eq(users.referredBy, userId))
+        .orderBy(desc(users.totalEarnings))
+        .limit(100);
 
-      console.log(`[ReferralTree] Found ${level1Users.length} L1 users`);
+      console.log(`[ReferralTree] Found ${level1Users.length} L1 users (capped at 100)`);
 
-      // 2. Get all Level 2 Referees (Referred by Level 1 users)
-      const level1Ids = level1Users.map(r => r.user.id);
+      // 2. Get Top Level 2 Referees (Referred by Level 1 users)
+      const level1Ids = level1Users.map(u => u.id);
       let level2Users: any[] = [];
 
       if (level1Ids.length > 0) {
         level2Users = await db
           .select({
-            user: users,
-            totalEarnings: sql<string>`'0.00'` // Simplified for debugging
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            email: users.email,
+            avatar: users.avatar,
+            rank: users.rank,
+            createdAt: users.createdAt,
+            referredBy: users.referredBy,
+            totalEarnings: users.totalEarnings,
+          profilePicture: users.profilePicture
           })
           .from(users)
-          .where(inArray(users.referredBy, level1Ids));
+          .where(inArray(users.referredBy, level1Ids))
+          .orderBy(desc(users.totalEarnings))
+          .limit(200);
 
-        console.log(`[ReferralTree] Found ${level2Users.length} L2 users`);
+        console.log(`[ReferralTree] Found ${level2Users.length} L2 users (capped at 200)`);
       }
 
       // 3. Format into a flat list for the frontend to reconstruct
       const combined = [
-        ...level1Users.map((r) => ({
-          ...r.user,
+        ...level1Users.map((u) => ({
+          ...u,
           earningsFromUser: '0.00',
           level: 1,
           referredBy: userId
         })),
-        ...level2Users.map((r) => ({
-          ...r.user,
+        ...level2Users.map((u) => ({
+          ...u,
           earningsFromUser: '0.00',
           level: 2,
-          referredBy: r.user.referredBy // This will be one of the L1 IDs
+          referredBy: u.referredBy // This will be one of the L1 IDs
         }))
       ];
 
@@ -1291,30 +1802,30 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(commissionLogs.createdAt))
       .limit(limit);
 
-    // Combine and format
+    // Combine and format — null-coalesce all dates to satisfy IStorage interface
     const transactions = [
       ...earningsData.map(e => ({
         id: e.id,
         type: 'earning' as const,
         amount: e.amount,
-        status: 'completed',
-        date: e.createdAt,
-        description: e.source || 'Ad viewing'
+        status: e.status ?? 'completed',
+        date: e.createdAt ?? new Date(),
+        description: e.description || 'Ad viewing'
       })),
       ...withdrawalsData.map(w => ({
         id: w.id,
         type: 'withdrawal' as const,
         amount: w.amount,
-        status: w.status,
-        date: w.createdAt,
+        status: w.status ?? 'pending',
+        date: w.createdAt ?? new Date(),
         description: `Withdrawal via ${w.method}`
       })),
       ...commissionsData.map(c => ({
         id: c.id,
         type: 'commission' as const,
         amount: c.amount,
-        status: c.status,
-        date: c.createdAt,
+        status: c.status ?? 'pending',
+        date: c.createdAt ?? new Date(),
         description: `Level ${c.level} referral commission`
       }))
     ];
@@ -1323,6 +1834,652 @@ export class DatabaseStorage implements IStorage {
     return transactions
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .slice(0, limit);
+  }
+
+  // Admin Features Implementation
+  async getLeaderboardInsights(limit: number = 50, offset: number = 0): Promise<{ 
+    globalRanking: any[]; 
+    topReferrers: any[]; 
+    anomalies: any[]; 
+    totalCount: number;
+    lastUpdated: Date;
+  }> {
+    // Check for existing cache to determine if refresh is needed
+    const lastCacheEntry = await db.select({ recordedAt: leaderboardCache.recordedAt })
+      .from(leaderboardCache)
+      .orderBy(desc(leaderboardCache.recordedAt))
+      .limit(1);
+    
+    const now = new Date();
+    const isStale = !lastCacheEntry.length || (now.getTime() - new Date(lastCacheEntry[0].recordedAt!).getTime() > 3600000);
+
+    if (isStale) {
+      await this.refreshLeaderboardCache();
+    }
+
+    // 1. Get Global Ranking (with pagination)
+    const globalRanking = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      rank: users.rank,
+      totalEarnings: users.totalEarnings,
+      isVerified: users.isVerified,
+      avatar: users.avatar,
+      globalRank: leaderboardCache.globalRank,
+      performanceScore: leaderboardCache.performanceScore,
+      earningsScore: leaderboardCache.earningsScore,
+      teamScore: leaderboardCache.teamScore,
+      activeScore: leaderboardCache.activeScore,
+      healthScore: leaderboardCache.healthScore,
+      level1Count: leaderboardCache.level1Count,
+      level2Count: leaderboardCache.level2Count
+    })
+    .from(leaderboardCache)
+    .innerJoin(users, eq(leaderboardCache.userId, users.id))
+    .orderBy(leaderboardCache.globalRank)
+    .limit(limit)
+    .offset(offset);
+
+    // 2. Get Top Referrers (from users table directly for real-time leader switch if needed, or from cache)
+    // For Enterprise, we'll use a slightly different aggregation for referrers here
+    const topReferrers = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      rank: users.rank,
+      avatar: users.avatar,
+      totalEarnings: users.totalEarnings,
+      level1Count: leaderboardCache.level1Count,
+      level2Count: leaderboardCache.level2Count,
+      referralCount: leaderboardCache.level1Count
+    })
+    .from(users)
+    .innerJoin(leaderboardCache, eq(leaderboardCache.userId, users.id))
+    .orderBy(desc(leaderboardCache.level1Count))
+    .limit(limit);
+
+    // 3. Detect Anomalies (Risk Triage) - This remains real-time for security
+    const anomalies = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      rank: users.rank,
+      avatar: users.avatar,
+      totalEarnings: users.totalEarnings,
+      createdAt: users.createdAt,
+      referralCount: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id), 0) AS INTEGER)`
+    })
+    .from(users)
+    .where(or(
+      and(
+        gte(users.createdAt, new Date(now.getTime() - 86400000)),
+        gte(users.totalEarnings, "5000")
+      ),
+      and(
+        gte(sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id), 0) AS INTEGER)`, 50),
+        lte(users.totalEarnings, "100")
+      )
+    ))
+    .limit(50);
+
+    const mappedAnomalies = anomalies.map(u => {
+      const userCreatedDate = u.createdAt ? new Date(u.createdAt).getTime() : now.getTime();
+      const daysActive = Math.max(1, (now.getTime() - userCreatedDate) / (1000 * 60 * 60 * 24));
+      const earnings = parseFloat(u.totalEarnings as string || "0");
+      let reason = "Unknown anomaly";
+      if (daysActive <= 1 && earnings > 5000) reason = "Explosive Earnings Velocity";
+      else if (u.referralCount > 50 && earnings < 100) reason = "Suspicious Bot Network (High Refs, Low Earner)";
+      
+      return { ...u, daysActive: Math.round(daysActive), reason };
+    });
+
+    const totalCountResult = await db.select({ count: sql<number>`count(*)` }).from(leaderboardCache);
+
+    return { 
+      globalRanking, 
+      topReferrers, 
+      anomalies: mappedAnomalies, 
+      totalCount: totalCountResult[0]?.count || 0,
+      lastUpdated: lastCacheEntry[0]?.recordedAt || now
+    };
+  }
+
+  async refreshLeaderboardCache(): Promise<void> {
+    const now = new Date();
+    
+    // Clear existing cache for current period
+    await db.delete(leaderboardCache);
+
+    // Fetch all qualified users and calculate scores
+    // Note: In extremely large environments, this would be a single SQL insert statement
+    // For this implementation, we recompute in-memory with SQL-helper logic
+    const allQualifiedUsers = await db.select({
+      id: users.id,
+      totalEarnings: users.totalEarnings,
+      isVerified: users.isVerified,
+      createdAt: users.createdAt,
+      lastLoginDate: users.lastLoginDate,
+      referralCount: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id), 0) AS INTEGER)`,
+      level2Count: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 JOIN users u3 ON u3.referred_by = u2.id WHERE u2.referred_by = users.id), 0) AS INTEGER)`
+    })
+    .from(users)
+    .where(eq(users.isActive, true));
+
+    if (!allQualifiedUsers.length) return;
+
+    const maxEarnings = Math.max(...allQualifiedUsers.map(u => parseFloat(u.totalEarnings || "0")), 1);
+    const maxReferrals = Math.max(...allQualifiedUsers.map(u => u.referralCount), 1);
+
+    const scoredUsers = allQualifiedUsers.map(u => {
+      const accountAgeDays = Math.max(1, (now.getTime() - new Date(u.createdAt!).getTime()) / 86400000);
+      
+      // 1. Earnings Score (0-100) - Normalized platform revenue contribution
+      const earningsScore = (parseFloat(u.totalEarnings || "0") / maxEarnings) * 100;
+      
+      // 2. Team Score (0-100) - Referral network depth contribution
+      const teamScore = (u.referralCount / maxReferrals) * 100;
+      
+      // 3. Active Score (0-100) - Consistency (%)
+      const daysSinceLogin = Math.max(0, (now.getTime() - new Date(u.lastLoginDate || u.createdAt!).getTime()) / 86400000);
+      const activeScore = Math.max(0, 100 - (daysSinceLogin * 5)); // Decays every day inactive
+      
+      // 4. Health Score (0-100) - Identity Verification & Account Integrity
+      const healthScore = (u.isVerified ? 60 : 20) + (accountAgeDays > 30 ? 40 : (accountAgeDays / 30) * 40);
+
+      // Composite Weighted Performance (Earnings 40, Team 30, Active 15, Health 15)
+      const performanceScore = (earningsScore * 0.4) + (teamScore * 0.3) + (activeScore * 0.15) + (healthScore * 0.15);
+
+      return {
+        userId: u.id,
+        performanceScore: performanceScore.toFixed(2),
+        earningsScore: earningsScore.toFixed(2),
+        teamScore: teamScore.toFixed(2),
+        activeScore: activeScore.toFixed(2),
+        healthScore: healthScore.toFixed(2),
+        level1Count: u.referralCount,
+        level2Count: u.level2Count
+      };
+    });
+
+    // Sort by performance and insert into cache
+    scoredUsers.sort((a, b) => parseFloat(b.performanceScore) - parseFloat(a.performanceScore));
+
+    const cacheEnries = scoredUsers.map((u, index) => ({
+      ...u,
+      globalRank: index + 1,
+      recordedAt: now
+    }));
+
+    // Batch insert into cache (drizzle doesn't support massive batching sometimes, so we slice if needed)
+    // Limit to top 10,000 for enterprise performance
+    const topEntries = cacheEnries.slice(0, 10000);
+    
+    // Perform insertions in chunks of 500
+    for(let i = 0; i < topEntries.length; i += 500) {
+      const chunk = topEntries.slice(i, i + 500);
+      await db.insert(leaderboardCache).values(chunk);
+    }
+  }
+
+  async getActiveUsersCount(): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(eq(users.isActive, true));
+    return Number(result[0]?.count || 0);
+  }
+
+  async getAdminWithdrawals(): Promise<Array<Withdrawal & { user: User }>> {
+    const results = await db
+      .select({
+        withdrawal: withdrawals,
+        user: users
+      })
+      .from(withdrawals)
+      .innerJoin(users, eq(withdrawals.userId, users.id))
+      .orderBy(desc(withdrawals.createdAt));
+
+    return results.map(r => ({
+      ...r.withdrawal,
+      user: r.user
+    }));
+  }
+
+  async updateWithdrawalStatus(
+    id: string,
+    status: string,
+    adminId: string,
+    transactionId?: string,
+    rejectionReason?: string
+  ): Promise<Withdrawal> {
+    if (status === 'completed') {
+      return await this.processWithdrawal(id, adminId, transactionId);
+    } else if (status === 'rejected') {
+      return await this.rejectWithdrawal(id, adminId, rejectionReason || 'Rejected by administrator');
+    }
+
+    // Default status update if not process/reject (e.g., 'processing')
+    const [updated] = await db
+      .update(withdrawals)
+      .set({
+        status: status as any,
+        transactionId: transactionId || null,
+        rejectionReason: rejectionReason || null,
+        processedAt: status === 'completed' ? new Date() : null,
+        updatedAt: new Date()
+      })
+      .where(eq(withdrawals.id, id))
+      .returning();
+
+    if (!updated) throw new Error("Withdrawal not found");
+    return updated;
+  }
+
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [newLog] = await db
+      .insert(auditLogs)
+      .values(log)
+      .returning();
+    return newLog;
+  }
+
+  async getAuditLogs(limit: number = 100): Promise<AuditLog[]> {
+    return await db
+      .select()
+      .from(auditLogs)
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit);
+  }
+
+  // Team Invitations
+  async createTeamInvitation(invitation: InsertTeamInvitation): Promise<TeamInvitation> {
+    const [newInvitation] = await db
+      .insert(teamInvitations)
+      .values(invitation)
+      .returning();
+    return newInvitation;
+  }
+
+  async getTeamInvitationByToken(token: string): Promise<TeamInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(teamInvitations)
+      .where(and(
+        eq(teamInvitations.token, token),
+        sql`${teamInvitations.expiresAt} > now()`,
+        sql`${teamInvitations.consumedAt} IS NULL`
+      ));
+    return invitation;
+  }
+
+  async consumeTeamInvitation(invitationId: string): Promise<void> {
+    await db
+      .update(teamInvitations)
+      .set({ consumedAt: new Date() })
+      .where(eq(teamInvitations.id, invitationId));
+  }
+
+  async updateUserPermissions(userId: string, permissions: string[]): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ permissions })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
+  }
+
+  async createInternalNote(note: InsertInternalNote): Promise<InternalNote> {
+    const [newNote] = await db
+      .insert(internalNotes)
+      .values(note)
+      .returning();
+    return newNote;
+  }
+
+  async getInternalNotes(targetType: string, targetId: string): Promise<Array<InternalNote & { admin: { firstName: string, lastName: string } }>> {
+    const results = await db
+      .select({
+        note: internalNotes,
+        admin: {
+          firstName: users.firstName,
+          lastName: users.lastName
+        }
+      })
+      .from(internalNotes)
+      .innerJoin(users, eq(internalNotes.adminId, users.id))
+      .where(and(
+        eq(internalNotes.targetType, targetType),
+        eq(internalNotes.targetId, targetId)
+      ))
+      .orderBy(desc(internalNotes.createdAt));
+
+    return results.map(r => ({
+      ...r.note,
+      admin: r.admin
+    }));
+  }
+
+  async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string): Promise<User> {
+    return await db.transaction(async (tx) => {
+      const [user] = await tx.select().from(users).where(eq(users.id, userId));
+      if (!user) throw new Error("User not found");
+
+      const [admin] = await tx.select().from(users).where(eq(users.id, adminId));
+      if (!admin) throw new Error("Admin not found");
+
+      const adjustment = type === 'add' ? amount : `-${amount}`;
+      const [updatedUser] = await tx
+        .update(users)
+        .set({
+          availableBalance: sql`${users.availableBalance} + ${adjustment}`,
+          // totalEarnings is a lifetime gross figure — only credits increase it.
+          // Admin debits only reduce availableBalance, not the historical record.
+          totalEarnings: type === 'add'
+            ? sql`${users.totalEarnings} + ${amount}`
+            : users.totalEarnings,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      await tx.insert(auditLogs).values({
+        adminId,
+        action: `BALANCE_ADJUST_${type.toUpperCase()}`,
+        targetType: "user",
+        targetId: userId,
+        details: {
+          previous_balance: user.availableBalance,
+          new_balance: updatedUser.availableBalance,
+          variance: type === 'add' ? `+${amount}` : `-${amount}`,
+          reason: reason
+        }
+      });
+
+      // Role formatting logic
+      let roleTag = admin.role?.toUpperCase() || "REGULAR";
+      if (roleTag === "FOUNDER") roleTag = "FOUNDER/CEO";
+      if (roleTag === "TEAM") roleTag = "REGULAR";
+
+      // Create Automated Notification
+      await tx.insert(notifications).values({
+        userId,
+        title: `Ledger ${type === 'add' ? 'Credit' : 'Debit'} Success`,
+        message: reason,
+        type: "financial",
+        adminName: `${admin.firstName} ${admin.lastName}`,
+        adminRole: roleTag,
+        amount: amount,
+        adjustmentType: type === 'add' ? 'credit' : 'debit'
+      });
+
+      return updatedUser;
+    });
+
+    // After transaction: re-evaluate rank if credit increased totalEarnings,
+    // then always sync to Firestore so the UI updates in real-time.
+    if (type === 'add') {
+      await this.checkAndUpdateRank(userId);
+    }
+    await this.syncUserToFirestore(userId);
+
+    // Return the latest user state after rank check
+    const finalUser = await this.getUserById(userId);
+    return finalUser!;
+  }
+
+  async createNotification(insertNotification: InsertNotification): Promise<Notification> {
+    const [notification] = await db.insert(notifications).values(insertNotification).returning();
+    return notification;
+  }
+
+  async getUserNotifications(userId: string): Promise<Notification[]> {
+    return await db.select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (user && user.role === 'founder') {
+      throw new Error("Protected Node Error: Founder accounts cannot be terminated from the directory.");
+    }
+    await db.delete(users).where(eq(users.id, userId));
+  }
+
+  async getUsersPaginated(params: { page: number, limit: number, search?: string, sort?: string, sortOrder?: 'asc' | 'desc', role?: string, ids?: string[] }): Promise<{ users: User[], totalCount: number }> {
+    const offset = (params.page - 1) * params.limit;
+    const conditions = [];
+    if (params.search) {
+      const searchPattern = `%${params.search}%`;
+      conditions.push(or(
+        ilike(users.firstName, searchPattern),
+        ilike(users.lastName, searchPattern),
+        ilike(users.email, searchPattern)
+      ));
+    }
+    if (params.role) {
+      conditions.push(eq(users.role, params.role));
+    }
+    if (params.ids && params.ids.length > 0) {
+      conditions.push(inArray(users.id, params.ids));
+    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const [countResult] = await db.select({ count: sql<number>`COUNT(*)` }).from(users).where(whereClause);
+    const results = await db.select().from(users).where(whereClause).limit(params.limit).offset(offset).orderBy(desc(users.createdAt));
+    return { users: results, totalCount: Number(countResult?.count || 0) };
+  }
+
+  async getAuditLogsPaginated(params: { page: number, limit: number, search?: string, ids?: string[], period?: string }): Promise<{ logs: any[], totalCount: number }> {
+    const offset = (params.page - 1) * params.limit;
+    const conditions = [];
+
+    if (params.search) {
+      const searchPattern = `%${params.search}%`;
+      conditions.push(or(
+        ilike(auditLogs.action, searchPattern),
+        ilike(users.firstName, searchPattern),
+        ilike(users.lastName, searchPattern)
+      ));
+    }
+
+    if (params.ids && params.ids.length > 0) {
+      conditions.push(inArray(auditLogs.id, params.ids));
+    }
+
+    if (params.period && params.period !== 'all_time') {
+      const startDate = new Date();
+      switch (params.period) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          conditions.push(gte(auditLogs.createdAt, startDate));
+          break;
+        case 'yesterday':
+          startDate.setDate(startDate.getDate() - 1);
+          startDate.setHours(0, 0, 0, 0);
+          const endDate = new Date(startDate);
+          endDate.setHours(23, 59, 59, 999);
+          conditions.push(and(gte(auditLogs.createdAt, startDate), lte(auditLogs.createdAt, endDate)));
+          break;
+        case 'this_week':
+          startDate.setDate(startDate.getDate() - 7);
+          conditions.push(gte(auditLogs.createdAt, startDate));
+          break;
+        case 'this_month':
+          startDate.setMonth(startDate.getMonth() - 1);
+          conditions.push(gte(auditLogs.createdAt, startDate));
+          break;
+        case 'this_year':
+          startDate.setFullYear(startDate.getFullYear() - 1);
+          conditions.push(gte(auditLogs.createdAt, startDate));
+          break;
+      }
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [countResult] = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(auditLogs)
+      .innerJoin(users, eq(auditLogs.adminId, users.id))
+      .where(whereClause);
+    
+    const results = await db.select({
+      log: auditLogs,
+      admin: {
+        firstName: users.firstName,
+        lastName: users.lastName
+      }
+    })
+    .from(auditLogs)
+    .innerJoin(users, eq(auditLogs.adminId, users.id))
+    .where(whereClause)
+    .limit(params.limit)
+    .offset(offset)
+    .orderBy(desc(auditLogs.createdAt));
+
+    return { 
+      logs: results.map(r => ({ ...r.log, admin: r.admin })), 
+      totalCount: Number(countResult?.count || 0) 
+    };
+  }
+
+  async getWithdrawalsPaginated(params: { page: number, limit: number, search?: string, status?: string, ids?: string[] }): Promise<{ withdrawals: Array<Withdrawal & { user: User }>, totalCount: number }> {
+    const offset = (params.page - 1) * params.limit;
+    const conditions = [];
+    
+    if (params.status && params.status !== 'all') {
+      conditions.push(eq(withdrawals.status, params.status as any));
+    }
+
+    if (params.ids && params.ids.length > 0) {
+      conditions.push(inArray(withdrawals.id, params.ids));
+    }
+    
+    if (params.search) {
+      const searchPattern = `%${params.search}%`;
+      conditions.push(or(
+        ilike(users.firstName, searchPattern),
+        ilike(users.lastName, searchPattern),
+        ilike(users.email, searchPattern),
+        ilike(withdrawals.accountNumber, searchPattern)
+      ));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [countResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(withdrawals)
+      .innerJoin(users, eq(withdrawals.userId, users.id))
+      .where(whereClause);
+
+    const results = await db
+      .select({
+        withdrawal: withdrawals,
+        user: users
+      })
+      .from(withdrawals)
+      .innerJoin(users, eq(withdrawals.userId, users.id))
+      .where(whereClause)
+      .limit(params.limit)
+      .offset(offset)
+      .orderBy(desc(withdrawals.createdAt));
+
+    return {
+      withdrawals: results.map(r => ({ ...r.withdrawal, user: r.user })),
+      totalCount: Number(countResult?.count || 0)
+    };
+  }
+
+  async bulkUpdateWithdrawalStatus(ids: string[], status: string, adminId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      for (const id of ids) {
+        await tx
+          .update(withdrawals)
+          .set({ 
+            status: status as any, 
+            processedAt: status === 'completed' ? new Date() : null,
+            updatedAt: new Date()
+          })
+          .where(eq(withdrawals.id, id));
+        
+        await tx.insert(auditLogs).values({
+          adminId,
+          action: `BULK_WITHDRAWAL_${status.toUpperCase()}`,
+          targetType: "withdrawal",
+          targetId: id,
+          details: `Bulk status update to ${status}`
+        });
+      }
+    });
+  }
+
+  // System Config
+  async getSystemConfig(key: string): Promise<SystemConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(systemConfig)
+      .where(eq(systemConfig.key, key));
+    return config;
+  }
+
+  async getAllSystemConfigs(): Promise<SystemConfig[]> {
+    return await db.select().from(systemConfig);
+  }
+
+  async updateSystemConfig(key: string, value: any, adminId: string): Promise<SystemConfig | undefined> {
+    return await db.transaction(async (tx) => {
+      // Upsert: Try to update first
+      const [updated] = await tx
+        .update(systemConfig)
+        .set({ 
+          value, 
+          updatedAt: new Date() 
+        })
+        .where(eq(systemConfig.key, key))
+        .returning();
+
+      if (updated) {
+        // Log the change
+        await tx.insert(auditLogs).values({
+          adminId,
+          action: "SYSTEM_CONFIG_UPDATED",
+          targetType: "system",
+          targetId: key,
+          details: { key, value }
+        });
+        return updated;
+      }
+
+      // If no update occurred, create it
+      const [created] = await tx
+        .insert(systemConfig)
+        .values({
+          key,
+          value,
+          updatedAt: new Date()
+        })
+        .returning();
+
+      // Log creation
+      await tx.insert(auditLogs).values({
+        adminId,
+        action: "SYSTEM_CONFIG_CREATED",
+        targetType: "system",
+        targetId: key,
+        details: { key, value }
+      });
+
+      return created;
+    });
+  }
+
+  async createSystemConfig(config: InsertSystemConfig): Promise<SystemConfig> {
+    const [newConfig] = await db.insert(systemConfig).values(config).returning();
+    return newConfig;
   }
 
   // Sync helper to keep Firestore in sync with Postgres
@@ -1357,7 +2514,7 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export class MemStorage implements IStorage {
+export class MemStorage {
   private registrations: Map<string, Registration>;
 
   constructor() {
@@ -1391,7 +2548,27 @@ export class MemStorage implements IStorage {
   async validateUserPassword(email: string, password: string): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async updateUser(userId: string, updates: Partial<InsertUser>): Promise<User | undefined> { throw new Error("Not implemented in MemStorage"); }
   async updateUserEarnings(userId: string, amount: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+  async generatePasswordResetToken(email: string): Promise<string | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async resetPasswordWithToken(token: string, newPassword: string): Promise<boolean> { throw new Error("Not implemented in MemStorage"); }
   async createEarning(earning: InsertEarning): Promise<Earning> { throw new Error("Not implemented in MemStorage"); }
+
+  // Daily Task Stubs
+  async createDailyTask(task: InsertDailyTask): Promise<DailyTask> { throw new Error("Not implemented in MemStorage"); }
+  async getDailyTasks(): Promise<DailyTask[]> { return []; }
+  async getDailyTask(id: string): Promise<DailyTask | undefined> { return undefined; }
+  async updateDailyTask(id: string, updates: Partial<InsertDailyTask>): Promise<DailyTask | undefined> { throw new Error("Not implemented in MemStorage"); }
+  async deleteDailyTask(id: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+  async getDailyTasksForUser(userId: string): Promise<Array<{ task: DailyTask; record: TaskRecord | null }>> { return []; }
+  async getTodayCompletedTasksByType(userId: string, type: string): Promise<number> { return 0; }
+  async getTaskRecord(userId: string, taskId: string): Promise<TaskRecord | undefined> { return undefined; }
+  async createTaskRecord(record: InsertTaskRecord): Promise<TaskRecord> { throw new Error("Not implemented in MemStorage"); }
+  async updateTaskRecord(id: string, updates: Partial<InsertTaskRecord>): Promise<TaskRecord | undefined> { throw new Error("Not implemented in MemStorage"); }
+
+  // System Config Stubs
+  async getSystemConfig(key: string): Promise<SystemConfig | undefined> { return undefined; }
+  async getAllSystemConfigs(): Promise<SystemConfig[]> { return []; }
+  async updateSystemConfig(key: string, value: any, adminId: string): Promise<SystemConfig | undefined> { return undefined; }
+  async createSystemConfig(config: InsertSystemConfig): Promise<SystemConfig> { throw new Error("Not implemented in MemStorage"); }
   async getUserEarnings(userId: string, limit?: number): Promise<Earning[]> { throw new Error("Not implemented in MemStorage"); }
   async getUserTotalEarnings(userId: string): Promise<string> { throw new Error("Not implemented in MemStorage"); }
   async createAdView(adView: InsertAdView): Promise<AdView> { throw new Error("Not implemented in MemStorage"); }
@@ -1424,10 +2601,14 @@ export class MemStorage implements IStorage {
   async getAllUserCredentials(): Promise<Array<UserCredential & { user: User }>> { throw new Error("Not implemented in MemStorage"); }
   async updateUserCredential(credentialId: string, updates: Partial<InsertUserCredential>): Promise<UserCredential | undefined> { throw new Error("Not implemented in MemStorage"); }
   async deleteUserCredential(credentialId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+  async getUsersPaginated(params: { page: number, limit: number, search?: string, sort?: string, sortOrder?: 'asc' | 'desc' }): Promise<{ users: User[], totalCount: number }> { throw new Error("Not implemented in MemStorage"); }
+  async getAuditLogsPaginated(params: { page: number, limit: number, search?: string }): Promise<{ logs: AuditLog[], totalCount: number }> { throw new Error("Not implemented in MemStorage"); }
+  async getWithdrawalsPaginated(params: { page: number, limit: number, search?: string, status?: string }): Promise<{ withdrawals: Array<Withdrawal & { user: User }>, totalCount: number }> { throw new Error("Not implemented in MemStorage"); }
+  async bulkUpdateWithdrawalStatus(ids: string[], status: string, adminId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
   async getUsersByRole(role: 'user' | 'team' | 'founder'): Promise<User[]> { throw new Error("Not implemented in MemStorage"); }
-  async getTotalUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
-  async getActiveUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
-  async getTotalEarningsSum(): Promise<string> { throw new Error("Not implemented in MemStorage"); }
+  async getUsersCountInRange(since: Date): Promise<number> { throw new Error("Not implemented in MemStorage"); }
+  async getEarningsSumInRange(since: Date): Promise<string> { throw new Error("Not implemented in MemStorage"); }
+  async getAnalyticsData(since: Date): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
   async getAllUsers(): Promise<User[]> { throw new Error("Not implemented in MemStorage"); } // Added for MemStorage
   async createChatMessage(chatMessage: InsertChatMessage): Promise<ChatMessage> { throw new Error("Not implemented in MemStorage"); }
   async getUserChatHistory(userId: string, limit?: number): Promise<ChatMessage[]> { throw new Error("Not implemented in MemStorage"); }
@@ -1447,11 +2628,24 @@ export class MemStorage implements IStorage {
   async getCommissionLogsByTriggerWithdrawal(withdrawalId: string): Promise<CommissionLog[]> { throw new Error("Not implemented in MemStorage"); }
   async getCommissionLogsByBeneficiary(userId: string): Promise<CommissionLog[]> { throw new Error("Not implemented in MemStorage"); }
   async createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
+  async getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]> { throw new Error("Not implemented in MemStorage"); }
   async getCheckPendingWithdrawal(userId: string): Promise<Withdrawal | undefined> { throw new Error("Not implemented in MemStorage"); }
-  async processWithdrawal(withdrawalId: string, adminId: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
+  async processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
   async rejectWithdrawal(withdrawalId: string, adminId: string, reason: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
   async checkAndUpdateRank(userId: string): Promise<User> { throw new Error("Not implemented in MemStorage"); }
   async getRankHistory(userId: string): Promise<RankLog[]> { throw new Error("Not implemented in MemStorage"); }
+
+  // Admin Features Stubs
+  async getLeaderboardInsights(): Promise<{ topEarners: any[]; topReferrers: any[]; anomalies: any[] }> { throw new Error("Not implemented in MemStorage"); }
+  async getAdminWithdrawals(): Promise<Array<Withdrawal & { user: User }>> { throw new Error("Not implemented in MemStorage"); }
+  async getActiveUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
+  async updateWithdrawalStatus(id: string, status: string, adminId: string, transactionId?: string, rejectionReason?: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> { throw new Error("Not implemented in MemStorage"); }
+  async getAuditLogs(limit?: number): Promise<AuditLog[]> { throw new Error("Not implemented in MemStorage"); }
+  async createInternalNote(note: InsertInternalNote): Promise<InternalNote> { throw new Error("Not implemented in MemStorage"); }
+  async getInternalNotes(targetType: string, targetId: string): Promise<Array<InternalNote & { admin: { firstName: string, lastName: string } }>> { throw new Error("Not implemented in MemStorage"); }
+  async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string): Promise<User> { throw new Error("Not implemented in MemStorage"); }
+  async deleteUser(userId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
 
   private generateReferralCode(): string {
     const prefix = "THORX";

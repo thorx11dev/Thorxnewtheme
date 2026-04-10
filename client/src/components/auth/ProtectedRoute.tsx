@@ -88,8 +88,8 @@ export function TeamProtectedRoute({ children, fallback }: TeamProtectedRoutePro
         return;
       }
 
-      if (user?.role !== 'team' && user?.role !== 'founder') {
-        // Authenticated but not team or founder role, redirect to appropriate portal
+      if (user?.role !== 'team' && user?.role !== 'founder' && user?.role !== 'admin') {
+        // Authenticated but not team, founder, or admin role, redirect to appropriate portal
         toast({
           title: "Access Denied",
           description: "You don't have permission to access the team portal.",
@@ -111,8 +111,8 @@ export function TeamProtectedRoute({ children, fallback }: TeamProtectedRoutePro
     );
   }
 
-  // Don't render children if not authenticated or not team/founder member (will redirect in useEffect)
-  if (!isAuthenticated || (user?.role !== 'team' && user?.role !== 'founder')) {
+  // Don't render children if not authenticated or not correct member (will redirect in useEffect)
+  if (!isAuthenticated || (user?.role !== 'team' && user?.role !== 'founder' && user?.role !== 'admin')) {
     return null;
   }
 

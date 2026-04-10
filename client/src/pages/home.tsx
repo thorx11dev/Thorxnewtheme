@@ -11,6 +11,7 @@ import TechnicalLabel from "@/components/ui/technical-label";
 import DigitalClock from "@/components/ui/digital-clock";
 import Barcode from "@/components/ui/barcode";
 import TextBlockAnimation from "@/components/ui/text-block-animation";
+import { GetStartedButton } from "@/components/ui/get-started-button";
 
 export default function Home() {
   const [currentSection, setCurrentSection] = useState(1);
@@ -113,8 +114,8 @@ export default function Home() {
             {/* Left Section - Transform to Enter button when not on first section */}
             <div className="flex items-center">
               {currentSection === 1 && !isMobile ? (
-                <div className="bg-black text-white px-2 py-1 md:px-4 md:py-2 border-2 border-black">
-                  <TechnicalLabel text="EARNING PLATFORM" className="text-white text-xs md:text-sm" />
+                <div onClick={() => setLocation("/auth")} className="cursor-pointer">
+                  <GetStartedButton />
                 </div>
               ) : (
                 <button

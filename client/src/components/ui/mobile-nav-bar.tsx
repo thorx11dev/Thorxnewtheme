@@ -205,7 +205,7 @@ export function MobileNavBar({
 
                     {/* Menu Items */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0 h-0 z-40">
-                        {sections.map((section, index) => {
+                        {(sections || []).map((section, index) => {
                             const Icon = section.icon;
                             const isActive = currentSection === index;
                             const pos = getTransform(index);

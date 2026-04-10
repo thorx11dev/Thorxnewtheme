@@ -22,6 +22,9 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   role?: string;
+  rank?: string;
+  profilePicture?: string;
+  permissions?: string[];
 }
 
 export function useAuth() {

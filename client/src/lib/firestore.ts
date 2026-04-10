@@ -59,9 +59,18 @@ export const addEarningRecord = async (userId: string, amount: number, type: str
 // --- Real-time Listeners ---
 export const subscribeToUserBalance = (userId: string, callback: (data: any) => void) => {
     const userRef = doc(db, COLLECTIONS.USERS, userId);
-    return onSnapshot(userRef, (doc) => {
-        if (doc.exists()) {
-            callback(doc.data());
+    return onSnapshot(userRef, 
+        (doc) => {
+            if (doc.exists()) {
+                callback(doc.data());
+            }
+        },
+        (error) => {
+            if (error.message.includes('Missing or insufficient permissions')) {
+                // Ignore gracefully - usually means admin doesn't have a legacy doc
+                return;
+            }
+            console.warn(`[Firestore] Subscription error for user ${userId}:`, error.message);
         }
-    });
+    );
 };

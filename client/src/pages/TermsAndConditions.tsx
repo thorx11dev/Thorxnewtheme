@@ -15,7 +15,7 @@ const Section = ({ title, icon: Icon, children, id, trigger }: { title: string, 
     >
         <div className="flex items-center gap-3 mb-6">
             {Icon && <Icon className="size-6 text-primary" />}
-            <TextBlockAnimation blockColor="#ff6b00" animateOnScroll={true} trigger={trigger}>
+            <TextBlockAnimation blockColor="#ff6b00" animateOnScroll={false} trigger={trigger}>
                 <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight">{title}</h2>
             </TextBlockAnimation>
         </div>
@@ -68,9 +68,8 @@ export default function TermsAndConditions() {
             <header className="fixed top-0 left-0 right-0 z-50 bg-[#F5F5F3]/80 dark:bg-black/80 backdrop-blur-md border-b border-black/10 dark:border-white/10 px-6 py-4">
                 <div className="max-w-5xl mx-auto flex justify-between items-center">
                     <Link href="/">
-                        <a className="flex items-center gap-2 group">
-                            <ArrowLeft className="size-5 group-hover:-translate-x-1 transition-transform" />
-                            <span className="font-black tracking-tighter text-xl">THORX<span className="text-primary">.</span></span>
+                        <a className="flex items-center h-full group">
+                            <span className="text-2xl font-black tracking-tighter text-black dark:text-white leading-none group-hover:opacity-80 transition-opacity">THORX</span>
                         </a>
                     </Link>
                     <div className="hidden md:block text-[10px] font-bold tracking-[0.2em] uppercase opacity-50">
@@ -103,8 +102,8 @@ export default function TermsAndConditions() {
                                     href={`#${item.id}`}
                                     onClick={(e) => scrollToSection(e, item.id)}
                                     className={`pl-4 py-2 text-xs font-bold uppercase tracking-widest transition-all duration-300 border-l-2 -ml-[1px] ${activeId === item.id
-                                            ? "text-primary border-primary opacity-100"
-                                            : "text-zinc-500 border-transparent opacity-50 hover:opacity-100"
+                                        ? "text-primary border-primary opacity-100"
+                                        : "text-zinc-500 border-transparent opacity-50 hover:opacity-100"
                                         }`}
                                 >
                                     {item.label}
