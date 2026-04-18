@@ -18,6 +18,9 @@ import {
   persistProfilePicturePayload,
 } from "./insforge/object-storage";
 import { storageProxyRateLimiter } from "./middleware/storage-proxy-rate-limit";
+import { authRateLimiter } from "./middleware/auth-rate-limit";
+import { sanitizeUser } from "./utils/sanitize-user";
+import { debugLog } from "./utils/debug-log";
 
 /** Authenticated user id from Insforge Bearer token (preferred) or legacy session cookie. */
 export function getThorxPrincipalId(req: Request): string | undefined {
@@ -192,43 +195,6 @@ export const requirePermission = (permission: string) => {
   };
 };
 
-// Legacy session-based authentication middleware (for gradual migration)
-export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  // Debug session data
-  console.log("Session check:", {
-    sessionExists: !!req.session,
-    sessionId: req.session?.id,
-    userId: req.session?.userId,
-    cookieHeader: req.headers.cookie,
-    authHeader: req.headers.authorization,
-    origin: req.headers.origin,
-    referer: req.headers.referer
-  });
-
-  // Check session first (for regular browsers)
-  if (getThorxPrincipalId(req)) {
-    return next();
-  }
-
-  // Fallback: Check for anonymous token (for iframe environments)
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer anon_')) {
-    const token = authHeader.substring(7);
-    const anonymousTokens = req.app.get('anonymousTokens');
-    if (anonymousTokens && anonymousTokens.has(token)) {
-      const anonymousUser = anonymousTokens.get(token);
-      // Add anonymous user data to request for downstream use
-      req.anonymousUser = anonymousUser;
-      console.log("Anonymous token authentication successful for:", anonymousUser.id);
-      return next();
-    }
-  }
-
-  return res.status(401).json({
-    message: "Authentication required",
-    error: "UNAUTHORIZED"
-  });
-};
 
 // Registration/Login schemas for validation
 const registerSchema = z.object({
@@ -284,7 +250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const cookieSecure = runtimeConfig.sessionCookieSecure || isProd || isReplit;
 
   if (!isProd) {
-    console.log("Environment detection:", {
+    debugLog("Environment detection:", {
       NODE_ENV: process.env.NODE_ENV,
       REPL_ID: !!process.env.REPL_ID,
       REPLIT_DB_URL: !!process.env.REPLIT_DB_URL,
@@ -315,7 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   if (!isProd) {
-    console.log("Session cookie config:", sessionConfig.cookie);
+    debugLog("Session cookie config:", sessionConfig.cookie);
   }
 
   app.set('trust proxy', 1);
@@ -372,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Custom session debugger middleware for development only.
   if (!isProd) {
     app.use((req, res, next) => {
-      console.log("Session Debug:", {
+      debugLog("Session Debug:", {
         path: req.path,
         sessionID: req.sessionID,
         userId: getThorxPrincipalId(req),
@@ -485,7 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(insights);
     } catch (error: any) {
       console.error("Leaderboard insights error:", error?.message || error);
-      res.status(500).json({ message: "Failed to fetch leaderboard insights", detail: error?.message });
+      res.status(500).json({ message: "Failed to fetch leaderboard insights" });
     }
   });
 
@@ -496,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(insights);
     } catch (error: any) {
       console.error("Force sync error:", error?.message || error);
-      res.status(500).json({ message: "Failed to force sync matrix", detail: error?.message });
+      res.status(500).json({ message: "Failed to force sync matrix" });
     }
   });
 
@@ -521,7 +487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedUser = await storage.getUserById(id);
-      res.json(updatedUser);
+      res.json(updatedUser ? sanitizeUser(updatedUser) : null);
     } catch (error) {
       console.error("User admin action error:", error);
       res.status(500).json({ message: "Failed to execute user action" });
@@ -554,7 +520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.header('Expires', '0');
     try {
       // Comprehensive session logging
-      console.log("Session check: {",
+      debugLog("Session check: {",
         "sessionExists:", !!req.session,
         ", userId:", req.session?.userId || 'undefined',
         ", sessionId:", req.session?.id || 'undefined',
@@ -564,13 +530,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if authenticated via anonymous token (iframe environment)
       if (req.anonymousUser) {
-        console.log("Returning anonymous token user:", req.anonymousUser.id);
+        debugLog("Returning anonymous token user:", req.anonymousUser.id);
         return res.json(req.anonymousUser);
       }
 
       // Check if it's an anonymous user via session (regular browser)
       if (getThorxPrincipalId(req) && getThorxPrincipalId(req)?.startsWith('anonymous_')) {
-        console.log("Returning anonymous session user:", getThorxPrincipalId(req));
+        debugLog("Returning anonymous session user:", getThorxPrincipalId(req));
         // Return the anonymous user data from session
         const anonymousUser = req.session.anonymousUserData || {
           id: getThorxPrincipalId(req),
@@ -594,7 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if userId exists in session
       const principalId = getThorxPrincipalId(req);
       if (!principalId) {
-        console.log("No userId in session, returning 401");
+        debugLog("No userId in session, returning 401");
         return res.status(401).json({
           message: "Not authenticated",
           error: "NO_SESSION"
@@ -602,11 +568,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Regular authenticated user
-      console.log("Fetching user from database with userId:", principalId);
+      debugLog("Fetching user from database with userId:", principalId);
       const user = await storage.getUserById(principalId);
 
       if (!user) {
-        console.log("User not found in database for userId:", principalId);
+        debugLog("User not found in database for userId:", principalId);
         return res.status(404).json({
           message: "User not found",
           error: "USER_NOT_FOUND"
@@ -649,7 +615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log("User found, returning user data for:", user.email, "Avatar:", user.avatar);
+      debugLog("User found, returning user data for:", user.email, "Avatar:", user.avatar);
       res.json({
         id: user.id,
         firstName: user.firstName,
@@ -700,7 +666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.lastName = parts.slice(1).join(' ') || '';
       }
 
-      console.log(`[PATCH] Updating user ${req.params.id}. Payload:`, { name, avatarLength: avatar?.length, hasProfilePicture: !!profilePicture });
+      debugLog(`[PATCH] Updating user ${req.params.id}. Payload:`, { name, avatarLength: avatar?.length, hasProfilePicture: !!profilePicture });
 
       if (avatar) updates.avatar = avatar;
 
@@ -727,7 +693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Handle Anonymous User Session Updates
       if (principalId.startsWith('anonymous_')) {
-        console.log(`[PATCH] Updating anonymous session user.`);
+        debugLog(`[PATCH] Updating anonymous session user.`);
         req.session.anonymousUserData = {
           ...req.session.anonymousUserData!,
           ...updates,
@@ -750,11 +716,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         });
 
-        console.log(`[PATCH] Anonymous user updated. New avatar:`, req.session.anonymousUserData?.avatar);
+        debugLog(`[PATCH] Anonymous user updated. New avatar:`, req.session.anonymousUserData?.avatar);
         return res.json(req.session.anonymousUserData);
       }
 
-      console.log(`[PATCH] Updating persistent DB user...`);
+      debugLog(`[PATCH] Updating persistent DB user...`);
       
       // Elite Validation Layer (Enterprise Standard)
       const parts = name?.trim().split(' ') || [];
@@ -784,8 +750,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log(`[PATCH] DB Update Result:`, { id: user?.id, newAvatar: user?.avatar });
-      res.json(user);
+      debugLog(`[PATCH] DB Update Result:`, { id: user?.id, newAvatar: user?.avatar });
+      res.json(user ? sanitizeUser(user) : null);
     } catch (error) {
       console.error("Update profile error:", error);
       res.status(500).json({ message: "Failed to update profile" });
@@ -1750,7 +1716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adminId = req.userProfile.id;
 
       const user = await storage.adjustUserBalance(userId, amount, type, adminId, reason);
-      res.json(user);
+      res.json(sanitizeUser(user));
     } catch (error) {
       console.error("Adjust balance error:", error);
       res.status(500).json({ message: "Failed to adjust balance" });
@@ -2176,10 +2142,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Register new user
-  app.post("/api/register", async (req, res) => {
+  app.post("/api/register", authRateLimiter, async (req, res) => {
     try {
       const { id, firstName, lastName, email, password, phone, identity, referralCode, role } = req.body;
-      console.log(`[POST /api/register] Attempt for ${email}. Role: ${role}. ID: ${id}`);
+      debugLog(`[POST /api/register] Attempt for ${email}. Role: ${role}. ID: ${id}`);
 
       if (!firstName || !lastName || !email || !identity) {
         return res.status(400).json({
@@ -2243,7 +2209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: `${firstName} ${lastName}`,
         referredBy: referredBy
       });
-      console.log(`[POST /api/register] Local user created successfully: ${newUser.id}`);
+      debugLog(`[POST /api/register] Local user created successfully: ${newUser.id}`);
 
       // Set session data
       req.session.userId = newUser.id;
@@ -2281,7 +2247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.status(500).json({
         message: "Registration failed",
-        error: error instanceof Error ? error.message : "INTERNAL_ERROR"
+        error: "INTERNAL_ERROR"
       });
     }
   });
@@ -2291,7 +2257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     email: z.string().email("Invalid email address")
   });
 
-  app.post("/api/forgot-password", async (req, res) => {
+  app.post("/api/forgot-password", authRateLimiter, async (req, res) => {
     try {
       const { email } = forgotPasswordSchema.parse(req.body);
 
@@ -2299,7 +2265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (token) {
         // In a real app, send this via email. For now, we log it.
-        console.log(`[PASSWORD RESET] Token for ${email}: ${token}`);
+        debugLog(`[PASSWORD RESET] Token for ${email}: ${token}`);
 
         // Return success even if user not found to prevent email enumeration
         res.json({
@@ -2347,10 +2313,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Login endpoint
-  app.post("/api/login", async (req, res) => {
+  app.post("/api/login", authRateLimiter, async (req, res) => {
     try {
       const { email, password, insforgeAccessToken } = req.body;
-      console.log(`[POST /api/login] Attempt for ${email ?? "(no email)"}`);
+      debugLog(`[POST /api/login] Attempt for ${email ?? "(no email)"}`);
 
       let user;
       if (insforgeAccessToken && typeof insforgeAccessToken === "string") {
@@ -2456,7 +2422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint to get user profile, requires authentication
-  app.get("/api/profile", requireAuth, async (req, res) => {
+  app.get("/api/profile", requireSessionAuth, async (req, res) => {
     try {
       // User is authenticated, fetch profile details
       const user = await storage.getUserById(getThorxPrincipalId(req)!);
@@ -2491,7 +2457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user profile endpoint
-  app.patch("/api/profile", requireAuth, async (req, res) => {
+  app.patch("/api/profile", requireSessionAuth, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req)!;
 
@@ -2846,7 +2812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/tasks", requireTeamRole, async (req, res) => {
     try {
-      console.log("[ADMIN_TASK_POST] Raw Payload:", req.body);
+      debugLog("[ADMIN_TASK_POST] Raw Payload:", req.body);
       const validatedData = insertDailyTaskSchema.parse(req.body);
       const task = await storage.createDailyTask(validatedData);
       res.status(201).json(task);
@@ -2865,7 +2831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/tasks/:id", requireTeamRole, async (req, res) => {
     try {
-      console.log(`[ADMIN_TASK_PATCH] ID: ${req.params.id}. Payload:`, req.body);
+      debugLog(`[ADMIN_TASK_PATCH] ID: ${req.params.id}. Payload:`, req.body);
       const task = await storage.updateDailyTask(req.params.id, req.body);
       if (!task) return res.status(404).json({ message: "Task not found" });
       res.json(task);
@@ -3381,9 +3347,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Authenticated system config read — only allow specific public keys without auth
   app.get("/api/system-config/:key", async (req, res) => {
     try {
-      const config = await storage.getSystemConfig(req.params.key);
+      const PUBLIC_KEYS = ["MIN_PAYOUT"];
+      const key = req.params.key;
+
+      if (!PUBLIC_KEYS.includes(key)) {
+        const principalId = getThorxPrincipalId(req);
+        if (!principalId) {
+          return res.status(401).json({ message: "Authentication required" });
+        }
+      }
+
+      const config = await storage.getSystemConfig(key);
       if (!config) return res.status(404).json({ message: "Config not found" });
       res.json(config);
     } catch (error) {

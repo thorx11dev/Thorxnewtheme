@@ -1,8 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { isOriginAllowed, runtimeConfig } from "./config/runtime";
+import { csrfProtection } from "./middleware/csrf";
+import { startLeaderboardCleanup } from "./jobs/leaderboard-cleanup";
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
@@ -12,6 +16,9 @@ process.on('uncaughtException', (error) => {
 });
 
 const app = express();
+
+// Security headers (X-Content-Type-Options, HSTS, X-Frame-Options, etc.)
+app.use(helmet());
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -25,12 +32,16 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
   exposedHeaders: ['Set-Cookie'],
 }));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+
+// CSRF protection on all /api state-changing requests (cookie-based sessions)
+app.use("/api", csrfProtection);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -67,7 +78,9 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const message = runtimeConfig.isProd
+      ? "Internal Server Error"
+      : (err.message || "Internal Server Error");
 
     console.error("Server error:", err);
     res.status(status).json({ message });
@@ -85,5 +98,10 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on Railway's injected port, strictly binding to 0.0.0.0
   server.listen(runtimeConfig.port, "0.0.0.0", () => {
     log(`serving on port ${runtimeConfig.port}`);
+
+    // Start background jobs in production
+    if (runtimeConfig.isProd) {
+      startLeaderboardCleanup();
+    }
   });
 })();

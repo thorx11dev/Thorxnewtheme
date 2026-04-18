@@ -4,7 +4,8 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// registrations table removed
+// Legacy registrations table removed — these stubs are kept only for backward-compatible interface compliance.
+// TODO: Remove once IStorage.createRegistration and getRegistrationByEmail stubs are deleted.
 export const insertRegistrationSchema = z.object({
   phone: z.string(),
   email: z.string().email(),
@@ -36,6 +37,7 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").default(true),
   isVerified: boolean("is_verified").default(false),
   verificationToken: text("verification_token"),
+  verificationTokenExpiresAt: timestamp("verification_token_expires_at"),
   loginStreak: integer("login_streak").default(0),
   lastLoginDate: timestamp("last_login_date"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -128,38 +130,14 @@ export const leaderboardCache = pgTable("leaderboard_cache", {
   index("leaderboard_recorded_at_idx").on(table.recordedAt),
 ]);
 
-// Advertisements catalog table
-export const advertisements = pgTable("advertisements", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  type: text("type").notNull(),
-  category: text("category").notNull(),
-  difficulty: text("difficulty").default("easy"),
-  duration: integer("duration").notNull(),
-  reward: decimal("reward", { precision: 10, scale: 2 }).notNull(),
-  videoUrl: text("video_url"),
-  thumbnailUrl: text("thumbnail_url"),
-  targetUrl: text("target_url"),
-  dailyLimit: integer("daily_limit").default(10),
-  totalViews: integer("total_views").default(0),
-  isActive: boolean("is_active").default(true),
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("advertisements_type_idx").on(table.type),
-  index("advertisements_category_idx").on(table.category),
-  index("advertisements_is_active_idx").on(table.isActive),
-]);
+// advertisements table removed — was never written to (orphaned).
+// Ad management uses systemConfig AD_NETWORKS key instead.
 
 // Ad views tracking table
 export const adViews = pgTable("ad_views", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  adId: varchar("ad_id").references(() => advertisements.id, { onDelete: "set null" }),
+  adId: varchar("ad_id"), // Nullable; advertisements table removed
   adType: text("ad_type").notNull(),
   adNetwork: text("ad_network").default("internal"),
   duration: integer("duration"),
@@ -219,21 +197,6 @@ export const withdrawals = pgTable("withdrawals", {
   sql`CONSTRAINT check_min_withdrawal CHECK (CAST(amount AS DECIMAL) >= 100)`,
   sql`CONSTRAINT check_positive_amount CHECK (CAST(amount AS DECIMAL) > 0)`,
 ]);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -499,18 +462,10 @@ export const earningsRelations = relations(earnings, ({ one }) => ({
   }),
 }));
 
-export const advertisementsRelations = relations(advertisements, ({ many }) => ({
-  adViews: many(adViews),
-}));
-
 export const adViewsRelations = relations(adViews, ({ one }) => ({
   user: one(users, {
     fields: [adViews.userId],
     references: [users.id],
-  }),
-  advertisement: one(advertisements, {
-    fields: [adViews.adId],
-    references: [advertisements.id],
   }),
 }));
 
@@ -647,12 +602,7 @@ export const insertEarningSchema = createInsertSchema(earnings).omit({
   createdAt: true,
 });
 
-export const insertAdvertisementSchema = createInsertSchema(advertisements).omit({
-  id: true,
-  totalViews: true,
-  createdAt: true,
-  updatedAt: true,
-});
+
 
 export const insertAdViewSchema = createInsertSchema(adViews).omit({
   id: true,
@@ -678,24 +628,6 @@ export const insertWithdrawalSchema = createInsertSchema(withdrawals).omit({
   createdAt: true,
   updatedAt: true,
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 export const insertTeamEmailSchema = createInsertSchema(teamEmails).omit({
   id: true,
@@ -748,8 +680,7 @@ export type User = typeof users.$inferSelect;
 export type InsertEarning = z.infer<typeof insertEarningSchema>;
 export type Earning = typeof earnings.$inferSelect;
 
-export type InsertAdvertisement = z.infer<typeof insertAdvertisementSchema>;
-export type Advertisement = typeof advertisements.$inferSelect;
+
 
 export type InsertAdView = z.infer<typeof insertAdViewSchema>;
 export type AdView = typeof adViews.$inferSelect;

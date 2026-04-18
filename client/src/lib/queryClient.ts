@@ -9,7 +9,15 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+/** Read the CSRF double-submit cookie set by the server. */
+export function getCsrfToken(): string {
+  const match = document.cookie.match(/(?:^|;\s*)thorx\.csrf=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 const API_URL = getApiOrigin();
+
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export async function apiRequest(
   method: string,
@@ -21,6 +29,12 @@ export async function apiRequest(
     ...(data ? { "Content-Type": "application/json" } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+
+  // Attach CSRF token on state-changing methods
+  if (UNSAFE_METHODS.has(method.toUpperCase())) {
+    const csrf = getCsrfToken();
+    if (csrf) headers["x-csrf-token"] = csrf;
+  }
 
   const fullUrl = url.startsWith("/") ? `${API_URL}${url}` : `${API_URL}/${url}`;
 

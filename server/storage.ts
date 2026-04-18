@@ -197,7 +197,6 @@ export interface IStorage {
   createHilltopAdsStat(stat: InsertHilltopAdsStat): Promise<HilltopAdsStat>;
   getHilltopAdsStats(zoneId?: string, startDate?: Date, endDate?: Date): Promise<HilltopAdsStat[]>;
   getTotalHilltopAdsRevenue(): Promise<string>;
-  getTotalHilltopAdsRevenue(): Promise<string>;
 
   // Commission Logs (Referral System)
   createCommissionLog(log: InsertCommissionLog): Promise<CommissionLog>;
@@ -206,7 +205,6 @@ export interface IStorage {
 
   // Withdrawals
   createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal>;
-  getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]>; // Added for missing routes.ts logic
   getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]>;
   getCheckPendingWithdrawal(userId: string): Promise<Withdrawal | undefined>;
   processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal>;
@@ -452,6 +450,7 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({
         verificationToken: token,
+        verificationTokenExpiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour TTL
         updatedAt: new Date()
       })
       .where(eq(users.id, user.id));
@@ -463,7 +462,16 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.verificationToken, token));
+      .where(
+        and(
+          eq(users.verificationToken, token),
+          // Only accept tokens that haven't expired (or have no expiry for legacy rows)
+          or(
+            sql`verification_token_expires_at IS NULL`,
+            sql`verification_token_expires_at > NOW()`
+          )
+        )
+      );
 
     if (!user) return false;
 
@@ -474,6 +482,7 @@ export class DatabaseStorage implements IStorage {
       .set({
         passwordHash: hashedPassword,
         verificationToken: null, // clear token after use
+        verificationTokenExpiresAt: null, // clear expiry
         updatedAt: new Date()
       })
       .where(eq(users.id, user.id));
@@ -844,6 +853,7 @@ export class DatabaseStorage implements IStorage {
         isActive: users.isActive,
         isVerified: users.isVerified,
         verificationToken: users.verificationToken,
+        verificationTokenExpiresAt: users.verificationTokenExpiresAt,
         loginStreak: users.loginStreak,
         lastLoginDate: users.lastLoginDate,
         createdAt: users.createdAt,
@@ -923,6 +933,7 @@ export class DatabaseStorage implements IStorage {
           isActive: users.isActive,
           isVerified: users.isVerified,
           verificationToken: users.verificationToken,
+          verificationTokenExpiresAt: users.verificationTokenExpiresAt,
           loginStreak: users.loginStreak,
           lastLoginDate: users.lastLoginDate,
           role: users.role,

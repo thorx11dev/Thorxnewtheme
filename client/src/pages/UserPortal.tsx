@@ -3,7 +3,7 @@ import { useAuth, type User as AuthUser } from "@/hooks/useAuth";
 import { getInsforgeAccessToken } from "@/lib/insforge-session";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getCsrfToken } from "@/lib/queryClient";
 import { ReferralTree } from "@/components/ui/referral-tree";
 import { useToast } from "@/hooks/use-toast";
 import TechnicalLabel from "@/components/ui/technical-label";
@@ -927,6 +927,10 @@ export default function UserPortal() {
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
+
+      // CSRF token for cookie-based sessions
+      const csrf = getCsrfToken();
+      if (csrf) headers['x-csrf-token'] = csrf;
 
       const response = await fetch(apiAbsolutePath("/api/chat"), {
         method: "POST",
