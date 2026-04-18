@@ -8,8 +8,12 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+// Ensure explicit sslmode to suppress pg v8 deprecation warning about
+// 'require' being treated as 'verify-full' in the current version.
+const connectionString = process.env.DATABASE_URL;
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
   ssl: {
     rejectUnauthorized: false
   }

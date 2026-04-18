@@ -9,6 +9,8 @@ const defaultHostedOrigins = [
   "https://thorx.pro",
   "https://www.thorx.pro",
   "https://api.thorx.pro",
+  // Insforge hosted deployments
+  "https://jxrh4q8k.insforge.site",
 ];
 
 function parseCsv(value?: string): string[] {
@@ -43,5 +45,8 @@ export const runtimeConfig = {
 };
 
 export function isOriginAllowed(origin: string): boolean {
-  return runtimeConfig.frontendOrigins.includes(origin);
+  if (runtimeConfig.frontendOrigins.includes(origin)) return true;
+  // Allow any *.insforge.site subdomain (deployment previews)
+  if (/^https:\/\/[a-z0-9]+\.insforge\.site$/.test(origin)) return true;
+  return false;
 }

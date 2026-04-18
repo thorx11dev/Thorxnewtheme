@@ -8,6 +8,13 @@ import { isOriginAllowed, runtimeConfig } from "./config/runtime";
 import { csrfProtection } from "./middleware/csrf";
 import { startLeaderboardCleanup } from "./jobs/leaderboard-cleanup";
 
+// Suppress pg v8 SSL deprecation warning (Railway injects sslmode=require in DATABASE_URL)
+const originalEmitWarning = process.emitWarning;
+process.emitWarning = ((warning: string | Error, ...args: any[]) => {
+  if (typeof warning === "string" && warning.includes("SECURITY WARNING: The SSL modes")) return;
+  return (originalEmitWarning as any).call(process, warning, ...args);
+}) as typeof process.emitWarning;
+
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
