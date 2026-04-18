@@ -75,8 +75,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000 (binds to all interfaces automatically)
-  server.listen(runtimeConfig.port, () => {
+  // ALWAYS serve the app on Railway's injected port, strictly binding to 0.0.0.0
+  server.listen(runtimeConfig.port, "0.0.0.0", () => {
     log(`serving on port ${runtimeConfig.port}`);
   });
 })();

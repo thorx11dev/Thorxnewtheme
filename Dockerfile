@@ -47,10 +47,6 @@ COPY --from=builder /app/dist ./dist
 
 # Set production environment
 ENV NODE_ENV=production
-ENV PORT=5000
-
-# Expose the port
-EXPOSE 5000
 
 # Start the server with strict memory limits to prevent Railway 500MB OOM crashes
 CMD ["node", "--max-old-space-size=256", "dist/index.js"]
