@@ -381,6 +381,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
+  // Explicit health check endpoint for Railway
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
+  });
+
   // --- Team Invitation Endpoints ---
 
   app.post("/api/team/invitations", requirePermission("MANAGE_TEAM"), async (req, res) => {

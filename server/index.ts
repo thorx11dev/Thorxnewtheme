@@ -75,11 +75,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  server.listen({
-    port: runtimeConfig.port,
-    host: "0.0.0.0",
-  }, () => {
+  // ALWAYS serve the app on port 5000 (binds to all interfaces automatically)
+  server.listen(runtimeConfig.port, () => {
     log(`serving on port ${runtimeConfig.port}`);
   });
 })();

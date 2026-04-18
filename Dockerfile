@@ -52,5 +52,5 @@ ENV PORT=5000
 # Expose the port
 EXPOSE 5000
 
-# Start the server
-CMD ["node", "dist/index.js"]
+# Start the server with strict memory limits to prevent Railway 500MB OOM crashes
+CMD ["node", "--max-old-space-size=256", "dist/index.js"]
