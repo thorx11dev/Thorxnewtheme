@@ -10,12 +10,15 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Cache-bust: forces Docker to re-copy package files on every deploy
+ARG CACHEBUST=1
+
+# Copy package files (lockfile contains resolved versions)
+COPY package.json package-lock.json ./
 COPY .npmrc ./
 
-# Install ALL dependencies (including dev for building)
-RUN npm install --legacy-peer-deps
+# Install ALL dependencies using the lockfile exactly as-is
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -28,11 +31,14 @@ FROM node:20-slim
 
 WORKDIR /app
 
+# Cache-bust for production stage too
+ARG CACHEBUST=1
+
 # Install production dependencies ONLY
-COPY package*.json ./
+COPY package.json package-lock.json ./
 COPY .npmrc ./
 RUN apt-get update && apt-get install -y python3 make g++ \
-    && npm install --omit=dev --legacy-peer-deps \
+    && npm ci --omit=dev \
     && apt-get purge -y python3 make g++ && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
