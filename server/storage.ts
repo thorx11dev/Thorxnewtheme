@@ -72,6 +72,7 @@ import { db } from "./db";
 import { eq, desc, and, or, sql, inArray, ilike, gte, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
+import { encryptCredential, decryptCredential, isEncrypted } from "./utils/credential-crypto";
 
 export interface IStorage {
   // Legacy registration methods (keeping for backward compatibility)
@@ -872,7 +873,12 @@ export class DatabaseStorage implements IStorage {
 
   // User credentials storage for team data management
   async createUserCredential(insertCredential: InsertUserCredential): Promise<UserCredential> {
-    const [credential] = await db.insert(userCredentials).values(insertCredential).returning();
+    // Encrypt password at rest
+    const toInsert = { ...insertCredential };
+    if (toInsert.encryptedPassword) {
+      toInsert.encryptedPassword = encryptCredential(toInsert.encryptedPassword);
+    }
+    const [credential] = await db.insert(userCredentials).values(toInsert).returning();
     return credential;
   }
 
@@ -956,9 +962,14 @@ export class DatabaseStorage implements IStorage {
 
 
   async updateUserCredential(credentialId: string, updates: Partial<InsertUserCredential>): Promise<UserCredential | undefined> {
+    const toUpdate = { ...updates };
+    // Encrypt new password if provided
+    if (toUpdate.encryptedPassword) {
+      toUpdate.encryptedPassword = encryptCredential(toUpdate.encryptedPassword);
+    }
     const [updatedCredential] = await db
       .update(userCredentials)
-      .set({ ...updates, lastUpdated: new Date() })
+      .set({ ...toUpdate, lastUpdated: new Date() })
       .where(eq(userCredentials.id, credentialId))
       .returning();
     return updatedCredential;

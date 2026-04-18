@@ -10,5 +10,5 @@ export const storageProxyRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many image requests. Try again shortly." },
-  validate: { trustProxy: true },
+  validate: { trustProxy: false, xForwardedForHeader: false },
 });

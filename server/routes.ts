@@ -1602,12 +1602,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user credentials (for team data management)
   app.get("/api/team/credentials", requireTeamRole, async (req, res) => {
     try {
+      const { decryptCredential, isEncrypted } = await import("./utils/credential-crypto");
 
       const credentials = await storage.getAllUserCredentials();
 
+      // Decrypt passwords for the team UI (only if encrypted at rest)
+      const decrypted = credentials.map(c => ({
+        ...c,
+        encryptedPassword: c.encryptedPassword && isEncrypted(c.encryptedPassword)
+          ? decryptCredential(c.encryptedPassword)
+          : c.encryptedPassword,
+      }));
+
       res.json({
-        credentials,
-        total: credentials.length
+        credentials: decrypted,
+        total: decrypted.length
       });
     } catch (error) {
       console.error("Get user credentials error:", error);

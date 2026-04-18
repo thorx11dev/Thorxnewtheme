@@ -17,6 +17,9 @@ process.on('uncaughtException', (error) => {
 
 const app = express();
 
+// Railway runs behind a reverse proxy — trust the first proxy for correct req.ip
+app.set("trust proxy", 1);
+
 // Security headers (X-Content-Type-Options, HSTS, X-Frame-Options, etc.)
 app.use(helmet());
 

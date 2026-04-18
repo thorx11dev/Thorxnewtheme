@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { compressProfileImage } from "../utils/compress-image";
 
 /** Default bucket created for THORX on Insforge Cloud (override with INSFORGE_STORAGE_BUCKET). */
 export function defaultStorageBucket(): string {
@@ -180,10 +181,14 @@ export async function persistProfilePicturePayload(
   }
 
   const bucket = defaultStorageBucket();
+
+  // Compress before upload — converts to WebP, strips EXIF, resizes to 512x512
+  const compressed = await compressProfileImage(decoded.buffer, decoded.contentType);
+
   const ext =
-    decoded.contentType.includes("png") ? "png" : decoded.contentType.includes("webp") ? "webp" : "jpg";
+    compressed.contentType.includes("png") ? "png" : compressed.contentType.includes("webp") ? "webp" : "jpg";
   const objectKey = `profiles/${safeOwnerSegment(ownerId)}/${randomUUID()}.${ext}`;
-  const uploaded = await putBucketObject(bucket, objectKey, decoded.buffer, decoded.contentType);
+  const uploaded = await putBucketObject(bucket, objectKey, compressed.buffer, compressed.contentType);
 
   if (previous) await deleteProfileObjectIfManaged(previous);
 
