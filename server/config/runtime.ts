@@ -8,6 +8,7 @@ const defaultDevOrigins = [
 const defaultHostedOrigins = [
   "https://thorx.pro",
   "https://www.thorx.pro",
+  "https://api.thorx.pro",
 ];
 
 function parseCsv(value?: string): string[] {
