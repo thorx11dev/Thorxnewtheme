@@ -12,6 +12,20 @@ import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "
 import { hilltopAdsService } from "./hilltopads-service";
 import { runtimeConfig } from "./config/runtime";
 import { handleProxyRequest } from "./modules/proxy/proxy-handler";
+import { fetchInsforgeSessionUser } from "./insforge/session-verify";
+import {
+  insforgeApiBase,
+  persistProfilePicturePayload,
+} from "./insforge/object-storage";
+import { storageProxyRateLimiter } from "./middleware/storage-proxy-rate-limit";
+
+/** Authenticated user id from Insforge Bearer token (preferred) or legacy session cookie. */
+export function getThorxPrincipalId(req: Request): string | undefined {
+  const r = req as Request & { thorxPrincipalId?: string; thorxBearerInvalid?: boolean };
+  if (r.thorxBearerInvalid) return undefined;
+  if (r.thorxPrincipalId) return r.thorxPrincipalId;
+  return req.session?.userId;
+}
 
 // Extend session data type
 declare module "express-session" {
@@ -49,6 +63,10 @@ declare global {
     interface Request {
       userProfile?: any; // Local user profile with role
       anonymousUser?: any; // Anonymous user object for iframe environments
+      /** Set when a valid Insforge access token is sent as Authorization Bearer */
+      thorxPrincipalId?: string;
+      /** True when a non-anonymous Bearer was sent but Insforge rejected the token */
+      thorxBearerInvalid?: boolean;
     }
   }
 }
@@ -56,7 +74,8 @@ declare global {
 // Simple session-based authentication middleware
 export const requireSessionAuth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!req.session.userId) {
+    const principalId = getThorxPrincipalId(req);
+    if (!principalId) {
       return res.status(401).json({
         message: "Authentication required",
         error: "UNAUTHORIZED"
@@ -64,7 +83,7 @@ export const requireSessionAuth = async (req: Request, res: Response, next: Next
     }
 
     // Get user profile from database
-    const userProfile = await storage.getUserById(req.session.userId);
+    const userProfile = await storage.getUserById(principalId);
     if (!userProfile) {
       return res.status(404).json({
         message: "User profile not found",
@@ -187,7 +206,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
   });
 
   // Check session first (for regular browsers)
-  if (req.session.userId) {
+  if (getThorxPrincipalId(req)) {
     return next();
   }
 
@@ -218,11 +237,18 @@ const registerSchema = z.object({
   identity: z.string().min(1, "Identity is required"),
   phone: z.string().optional(),
   email: z.string().email("Invalid email address"),
-  password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
+  /** Optional when registering with a valid Insforge Bearer (password lives in Insforge Auth only). */
+  password: z
+    .string()
+    .min(6, "Password must be at least 6 characters (Insforge minimum)")
+    .max(128)
+    .refine(
+      (pwd) => pwd.length < 8 || /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(pwd),
+      "For passwords of 8+ characters, include at least one uppercase letter, one lowercase letter, and one number.",
+    )
+    .optional(),
   referralCode: z.string().optional(),
-  role: z.enum(["user", "team", "founder"]).default("user")
+  role: z.enum(["user", "team", "founder"]).default("user"),
 });
 
 const loginSchema = z.object({
@@ -294,6 +320,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.set('trust proxy', 1);
   app.use(session(sessionConfig));
+
+  // Public image proxy for private Insforge buckets (profile uploads).
+  app.get("/api/thorx/storage-proxy", storageProxyRateLimiter, async (req, res) => {
+    const raw = String(req.query.u || "");
+    const base = insforgeApiBase();
+    const key = process.env.INSFORGE_API_KEY || "";
+    if (!base || !key) {
+      return res.status(503).json({ message: "Storage proxy not configured" });
+    }
+    if (!raw.startsWith(base)) {
+      return res.status(400).json({ message: "Invalid storage reference" });
+    }
+    if (!raw.includes("/objects/profiles/")) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    try {
+      const upstream = await fetch(raw, {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      if (!upstream.ok || !upstream.body) {
+        return res.status(upstream.status || 502).end();
+      }
+      const ct = upstream.headers.get("content-type");
+      if (ct) res.setHeader("Content-Type", ct);
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.send(Buffer.from(await upstream.arrayBuffer()));
+    } catch (e) {
+      console.error("storage-proxy error:", e);
+      res.status(502).end();
+    }
+  });
+
+  // Resolve Insforge JWT for all /api routes (preferred over session cookie).
+  app.use("/api", async (req, res, next) => {
+    const r = req as Request & { thorxPrincipalId?: string; thorxBearerInvalid?: boolean };
+    r.thorxPrincipalId = undefined;
+    r.thorxBearerInvalid = false;
+    const authz = req.headers.authorization;
+    if (authz?.startsWith("Bearer ")) {
+      const t = authz.slice(7).trim();
+      if (t && !t.toLowerCase().startsWith("anon")) {
+        const u = await fetchInsforgeSessionUser(t);
+        if (u) r.thorxPrincipalId = u.id;
+        else r.thorxBearerInvalid = true;
+      }
+    }
+    next();
+  });
   
   // Custom session debugger middleware for development only.
   if (!isProd) {
@@ -301,7 +375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Session Debug:", {
         path: req.path,
         sessionID: req.sessionID,
-        userId: req.session.userId,
+        userId: getThorxPrincipalId(req),
       });
       next();
     });
@@ -327,7 +401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         permissions,
         token,
         expiresAt,
-        createdBy: req.session.userId as string
+        createdBy: getThorxPrincipalId(req) as string
       });
 
       // In a real app, send mail here. For now, return the token for manual testing.
@@ -378,11 +452,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/config/:key", requirePermission("MANAGE_SYSTEM"), async (req, res) => {
     try {
       const { value } = req.body;
-      const config = await storage.updateSystemConfig(req.params.key, value, req.session.userId as string);
+      const config = await storage.updateSystemConfig(req.params.key, value, getThorxPrincipalId(req) as string);
       
       // Audit log for critical system change
       await storage.createAuditLog({
-        adminId: req.session.userId as string,
+        adminId: getThorxPrincipalId(req) as string,
         action: "UPDATE_SYSTEM_CONFIG",
         targetType: "system_config",
         targetId: req.params.key,
@@ -490,11 +564,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if it's an anonymous user via session (regular browser)
-      if (req.session.userId && req.session.userId.startsWith('anonymous_')) {
-        console.log("Returning anonymous session user:", req.session.userId);
+      if (getThorxPrincipalId(req) && getThorxPrincipalId(req)?.startsWith('anonymous_')) {
+        console.log("Returning anonymous session user:", getThorxPrincipalId(req));
         // Return the anonymous user data from session
         const anonymousUser = req.session.anonymousUserData || {
-          id: req.session.userId,
+          id: getThorxPrincipalId(req),
           firstName: req.session.user!.firstName,
           lastName: req.session.user!.lastName,
           email: req.session.user!.email,
@@ -513,7 +587,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if userId exists in session
-      if (!req.session.userId) {
+      const principalId = getThorxPrincipalId(req);
+      if (!principalId) {
         console.log("No userId in session, returning 401");
         return res.status(401).json({
           message: "Not authenticated",
@@ -522,11 +597,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Regular authenticated user
-      console.log("Fetching user from database with userId:", req.session.userId);
-      const user = await storage.getUserById(req.session.userId);
+      console.log("Fetching user from database with userId:", principalId);
+      const user = await storage.getUserById(principalId);
 
       if (!user) {
-        console.log("User not found in database for userId:", req.session.userId);
+        console.log("User not found in database for userId:", principalId);
         return res.status(404).json({
           message: "User not found",
           error: "USER_NOT_FOUND"
@@ -601,11 +676,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update own user profile
   app.patch("/api/users/:id", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const principalId = getThorxPrincipalId(req);
+      if (!principalId) {
         return res.status(401).json({ message: "Authentication required" });
       }
 
-      if (req.session.userId !== req.params.id) {
+      if (principalId !== req.params.id) {
         return res.status(403).json({ message: "Cannot update other users" });
       }
 
@@ -622,16 +698,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[PATCH] Updating user ${req.params.id}. Payload:`, { name, avatarLength: avatar?.length, hasProfilePicture: !!profilePicture });
 
       if (avatar) updates.avatar = avatar;
-      if (profilePicture) updates.profilePicture = profilePicture;
+
+      let resolvedProfilePicture: string | null | undefined = undefined;
+      if (Object.prototype.hasOwnProperty.call(req.body, "profilePicture")) {
+        try {
+          const prevPic =
+            principalId.startsWith("anonymous_")
+              ? req.session.anonymousUserData?.profilePicture
+              : (await storage.getUserById(req.params.id))?.profilePicture;
+          resolvedProfilePicture = await persistProfilePicturePayload(
+            principalId,
+            profilePicture as string | null | undefined,
+            prevPic ?? null,
+          );
+        } catch (picErr: unknown) {
+          const msg = picErr instanceof Error ? picErr.message : "Invalid profile image";
+          return res.status(400).json({ message: msg });
+        }
+      }
+      if (resolvedProfilePicture !== undefined) {
+        updates.profilePicture = resolvedProfilePicture;
+      }
 
       // Handle Anonymous User Session Updates
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (principalId.startsWith('anonymous_')) {
         console.log(`[PATCH] Updating anonymous session user.`);
         req.session.anonymousUserData = {
           ...req.session.anonymousUserData!,
           ...updates,
           avatar: avatar || req.session.anonymousUserData?.avatar,
-          profilePicture: profilePicture || req.session.anonymousUserData?.profilePicture,
+          profilePicture:
+            resolvedProfilePicture !== undefined
+              ? resolvedProfilePicture
+              : req.session.anonymousUserData?.profilePicture,
           // ensure name split is reflected if name was updated
           firstName: updates.firstName || req.session.anonymousUserData?.firstName,
           lastName: updates.lastName || req.session.anonymousUserData?.lastName,
@@ -658,9 +757,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: parts[0] || undefined,
         lastName: parts.slice(1).join(' ') || undefined,
         avatar: avatar || undefined,
-        profilePicture: profilePicture || undefined,
         updatedAt: new Date()
       };
+      if (resolvedProfilePicture !== undefined) {
+        updateData.profilePicture = resolvedProfilePicture;
+      }
 
       const user = await storage.updateUser(req.params.id, updateData);
       
@@ -669,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Audit log for profile change
         await storage.createAuditLog({
-          adminId: req.session.userId as string,
+          adminId: principalId,
           action: "UPDATE_PROFILE",
           targetType: "user",
           targetId: user.id,
@@ -689,13 +790,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user notifications (financial alerts from admins)
   app.get("/api/notifications", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({ message: "Authentication required" });
       }
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json([]);
       }
-      const userNotifications = await storage.getUserNotifications(req.session.userId);
+      const userNotifications = await storage.getUserNotifications(thorxPid);
       res.json(userNotifications);
     } catch (error) {
       console.error("Get notifications error:", error);
@@ -706,8 +808,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user earnings endpoint (no auth required)
   app.get("/api/earnings", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
@@ -715,7 +817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if it's an anonymous user
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json({
           earnings: [],
           total: "0.00"
@@ -723,11 +825,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
-      const earnings = await storage.getUserEarnings(req.session.userId, limit);
+      const earnings = await storage.getUserEarnings(thorxPid, limit);
 
       res.json({
         earnings,
-        total: await storage.getUserTotalEarnings(req.session.userId)
+        total: await storage.getUserTotalEarnings(thorxPid)
       });
     } catch (error) {
       console.error("Get earnings error:", error);
@@ -741,8 +843,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user referrals endpoint (no auth required)
   app.get("/api/referrals", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
@@ -750,15 +852,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if it's an anonymous user
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json({
           referrals: [],
           stats: { count: 0, totalEarned: "0.00" }
         });
       }
 
-      const referrals = await storage.getUserReferrals(req.session.userId);
-      const stats = await storage.getReferralStats(req.session.userId);
+      const referrals = await storage.getUserReferrals(thorxPid);
+      const stats = await storage.getReferralStats(thorxPid);
 
       res.json({
         referrals,
@@ -776,14 +878,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get commissions endpoint
   app.get("/api/commissions", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({ message: "Authentication required" });
       }
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json({ commissions: [] });
       }
 
-      const commissions = await storage.getCommissionLogsByBeneficiary(req.session.userId);
+      const commissions = await storage.getCommissionLogsByBeneficiary(thorxPid);
       res.json({ commissions });
     } catch (error) {
       console.error("Get commissions error:", error);
@@ -810,7 +913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/withdrawals", async (req, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getThorxPrincipalId(req);
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
       // --- PAYOUT LOCK LOGIC ---
@@ -877,12 +980,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request Payout endpoint
   app.post("/api/withdrawals", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const userId = getThorxPrincipalId(req);
+      if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
 
-      const userId = req.session.userId;
-      
       // --- PAYOUT LOCK LOGIC (Repeated for POST to ensure security) ---
       const tasksWithRecords = await storage.getDailyTasksForUser(userId);
       const user = await storage.getUserById(userId);
@@ -913,7 +1015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const withdrawalData = insertWithdrawalSchema.parse({
         ...req.body,
-        userId: req.session.userId
+        userId
       });
 
       const withdrawal = await storage.createWithdrawal(withdrawalData);
@@ -943,8 +1045,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create ad view endpoint (no auth required)
   app.post("/api/ad-view", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
@@ -966,7 +1068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adConfig = AD_INVENTORY[adId] || AD_INVENTORY["hilltop_fallback"];
 
       // Verify the user actually waited long enough since their LAST ad view
-      const lastViews = await storage.getUserAdViews(req.session.userId, 1);
+      const lastViews = await storage.getUserAdViews(thorxPid, 1);
       if (lastViews.length > 0 && lastViews[0].createdAt) {
           const lastViewTime = new Date(lastViews[0].createdAt).getTime();
           const timeSinceLastAd = (Date.now() - lastViewTime) / 1000;
@@ -981,7 +1083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const adViewData = {
-        userId: req.session.userId,
+        userId: thorxPid,
         adId: adId,
         adType: adConfig.type,
         duration: adConfig.duration,
@@ -1008,8 +1110,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get today's ad views count (no auth required)
   app.get("/api/ad-views/today", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
@@ -1017,11 +1119,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if it's an anonymous user
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json({ count: 0 });
       }
 
-      const count = await storage.getTodayAdViews(req.session.userId);
+      const count = await storage.getTodayAdViews(thorxPid);
       res.json({ count });
     } catch (error) {
       console.error("Get today ad views error:", error);
@@ -1039,14 +1141,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get comprehensive dashboard statistics
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
         });
       }
 
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json({
           totalEarnings: "0.00",
           availableBalance: "0.00",
@@ -1062,7 +1165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const stats = await storage.getDashboardStats(req.session.userId);
+      const stats = await storage.getDashboardStats(thorxPid);
       res.json(stats);
     } catch (error) {
       console.error("Get dashboard stats error:", error);
@@ -1076,19 +1179,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get earnings history for charts
   app.get("/api/earnings/history", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
         });
       }
 
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json([]);
       }
 
       const period = (req.query.period as 'week' | 'month' | 'year') || 'week';
-      const history = await storage.getEarningsHistory(req.session.userId, period);
+      const history = await storage.getEarningsHistory(thorxPid, period);
       res.json(history);
     } catch (error) {
       console.error("Get earnings history error:", error);
@@ -1102,18 +1206,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get referral leaderboard
   app.get("/api/referrals/leaderboard", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
         });
       }
 
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json([]);
       }
 
-      const leaderboard = await storage.getReferralLeaderboard(req.session.userId);
+      const leaderboard = await storage.getReferralLeaderboard(thorxPid);
       res.json(leaderboard);
     } catch (error) {
       console.error("Get referral leaderboard error:", error);
@@ -1127,14 +1232,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get detailed referral stats with L1/L2 breakdown
   app.get("/api/referrals/stats/detailed", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
         });
       }
 
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json({
           totalReferrals: 0,
           level1Count: 0,
@@ -1147,7 +1253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const stats = await storage.getReferralStatsDetailed(req.session.userId);
+      const stats = await storage.getReferralStatsDetailed(thorxPid);
       res.json(stats);
     } catch (error) {
       console.error("Get detailed referral stats error:", error);
@@ -1161,19 +1267,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get transaction history
   app.get("/api/transactions/history", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
         });
       }
 
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json([]);
       }
 
       const limit = parseInt(req.query.limit as string) || 50;
-      const history = await storage.getTransactionHistory(req.session.userId, limit);
+      const history = await storage.getTransactionHistory(thorxPid, limit);
       res.json(history);
     } catch (error) {
       console.error("Get transaction history error:", error);
@@ -1204,26 +1311,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get rank history for current user
   app.get("/api/rank/history", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
         });
       }
 
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json({
           rankLogs: [],
           currentRank: "Useless"
         });
       }
 
-      const user = await storage.getUserById(req.session.userId);
+      const user = await storage.getUserById(thorxPid);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const rankLogs = await storage.getRankHistory(req.session.userId);
+      const rankLogs = await storage.getRankHistory(thorxPid);
 
       res.json({
         rankLogs,
@@ -1241,14 +1349,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Manually trigger rank recalculation
   app.post("/api/rank/refresh", async (req, res) => {
     try {
-      if (!req.session.userId) {
+      const thorxPid = getThorxPrincipalId(req);
+      if (!thorxPid) {
         return res.status(401).json({
           message: "Authentication required",
           error: "UNAUTHORIZED"
         });
       }
 
-      if (req.session.userId.startsWith('anonymous_')) {
+      if (thorxPid.startsWith('anonymous_')) {
         return res.json({
           oldRank: "Useless",
           newRank: "Useless",
@@ -1256,19 +1365,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const userBefore = await storage.getUserById(req.session.userId);
+      const userBefore = await storage.getUserById(thorxPid);
       if (!userBefore) {
         return res.status(404).json({ message: "User not found" });
       }
 
       const oldRank = userBefore.rank || "Useless";
-      const updatedUser = await storage.checkAndUpdateRank(req.session.userId);
+      const updatedUser = await storage.checkAndUpdateRank(thorxPid);
       const newRank = updatedUser.rank || "Useless";
-
-      // Sync rank update to Firestore for real-time UI update
-      if (oldRank !== newRank) {
-        await (storage as any).syncUserToFirestore(req.session.userId);
-      }
 
       res.json({
         oldRank,
@@ -1376,21 +1480,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Supabase configuration endpoint for automatic frontend reconnection
-  app.get("/api/config/supabase", (req, res) => {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) {
+  // Public Insforge connection hints for the SPA (non-secret anon key only).
+  app.get("/api/config/insforge", (_req, res) => {
+    const baseUrl = process.env.INSFORGE_API_URL;
+    const anonKey = process.env.INSFORGE_ANON_KEY;
+    if (!baseUrl || !anonKey) {
       return res.status(500).json({
-        error: "Supabase configuration not available",
-        message: "Server environment variables not configured"
+        error: "Insforge configuration not available",
+        message: "Set INSFORGE_API_URL and INSFORGE_ANON_KEY on the server",
       });
     }
-
+    const storageBucket = (process.env.INSFORGE_STORAGE_BUCKET || "thorx-assets").trim();
+    const storageUploadReady = Boolean(process.env.INSFORGE_API_KEY?.trim());
     res.json({
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey
+      baseUrl,
+      anonKey,
+      storageBucket,
+      storageUploadReady,
     });
   });
 
@@ -2070,11 +2176,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id, firstName, lastName, email, password, phone, identity, referralCode, role } = req.body;
       console.log(`[POST /api/register] Attempt for ${email}. Role: ${role}. ID: ${id}`);
 
-      // Validate required fields
-      if (!firstName || !email || !password) {
+      if (!firstName || !lastName || !email || !identity) {
         return res.status(400).json({
-          message: "First name, email, and password are required",
+          message: "First name, last name, email, and identity are required",
           error: "MISSING_REQUIRED_FIELDS"
+        });
+      }
+
+      const authz = req.headers.authorization;
+      let bearer: string | undefined;
+      if (authz?.startsWith("Bearer ")) {
+        bearer = authz.slice(7).trim();
+      }
+      const insforgeUser = bearer && !bearer.toLowerCase().startsWith("anon")
+        ? await fetchInsforgeSessionUser(bearer)
+        : null;
+
+      if (!insforgeUser?.id) {
+        return res.status(401).json({
+          message: "Valid Insforge authentication is required to register",
+          error: "UNAUTHORIZED",
+        });
+      }
+      if (insforgeUser.email && insforgeUser.email.toLowerCase() !== String(email).toLowerCase()) {
+        return res.status(403).json({
+          message: "Email must match your Insforge account",
+          error: "FORBIDDEN",
         });
       }
 
@@ -2096,9 +2223,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create user
+      // Create user (id is the Insforge auth user id — same Postgres row the app already uses)
       const newUser = await storage.createUser({
-        id, // Use provided ID (Firebase UID)
+        id: insforgeUser.id,
         firstName,
         lastName,
         email,
@@ -2106,8 +2233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         identity,
         referralCode: referralCode || '',
         role: role || 'user',
-        passwordHash: password, // "firebase_managed"
-        password: password,
+        passwordHash: "insforge_managed",
+        password: "insforge_managed",
         name: `${firstName} ${lastName}`,
         referredBy: referredBy
       });
@@ -2217,37 +2344,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Login endpoint
   app.post("/api/login", async (req, res) => {
     try {
-      const { email, password, firebaseUid, insforgeUid } = req.body;
-      const externalUid = insforgeUid || firebaseUid;
-      console.log(`[POST /api/login] Attempt for ${email}. ExternalUID: ${externalUid}`);
+      const { email, password, insforgeAccessToken } = req.body;
+      console.log(`[POST /api/login] Attempt for ${email ?? "(no email)"}`);
 
       let user;
-      if (password === "firebase_managed" && externalUid) {
-        // 1. Try finding by external provider ID
-        user = await storage.getUserById(externalUid);
-
-        // 2. Fallback: If not found by ID, try finding by email
-        if (!user) {
-          user = await storage.getUserByEmail(email);
-          if (user) {
-            console.log(`Found existing user ${email} for provider UID ${externalUid}. Linking...`);
-            // Attempt to update passwordHash to managed, but don't fail if it doesn't work
-            // We'll skip updating the ID for now to avoid foreign key constraint errors
-            try {
-              await storage.updateUser(user.id, {
-                passwordHash: 'firebase_managed'
-              });
-            } catch (e) {
-              console.error("Secondary: Failed to update passwordHash during linking:", e);
-            }
-          }
+      if (insforgeAccessToken && typeof insforgeAccessToken === "string") {
+        const u = await fetchInsforgeSessionUser(insforgeAccessToken);
+        if (!u?.id) {
+          return res.status(401).json({
+            message: "Invalid or expired Insforge session",
+            error: "UNAUTHORIZED",
+          });
         }
-      } else {
-        // Regular password login
+        user = await storage.getUserById(u.id);
+        if (!user && email) {
+          user = await storage.getUserByEmail(String(email));
+        }
+        if (user && u.email && user.email.toLowerCase() !== u.email.toLowerCase()) {
+          return res.status(403).json({
+            message: "Email does not match Insforge session",
+            error: "FORBIDDEN",
+          });
+        }
+      } else if (email && password) {
         user = await storage.validateUserPassword(email, password);
         if (!user) {
           console.warn(`[POST /api/login] Password validation failed for ${email}`);
         }
+      } else {
+        return res.status(400).json({
+          message: "Provide email and password, or insforgeAccessToken from Insforge Auth",
+          error: "BAD_REQUEST",
+        });
       }
 
       if (!user) {
@@ -2297,7 +2425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             targetId: user.id,
             details: {
               role: user.role,
-              method: insforgeUid ? 'insforge' : (firebaseUid ? 'firebase' : 'password')
+              method: insforgeAccessToken ? "insforge" : "password"
             },
             ipAddress: req.ip
           });
@@ -2326,7 +2454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/profile", requireAuth, async (req, res) => {
     try {
       // User is authenticated, fetch profile details
-      const user = await storage.getUserById(req.session.userId!);
+      const user = await storage.getUserById(getThorxPrincipalId(req)!);
       if (!user) {
         return res.status(404).json({
           message: "User profile not found",
@@ -2360,8 +2488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user profile endpoint
   app.patch("/api/profile", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const { firstName, lastName, phone, identity } = req.body;
+      const userId = getThorxPrincipalId(req)!;
 
       // Validate and sanitize data
       const updateSchema = z.object({
@@ -2371,7 +2498,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: z.string().min(10, "Phone number must be at least 10 digits").optional(),
         identity: z.string().min(1, "Identity is required").optional(),
         avatar: z.string().optional(),
-        profilePicture: z.string().nullable().optional(), // base64 encoded image or null to clear
+        profilePicture: z
+          .union([z.string().max(12_000_000), z.null()])
+          .optional(), // data URL, https URL, or null to clear (max ~9MB base64)
       });
 
       const validatedData = updateSchema.parse(req.body);
@@ -2384,8 +2513,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         delete (validatedData as any).name;
       }
 
+      const existingRow = await storage.getUserById(userId);
+      if (!existingRow) {
+        return res.status(404).json({
+          message: "User not found",
+          error: "USER_NOT_FOUND",
+        });
+      }
+
+      let resolvedProfilePicture: string | null | undefined = undefined;
+      if (Object.prototype.hasOwnProperty.call(req.body, "profilePicture")) {
+        try {
+          resolvedProfilePicture = await persistProfilePicturePayload(
+            userId,
+            validatedData.profilePicture as string | null | undefined,
+            existingRow.profilePicture ?? null,
+          );
+        } catch (picErr: unknown) {
+          return res.status(400).json({
+            message: picErr instanceof Error ? picErr.message : "Invalid profile image",
+          });
+        }
+      }
+      delete (validatedData as { profilePicture?: unknown }).profilePicture;
+
+      const updatePayload = {
+        ...validatedData,
+        ...(resolvedProfilePicture !== undefined ? { profilePicture: resolvedProfilePicture } : {}),
+      };
+
       // Update user in storage
-      const updatedUser = await storage.updateUser(userId, validatedData);
+      const updatedUser = await storage.updateUser(userId, updatePayload);
 
       if (!updatedUser) {
         return res.status(404).json({
@@ -2461,9 +2619,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let userId = 'anonymous';
       let userName = 'User';
 
-      if (req.session.userId) {
-        userId = req.session.userId;
-        const userProfile = await storage.getUserById(req.session.userId);
+      const chatPrincipalId = getThorxPrincipalId(req);
+      if (chatPrincipalId) {
+        userId = chatPrincipalId;
+        const userProfile = await storage.getUserById(chatPrincipalId);
         if (userProfile) {
           userName = userProfile.firstName || 'User';
         }
@@ -2544,7 +2703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/chat/history", async (req, res) => {
     try {
       // Try to get authenticated user from session
-      const userId = req.session.userId;
+      const userId = getThorxPrincipalId(req);
 
       if (!userId) {
         return res.json({ messages: [] });
@@ -2723,7 +2882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // --- User Tasks Endpoints ---
   app.get("/api/tasks", async (req, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getThorxPrincipalId(req);
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
       const user = await storage.getUserById(userId);
@@ -2745,7 +2904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks/:id/click", async (req, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getThorxPrincipalId(req);
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
       const taskId = req.params.id;
@@ -2775,7 +2934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks/:id/verify", async (req, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getThorxPrincipalId(req);
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
       const taskId = req.params.id;
@@ -3208,7 +3367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/tasks/completed/today/:type", async (req, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getThorxPrincipalId(req);
       if (!userId || userId.startsWith('anonymous_')) return res.status(401).json({ message: "Not authenticated" });
       const count = await storage.getTodayCompletedTasksByType(userId, req.params.type);
       res.json({ count });
@@ -3230,7 +3389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/system-config", requireTeamRole, async (req, res) => {
     try {
       const { key, value } = req.body;
-      const config = await storage.updateSystemConfig(key, value, req.session.userId!);
+      const config = await storage.updateSystemConfig(key, value, getThorxPrincipalId(req)!);
       res.json(config);
     } catch (error) {
       res.status(500).json({ message: "Failed to update config" });

@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { WaterfallAdPlayer } from "@/components/ads/HilltopAdsPlayer";
 
 interface AdWebPanelProps {
@@ -142,8 +143,8 @@ export function AdWebPanel({
         // If it's our internal landing page, don't proxy
         if (url.startsWith('/ad-landing')) return url;
 
-        // Otherwise use proxy
-        return `/api/proxy?url=${encodeURIComponent(url)}`;
+        // Otherwise use proxy (absolute API origin in production)
+        return apiAbsolutePath(`/api/proxy?url=${encodeURIComponent(url)}`);
     };
 
     // If iframe takes focus, we might lose window events, so checking document.hasFocus or blur might be needed

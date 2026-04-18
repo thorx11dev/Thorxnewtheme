@@ -1,4 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getInsforgeAccessToken } from "@/lib/insforge-session";
+import { getApiOrigin } from "@/lib/apiOrigin";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -7,15 +9,17 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "";
+const API_URL = getApiOrigin();
 
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const token = getInsforgeAccessToken();
   const headers: Record<string, string> = {
     ...(data ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
   const fullUrl = url.startsWith("/") ? `${API_URL}${url}` : `${API_URL}/${url}`;
@@ -40,10 +44,12 @@ export const getQueryFn: <T>(options: {
       const url = queryKey.join("/");
       const fullUrl = url.startsWith("/") ? `${API_URL}${url}` : `${API_URL}/${url}`;
 
+      const token = getInsforgeAccessToken();
       const res = await fetch(fullUrl, {
         credentials: "include",
         headers: {
-          "Accept": "application/json",
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
 

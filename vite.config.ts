@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
+// Env files: `root` is ./client — Vite loads `.env`, `.env.production`, etc. from `client/`
+// (see client/.env.production for VITE_API_URL in production builds).
 export default defineConfig({
   plugins: [
     react(),

@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { auth } from "@/lib/firebase";
-import { subscribeToUserBalance } from "@/lib/firestore";
-import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { isInsforgeAuth } from "@/lib/auth-provider";
+import { insforge, hydrateInsforgeFromRefreshToken, isInsforgeConfigured } from "@/lib/insforge";
+import {
+  clearInsforgeTokenStorage,
+  getInsforgeAccessToken,
+  subscribeInsforgeAccessToken,
+} from "@/lib/insforge-session";
 
 export interface User {
   id: string;
@@ -31,96 +32,74 @@ export interface User {
 export function useAuth() {
   const [, setLocation] = useLocation();
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [firebaseUser, setFirebaseUser] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [accessEpoch, setAccessEpoch] = useState(0);
   const queryClient = useQueryClient();
 
-  // Monitor Firebase Auth State
   useEffect(() => {
-    if (isInsforgeAuth) {
-      setFirebaseUser({ uid: "insforge-session" });
-      setIsAuthLoading(false);
-      return;
-    }
+    return subscribeInsforgeAccessToken(() => setAccessEpoch((e) => e + 1));
+  }, []);
 
-    if (!auth) {
-      setFirebaseUser(null);
-      setIsAuthLoading(false);
-      return;
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!isInsforgeConfigured()) {
+        setIsAuthLoading(false);
+        return;
+      }
+      await hydrateInsforgeFromRefreshToken();
+      if (!cancelled) setIsAuthLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
-      setIsAuthLoading(false);
-      // Invalidate query to refetch user profile when auth state changes
-      queryClient.invalidateQueries({ queryKey: ["auth"] });
-    });
-    return () => unsubscribe();
-  }, [queryClient]);
+  const accessToken = getInsforgeAccessToken();
 
   const { data: user, isLoading: isQueryLoading, error } = useQuery({
-    queryKey: ["auth", isInsforgeAuth ? "insforge-session" : firebaseUser?.uid],
+    queryKey: ["auth", accessToken ?? "none", accessEpoch],
     queryFn: async () => {
-      console.log("useAuth: Fetching user profile. Provider:", isInsforgeAuth ? "insforge" : "firebase");
-      // In Firebase mode, if there is no Firebase user, user is not logged in.
-      if (!isInsforgeAuth && !firebaseUser) return null;
+      const token = getInsforgeAccessToken();
+      if (!token) return null;
 
       try {
         const response = await apiRequest("GET", "/api/user");
         const text = await response.text();
-        let data: any;
+        let data: unknown;
         try {
           data = text ? JSON.parse(text) : null;
         } catch {
           console.warn(
-            "useAuth: /api/user returned non-JSON (often wrong VITE_API_URL or API host serving the SPA).",
+            "useAuth: /api/user returned non-JSON (check VITE_API_URL and that the API is reachable).",
           );
           return null;
         }
-        console.log("useAuth: Profile fetch success:", data?.email);
-        return data;
-      } catch (error: any) {
-        console.log("useAuth: Profile fetch failed:", error.message);
-        if (error.message?.includes('401') || error.message?.includes('404')) {
+        return data as User | null;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("401") || msg.includes("404")) {
           return null;
         }
-        throw error;
+        throw e;
       }
     },
-    enabled: !isAuthLoading,
+    enabled: !isAuthLoading && !!getInsforgeAccessToken(),
     retry: false,
     staleTime: 0,
+    refetchOnWindowFocus: true,
   });
-
-  // Real-time Firestore Sync
-  useEffect(() => {
-    if (isInsforgeAuth) return;
-    if (!firebaseUser) return;
-
-    const unsubscribe = subscribeToUserBalance(firebaseUser.uid, (firestoreData) => {
-      console.log("useAuth: Received real-time update from Firestore");
-      // Merge Firestore data with current user data
-      if (firestoreData) {
-        queryClient.setQueryData(["auth", firebaseUser.uid], (oldData: any) => {
-          if (!oldData) return null;
-          return {
-            ...oldData,
-            ...firestoreData
-          };
-        });
-      }
-    });
-
-    return () => unsubscribe();
-  }, [firebaseUser, queryClient]);
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
       setIsTransitioning(true);
-      if (!isInsforgeAuth && auth) {
-        await signOut(auth);
+      try {
+        await insforge.auth.signOut();
+      } catch {
+        /* non-fatal */
       }
-      await apiRequest("POST", "/api/logout"); // Also clear server session
+      clearInsforgeTokenStorage();
+      await apiRequest("POST", "/api/logout").catch(() => {});
     },
     onSuccess: () => {
       setTimeout(() => {
@@ -128,14 +107,14 @@ export function useAuth() {
         queryClient.clear();
         setIsTransitioning(false);
         setLocation("/");
-      }, 1800);
+      }, 600);
     },
   });
 
   return {
     user,
-    firebaseUser,
-    isAuthenticated: isInsforgeAuth ? !!user : (!!user && !!firebaseUser),
+    insforgeAccessToken: accessToken,
+    isAuthenticated: !!user && !!getInsforgeAccessToken(),
     isLoading: isAuthLoading || isQueryLoading || isTransitioning,
     error,
     logout: logoutMutation.mutate,

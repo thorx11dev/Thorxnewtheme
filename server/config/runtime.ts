@@ -6,8 +6,6 @@ const defaultDevOrigins = [
 ];
 
 const defaultHostedOrigins = [
-  "https://thorx-35321.web.app",
-  "https://thorx-35321.firebaseapp.com",
   "https://thorx.pro",
   "https://www.thorx.pro",
 ];

@@ -72,8 +72,6 @@ import { db } from "./db";
 import { eq, desc, and, or, sql, inArray, ilike, gte, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
-import { adminDb } from "./firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
 
 export interface IStorage {
   // Legacy registration methods (keeping for backward compatibility)
@@ -351,7 +349,10 @@ export class DatabaseStorage implements IStorage {
 
   // User management methods
   async createUser(insertUser: InsertUser & { id?: string }): Promise<User> {
-    const isManagedAuth = insertUser.passwordHash === 'supabase_managed' || insertUser.passwordHash === 'firebase_managed';
+    const isManagedAuth =
+      insertUser.passwordHash === "supabase_managed" ||
+      insertUser.passwordHash === "firebase_managed" ||
+      insertUser.passwordHash === "insforge_managed";
     const hashedPassword = isManagedAuth
       ? 'managed_auth' // Don't hash if managed by external provider
       : await bcrypt.hash(insertUser.passwordHash, 10); // Changed salt rounds to 10
@@ -387,9 +388,6 @@ export class DatabaseStorage implements IStorage {
     }
 
     const [user] = await db.insert(users).values(userData).returning();
-
-    // Sync to Firestore immediately
-    await this.syncUserToFirestore(user.id);
 
     // If user was referred, create referral record
     if (insertUser.referredBy) {
@@ -441,10 +439,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
 
-    if (updatedUser) {
-      // Sync to Firestore for real-time UI updates
-      await this.syncUserToFirestore(userId);
-    }
     return updatedUser;
   }
 
@@ -506,9 +500,6 @@ export class DatabaseStorage implements IStorage {
 
     // Check for rank update
     await this.checkAndUpdateRank(userId);
-
-    // Sync to Firestore for real-time UI updates
-    await this.syncUserToFirestore(userId);
   }
 
   async releasePendingBalance(userId: string, amount: string): Promise<void> {
@@ -520,8 +511,6 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId));
-
-    await this.syncUserToFirestore(userId);
   }
 
   // Earnings methods
@@ -546,7 +535,6 @@ export class DatabaseStorage implements IStorage {
       return earning;
     }).then(async (earning) => {
       await this.checkAndUpdateRank(insertEarning.userId);
-      await this.syncUserToFirestore(insertEarning.userId);
       return earning;
     });
   }
@@ -1382,9 +1370,6 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      return withdrawal;
-    }).then(async (withdrawal) => {
-      await this.syncUserToFirestore(insertWithdrawal.userId);
       return withdrawal;
     });
   }
@@ -2225,12 +2210,10 @@ export class DatabaseStorage implements IStorage {
       return updatedUser;
     });
 
-    // After transaction: re-evaluate rank if credit increased totalEarnings,
-    // then always sync to Firestore so the UI updates in real-time.
+    // After transaction: re-evaluate rank if credit increased totalEarnings.
     if (type === 'add') {
       await this.checkAndUpdateRank(userId);
     }
-    await this.syncUserToFirestore(userId);
 
     // Return the latest user state after rank check
     const finalUser = await this.getUserById(userId);
@@ -2489,32 +2472,6 @@ export class DatabaseStorage implements IStorage {
     return newConfig;
   }
 
-  // Sync helper to keep Firestore in sync with Postgres
-  private async syncUserToFirestore(userId: string): Promise<void> {
-    try {
-      if (!adminDb) return;
-      const user = await this.getUserById(userId);
-      if (user) {
-        await adminDb.collection("users").doc(userId).set({
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          identity: user.identity,
-          phone: user.phone || '',
-          referralCode: user.referralCode || '',
-          role: user.role || 'user',
-          availableBalance: user.availableBalance,
-          totalEarnings: user.totalEarnings,
-          rank: user.rank || 'Useless',
-          updatedAt: FieldValue.serverTimestamp()
-        }, { merge: true });
-        console.log(`Synced user ${userId} to Firestore`);
-      }
-    } catch (error) {
-      console.error(`Failed to sync user ${userId} to Firestore:`, error);
-    }
-  }
-
   private generateReferralCode(): string {
     const prefix = "THORX";
     const suffix = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -2663,10 +2620,10 @@ export class MemStorage {
   }
 }
 
-const dbProvider = (process.env.DB_PROVIDER || "postgres").toLowerCase();
-if (dbProvider === "insforge") {
-  console.log("[Storage] DB_PROVIDER=insforge detected. Using compatibility database adapter.");
-}
-
-// Compatibility default: keep DatabaseStorage active until Insforge DB cutover is complete.
+/**
+ * THORX domain data always uses Drizzle + PostgreSQL (`DATABASE_URL`).
+ * On Insforge Cloud, set `DATABASE_URL` to the Postgres connection string from the same
+ * Insforge project as `INSFORGE_API_URL` / `VITE_INSFORGE_URL`. There is no alternate
+ * "Insforge DB driver" in code — the stack is explicitly Postgres + Insforge Auth + Insforge Storage API.
+ */
 export const storage = new DatabaseStorage();

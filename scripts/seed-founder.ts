@@ -1,47 +1,32 @@
-import admin, { adminAuth } from "../server/firebase-admin";
 import { db } from "../server/db";
 import { users, teamKeys } from "../shared/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { randomUUID } from "crypto";
 
+/**
+ * Seeds a founder row in Postgres. The `id` must match the Insforge Auth user id
+ * for that email (create the user in Insforge first, then set FOUNDER_USER_ID).
+ */
 async function createFounder() {
-  const email = "founder@thorx.com";
-  const password = "Admin123!";
+  const email = process.env.FOUNDER_EMAIL || "founder@thorx.com";
+  const password = process.env.FOUNDER_PASSWORD || "Admin123!";
   const firstName = "Thorx";
   const lastName = "Founder";
+  const userId = process.env.FOUNDER_USER_ID || randomUUID();
 
-  console.log(`Starting creation of founder account for ${email}...`);
+  console.log(`Seeding founder for ${email} with id ${userId}...`);
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 1. Create User in Firebase Auth
-    let fbUser;
-    try {
-      fbUser = await adminAuth.createUser({
-        email,
-        password,
-        displayName: `${firstName} ${lastName}`,
-      });
-      console.log("Firebase user created successfully:", fbUser.uid);
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-exists') {
-        fbUser = await adminAuth.getUserByEmail(email);
-        console.log("Firebase user already exists, reusing UID:", fbUser.uid);
-      } else {
-        throw error;
-      }
-    }
-
-    // 2. Create User Profile in Local DB
     const existingUser = await db.query.users.findFirst({
-      where: eq(users.email, email)
+      where: eq(users.email, email),
     });
 
-    let userId = fbUser.uid;
     if (!existingUser) {
-      const [newUser] = await db.insert(users).values({
-        id: fbUser.uid,
+      await db.insert(users).values({
+        id: userId,
         firstName,
         lastName,
         identity: "THORX_FOUNDER_CORE",
@@ -52,47 +37,45 @@ async function createFounder() {
         role: "founder",
         isActive: true,
         isVerified: true,
-      }).returning();
-      console.log("Local user profile created successfully.");
-      userId = newUser.id;
+      });
+      console.log("Founder user row created.");
     } else {
-      await db.update(users)
-        .set({ 
-          role: "founder", 
-          id: fbUser.uid,
-          passwordHash: hashedPassword 
+      await db
+        .update(users)
+        .set({
+          role: "founder",
+          passwordHash: hashedPassword,
         })
         .where(eq(users.email, email));
-      console.log("Existing local user profile updated to founder with synchronized hash.");
-      userId = fbUser.uid;
+      console.log("Existing user promoted to founder (password and role updated).");
     }
 
-    // 3. Create Team Key for Access
+    const effectiveId =
+      (await db.query.users.findFirst({ where: eq(users.email, email) }))?.id || userId;
+
     const existingKey = await db.query.teamKeys.findFirst({
-      where: eq(teamKeys.userId, userId)
+      where: eq(teamKeys.userId, effectiveId),
     });
 
     if (!existingKey) {
       await db.insert(teamKeys).values({
-        userId: userId,
+        userId: effectiveId,
         keyName: "Master Founder Key",
         accessLevel: "founder",
         permissions: ["all"],
-        isActive: true
+        isActive: true,
       });
-      console.log("Master Team Key assigned successfully.");
+      console.log("Master Team Key assigned.");
     } else {
-      await db.update(teamKeys)
+      await db
+        .update(teamKeys)
         .set({ accessLevel: "founder", isActive: true })
-        .where(eq(teamKeys.userId, userId));
-      console.log("Existing Team Key updated to founder level.");
+        .where(eq(teamKeys.userId, effectiveId));
+      console.log("Team Key updated to founder level.");
     }
 
-    console.log("\nSUCCESS: Founder account is ready.");
-    console.log("Email:", email);
-    console.log("Password:", password);
-    console.log("Role: founder (Full Admin Access)");
-    
+    console.log("\nSUCCESS: Founder row is ready in Postgres.");
+    console.log("Ensure Insforge Auth has a user with this id and email for login:", effectiveId, email);
   } catch (error) {
     console.error("FATAL ERROR creating founder:", error);
   } finally {

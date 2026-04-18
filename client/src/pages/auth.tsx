@@ -15,14 +15,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Delete, Eye, EyeOff, Info } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
-import { auth } from "@/lib/firebase";
-import { saveUserProfile } from "@/lib/firestore";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
-} from "firebase/auth";
 import { cn } from "@/lib/utils";
-import { isInsforgeAuth } from "@/lib/auth-provider";
+import { insforge, isInsforgeConfigured } from "@/lib/insforge";
+import {
+  persistInsforgeRefreshToken,
+  setInsforgeAccessToken,
+} from "@/lib/insforge-session";
 
 // Animated Placeholder Component
 function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: { examples: string[]; className?: string }) {
@@ -217,7 +215,7 @@ const calculatePasswordStrength = (password: string): { level: number; label: st
 
   let strength = 0;
   const checks = {
-    length: password.length >= 8,
+    length: password.length >= 6,
     lowercase: /[a-z]/.test(password),
     uppercase: /[A-Z]/.test(password),
     number: /\d/.test(password),
@@ -265,8 +263,12 @@ const registerSchema = z.object({
     (email) => ({ message: validateEmail(email).message })
   ),
   password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
+    .min(6, "Password must be at least 6 characters (Insforge minimum)")
+    .max(128)
+    .refine(
+      (pwd) => pwd.length < 8 || /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(pwd),
+      "For passwords of 8+ characters, include at least one uppercase letter, one lowercase letter, and one number.",
+    ),
   confirmPassword: z.string(),
   referralCode: z.string().optional(),
   role: z.enum(["user", "team", "founder", "admin"]).default("user")
@@ -381,40 +383,44 @@ export default function Auth() {
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || nameParts[0];
 
-      if (isInsforgeAuth) {
-        await apiRequest("POST", "/api/register", {
-          firstName,
-          lastName,
-          email: data.email,
-          password: data.password,
-          phone: data.phone || '',
-          identity: data.identity,
-          referralCode: data.referralCode || '',
-          role: data.role
-        });
-      } else {
-        if (!auth) {
-          throw new Error("Firebase auth is not configured (missing VITE_FIREBASE_* env).");
-        }
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          data.email,
-          data.password
-        );
-        const firebaseUser = userCredential.user;
-
-        await apiRequest("POST", "/api/register", {
-          id: firebaseUser.uid,
-          firstName,
-          lastName,
-          email: data.email,
-          password: "firebase_managed",
-          phone: data.phone || '',
-          identity: data.identity,
-          referralCode: data.referralCode || '',
-          role: data.role
-        });
+      if (!isInsforgeConfigured()) {
+        throw new Error("Insforge is not configured (set VITE_INSFORGE_URL and VITE_INSFORGE_ANON_KEY).");
       }
+
+      const redirectTo = `${window.location.origin}/auth`;
+      const { data: signUpData, error: signUpErr } = await insforge.auth.signUp({
+        email: data.email,
+        password: data.password,
+        name: data.name.trim(),
+        redirectTo,
+      });
+      if (signUpErr) {
+        throw new Error(signUpErr.message || "Insforge sign up failed");
+      }
+      if (signUpData?.requireEmailVerification && !signUpData.accessToken) {
+        toast({
+          title: "Check your email",
+          description:
+            "Insforge sent a verification link or code to your inbox. Complete verification there, then return here and use Sign in to finish THORX onboarding.",
+        });
+        setActiveTab("login");
+        setIsSubmitting(false);
+        return;
+      }
+      if (signUpData?.accessToken) {
+        setInsforgeAccessToken(signUpData.accessToken);
+        if (signUpData.refreshToken) persistInsforgeRefreshToken(signUpData.refreshToken);
+      }
+
+      await apiRequest("POST", "/api/register", {
+        firstName,
+        lastName,
+        email: data.email,
+        phone: data.phone || "",
+        identity: data.identity,
+        referralCode: data.referralCode || "",
+        role: data.role,
+      });
 
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
 
@@ -445,51 +451,26 @@ export default function Auth() {
 
     setIsSubmitting(true);
     try {
-      // Login strategy depends on selected auth provider.
-      let response: Response;
-      let providerUid: string | undefined;
-      if (isInsforgeAuth) {
-        response = await apiRequest("POST", "/api/login", {
-          email: data.email,
-          password: data.password
-        });
-      } else {
-        if (!auth) {
-          throw new Error("Firebase auth is not configured (missing VITE_FIREBASE_* env).");
-        }
-        const userCredential = await signInWithEmailAndPassword(
-          auth,
-          data.email,
-          data.password
-        );
-        const firebaseUser = userCredential.user;
-        providerUid = firebaseUser.uid;
-
-        response = await apiRequest("POST", "/api/login", {
-          email: data.email,
-          password: "firebase_managed",
-          firebaseUid: firebaseUser.uid
-        });
+      if (!isInsforgeConfigured()) {
+        throw new Error("Insforge is not configured (set VITE_INSFORGE_URL and VITE_INSFORGE_ANON_KEY).");
       }
+
+      const { data: signInData, error: signInErr } = await insforge.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+      if (signInErr || !signInData?.accessToken) {
+        throw new Error(signInErr?.message || "Insforge sign in failed");
+      }
+      setInsforgeAccessToken(signInData.accessToken);
+      if (signInData.refreshToken) persistInsforgeRefreshToken(signInData.refreshToken);
+
+      const response = await apiRequest("POST", "/api/login", {
+        email: data.email,
+        insforgeAccessToken: signInData.accessToken,
+      });
 
       const result = await response.json();
-
-      // Sync with Firestore only when Firebase auth provider is active.
-      if (result.user && !isInsforgeAuth) {
-        try {
-          await saveUserProfile(providerUid || result.user.id, {
-            firstName: result.user.firstName,
-            lastName: result.user.lastName,
-            email: result.user.email,
-            role: result.user.role,
-            availableBalance: result.user.availableBalance || "0.00",
-            totalEarnings: result.user.totalEarnings || "0.00",
-            rank: result.user.rank || "Useless"
-          });
-        } catch (fsSyncError) {
-          console.warn("Non-fatal: Firestore sync failed due to permissions or rules timeout.", fsSyncError);
-        }
-      }
 
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
 
@@ -785,21 +766,21 @@ export default function Auth() {
 
                                       {/* Requirements Checklist */}
                                       <div className="space-y-1 text-xs">
-                                        <div className={`flex items-center gap-1.5 ${/^.{8,}$/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                          <span className="text-sm">{/^.{8,}$/.test(field.value) ? '✓' : '○'}</span>
-                                          <span>At least 8 characters</span>
+                                        <div className={`flex items-center gap-1.5 ${/^.{6,}$/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                          <span className="text-sm">{/^.{6,}$/.test(field.value) ? '✓' : '○'}</span>
+                                          <span>At least 6 characters (Insforge)</span>
                                         </div>
-                                        <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                          <span className="text-sm">{/[A-Z]/.test(field.value) ? '✓' : '○'}</span>
-                                          <span>One uppercase letter</span>
+                                        <div className={`flex items-center gap-1.5 ${field.value.length < 8 || /[A-Z]/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                          <span className="text-sm">{field.value.length < 8 || /[A-Z]/.test(field.value) ? '✓' : '○'}</span>
+                                          <span>Uppercase (required if 8+ chars)</span>
                                         </div>
-                                        <div className={`flex items-center gap-1.5 ${/[a-z]/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                          <span className="text-sm">{/[a-z]/.test(field.value) ? '✓' : '○'}</span>
-                                          <span>One lowercase letter</span>
+                                        <div className={`flex items-center gap-1.5 ${field.value.length < 8 || /[a-z]/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                          <span className="text-sm">{field.value.length < 8 || /[a-z]/.test(field.value) ? '✓' : '○'}</span>
+                                          <span>Lowercase (required if 8+ chars)</span>
                                         </div>
-                                        <div className={`flex items-center gap-1.5 ${/\d/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                          <span className="text-sm">{/\d/.test(field.value) ? '✓' : '○'}</span>
-                                          <span>One number</span>
+                                        <div className={`flex items-center gap-1.5 ${field.value.length < 8 || /\d/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                          <span className="text-sm">{field.value.length < 8 || /\d/.test(field.value) ? '✓' : '○'}</span>
+                                          <span>Number (required if 8+ chars)</span>
                                         </div>
                                       </div>
                                     </div>

@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import TechnicalLabel from "@/components/ui/technical-label";
 
 import { apiRequest } from "@/lib/queryClient";
+import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { useToast } from "@/hooks/use-toast";
 import {
   Tooltip,
@@ -101,7 +102,7 @@ export function AuditLogViewer() {
     const idsParam = selectedIds.length > 0 ? `ids=${selectedIds.join(',')}` : '';
     const query = [searchParam, periodParam, idsParam].filter(Boolean).join('&');
     
-    window.location.href = `/api/admin/audit-logs/export${query ? `?${query}` : ''}`;
+    window.location.href = apiAbsolutePath(`/api/admin/audit-logs/export${query ? `?${query}` : ""}`);
     toast({ 
       title: "Export Initialized", 
       description: selectedIds.length > 0 ? `Selective ledger for ${selectedIds.length} items.` : "Chronological ledger generation queued." 

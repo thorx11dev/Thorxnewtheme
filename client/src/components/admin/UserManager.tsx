@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { apiRequest } from "@/lib/queryClient";
+import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -162,7 +163,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
     const searchParam = debouncedSearch ? `search=${encodeURIComponent(debouncedSearch)}` : '';
     const idsParam = selectedIds.length > 0 ? `ids=${selectedIds.join(',')}` : '';
     const query = [searchParam, idsParam].filter(Boolean).join('&');
-    window.location.href = `/api/admin/users/export${query ? `?${query}` : ''}`;
+    window.location.href = apiAbsolutePath(`/api/admin/users/export${query ? `?${query}` : ""}`);
     toast({ 
       title: selectedIds.length > 0 ? "Selective Data Export" : "Directory Export", 
       description: `Downloading ${selectedIds.length > 0 ? selectedIds.length : 'filtered'} user nodes.` 

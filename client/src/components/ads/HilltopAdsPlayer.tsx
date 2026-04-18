@@ -28,7 +28,7 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch("/api/config/AD_NETWORKS");
+        const res = await apiRequest("GET", "/api/config/AD_NETWORKS");
         const data = await res.json();
         const activeNetworks = (data.value || [])
           .filter((n: AdNetwork) => n.isActive)
@@ -53,9 +53,7 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
       console.log(`[Waterfall] Attempting to load ad from: ${network.name} (Zone: ${network.zoneId})`);
       
       // Generic anti-adblock fetcher
-      const response = await fetch(`/api/hilltopads/anti-adblock/${network.zoneId}`);
-      if (!response.ok) throw new Error("Network response error");
-      
+      const response = await apiRequest("GET", `/api/hilltopads/anti-adblock/${network.zoneId}`);
       const data = await response.json();
       setAdCode(data.code);
       setIsLoading(false);

@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { apiRequest } from "@/lib/queryClient";
+import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -175,7 +176,7 @@ export function PayoutControl() {
     const searchParam = debouncedSearch ? `search=${encodeURIComponent(debouncedSearch)}` : '';
     const idsParam = selectedIds.length > 0 ? `ids=${selectedIds.join(',')}` : '';
     const query = [statusParam, searchParam, idsParam].filter(Boolean).join('&');
-    window.location.href = `/api/admin/withdrawals/export${query ? `?${query}` : ''}`;
+    window.location.href = apiAbsolutePath(`/api/admin/withdrawals/export${query ? `?${query}` : ""}`);
     toast({ 
       title: selectedIds.length > 0 ? "Selective Ledger Export" : "Full Ledger Export", 
       description: `Downloading ${selectedIds.length > 0 ? selectedIds.length : 'filtered'} payout nodes.` 

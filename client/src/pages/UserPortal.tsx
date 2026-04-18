@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, type User as AuthUser } from "@/hooks/useAuth";
+import { getInsforgeAccessToken } from "@/lib/insforge-session";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -24,6 +25,7 @@ import { WaterfallAdPlayer } from "@/components/ads/HilltopAdsPlayer";
 import { NotificationModal } from "@/components/ui/notification-modal";
 import { CommissionCalculator } from "@/components/ui/commission-calculator";
 import { cn } from "@/lib/utils";
+import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
 import { useLocation } from "wouter";
 import {
@@ -114,6 +116,24 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { SiWhatsapp, SiTelegram, SiMessenger, SiInstagram, SiTiktok, SiFacebook, SiGmail } from 'react-icons/si';
+
+
+const GUEST_USER: AuthUser = {
+  id: "guest",
+  firstName: "Guest",
+  lastName: "User",
+  name: "Guest User",
+  avatar: "default",
+  email: "guest@thorx.com",
+  identity: "GUEST_USER",
+  phone: "+92 300 0000000",
+  referralCode: "GUEST-CODE",
+  totalEarnings: "0.00",
+  availableBalance: "0.00",
+  isActive: true,
+  createdAt: "1970-01-01T00:00:00.000Z",
+  rank: "USELESS",
+};
 
 // Interactive Divider Component
 const InteractiveDivider = ({ orientation = "horizontal", className = "" }: { orientation?: "horizontal" | "vertical", className?: string }) => {
@@ -903,14 +923,15 @@ export default function UserPortal() {
         'Content-Type': 'application/json'
       };
 
-      // Add auth token if available
-      if (user?.access_token) {
-        headers['Authorization'] = `Bearer ${user.access_token}`;
+      const token = getInsforgeAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch("/api/chat", {
+      const response = await fetch(apiAbsolutePath("/api/chat"), {
         method: "POST",
         headers,
+        credentials: "include",
         body: JSON.stringify({ message: message.trim() }),
       });
 
@@ -948,13 +969,14 @@ export default function UserPortal() {
     queryFn: async () => {
       const headers: Record<string, string> = {};
 
-      // Add auth token if available
-      if (user?.access_token) {
-        headers['Authorization'] = `Bearer ${user.access_token}`;
+      const token = getInsforgeAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`/api/chat/history?limit=50`, {
-        headers
+      const response = await fetch(apiAbsolutePath("/api/chat/history?limit=50"), {
+        headers,
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -1107,21 +1129,7 @@ export default function UserPortal() {
     };
   }, [isWatching, selectedAd, watchProgress, recordAdViewMutation, toast]);
 
-  // If no user data and not loading, show default guest user
-  const displayUser = user || {
-    id: "guest",
-    firstName: "Guest",
-    lastName: "User",
-    email: "guest@thorx.com",
-    identity: "GUEST_USER",
-    phone: "+92 300 0000000",
-    referralCode: "GUEST-CODE",
-    totalEarnings: "0.00",
-    availableBalance: "0.00",
-    profilePicture: null,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  };
+  const displayUser: AuthUser = user ?? GUEST_USER;
 
   // Utility functions
   const formatDate = (dateString: string) => {
@@ -2428,7 +2436,7 @@ export default function UserPortal() {
                         name: displayUser.name,
                         rank: displayUser.rank,
                         avatar: displayUser.avatar,
-                        profilePicture: (displayUser as any).profilePicture
+                        profilePicture: displayUser.profilePicture
                       }}
                       referrals={referralLeaderboard || []}
                     />
