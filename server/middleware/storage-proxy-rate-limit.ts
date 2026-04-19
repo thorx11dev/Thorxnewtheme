@@ -12,7 +12,8 @@ export const storageProxyRateLimiter = rateLimit({
   message: { message: "Too many image requests. Try again shortly." },
   keyGenerator: (req) => {
     const forwardedFor = req.headers['x-forwarded-for'];
-    const ip = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : req.ip;
-    return ip || 'unknown-ip';
+    const clientIp = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : (req as any)['ip'];
+    return clientIp || 'unknown-ip';
   },
+  validate: false,
 });
