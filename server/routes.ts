@@ -2153,7 +2153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register new user
   app.post("/api/register", authRateLimiter, async (req, res) => {
     try {
-      const { id, firstName, lastName, email, password, phone, identity, referralCode, role } = req.body;
+      const { id, firstName, lastName, email, password, phone, identity, referralCode, role, deviceFingerprint } = req.body;
       debugLog(`[POST /api/register] Attempt for ${email}. Role: ${role}. ID: ${id}`);
 
       if (!firstName || !lastName || !email || !identity) {
@@ -2194,6 +2194,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Device fingerprint abuse check (max 2 accounts per device, team/founder/admin exempt)
+      if (deviceFingerprint && typeof deviceFingerprint === "string" && !['team', 'founder', 'admin'].includes(role || 'user')) {
+        const existingCount = await storage.getAccountCountByFingerprint(deviceFingerprint);
+        if (existingCount >= 2) {
+          return res.status(429).json({
+            message: "Maximum number of accounts reached for this device. Contact support if you believe this is an error.",
+            error: "DEVICE_LIMIT_EXCEEDED"
+          });
+        }
+      }
+
       // Resolve referral code
       let referredBy = undefined;
       if (referralCode) {
@@ -2219,6 +2230,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referredBy: referredBy
       });
       debugLog(`[POST /api/register] Local user created successfully: ${newUser.id}`);
+
+      // Store device fingerprint if provided
+      if (deviceFingerprint && typeof deviceFingerprint === "string") {
+        try {
+          await storage.createDeviceFingerprint({
+            userId: newUser.id,
+            fingerprintHash: deviceFingerprint,
+            userAgent: req.headers["user-agent"] || null,
+            ipAddress: req.ip || null,
+          });
+        } catch (fpErr) {
+          console.error("Device fingerprint storage failed (non-blocking):", fpErr);
+        }
+      }
+
+      // Mark email as verified (user just completed OTP via Insforge)
+      await storage.markUserEmailVerified(newUser.id);
 
       // Set session data
       req.session.userId = newUser.id;
@@ -2261,39 +2289,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Password Recovery Endpoints
+  // Password Recovery — DEPRECATED (auth is Insforge-managed)
+  // These endpoints are kept for backward compat but return guidance to use Insforge SDK
   const forgotPasswordSchema = z.object({
     email: z.string().email("Invalid email address")
   });
 
   app.post("/api/forgot-password", authRateLimiter, async (req, res) => {
-    try {
-      const { email } = forgotPasswordSchema.parse(req.body);
-
-      const token = await storage.generatePasswordResetToken(email);
-
-      if (token) {
-        // In a real app, send this via email. For now, we log it.
-        debugLog(`[PASSWORD RESET] Token for ${email}: ${token}`);
-
-        // Return success even if user not found to prevent email enumeration
-        res.json({
-          success: true,
-          message: "If an account exists with that email, a password reset link has been sent."
-        });
-      } else {
-        res.json({
-          success: true,
-          message: "If an account exists with that email, a password reset link has been sent."
-        });
-      }
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid email", errors: error.errors });
-      }
-      console.error("Forgot password error:", error);
-      res.status(500).json({ message: "Failed to process request" });
-    }
+    // Insforge handles password reset via sendResetPasswordEmail() SDK method.
+    // This endpoint is kept alive to prevent frontend 404s during migration.
+    res.json({
+      success: true,
+      message: "If an account exists with that email, a password reset code has been sent.",
+      method: "insforge_sdk"
+    });
   });
 
   const resetPasswordSchema = z.object({
@@ -2302,29 +2311,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/reset-password", async (req, res) => {
+    // Password reset is handled entirely by the Insforge SDK on the frontend.
+    res.status(410).json({
+      message: "This endpoint is deprecated. Password reset is handled by the Insforge auth provider.",
+      error: "DEPRECATED"
+    });
+  });
+
+  // Mark user email as verified (called after frontend completes Insforge OTP)
+  app.post("/api/auth/mark-verified", async (req, res) => {
     try {
-      const { token, password } = resetPasswordSchema.parse(req.body);
-
-      const success = await storage.resetPasswordWithToken(token, password);
-
-      if (success) {
-        res.json({ success: true, message: "Password has been successfully reset. Please log in." });
-      } else {
-        res.status(400).json({ message: "Invalid or expired reset token." });
+      const authz = req.headers.authorization;
+      let bearer: string | undefined;
+      if (authz?.startsWith("Bearer ")) {
+        bearer = authz.slice(7).trim();
       }
+      if (!bearer) {
+        return res.status(401).json({ message: "Bearer token required", error: "UNAUTHORIZED" });
+      }
+
+      // Validate with Insforge that this token belongs to a real, verified user
+      const insforgeUser = await fetchInsforgeSessionUser(bearer);
+      if (!insforgeUser?.id) {
+        return res.status(401).json({ message: "Invalid or expired token", error: "UNAUTHORIZED" });
+      }
+
+      // Find the THORX user
+      const user = await storage.getUserById(insforgeUser.id);
+      if (!user) {
+        // User doesn't exist in THORX yet — this is OK, registration will handle it
+        return res.json({ success: true, message: "User not yet registered in THORX" });
+      }
+
+      // Mark as verified
+      await storage.markUserEmailVerified(user.id);
+      debugLog(`[POST /api/auth/mark-verified] Marked ${user.email} as verified`);
+
+      res.json({ success: true, message: "Email verification confirmed" });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data", errors: error.errors });
-      }
-      console.error("Reset password error:", error);
-      res.status(500).json({ message: "Failed to reset password" });
+      console.error("Mark verified error:", error);
+      res.status(500).json({ message: "Failed to mark verification", error: "INTERNAL_ERROR" });
     }
   });
 
   // Login endpoint
   app.post("/api/login", authRateLimiter, async (req, res) => {
     try {
-      const { email, password, insforgeAccessToken } = req.body;
+      const { email, password, insforgeAccessToken, deviceFingerprint } = req.body;
       debugLog(`[POST /api/login] Attempt for ${email ?? "(no email)"}`);
 
       let user;
@@ -2365,8 +2398,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Step 5: Email verification gate — only for regular users
+      // Team, founder, and admin roles are exempt from OTP verification
+      const isPrivilegedRole = ['team', 'admin', 'founder'].includes(user.role || '');
+      if (!isPrivilegedRole && !user.emailVerifiedAt && !user.isVerified) {
+        return res.status(403).json({
+          message: "Email verification required. Please verify your email to continue.",
+          error: "EMAIL_NOT_VERIFIED",
+          requireVerification: true,
+          email: user.email,
+        });
+      }
+
       // Hard Lockout Check on Login: Prevent team members with suspended keys from logging in
-      if (['team', 'admin', 'founder'].includes(user.role || '')) {
+      if (isPrivilegedRole) {
         const teamKeys = await storage.getTeamKeysByUser(user.id);
         if (teamKeys && teamKeys.length > 0) {
           if (!teamKeys[0].isActive && user.role !== 'founder') {
@@ -2375,6 +2420,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               error: "UNAUTHORIZED"
             });
           }
+        }
+      }
+
+      // Store device fingerprint on login
+      if (deviceFingerprint && typeof deviceFingerprint === "string") {
+        try {
+          await storage.createDeviceFingerprint({
+            userId: user.id,
+            fingerprintHash: deviceFingerprint,
+            userAgent: req.headers["user-agent"] || null,
+            ipAddress: req.ip || null,
+          });
+        } catch (fpErr) {
+          console.error("Login fingerprint storage failed (non-blocking):", fpErr);
         }
       }
 

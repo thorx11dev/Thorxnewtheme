@@ -10,5 +10,9 @@ export const storageProxyRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many image requests. Try again shortly." },
-  validate: { trustProxy: false, xForwardedForHeader: false },
+  keyGenerator: (req) => {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const ip = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : req.ip;
+    return ip || 'unknown-ip';
+  },
 });

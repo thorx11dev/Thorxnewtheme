@@ -46,6 +46,7 @@ export const users = pgTable("users", {
   rank: text("rank").default("Useless"),
   profilePicture: text("profile_picture"),
   permissions: jsonb("permissions").default('[]'),
+  emailVerifiedAt: timestamp("email_verified_at"),
 }, (table) => [
   index("users_email_idx").on(table.email),
   index("users_referral_code_idx").on(table.referralCode),
@@ -78,6 +79,29 @@ export const teamInvitations = pgTable("team_invitations", {
 
 export const insertTeamInvitationSchema = createInsertSchema(teamInvitations);
 export type TeamInvitation = typeof teamInvitations.$inferSelect;
+
+// Device fingerprints table for multi-account abuse prevention
+export const deviceFingerprints = pgTable("device_fingerprints", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fingerprintHash: text("fingerprint_hash").notNull(),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+}, (table) => [
+  index("idx_device_fp_hash").on(table.fingerprintHash),
+  index("idx_device_fp_user").on(table.userId),
+  sql`CONSTRAINT uq_device_fp_user_hash UNIQUE (user_id, fingerprint_hash)`,
+]);
+
+export const insertDeviceFingerprintSchema = createInsertSchema(deviceFingerprints).omit({
+  id: true,
+  createdAt: true,
+  lastSeenAt: true,
+});
+export type InsertDeviceFingerprint = z.infer<typeof insertDeviceFingerprintSchema>;
+export type DeviceFingerprint = typeof deviceFingerprints.$inferSelect;
 export type InsertTeamInvitation = z.infer<typeof insertTeamInvitationSchema>;
 
 // Global system configuration table
@@ -447,12 +471,20 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   teamKeys: many(teamKeys),
   userCredentials: many(userCredentials),
   chatMessages: many(chatMessages),
+  deviceFingerprints: many(deviceFingerprints),
   referrer: one(users, {
     fields: [users.referredBy],
     references: [users.id],
   }),
   commissionsReceived: many(commissionLogs, { relationName: "beneficiary" }),
   commissionsGenerated: many(commissionLogs, { relationName: "sourceUser" }),
+}));
+
+export const deviceFingerprintsRelations = relations(deviceFingerprints, ({ one }) => ({
+  user: one(users, {
+    fields: [deviceFingerprints.userId],
+    references: [users.id],
+  }),
 }));
 
 export const earningsRelations = relations(earnings, ({ one }) => ({

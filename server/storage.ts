@@ -67,6 +67,9 @@ import {
   leaderboardCache,
   type LeaderboardCache,
   type InsertLeaderboardCache,
+  deviceFingerprints,
+  type DeviceFingerprint,
+  type InsertDeviceFingerprint,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, inArray, ilike, gte, lte } from "drizzle-orm";
@@ -267,6 +270,12 @@ export interface IStorage {
   // Notifications
   createNotification(notification: InsertNotification): Promise<Notification>;
   getUserNotifications(userId: string): Promise<Notification[]>;
+
+  // Device Fingerprinting & Email Verification
+  createDeviceFingerprint(data: InsertDeviceFingerprint): Promise<DeviceFingerprint>;
+  getAccountCountByFingerprint(fingerprintHash: string): Promise<number>;
+  updateDeviceFingerprintLastSeen(userId: string, fingerprintHash: string): Promise<void>;
+  markUserEmailVerified(userId: string): Promise<void>;
 }
 
 const RANKS = [
@@ -853,6 +862,7 @@ export class DatabaseStorage implements IStorage {
         totalWithdrawn: users.totalWithdrawn,
         isActive: users.isActive,
         isVerified: users.isVerified,
+        emailVerifiedAt: users.emailVerifiedAt,
         verificationToken: users.verificationToken,
         verificationTokenExpiresAt: users.verificationTokenExpiresAt,
         loginStreak: users.loginStreak,
@@ -938,6 +948,7 @@ export class DatabaseStorage implements IStorage {
           totalWithdrawn: users.totalWithdrawn,
           isActive: users.isActive,
           isVerified: users.isVerified,
+          emailVerifiedAt: users.emailVerifiedAt,
           verificationToken: users.verificationToken,
           verificationTokenExpiresAt: users.verificationTokenExpiresAt,
           loginStreak: users.loginStreak,
@@ -2499,6 +2510,47 @@ export class DatabaseStorage implements IStorage {
     const suffix = Math.random().toString(36).substring(2, 8).toUpperCase();
     return `${prefix}-${suffix}`;
   }
+
+  // ── Device Fingerprinting & Email Verification ──
+
+  async createDeviceFingerprint(data: InsertDeviceFingerprint): Promise<DeviceFingerprint> {
+    const [fp] = await db
+      .insert(deviceFingerprints)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [deviceFingerprints.userId, deviceFingerprints.fingerprintHash],
+        set: { lastSeenAt: new Date(), userAgent: data.userAgent, ipAddress: data.ipAddress },
+      })
+      .returning();
+    return fp;
+  }
+
+  async getAccountCountByFingerprint(fingerprintHash: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${deviceFingerprints.userId})` })
+      .from(deviceFingerprints)
+      .where(eq(deviceFingerprints.fingerprintHash, fingerprintHash));
+    return Number(result[0]?.count ?? 0);
+  }
+
+  async updateDeviceFingerprintLastSeen(userId: string, fingerprintHash: string): Promise<void> {
+    await db
+      .update(deviceFingerprints)
+      .set({ lastSeenAt: new Date() })
+      .where(
+        and(
+          eq(deviceFingerprints.userId, userId),
+          eq(deviceFingerprints.fingerprintHash, fingerprintHash)
+        )
+      );
+  }
+
+  async markUserEmailVerified(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ isVerified: true, emailVerifiedAt: new Date() })
+      .where(eq(users.id, userId));
+  }
 }
 
 export class MemStorage {
@@ -2634,6 +2686,12 @@ export class MemStorage {
   async getInternalNotes(targetType: string, targetId: string): Promise<Array<InternalNote & { admin: { firstName: string, lastName: string } }>> { throw new Error("Not implemented in MemStorage"); }
   async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string): Promise<User> { throw new Error("Not implemented in MemStorage"); }
   async deleteUser(userId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+
+  // Device Fingerprinting & Email Verification stubs
+  async createDeviceFingerprint(data: InsertDeviceFingerprint): Promise<DeviceFingerprint> { throw new Error("Not implemented in MemStorage"); }
+  async getAccountCountByFingerprint(fingerprintHash: string): Promise<number> { throw new Error("Not implemented in MemStorage"); }
+  async updateDeviceFingerprintLastSeen(userId: string, fingerprintHash: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+  async markUserEmailVerified(userId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
 
   private generateReferralCode(): string {
     const prefix = "THORX";

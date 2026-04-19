@@ -13,5 +13,10 @@ export const authRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many authentication attempts. Try again in 15 minutes.", error: "RATE_LIMITED" },
-  validate: { trustProxy: false, xForwardedForHeader: false },
+  keyGenerator: (req) => {
+    // Robust IP detection that won't crash behind proxies
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const ip = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : req.ip;
+    return ip || 'unknown-ip';
+  },
 });

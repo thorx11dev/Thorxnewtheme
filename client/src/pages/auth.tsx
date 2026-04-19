@@ -21,6 +21,7 @@ import {
   persistInsforgeRefreshToken,
   setInsforgeAccessToken,
 } from "@/lib/insforge-session";
+import { getDeviceFingerprint } from "@/lib/fingerprint";
 
 // Animated Placeholder Component
 function AnimatedPlaceholder({ examples, className = "text-muted-foreground" }: { examples: string[]; className?: string }) {
@@ -288,9 +289,13 @@ const loginSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 type LoginForm = z.infer<typeof loginSchema>;
 
+// Auth view state machine
+type AuthView = 'register' | 'login' | 'verify-otp' | 'forgot-password';
+
 export default function Auth() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("register");
+  const [authView, setAuthView] = useState<AuthView>('register');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [generatedIdentity, setGeneratedIdentity] = useState<string>('');
@@ -298,15 +303,174 @@ export default function Auth() {
   const [phoneValidation, setPhoneValidation] = useState<{ valid: boolean; message: string }>({ valid: true, message: "" });
   const [passwordStrength, setPasswordStrength] = useState<{ level: number; label: string; color: string }>({ level: 0, label: '', color: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // OTP Verification state
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpSource, setOtpSource] = useState<'register' | 'login' | 'reset'>('register');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [pendingRegData, setPendingRegData] = useState<any>(null);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Forgot Password state
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStep, setForgotStep] = useState<1 | 2 | 3>(1);
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [newPasswordStrength, setNewPasswordStrength] = useState<{ level: number; label: string; color: string }>({ level: 0, label: '', color: '' });
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const firstInputRef = useRef<HTMLInputElement>(null);
 
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
   const handleAnimationComplete = () => {
-    // Small delay to ensure browser focus is ready
     setTimeout(() => {
       firstInputRef.current?.focus();
     }, 100);
+  };
+
+  // ── OTP Handlers ──
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const next = [...otpDigits];
+    next[index] = value.slice(-1);
+    setOtpDigits(next);
+    if (value && index < 5) otpInputRefs.current[index + 1]?.focus();
+    // Auto-submit when all 6 filled
+    if (next.every(d => d !== '') && next.join('').length === 6) {
+      handleOtpSubmit(next.join(''));
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpSubmit = async (code: string) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      if (otpSource === 'reset') {
+        // Password reset OTP flow
+        const { data, error } = await insforge.auth.exchangeResetPasswordToken({ email: otpEmail, code });
+        if (error || !data?.token) throw new Error(error?.message || 'Invalid reset code');
+        setResetToken(data.token);
+        setForgotStep(3);
+        setOtpDigits(['', '', '', '', '', '']);
+        setAuthView('forgot-password');
+      } else {
+        // Email verification OTP
+        const { data, error } = await insforge.auth.verifyEmail({ email: otpEmail, otp: code });
+        if (error || !data?.accessToken) throw new Error(error?.message || 'Invalid verification code');
+
+        setInsforgeAccessToken(data.accessToken);
+        if ((data as any).refreshToken) persistInsforgeRefreshToken((data as any).refreshToken);
+
+        // Mark verified on backend
+        try {
+          await apiRequest("POST", "/api/auth/mark-verified", {});
+        } catch { /* non-blocking */ }
+
+        if (otpSource === 'register' && pendingRegData) {
+          // Complete registration
+          const fingerprint = await getDeviceFingerprint();
+          await apiRequest("POST", "/api/register", { ...pendingRegData, deviceFingerprint: fingerprint });
+          await queryClient.invalidateQueries({ queryKey: ["auth"] });
+          toast({ title: "Registration Successful!", description: `Welcome to THORX!` });
+          setLocation(pendingRegData.role === 'user' ? "/user-portal" : "/team-portal");
+        } else {
+          // Login after verification
+          const fingerprint = await getDeviceFingerprint();
+          const resp = await apiRequest("POST", "/api/login", {
+            email: otpEmail,
+            insforgeAccessToken: data.accessToken,
+            deviceFingerprint: fingerprint,
+          });
+          const result = await resp.json();
+          await queryClient.invalidateQueries({ queryKey: ["auth"] });
+          toast({ title: "Login Successful!", description: "Welcome back!" });
+          setLocation(result.user?.role === 'team' || result.user?.role === 'founder' || result.user?.role === 'admin' ? "/team-portal" : "/user-portal");
+        }
+      }
+    } catch (error: any) {
+      toast({ title: "Verification Failed", description: error.message || "Invalid code. Please try again.", variant: "destructive" });
+      setOtpDigits(['', '', '', '', '', '']);
+      otpInputRefs.current[0]?.focus();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    try {
+      if (otpSource === 'reset') {
+        await insforge.auth.sendResetPasswordEmail({ email: otpEmail });
+      } else {
+        await insforge.auth.resendVerificationEmail({ email: otpEmail });
+      }
+      setResendCooldown(60);
+      toast({ title: "Code Sent!", description: "A new code has been sent to your email." });
+    } catch (error: any) {
+      toast({ title: "Failed to resend", description: error.message || "Please try again.", variant: "destructive" });
+    }
+  };
+
+  // ── Forgot Password Handlers ──
+
+  const handleForgotSubmitEmail = async () => {
+    if (isSubmitting || !forgotEmail) return;
+    setIsSubmitting(true);
+    try {
+      await insforge.auth.sendResetPasswordEmail({ email: forgotEmail });
+      setOtpEmail(forgotEmail);
+      setOtpSource('reset');
+      setOtpDigits(['', '', '', '', '', '']);
+      setResendCooldown(60);
+      setForgotStep(2);
+      setAuthView('verify-otp');
+      toast({ title: "Code Sent!", description: "Check your email for the 6-digit reset code." });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to send reset email.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (isSubmitting) return;
+    if (newPassword.length < 6) {
+      toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" }); return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" }); return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { error } = await insforge.auth.resetPassword({ newPassword, otp: resetToken });
+      if (error) throw new Error(error.message || 'Reset failed');
+      toast({ title: "Password Reset!", description: "Your password has been changed. Please sign in." });
+      setAuthView('login');
+      setActiveTab('login');
+      setForgotStep(1);
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (error: any) {
+      toast({ title: "Reset Failed", description: error.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Identity generation function
@@ -378,7 +542,6 @@ export default function Auth() {
 
     setIsSubmitting(true);
     try {
-      // Register with selected auth provider and establish backend profile/session.
       const nameParts = data.name.trim().split(' ');
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || nameParts[0];
@@ -388,6 +551,8 @@ export default function Auth() {
       }
 
       const redirectTo = `${window.location.origin}/auth`;
+      const fingerprint = await getDeviceFingerprint();
+      
       const { data: signUpData, error: signUpErr } = await insforge.auth.signUp({
         email: data.email,
         password: data.password,
@@ -397,16 +562,29 @@ export default function Auth() {
       if (signUpErr) {
         throw new Error(signUpErr.message || "Insforge sign up failed");
       }
+
+      // OTP required — save pending reg data and switch to OTP view
       if (signUpData?.requireEmailVerification && !signUpData.accessToken) {
-        toast({
-          title: "Check your email",
-          description:
-            "Insforge sent a verification link or code to your inbox. Complete verification there, then return here and use Sign in to finish THORX onboarding.",
+        setPendingRegData({
+          firstName,
+          lastName,
+          email: data.email,
+          phone: data.phone || "",
+          identity: data.identity,
+          referralCode: data.referralCode || "",
+          role: data.role,
+          deviceFingerprint: fingerprint,
         });
-        setActiveTab("login");
+        setOtpEmail(data.email);
+        setOtpSource('register');
+        setOtpDigits(['', '', '', '', '', '']);
+        setResendCooldown(60);
+        setAuthView('verify-otp');
         setIsSubmitting(false);
         return;
       }
+
+      // No verification needed — complete registration directly
       if (signUpData?.accessToken) {
         setInsforgeAccessToken(signUpData.accessToken);
         if (signUpData.refreshToken) persistInsforgeRefreshToken(signUpData.refreshToken);
@@ -420,27 +598,15 @@ export default function Auth() {
         identity: data.identity,
         referralCode: data.referralCode || "",
         role: data.role,
+        deviceFingerprint: fingerprint,
       });
 
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
-
-      toast({
-        title: "Registration Successful!",
-        description: `Welcome to THORX, ${firstName}!`,
-      });
-
-      if (data.role === 'team' || data.role === 'founder' || data.role === 'admin') {
-        setLocation("/team-portal");
-      } else {
-        setLocation("/user-portal");
-      }
+      toast({ title: "Registration Successful!", description: `Welcome to THORX, ${firstName}!` });
+      setLocation(data.role === 'team' || data.role === 'founder' || data.role === 'admin' ? "/team-portal" : "/user-portal");
     } catch (error: any) {
       console.error("Registration error:", error);
-      toast({
-        title: "Registration Failed",
-        description: error.message || "Failed to create account. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Registration Failed", description: error.message || "Failed to create account.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -452,45 +618,73 @@ export default function Auth() {
     setIsSubmitting(true);
     try {
       if (!isInsforgeConfigured()) {
-        throw new Error("Insforge is not configured (set VITE_INSFORGE_URL and VITE_INSFORGE_ANON_KEY).");
+        throw new Error("Insforge is not configured.");
       }
 
       const { data: signInData, error: signInErr } = await insforge.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
+
       if (signInErr || !signInData?.accessToken) {
-        throw new Error(signInErr?.message || "Insforge sign in failed");
+        // Fallback: Check if this is a legacy user in the local database
+        try {
+          const fingerprint = await getDeviceFingerprint();
+          const fallbackResp = await apiRequest("POST", "/api/login", {
+            email: data.email,
+            password: data.password,
+            deviceFingerprint: fingerprint,
+          });
+          // If it didn't throw a 401, they are a legacy user
+          toast({
+            title: "Security Update Required",
+            description: "Please re-register your account with the same email to migrate to our new secure authentication system.",
+            variant: "destructive",
+            duration: 8000,
+          });
+          setActiveTab("register");
+          setIsSubmitting(false);
+          return;
+        } catch (fallbackError) {
+          throw new Error("Invalid email or password");
+        }
       }
+
       setInsforgeAccessToken(signInData.accessToken);
       if (signInData.refreshToken) persistInsforgeRefreshToken(signInData.refreshToken);
+
+      const fingerprint = await getDeviceFingerprint();
 
       const response = await apiRequest("POST", "/api/login", {
         email: data.email,
         insforgeAccessToken: signInData.accessToken,
+        deviceFingerprint: fingerprint,
       });
 
       const result = await response.json();
 
-      await queryClient.invalidateQueries({ queryKey: ["auth"] });
-
-      toast({
-        title: "Login Successful!",
-        description: `Welcome back!`,
-      });
-
-      if (result.user?.role === 'team' || result.user?.role === 'founder' || result.user?.role === 'admin') {
-        setLocation("/team-portal");
-      } else {
-        setLocation("/user-portal");
+      // Handle email verification gate
+      if (result.requireVerification || result.error === 'EMAIL_NOT_VERIFIED') {
+        setOtpEmail(result.email || data.email);
+        setOtpSource('login');
+        setOtpDigits(['', '', '', '', '', '']);
+        // Send a new verification OTP
+        try {
+          await insforge.auth.resendVerificationEmail({ email: result.email || data.email });
+          setResendCooldown(60);
+        } catch { /* non-blocking */ }
+        setAuthView('verify-otp');
+        toast({ title: "Verification Required", description: "Please enter the 6-digit code sent to your email." });
+        setIsSubmitting(false);
+        return;
       }
+
+      await queryClient.invalidateQueries({ queryKey: ["auth"] });
+      toast({ title: "Login Successful!", description: `Welcome back!` });
+      setLocation(result.user?.role === 'team' || result.user?.role === 'founder' || result.user?.role === 'admin' ? "/team-portal" : "/user-portal");
     } catch (error: any) {
       console.error("Login error:", error);
-      toast({
-        title: "Login Failed",
-        description: error.message || "Invalid email or password",
-        variant: "destructive"
-      });
+      toast({ title: "Login Failed", description: error.message || "Invalid email or password", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -570,7 +764,181 @@ export default function Auth() {
             }}
           >
             <div className="split-card bg-white border-3 border-black p-3 md:p-6 lg:p-10 overflow-visible w-full">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+
+              {/* OTP Verification View */}
+              {authView === 'verify-otp' && (
+                <div className="max-w-[480px] mx-auto w-full space-y-6 md:space-y-8">
+                  <div className="text-center space-y-3">
+                    <div className="w-16 h-16 mx-auto bg-black rounded-none flex items-center justify-center border-2 border-black">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8L12 2 3 8v8l9 6 9-6z"/><path d="m3 8 9 6 9-6"/><path d="M12 2v12"/></svg>
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-black tracking-tight">VERIFY EMAIL</h2>
+                    <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                      We sent a 6-digit code to <span className="font-bold text-black">{otpEmail}</span>. Enter it below.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-center gap-2 md:gap-3">
+                    {otpDigits.map((digit, i) => (
+                      <input
+                        key={i}
+                        ref={(el) => { otpInputRefs.current[i] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(i, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                          if (pasted.length === 6) {
+                            const digits = pasted.split('');
+                            setOtpDigits(digits);
+                            handleOtpSubmit(pasted);
+                          }
+                        }}
+                        className="w-11 h-14 md:w-14 md:h-16 text-center text-2xl md:text-3xl font-black border-2 border-black focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-[#F5F5F3]"
+                        data-testid={`otp-input-${i}`}
+                        autoFocus={i === 0}
+                      />
+                    ))}
+                  </div>
+
+                  {isSubmitting && (
+                    <div className="flex justify-center">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="w-4 h-4 border-2 border-black border-t-transparent animate-spin" />
+                        <span className="font-bold tracking-wider">VERIFYING...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-center space-y-4">
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={resendCooldown > 0}
+                      className="text-sm font-bold text-primary hover:text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      data-testid="button-resend-otp"
+                    >
+                      {resendCooldown > 0 ? `RESEND IN ${resendCooldown}s` : 'RESEND CODE'}
+                    </button>
+
+                    <div className="pt-4 border-t border-black/10">
+                      <button
+                        type="button"
+                        onClick={() => { setAuthView(otpSource === 'reset' ? 'forgot-password' : activeTab as AuthView); setOtpDigits(['', '', '', '', '', '']); }}
+                        className="text-sm font-bold text-muted-foreground hover:text-black transition-colors"
+                        data-testid="button-back-from-otp"
+                      >
+                        ← BACK
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground/60 max-w-xs mx-auto">
+                      Check your spam folder if you don't see the email. Code expires in 5 minutes.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Forgot Password View */}
+              {authView === 'forgot-password' && (
+                <div className="max-w-[480px] mx-auto w-full space-y-6 md:space-y-8">
+                  <div className="text-center space-y-3">
+                    <div className="w-16 h-16 mx-auto bg-black rounded-none flex items-center justify-center border-2 border-black">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-black tracking-tight">
+                      {forgotStep === 1 ? 'RESET PASSWORD' : forgotStep === 3 ? 'NEW PASSWORD' : 'RESET PASSWORD'}
+                    </h2>
+                    <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                      {forgotStep === 1 && 'Enter your email address to receive a reset code.'}
+                      {forgotStep === 3 && 'Choose a strong new password for your account.'}
+                    </p>
+                  </div>
+
+                  {/* Step 1: Email input */}
+                  {forgotStep === 1 && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black tracking-[0.2em] text-black/50 uppercase">Email Address</label>
+                        <input
+                          type="email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          className="w-full border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 outline-none focus:border-primary transition-colors"
+                          placeholder="your@email.com"
+                          data-testid="input-forgot-email"
+                          autoFocus
+                        />
+                      </div>
+                      <Button
+                        onClick={handleForgotSubmitEmail}
+                        disabled={isSubmitting || !forgotEmail}
+                        className="w-full bg-black text-white text-lg font-black py-4 md:py-5 hover:bg-primary transition-colors border-2 border-black disabled:opacity-50"
+                        data-testid="button-send-reset-code"
+                      >
+                        {isSubmitting ? 'SENDING...' : 'SEND RESET CODE'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Step 3: New password */}
+                  {forgotStep === 3 && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black tracking-[0.2em] text-black/50 uppercase">New Password</label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 outline-none focus:border-primary transition-colors"
+                          placeholder="Enter new password"
+                          data-testid="input-new-password"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black tracking-[0.2em] text-black/50 uppercase">Confirm Password</label>
+                        <input
+                          type="password"
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="w-full border-2 border-black text-base md:text-lg py-3 md:py-4 px-4 outline-none focus:border-primary transition-colors"
+                          placeholder="Confirm new password"
+                          data-testid="input-confirm-new-password"
+                        />
+                      </div>
+                      <Button
+                        onClick={handleResetPassword}
+                        disabled={isSubmitting || !newPassword || !confirmNewPassword}
+                        className="w-full bg-primary text-white text-lg font-black py-4 md:py-5 hover:bg-black transition-colors border-2 border-black disabled:opacity-50"
+                        data-testid="button-reset-password"
+                      >
+                        {isSubmitting ? 'RESETTING...' : 'SET NEW PASSWORD'}
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="text-center pt-4 border-t border-black/10">
+                    <button
+                      type="button"
+                      onClick={() => { setAuthView('login'); setActiveTab('login'); setForgotStep(1); }}
+                      className="text-sm font-bold text-muted-foreground hover:text-black transition-colors"
+                      data-testid="button-back-to-login"
+                    >
+                      ← BACK TO LOGIN
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Register / Login Tabs */}
+              {(authView === 'register' || authView === 'login') && (
+              <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setAuthView(v as AuthView); }} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6 md:mb-8 bg-muted border-2 border-black">
                   <TabsTrigger
                     value="register"
@@ -1067,10 +1435,9 @@ export default function Auth() {
                             type="button"
                             className="text-primary hover:text-black transition-colors font-semibold text-sm border-b border-primary hover:border-black"
                             onClick={() => {
-                              toast({
-                                title: "Password Reset",
-                                description: "Password reset functionality will be available soon.",
-                              });
+                              setForgotEmail('');
+                              setForgotStep(1);
+                              setAuthView('forgot-password');
                             }}
                             data-testid="button-forgot-password"
                           >
@@ -1118,6 +1485,7 @@ export default function Auth() {
                   </div>
                 </TabsContent>
               </Tabs>
+              )}
 
               {/* Security Badge */}
               <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t-2 border-black">

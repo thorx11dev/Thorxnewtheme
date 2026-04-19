@@ -1,19 +1,40 @@
-# Task: Enterprise Leaderboard Matrix (CRM-Pro)
+# Task: Enterprise Auth Hardening & Recovery Audit
 
-- [x] **Phase 1: Backend SQL & Caching Architecture**
-    - [x] Optimize `getLeaderboardInsights` with SQL-native aggregation → Verify: No memory filtering in Node.js.
-    - [x] Implement **Hourly Caching** for global stats → Verify: Stats persist and refresh only every 60 mins.
-    - [x] Add logic for **Health Ratio** and **Active Ratio** → Verify: Calculations match user behavior data.
-- [x] **Phase 2: API & Pagination**
-    - [x] Support server-side pagination in `/api/admin/leaderboard/insights` → Verify: Limits/Offsets work.
-    - [x] Add `admin_config` support for result size → Verify: Dynamic page sizing.
-- [x] **Phase 3: Frontend Multi-Tab Matrix**
-    - [x] Implement **GLOBAL RANK** tab as default → Verify: Ranking from #1 to #N visible.
-    - [x] Add **Low Health Badge** for unverified users in Top 10 → Verify: Visual warning appears.
-    - [x] Implement **Skeleton Loaders** (UI-UX-PRO-MAX) → Verify: Smooth entry states.
-- [x] **Phase 4: Operational Triage**
-    - [x] Add **Multi-row selection** checkboxes → Verify: Multiple users can be selected.
-    - [x] Create **User Inspector Sidepanel** → Verify: Drill-down shows user stats without leaving page.
-- [x] **Phase 5: Verification & Polish**
-    - [x] Run `tsc --noEmit` and performance audit → Verify: Zero errors.
-    - [x] Final UI walkthrough → Verify: Matches Enterprise standards.
+## Phase A: Schema Expansion
+- [x] Step 1: Add `emailVerifiedAt` timestamp to users schema
+- [x] Step 2: Add `device_fingerprints` table (user_id, fingerprint, last_seen_at)
+- [x] Step 3: Run `npx drizzle-kit push`
+- [x] Step 4: Update `server/storage.ts` logic to include new fields
+
+## Phase B: Security Gates (Backend)
+- [x] Step 5: Update `/api/register` to save device fingerprint
+- [x] Step 6: Ensure 2-account per device limit during registration
+- [x] Step 7: Update `/api/login` to intercept `emailVerifiedAt === null`
+- [x] Step 8: Exclude specific roles (team, admin, founder) from OTP lock
+- [x] Step 9: Save login device fingerprint
+
+## Phase C: OTP Verification UI (Frontend)
+- [x] Step 10: State Machine update in `client/src/pages/auth.tsx`
+- [x] Step 11: Add 6-digit split input UI
+- [x] Step 12: Wire input to `insforge.auth.verifyEmail`
+- [x] Step 13: Wire resend timer and `insforge.auth.resendVerificationEmail`
+- [x] Step 14: Mark account verified upon success
+
+## Phase D: Forgot Password Recovery Flow (Frontend)
+- [x] Step 15: Create 3-step Password Recovery UI
+- [x] Step 16: Step 1 -> `sendResetPasswordEmail`
+- [x] Step 17: Step 2 -> Reuse OTP UI with `exchangeResetPasswordToken`
+- [x] Step 18: Step 3 -> New Password Input -> `resetPassword`
+
+## Phase E: Legacy User Migration (Frontend & Backend)
+- [x] Step 19: Check local DB if `signInWithPassword` fails
+- [x] Step 20: Prompt legacy users to re-register with same email to migrate
+
+## Phase F: Anti-Abuse (Frontend)
+- [x] Step 21: Integrate client-side device fingerprint generator
+- [x] Step 22: Pass `deviceFingerprint` hash to login and register API calls
+
+## Phase G: Polish & QA
+- [x] Step 23: Run TypeScript compiler check
+- [x] Step 24: Test authentication flows
+- [x] Step 25: Build project and verify
