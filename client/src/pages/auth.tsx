@@ -629,10 +629,10 @@ export default function Auth() {
         const fallbackResult = await fallbackResp.json();
         const privilegedRoles = ['founder', 'admin', 'team'];
         if (fallbackResult?.user?.role && privilegedRoles.includes(fallbackResult.user.role)) {
-          // Privileged account — log in directly to team portal
-          await queryClient.invalidateQueries({ queryKey: ["auth"] });
+          // Privileged account — seed the session cache so useAuth sees the user immediately
+          queryClient.setQueryData(["session-auth"], fallbackResult.user);
           toast({ title: "Login Successful!", description: "Welcome back!" });
-          setLocation("/team-portal");
+          setLocation("/");
           return true;
         }
         // Regular legacy user — prompt migration

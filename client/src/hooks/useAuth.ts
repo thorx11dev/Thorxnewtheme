@@ -56,8 +56,10 @@ export function useAuth() {
   }, []);
 
   const accessToken = getInsforgeAccessToken();
+  const hasInsforgeToken = !!accessToken;
 
-  const { data: user, isLoading: isQueryLoading, error } = useQuery({
+  // --- Insforge-backed user query (requires Insforge token) ---
+  const { data: insforgeUser, isLoading: isInsforgeQueryLoading } = useQuery({
     queryKey: ["auth", accessToken ?? "none", accessEpoch],
     queryFn: async () => {
       const token = getInsforgeAccessToken();
@@ -84,11 +86,38 @@ export function useAuth() {
         throw e;
       }
     },
-    enabled: !isAuthLoading && !!getInsforgeAccessToken(),
+    enabled: !isAuthLoading && hasInsforgeToken,
     retry: false,
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
+
+  // --- Session-backed user query (for founder/admin/team direct login, no Insforge token) ---
+  const { data: sessionUser, isLoading: isSessionQueryLoading } = useQuery({
+    queryKey: ["session-auth"],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", "/api/profile");
+        if (!response.ok) return null;
+        const text = await response.text();
+        if (!text) return null;
+        try {
+          return JSON.parse(text) as User;
+        } catch {
+          return null;
+        }
+      } catch {
+        return null;
+      }
+    },
+    enabled: !isAuthLoading && !hasInsforgeToken,
+    retry: false,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
+  // Unified user: prefer Insforge user when token is present, fall back to session user
+  const user = hasInsforgeToken ? (insforgeUser ?? null) : (sessionUser ?? null);
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -104,6 +133,7 @@ export function useAuth() {
     onSuccess: () => {
       setTimeout(() => {
         queryClient.setQueryData(["auth"], null);
+        queryClient.setQueryData(["session-auth"], null);
         queryClient.clear();
         setIsTransitioning(false);
         setLocation("/");
@@ -111,12 +141,14 @@ export function useAuth() {
     },
   });
 
+  const isQueryLoading = hasInsforgeToken ? isInsforgeQueryLoading : isSessionQueryLoading;
+
   return {
     user,
     insforgeAccessToken: accessToken,
-    isAuthenticated: !!user && !!getInsforgeAccessToken(),
+    isAuthenticated: hasInsforgeToken ? (!!insforgeUser && hasInsforgeToken) : !!sessionUser,
     isLoading: isAuthLoading || isQueryLoading || isTransitioning,
-    error,
+    error: null,
     logout: logoutMutation.mutate,
   };
 }
