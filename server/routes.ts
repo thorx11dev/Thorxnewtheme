@@ -229,6 +229,22 @@ const inviteSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Ensure the session table exists before connect-pg-simple tries to use it.
+  // createTableIfMissing has a race condition on first boot; we pre-create it.
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+    `);
+  } catch (err) {
+    console.error("Failed to pre-create session table (non-fatal):", err);
+  }
+
   // Setup session management
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);

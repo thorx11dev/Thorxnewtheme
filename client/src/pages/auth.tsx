@@ -616,9 +616,46 @@ export default function Auth() {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
+
+    // Helper: attempt direct local login (founder/admin/team bypass or legacy fallback)
+    const tryLocalLogin = async (): Promise<boolean> => {
+      try {
+        const fingerprint = await getDeviceFingerprint();
+        const fallbackResp = await apiRequest("POST", "/api/login", {
+          email: data.email,
+          password: data.password,
+          deviceFingerprint: fingerprint,
+        });
+        const fallbackResult = await fallbackResp.json();
+        const privilegedRoles = ['founder', 'admin', 'team'];
+        if (fallbackResult?.user?.role && privilegedRoles.includes(fallbackResult.user.role)) {
+          // Privileged account — log in directly to team portal
+          await queryClient.invalidateQueries({ queryKey: ["auth"] });
+          toast({ title: "Login Successful!", description: "Welcome back!" });
+          setLocation("/team-portal");
+          return true;
+        }
+        // Regular legacy user — prompt migration
+        toast({
+          title: "Security Update Required",
+          description: "Please re-register your account with the same email to migrate to our new secure authentication system.",
+          variant: "destructive",
+          duration: 8000,
+        });
+        setActiveTab("register");
+        return true; // handled
+      } catch {
+        return false;
+      }
+    };
+
     try {
       if (!isInsforgeConfigured()) {
-        throw new Error("Insforge is not configured.");
+        // No Insforge — fall straight through to local login (founder/admin/team accounts)
+        const handled = await tryLocalLogin();
+        if (!handled) throw new Error("Invalid email or password");
+        setIsSubmitting(false);
+        return;
       }
 
       const { data: signInData, error: signInErr } = await insforge.auth.signInWithPassword({
@@ -627,27 +664,11 @@ export default function Auth() {
       });
 
       if (signInErr || !signInData?.accessToken) {
-        // Fallback: Check if this is a legacy user in the local database
-        try {
-          const fingerprint = await getDeviceFingerprint();
-          const fallbackResp = await apiRequest("POST", "/api/login", {
-            email: data.email,
-            password: data.password,
-            deviceFingerprint: fingerprint,
-          });
-          // If it didn't throw a 401, they are a legacy user
-          toast({
-            title: "Security Update Required",
-            description: "Please re-register your account with the same email to migrate to our new secure authentication system.",
-            variant: "destructive",
-            duration: 8000,
-          });
-          setActiveTab("register");
-          setIsSubmitting(false);
-          return;
-        } catch (fallbackError) {
-          throw new Error("Invalid email or password");
-        }
+        // Insforge failed — try local fallback
+        const handled = await tryLocalLogin();
+        if (!handled) throw new Error("Invalid email or password");
+        setIsSubmitting(false);
+        return;
       }
 
       setInsforgeAccessToken(signInData.accessToken);
