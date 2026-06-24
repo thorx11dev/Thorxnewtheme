@@ -7,7 +7,9 @@ import path from "path";
 // (see client/.env.production for VITE_API_URL in production builds).
 export default defineConfig({
   plugins: [
-    react(),
+    react({
+      include: "**/*.{jsx,tsx}",
+    }),
     ...(process.env.NODE_ENV !== "production" &&
       process.env.REPL_ID !== undefined
       ? [

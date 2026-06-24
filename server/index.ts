@@ -28,7 +28,11 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Security headers (X-Content-Type-Options, HSTS, X-Frame-Options, etc.)
-app.use(helmet());
+const isDev = process.env.NODE_ENV !== "production";
+app.use(helmet({
+  contentSecurityPolicy: isDev ? false : undefined,
+  crossOriginEmbedderPolicy: false,
+}));
 
 app.use(cors({
   origin: (origin, callback) => {

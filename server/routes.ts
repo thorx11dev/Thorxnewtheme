@@ -246,8 +246,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ? rawSameSite
     : "lax";
 
-  // Cross-site cookies require secure=true. Keep secure by default in production.
-  const cookieSecure = runtimeConfig.sessionCookieSecure || isProd || isReplit;
+  // Cross-site cookies require secure=true. Keep secure by default in production only.
+  const cookieSecure = runtimeConfig.sessionCookieSecure || isProd;
 
   if (!isProd) {
     debugLog("Environment detection:", {

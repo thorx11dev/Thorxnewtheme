@@ -18,10 +18,11 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
   if (SAFE_METHODS.includes(req.method)) {
     if (!req.cookies?.["thorx.csrf"]) {
       const token = crypto.randomBytes(32).toString("hex");
+      const isSecure = process.env.NODE_ENV === "production" || process.env.SESSION_COOKIE_SECURE === "true";
       res.cookie("thorx.csrf", token, {
         httpOnly: false, // JS must read it to set the header
-        secure: true,
-        sameSite: "strict",
+        secure: isSecure,
+        sameSite: isSecure ? "strict" : "lax",
         path: "/",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week (matches session TTL)
       });

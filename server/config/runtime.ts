@@ -48,5 +48,8 @@ export function isOriginAllowed(origin: string): boolean {
   if (runtimeConfig.frontendOrigins.includes(origin)) return true;
   // Allow any *.insforge.site subdomain (deployment previews)
   if (/^https:\/\/[a-z0-9]+\.insforge\.site$/.test(origin)) return true;
+  // Allow any *.replit.app or *.repl.co domain (Replit deployments and previews)
+  if (/^https:\/\/[a-z0-9-]+\.replit\.app$/.test(origin)) return true;
+  if (/^https?:\/\/[a-z0-9-]+\.[a-z0-9]+\.repl\.co$/.test(origin)) return true;
   return false;
 }
