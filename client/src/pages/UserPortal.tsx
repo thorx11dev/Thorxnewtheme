@@ -63,8 +63,7 @@ import {
   HelpCircle,
   MessageCircle,
   Book,
-  Maximize2,
-  Minimize2,
+
   RotateCcw,
   RotateCw,
   Phone,
@@ -515,8 +514,8 @@ const availableAds: AdItem[] = [
 ];
 
 const sections = [
-  { id: "dashboard", name: "Dashboard", icon: LayoutDashboard },
-  { id: "work", name: "Work", icon: MonitorPlay },
+  { id: "dashboard", name: "Dashboard", icon: Home },
+  { id: "work", name: "Work", icon: Briefcase },
   { id: "referrals", name: "Referrals", icon: Network },
   { id: "payout", name: "Payout", icon: Landmark },
   { id: "help", name: "Help", icon: Headphones },
@@ -2415,15 +2414,6 @@ export default function UserPortal() {
                     title="Zoom Out"
                   >
                     <Minus size={18} />
-                  </Button>
-                  <Button 
-                    size="icon"
-                    variant="outline" 
-                    className="w-10 h-10 bg-white border-2 border-black shadow-[2px_2px_0px_#000] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all text-black font-black"
-                    onClick={resetZoom}
-                    title="Fit to Screen"
-                  >
-                    <Maximize size={18} />
                   </Button>
                 </div>
 
