@@ -316,7 +316,8 @@
     width: 32px;
     height: 32px;
     border: 2px solid #000;
-    background: transparent;
+    background: #000;
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -327,7 +328,8 @@
 
   .arrow-key:hover {
     background: hsl(16, 100%, 60%);
-    color: white;
+    border-color: hsl(16, 100%, 60%);
+    color: #fff;
   }
 
   .progress-dot {
