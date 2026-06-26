@@ -6,37 +6,50 @@ interface ClickEffect {
   y: number;
   word: string;
   rotation: number;
+  burstColor: string;
+  textColor: string;
 }
 
-const COMIC_WORDS = ['POW!', 'BAM!', 'BOOM!', 'ZAP!', 'SLAM!', 'WHAM!', 'KABOOM!', 'CRASH!'];
+const COMIC_WORDS = [
+  'POW!', 'BAM!', 'BOOM!', 'ZAP!', 'SLAM!', 'WHAM!', 'KABOOM!', 'CRASH!',
+  'GHOP-GHOP', 'MEOW', 'OUAAAAA', 'NESHA POMI',
+];
+
+// Vibrant color pairs [burstBackground, textColor] — all work beautifully on/with white
+const COLOR_PAIRS: [string, string][] = [
+  ['#FF6B6B', '#1E3A5F'],   // coral burst, navy text
+  ['#40E0D0', '#1F3A8A'],   // turquoise burst, royal-blue text
+  ['#FFD700', '#C0392B'],   // gold burst, crimson text
+  ['#2ECC71', '#1A252F'],   // emerald burst, dark text
+  ['#9B59B6', '#FFFDE7'],   // purple burst, cream text
+  ['#FF69B4', '#1F3A8A'],   // hot-pink burst, navy text
+  ['#4169E1', '#FFD700'],   // royal-blue burst, gold text
+  ['#FF8C00', '#1A1A1A'],   // deep-orange burst, black text
+  ['#00CED1', '#8B0000'],   // dark-turquoise burst, dark-red text
+  ['#32CD32', '#1A1A2E'],   // lime burst, dark text
+  ['#FF4500', '#FFFDE7'],   // orange-red burst, cream text
+  ['#8A2BE2', '#FFD700'],   // blue-violet burst, gold text
+];
 
 const ComicClickEffect: React.FC = () => {
   const [effects, setEffects] = useState<ClickEffect[]>([]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      // Don't show effect if clicking on interactive elements that already have feedback
-      // This is optional, but helps reduce clutter. For now, let's keep it global as requested.
-
       const id = Date.now();
       const word = COMIC_WORDS[Math.floor(Math.random() * COMIC_WORDS.length)];
-      const rotation = (Math.random() - 0.5) * 40; // Random rotation between -20 and 20 degrees
+      const rotation = (Math.random() - 0.5) * 40;
+      const [burstColor, textColor] = COLOR_PAIRS[Math.floor(Math.random() * COLOR_PAIRS.length)];
       const offset = {
         x: (Math.random() - 0.5) * 20,
-        y: (Math.random() - 0.5) * 20
+        y: (Math.random() - 0.5) * 20,
       };
 
-      const newEffect: ClickEffect = {
-        id,
-        x: e.clientX + offset.x,
-        y: e.clientY + offset.y,
-        word,
-        rotation,
-      };
+      setEffects((prev) => [
+        ...prev,
+        { id, x: e.clientX + offset.x, y: e.clientY + offset.y, word, rotation, burstColor, textColor },
+      ]);
 
-      setEffects((prev) => [...prev, newEffect]);
-
-      // Remove effect after animation
       setTimeout(() => {
         setEffects((prev) => prev.filter((effect) => effect.id !== id));
       }, 500);
@@ -59,21 +72,29 @@ const ComicClickEffect: React.FC = () => {
           }}
         >
           <div className="relative">
-            {/* The "Burst" Background (Shape) */}
-            <div className="absolute inset-0 bg-yellow-400 scale-[1.2] comic-burst-shape shadow-[0_0_10px_rgba(255,255,0,0.4)]"></div>
-
-            {/* The Text */}
-            <span className="relative z-10 block text-lg md:text-xl font-black text-red-600 italic tracking-tighter select-none"
+            {/* Burst background shape */}
+            <div
+              className="absolute inset-0 scale-[1.2] comic-burst-shape"
               style={{
+                backgroundColor: effect.burstColor,
+                boxShadow: `0 0 10px ${effect.burstColor}66`,
+              }}
+            />
+            {/* Word text */}
+            <span
+              className="relative z-10 block text-lg md:text-xl font-black italic tracking-tighter select-none"
+              style={{
+                color: effect.textColor,
                 textShadow: `
-                      1.5px 1.5px 0 #000,
-                      -0.5px -0.5px 0 #000,  
-                      0.5px -0.5px 0 #000,
-                      -0.5px 0.5px 0 #000,
-                      0.5px 0.5px 0 #000
-                    `,
-                WebkitTextStroke: '0.5px black'
-              }}>
+                  1.5px 1.5px 0 #000,
+                  -0.5px -0.5px 0 #000,
+                  0.5px -0.5px 0 #000,
+                  -0.5px 0.5px 0 #000,
+                  0.5px 0.5px 0 #000
+                `,
+                WebkitTextStroke: '0.5px black',
+              }}
+            >
               {effect.word}
             </span>
           </div>
@@ -105,15 +126,6 @@ const ComicClickEffect: React.FC = () => {
 
         .comic-burst-shape {
           clip-path: polygon(
-            50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%
-          );
-          /* More jagged comic burst shape */
-          mask-image: radial-gradient(circle, black 100%, transparent 100%);
-        }
-
-        /* Customize the shape slightly to be more erratic like a comic burst */
-        .comic-burst-shape {
-           clip-path: polygon(
             50% 0%, 65% 20%, 95% 10%, 80% 40%, 100% 50%, 80% 60%, 95% 90%, 65% 80%, 50% 100%, 35% 80%, 5% 90%, 20% 60%, 0% 50%, 20% 40%, 5% 10%, 35% 20%
           );
         }
