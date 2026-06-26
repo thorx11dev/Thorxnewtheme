@@ -1,21 +1,19 @@
 import pg from "pg";
 const { Pool } = pg;
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: isProduction
+    ? { rejectUnauthorized: true }
+    : { rejectUnauthorized: false },
 });
 
-async function run(stmt) {
-  const client = await pool.connect();
-  try {
-    await client.query(stmt);
-  } finally {
-    client.release();
-  }
-}
-
 const statements = [
+  // Ensure pgcrypto is available for gen_random_uuid()
+  `CREATE EXTENSION IF NOT EXISTS pgcrypto`,
+
   // team_invitations
   `CREATE TABLE IF NOT EXISTS "team_invitations" (
     "id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -123,6 +121,7 @@ const statements = [
   `CREATE INDEX IF NOT EXISTS "referrals_referrer_id_idx" ON "referrals"("referrer_id")`,
   `CREATE INDEX IF NOT EXISTS "referrals_referred_id_idx" ON "referrals"("referred_id")`,
   `CREATE INDEX IF NOT EXISTS "referrals_status_idx" ON "referrals"("status")`,
+  `CREATE INDEX IF NOT EXISTS "idx_referrals_referrer_tier" ON "referrals"("referrer_id", "tier")`,
 
   // withdrawals
   `CREATE TABLE IF NOT EXISTS "withdrawals" (
@@ -340,7 +339,6 @@ const statements = [
   `CREATE INDEX IF NOT EXISTS "commission_logs_source_user_idx" ON "commission_logs"("source_user_id")`,
   `CREATE INDEX IF NOT EXISTS "commission_logs_withdrawal_idx" ON "commission_logs"("trigger_withdrawal_id")`,
   `CREATE INDEX IF NOT EXISTS "commission_logs_status_idx" ON "commission_logs"("status")`,
-  // ranking referral indexes from migration 0004
   `CREATE INDEX IF NOT EXISTS "idx_commission_logs_level" ON "commission_logs"("level")`,
   `CREATE INDEX IF NOT EXISTS "idx_commission_logs_beneficiary_status" ON "commission_logs"("beneficiary_id", "status")`,
   `CREATE INDEX IF NOT EXISTS "idx_commission_logs_beneficiary_level" ON "commission_logs"("beneficiary_id", "level")`,
@@ -379,26 +377,45 @@ const statements = [
   `CREATE INDEX IF NOT EXISTS "idx_users_rank" ON "users"("rank")`,
 ];
 
-let passed = 0;
-let failed = 0;
+async function main() {
+  const client = await pool.connect();
+  let passed = 0;
+  let failed = 0;
 
-for (const stmt of statements) {
-  const preview = stmt.trim().slice(0, 60).replace(/\s+/g, " ");
   try {
-    await run(stmt);
-    console.log(`✓ ${preview}`);
-    passed++;
-  } catch (err) {
-    if (err.message?.includes("already exists")) {
-      console.log(`~ (exists) ${preview}`);
-      passed++;
-    } else {
-      console.error(`✗ ${preview}\n  → ${err.message}`);
-      failed++;
+    await client.query("BEGIN");
+
+    for (const stmt of statements) {
+      const preview = stmt.trim().slice(0, 60).replace(/\s+/g, " ");
+      try {
+        await client.query(stmt);
+        console.log(`✓ ${preview}`);
+        passed++;
+      } catch (err) {
+        if (err.message?.includes("already exists")) {
+          console.log(`~ (exists) ${preview}`);
+          passed++;
+        } else {
+          console.error(`✗ ${preview}\n  → ${err.message}`);
+          failed++;
+          // Roll back the whole transaction on first real failure
+          await client.query("ROLLBACK");
+          console.error(`\nRolled back. ${passed} ok before failure.`);
+          process.exit(1);
+        }
+      }
     }
+
+    await client.query("COMMIT");
+    console.log(`\nDone: ${passed} passed, ${failed} failed`);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("Unexpected error:", err.message);
+    process.exit(1);
+  } finally {
+    client.release();
+    await pool.end();
   }
 }
 
-await pool.end();
-console.log(`\nDone: ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+main();
