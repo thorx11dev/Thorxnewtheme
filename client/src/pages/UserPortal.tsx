@@ -1908,7 +1908,7 @@ export default function UserPortal() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="font-black tracking-tighter uppercase leading-none text-7xl md:text-9xl text-black"
+                  className="font-black tracking-tighter uppercase leading-none text-8xl md:text-9xl text-black"
                 >
                   WORK
                 </motion.h1>
@@ -1920,7 +1920,7 @@ export default function UserPortal() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="font-black tracking-tighter uppercase leading-none text-[10rem] md:text-9xl text-white"
+                  className="font-black tracking-tighter uppercase leading-none text-8xl md:text-9xl text-white"
                 >
                   WORK
                 </motion.h1>
@@ -2164,7 +2164,7 @@ export default function UserPortal() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="font-black tracking-tighter uppercase leading-none text-5xl md:text-8xl lg:text-9xl text-black"
+                  className="font-black tracking-tighter uppercase leading-none text-5xl md:text-8xl text-black"
                 >
                   REFERRALS
                 </motion.h1>
@@ -2176,7 +2176,7 @@ export default function UserPortal() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="font-black tracking-tighter uppercase leading-none text-[6.5rem] md:text-9xl text-white"
+                  className="font-black tracking-tighter uppercase leading-none text-5xl md:text-8xl text-white"
                 >
                   REFERRALS
                 </motion.h1>
@@ -2770,7 +2770,7 @@ export default function UserPortal() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="font-black tracking-tighter uppercase leading-none text-6xl md:text-9xl text-black"
+                  className="font-black tracking-tighter uppercase leading-none text-7xl md:text-9xl text-black"
                 >
                   PAYOUT
                 </motion.h1>
@@ -2782,7 +2782,7 @@ export default function UserPortal() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="font-black tracking-tighter uppercase leading-none text-[10rem] md:text-9xl text-white"
+                  className="font-black tracking-tighter uppercase leading-none text-7xl md:text-9xl text-white"
                 >
                   PAYOUT
                 </motion.h1>
@@ -3331,7 +3331,7 @@ export default function UserPortal() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="font-black tracking-tighter uppercase leading-none text-7xl md:text-9xl text-black"
+                  className="font-black tracking-tighter uppercase leading-none text-8xl md:text-9xl text-black"
                 >
                   HELP
                 </motion.h1>
@@ -3343,7 +3343,7 @@ export default function UserPortal() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="font-black tracking-tighter uppercase leading-none text-[11.5rem] md:text-9xl text-white"
+                  className="font-black tracking-tighter uppercase leading-none text-8xl md:text-9xl text-white"
                 >
                   HELP
                 </motion.h1>
