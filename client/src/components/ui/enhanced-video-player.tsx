@@ -265,73 +265,14 @@ function AreaPlayer({
         </button>
       )}
 
-      {/* Progress Bar and Fullscreen Controls */}
-      <div className={`absolute left-0 right-0 transition-all duration-300 ${isFullscreen
-          ? isMobileDevice
-            ? 'bottom-0 bg-black/95 p-3 pb-4 safe-area-bottom'
-            : 'bottom-0 bg-black/80 p-4'
-          : isMobileDevice
-            ? 'bottom-0 bg-black/80 p-1.5'
-            : 'bottom-0 bg-black/80 p-2'
-        }`}>
-        <div className={`w-full bg-gray-600 transition-all duration-300 ${isFullscreen ? isMobileDevice ? 'h-1.5 border border-white/20 mb-3' : 'h-3 border border-white/20 mb-4' : isMobileDevice ? 'h-2 border-none rounded-sm' : 'h-2 border border-white/20'
-          }`}>
+      {/* Progress Bar — always visible at bottom edge */}
+      <div className="absolute bottom-0 left-0 right-0">
+        <div className="w-full h-1 bg-white/20">
           <div
-            className={`h-full bg-primary transition-all duration-500 ${isMobileDevice ? 'rounded-sm' : 'border-r border-white/40'
-              }`}
+            className="h-full bg-primary transition-all duration-500"
             style={{ width: `${adProgress}%` }}
           />
         </div>
-
-        {/* Fullscreen Controls - Only visible in fullscreen mode */}
-        {isFullscreen && (
-          <div className="flex items-center justify-between">
-            <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-4'}`}>
-              {/* Autoplay Toggle */}
-              <button
-                onClick={handleAutoplayToggle}
-                className={`relative rounded-full transition-all duration-300 ${isMobileDevice
-                    ? 'w-11 h-6 border border-white/70'
-                    : 'w-14 h-7 border-2 border-white/60'
-                  } ${autoplayEnabled ? 'bg-primary' : 'bg-gray-600'
-                  }`}
-                data-testid={`button-autoplay-fullscreen-${areaId}`}
-                title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
-              >
-                <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white shadow-lg ${isMobileDevice
-                    ? 'w-4 h-4'
-                    : 'w-5 h-5'
-                  } ${autoplayEnabled
-                    ? isMobileDevice ? 'left-5' : 'left-7'
-                    : 'left-0.5'
-                  }`} />
-              </button>
-
-              {/* Volume Toggle */}
-              <button
-                onClick={handleVolumeToggle}
-                className={`text-white hover:text-primary active:text-primary active:scale-95 transition-all bg-white/20 rounded-lg border border-white/30 ${isMobileDevice ? 'p-2' : 'p-2.5'
-                  }`}
-                data-testid={`button-volume-fullscreen-${areaId}`}
-              >
-                {isMuted || volume === 0 ?
-                  <VolumeX className={isMobileDevice ? 'w-5 h-5' : 'w-6 h-6'} /> :
-                  <Volume2 className={isMobileDevice ? 'w-5 h-5' : 'w-6 h-6'} />
-                }
-              </button>
-            </div>
-
-            {/* Exit Fullscreen Button */}
-            <button
-              onClick={onFullscreenToggle}
-              className={`text-white hover:text-primary active:text-primary active:scale-95 transition-all bg-white/20 rounded-lg border border-white/30 ${isMobileDevice ? 'p-2' : 'p-2.5'
-                }`}
-              data-testid={`button-exit-fullscreen-${areaId}`}
-            >
-              <Minimize2 className={isMobileDevice ? 'w-5 h-5' : 'w-6 h-6'} />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Industrial Corner Accents */}
