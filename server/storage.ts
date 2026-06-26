@@ -357,13 +357,7 @@ export class DatabaseStorage implements IStorage {
 
   // User management methods
   async createUser(insertUser: InsertUser & { id?: string }): Promise<User> {
-    const isManagedAuth =
-      insertUser.passwordHash === "supabase_managed" ||
-      insertUser.passwordHash === "firebase_managed" ||
-      insertUser.passwordHash === "insforge_managed";
-    const hashedPassword = isManagedAuth
-      ? 'managed_auth' // Don't hash if managed by external provider
-      : await bcrypt.hash(insertUser.passwordHash, 10); // Changed salt rounds to 10
+    const hashedPassword = await bcrypt.hash(insertUser.passwordHash, 10);
     const referralCode = this.generateReferralCode();
 
     // Validate referredBy if provided

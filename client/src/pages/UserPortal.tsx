@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth, type User as AuthUser } from "@/hooks/useAuth";
-import { getInsforgeAccessToken } from "@/lib/insforge-session";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, queryClient, getCsrfToken } from "@/lib/queryClient";
@@ -926,11 +925,6 @@ export default function UserPortal() {
         'Content-Type': 'application/json'
       };
 
-      const token = getInsforgeAccessToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
       // CSRF token for cookie-based sessions
       const csrf = getCsrfToken();
       if (csrf) headers['x-csrf-token'] = csrf;
@@ -975,11 +969,6 @@ export default function UserPortal() {
     queryKey: ["chat-history"],
     queryFn: async () => {
       const headers: Record<string, string> = {};
-
-      const token = getInsforgeAccessToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       const response = await fetch(apiAbsolutePath("/api/chat/history?limit=50"), {
         headers,

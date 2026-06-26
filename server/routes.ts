@@ -12,21 +12,13 @@ import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "
 import { hilltopAdsService } from "./hilltopads-service";
 import { runtimeConfig } from "./config/runtime";
 import { handleProxyRequest } from "./modules/proxy/proxy-handler";
-import { fetchInsforgeSessionUser } from "./insforge/session-verify";
-import {
-  insforgeApiBase,
-  persistProfilePicturePayload,
-} from "./insforge/object-storage";
-import { storageProxyRateLimiter } from "./middleware/storage-proxy-rate-limit";
+import { processProfilePicture } from "./utils/local-profile-picture";
 import { authRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 
-/** Authenticated user id from Insforge Bearer token (preferred) or legacy session cookie. */
+/** Authenticated user id from session cookie. */
 export function getThorxPrincipalId(req: Request): string | undefined {
-  const r = req as Request & { thorxPrincipalId?: string; thorxBearerInvalid?: boolean };
-  if (r.thorxBearerInvalid) return undefined;
-  if (r.thorxPrincipalId) return r.thorxPrincipalId;
   return req.session?.userId;
 }
 
@@ -64,12 +56,8 @@ declare module "express-session" {
 declare global {
   namespace Express {
     interface Request {
-      userProfile?: any; // Local user profile with role
-      anonymousUser?: any; // Anonymous user object for iframe environments
-      /** Set when a valid Insforge access token is sent as Authorization Bearer */
-      thorxPrincipalId?: string;
-      /** True when a non-anonymous Bearer was sent but Insforge rejected the token */
-      thorxBearerInvalid?: boolean;
+      userProfile?: any;
+      anonymousUser?: any;
     }
   }
 }
@@ -203,16 +191,14 @@ const registerSchema = z.object({
   identity: z.string().min(1, "Identity is required"),
   phone: z.string().optional(),
   email: z.string().email("Invalid email address"),
-  /** Optional when registering with a valid Insforge Bearer (password lives in Insforge Auth only). */
   password: z
     .string()
-    .min(6, "Password must be at least 6 characters (Insforge minimum)")
+    .min(6, "Password must be at least 6 characters")
     .max(128)
     .refine(
       (pwd) => pwd.length < 8 || /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(pwd),
       "For passwords of 8+ characters, include at least one uppercase letter, one lowercase letter, and one number.",
-    )
-    .optional(),
+    ),
   referralCode: z.string().optional(),
   role: z.enum(["user", "team", "founder"]).default("user"),
 });
@@ -303,53 +289,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.set('trust proxy', 1);
   app.use(session(sessionConfig));
 
-  // Public image proxy for private Insforge buckets (profile uploads).
-  app.get("/api/thorx/storage-proxy", storageProxyRateLimiter, async (req, res) => {
-    const raw = String(req.query.u || "");
-    const base = insforgeApiBase();
-    const key = process.env.INSFORGE_API_KEY || "";
-    if (!base || !key) {
-      return res.status(503).json({ message: "Storage proxy not configured" });
-    }
-    if (!raw.startsWith(base)) {
-      return res.status(400).json({ message: "Invalid storage reference" });
-    }
-    if (!raw.includes("/objects/profiles/")) {
-      return res.status(403).json({ message: "Forbidden" });
-    }
-    try {
-      const upstream = await fetch(raw, {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      if (!upstream.ok || !upstream.body) {
-        return res.status(upstream.status || 502).end();
-      }
-      const ct = upstream.headers.get("content-type");
-      if (ct) res.setHeader("Content-Type", ct);
-      res.setHeader("Cache-Control", "private, max-age=3600");
-      res.send(Buffer.from(await upstream.arrayBuffer()));
-    } catch (e) {
-      console.error("storage-proxy error:", e);
-      res.status(502).end();
-    }
-  });
-
-  // Resolve Insforge JWT for all /api routes (preferred over session cookie).
-  app.use("/api", async (req, res, next) => {
-    const r = req as Request & { thorxPrincipalId?: string; thorxBearerInvalid?: boolean };
-    r.thorxPrincipalId = undefined;
-    r.thorxBearerInvalid = false;
-    const authz = req.headers.authorization;
-    if (authz?.startsWith("Bearer ")) {
-      const t = authz.slice(7).trim();
-      if (t && !t.toLowerCase().startsWith("anon")) {
-        const u = await fetchInsforgeSessionUser(t);
-        if (u) r.thorxPrincipalId = u.id;
-        else r.thorxBearerInvalid = true;
-      }
-    }
-    next();
-  });
   
   // Custom session debugger middleware for development only.
   if (!isProd) {
@@ -693,10 +632,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             principalId.startsWith("anonymous_")
               ? req.session.anonymousUserData?.profilePicture
               : (await storage.getUserById(req.params.id))?.profilePicture;
-          resolvedProfilePicture = await persistProfilePicturePayload(
-            principalId,
+          resolvedProfilePicture = await processProfilePicture(
             profilePicture as string | null | undefined,
-            prevPic ?? null,
           );
         } catch (picErr: unknown) {
           const msg = picErr instanceof Error ? picErr.message : "Invalid profile image";
@@ -1467,25 +1404,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public Insforge connection hints for the SPA (non-secret anon key only).
-  app.get("/api/config/insforge", (_req, res) => {
-    const baseUrl = process.env.INSFORGE_API_URL;
-    const anonKey = process.env.INSFORGE_ANON_KEY;
-    if (!baseUrl || !anonKey) {
-      return res.status(500).json({
-        error: "Insforge configuration not available",
-        message: "Set INSFORGE_API_URL and INSFORGE_ANON_KEY on the server",
-      });
-    }
-    const storageBucket = (process.env.INSFORGE_STORAGE_BUCKET || "thorx-assets").trim();
-    const storageUploadReady = Boolean(process.env.INSFORGE_API_KEY?.trim());
-    res.json({
-      baseUrl,
-      anonKey,
-      storageBucket,
-      storageUploadReady,
-    });
-  });
 
   // Team dashboard metrics endpoints (protected for team members only)
   app.get("/api/team/metrics", async (req, res) => {
@@ -2169,35 +2087,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register new user
   app.post("/api/register", authRateLimiter, async (req, res) => {
     try {
-      const { id, firstName, lastName, email, password, phone, identity, referralCode, role, deviceFingerprint } = req.body;
-      debugLog(`[POST /api/register] Attempt for ${email}. Role: ${role}. ID: ${id}`);
+      const { firstName, lastName, email, password, phone, identity, referralCode, role, deviceFingerprint } = req.body;
+      debugLog(`[POST /api/register] Attempt for ${email}. Role: ${role}`);
 
-      if (!firstName || !lastName || !email || !identity) {
+      if (!firstName || !lastName || !email || !identity || !password) {
         return res.status(400).json({
-          message: "First name, last name, email, and identity are required",
+          message: "First name, last name, email, identity, and password are required",
           error: "MISSING_REQUIRED_FIELDS"
         });
       }
 
-      const authz = req.headers.authorization;
-      let bearer: string | undefined;
-      if (authz?.startsWith("Bearer ")) {
-        bearer = authz.slice(7).trim();
-      }
-      const insforgeUser = bearer && !bearer.toLowerCase().startsWith("anon")
-        ? await fetchInsforgeSessionUser(bearer)
-        : null;
-
-      if (!insforgeUser?.id) {
-        return res.status(401).json({
-          message: "Valid Insforge authentication is required to register",
-          error: "UNAUTHORIZED",
-        });
-      }
-      if (insforgeUser.email && insforgeUser.email.toLowerCase() !== String(email).toLowerCase()) {
-        return res.status(403).json({
-          message: "Email must match your Insforge account",
-          error: "FORBIDDEN",
+      // Validate using registerSchema
+      const parsed = registerSchema.safeParse({ firstName, lastName, email, password, phone, identity, referralCode, role });
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: parsed.error.errors[0]?.message || "Validation failed",
+          error: "VALIDATION_ERROR"
         });
       }
 
@@ -2230,9 +2135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create user (id is the Insforge auth user id — same Postgres row the app already uses)
       const newUser = await storage.createUser({
-        id: insforgeUser.id,
         firstName,
         lastName,
         email,
@@ -2240,12 +2143,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         identity,
         referralCode: referralCode || '',
         role: role || 'user',
-        passwordHash: "insforge_managed",
-        password: "insforge_managed",
+        passwordHash: password,
+        password: password,
         name: `${firstName} ${lastName}`,
-        referredBy: referredBy
+        referredBy,
       });
-      debugLog(`[POST /api/register] Local user created successfully: ${newUser.id}`);
+      debugLog(`[POST /api/register] User created: ${newUser.id}`);
 
       // Store device fingerprint if provided
       if (deviceFingerprint && typeof deviceFingerprint === "string") {
@@ -2261,7 +2164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Mark email as verified (user just completed OTP via Insforge)
+      // Mark email as verified immediately (no OTP required)
       await storage.markUserEmailVerified(newUser.id);
 
       // Set session data
@@ -2305,19 +2208,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Password Recovery — DEPRECATED (auth is Insforge-managed)
-  // These endpoints are kept for backward compat but return guidance to use Insforge SDK
   const forgotPasswordSchema = z.object({
     email: z.string().email("Invalid email address")
   });
 
   app.post("/api/forgot-password", authRateLimiter, async (req, res) => {
-    // Insforge handles password reset via sendResetPasswordEmail() SDK method.
-    // This endpoint is kept alive to prevent frontend 404s during migration.
     res.json({
       success: true,
-      message: "If an account exists with that email, a password reset code has been sent.",
-      method: "insforge_sdk"
+      message: "If an account exists with that email, please contact support to reset your password.",
     });
   });
 
@@ -2327,42 +2225,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/reset-password", async (req, res) => {
-    // Password reset is handled entirely by the Insforge SDK on the frontend.
     res.status(410).json({
-      message: "This endpoint is deprecated. Password reset is handled by the Insforge auth provider.",
-      error: "DEPRECATED"
+      message: "Self-service password reset is not available. Please contact support.",
+      error: "NOT_AVAILABLE"
     });
   });
 
-  // Mark user email as verified (called after frontend completes Insforge OTP)
+  // Mark user email as verified (session-based — requires active session)
   app.post("/api/auth/mark-verified", async (req, res) => {
     try {
-      const authz = req.headers.authorization;
-      let bearer: string | undefined;
-      if (authz?.startsWith("Bearer ")) {
-        bearer = authz.slice(7).trim();
+      const userId = getThorxPrincipalId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required", error: "UNAUTHORIZED" });
       }
-      if (!bearer) {
-        return res.status(401).json({ message: "Bearer token required", error: "UNAUTHORIZED" });
-      }
-
-      // Validate with Insforge that this token belongs to a real, verified user
-      const insforgeUser = await fetchInsforgeSessionUser(bearer);
-      if (!insforgeUser?.id) {
-        return res.status(401).json({ message: "Invalid or expired token", error: "UNAUTHORIZED" });
-      }
-
-      // Find the THORX user
-      const user = await storage.getUserById(insforgeUser.id);
+      const user = await storage.getUserById(userId);
       if (!user) {
-        // User doesn't exist in THORX yet — this is OK, registration will handle it
-        return res.json({ success: true, message: "User not yet registered in THORX" });
+        return res.status(404).json({ message: "User not found", error: "NOT_FOUND" });
       }
-
-      // Mark as verified
       await storage.markUserEmailVerified(user.id);
-      debugLog(`[POST /api/auth/mark-verified] Marked ${user.email} as verified`);
-
       res.json({ success: true, message: "Email verification confirmed" });
     } catch (error) {
       console.error("Mark verified error:", error);
@@ -2373,38 +2253,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Login endpoint
   app.post("/api/login", authRateLimiter, async (req, res) => {
     try {
-      const { email, password, insforgeAccessToken, deviceFingerprint } = req.body;
+      const { email, password, deviceFingerprint } = req.body;
       debugLog(`[POST /api/login] Attempt for ${email ?? "(no email)"}`);
 
-      let user;
-      if (insforgeAccessToken && typeof insforgeAccessToken === "string") {
-        const u = await fetchInsforgeSessionUser(insforgeAccessToken);
-        if (!u?.id) {
-          return res.status(401).json({
-            message: "Invalid or expired Insforge session",
-            error: "UNAUTHORIZED",
-          });
-        }
-        user = await storage.getUserById(u.id);
-        if (!user && email) {
-          user = await storage.getUserByEmail(String(email));
-        }
-        if (user && u.email && user.email.toLowerCase() !== u.email.toLowerCase()) {
-          return res.status(403).json({
-            message: "Email does not match Insforge session",
-            error: "FORBIDDEN",
-          });
-        }
-      } else if (email && password) {
-        user = await storage.validateUserPassword(email, password);
-        if (!user) {
-          console.warn(`[POST /api/login] Password validation failed for ${email}`);
-        }
-      } else {
+      if (!email || !password) {
         return res.status(400).json({
-          message: "Provide email and password, or insforgeAccessToken from Insforge Auth",
+          message: "Email and password are required",
           error: "BAD_REQUEST",
         });
+      }
+
+      const user = await storage.validateUserPassword(email, password);
+      if (!user) {
+        console.warn(`[POST /api/login] Password validation failed for ${email}`);
       }
 
       if (!user) {
@@ -2480,7 +2341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             targetId: user.id,
             details: {
               role: user.role,
-              method: insforgeAccessToken ? "insforge" : "password"
+              method: "password"
             },
             ipAddress: req.ip
           });
@@ -2579,10 +2440,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let resolvedProfilePicture: string | null | undefined = undefined;
       if (Object.prototype.hasOwnProperty.call(req.body, "profilePicture")) {
         try {
-          resolvedProfilePicture = await persistProfilePicturePayload(
-            userId,
+          resolvedProfilePicture = await processProfilePicture(
             validatedData.profilePicture as string | null | undefined,
-            existingRow.profilePicture ?? null,
           );
         } catch (picErr: unknown) {
           return res.status(400).json({

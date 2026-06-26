@@ -1,5 +1,4 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { getInsforgeAccessToken } from "@/lib/insforge-session";
 import { getApiOrigin } from "@/lib/apiOrigin";
 
 async function throwIfResNotOk(res: Response) {
@@ -24,13 +23,10 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const token = getInsforgeAccessToken();
   const headers: Record<string, string> = {
     ...(data ? { "Content-Type": "application/json" } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  // Attach CSRF token on state-changing methods
   if (UNSAFE_METHODS.has(method.toUpperCase())) {
     const csrf = getCsrfToken();
     if (csrf) headers["x-csrf-token"] = csrf;
@@ -42,7 +38,7 @@ export async function apiRequest(
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include", // Include cookies for session-based auth
+    credentials: "include",
   });
 
   await throwIfResNotOk(res);
@@ -58,13 +54,9 @@ export const getQueryFn: <T>(options: {
       const url = queryKey.join("/");
       const fullUrl = url.startsWith("/") ? `${API_URL}${url}` : `${API_URL}/${url}`;
 
-      const token = getInsforgeAccessToken();
       const res = await fetch(fullUrl, {
         credentials: "include",
-        headers: {
-          Accept: "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { Accept: "application/json" },
       });
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {

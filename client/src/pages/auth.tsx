@@ -16,11 +16,6 @@ import { Delete, Eye, EyeOff, Info } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { insforge, isInsforgeConfigured } from "@/lib/insforge";
-import {
-  persistInsforgeRefreshToken,
-  setInsforgeAccessToken,
-} from "@/lib/insforge-session";
 import { getDeviceFingerprint } from "@/lib/fingerprint";
 
 // Animated Placeholder Component
@@ -264,7 +259,7 @@ const registerSchema = z.object({
     (email) => ({ message: validateEmail(email).message })
   ),
   password: z.string()
-    .min(6, "Password must be at least 6 characters (Insforge minimum)")
+    .min(6, "Password must be at least 6 characters")
     .max(128)
     .refine(
       (pwd) => pwd.length < 8 || /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(pwd),
@@ -357,74 +352,12 @@ export default function Auth() {
     }
   };
 
-  const handleOtpSubmit = async (code: string) => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      if (otpSource === 'reset') {
-        // Password reset OTP flow
-        const { data, error } = await insforge.auth.exchangeResetPasswordToken({ email: otpEmail, code });
-        if (error || !data?.token) throw new Error(error?.message || 'Invalid reset code');
-        setResetToken(data.token);
-        setForgotStep(3);
-        setOtpDigits(['', '', '', '', '', '']);
-        setAuthView('forgot-password');
-      } else {
-        // Email verification OTP
-        const { data, error } = await insforge.auth.verifyEmail({ email: otpEmail, otp: code });
-        if (error || !data?.accessToken) throw new Error(error?.message || 'Invalid verification code');
-
-        setInsforgeAccessToken(data.accessToken);
-        if ((data as any).refreshToken) persistInsforgeRefreshToken((data as any).refreshToken);
-
-        // Mark verified on backend
-        try {
-          await apiRequest("POST", "/api/auth/mark-verified", {});
-        } catch { /* non-blocking */ }
-
-        if (otpSource === 'register' && pendingRegData) {
-          // Complete registration
-          const fingerprint = await getDeviceFingerprint();
-          await apiRequest("POST", "/api/register", { ...pendingRegData, deviceFingerprint: fingerprint });
-          await queryClient.invalidateQueries({ queryKey: ["auth"] });
-          toast({ title: "Registration Successful!", description: `Welcome to THORX!` });
-          setLocation(pendingRegData.role === 'user' ? "/user-portal" : "/team-portal");
-        } else {
-          // Login after verification
-          const fingerprint = await getDeviceFingerprint();
-          const resp = await apiRequest("POST", "/api/login", {
-            email: otpEmail,
-            insforgeAccessToken: data.accessToken,
-            deviceFingerprint: fingerprint,
-          });
-          const result = await resp.json();
-          await queryClient.invalidateQueries({ queryKey: ["auth"] });
-          toast({ title: "Login Successful!", description: "Welcome back!" });
-          setLocation(result.user?.role === 'team' || result.user?.role === 'founder' || result.user?.role === 'admin' ? "/team-portal" : "/user-portal");
-        }
-      }
-    } catch (error: any) {
-      toast({ title: "Verification Failed", description: error.message || "Invalid code. Please try again.", variant: "destructive" });
-      setOtpDigits(['', '', '', '', '', '']);
-      otpInputRefs.current[0]?.focus();
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleOtpSubmit = async (_code: string) => {
+    toast({ title: "Not Available", description: "Email OTP verification is not configured.", variant: "destructive" });
   };
 
   const handleResendOtp = async () => {
-    if (resendCooldown > 0) return;
-    try {
-      if (otpSource === 'reset') {
-        await insforge.auth.sendResetPasswordEmail({ email: otpEmail });
-      } else {
-        await insforge.auth.resendVerificationEmail({ email: otpEmail });
-      }
-      setResendCooldown(60);
-      toast({ title: "Code Sent!", description: "A new code has been sent to your email." });
-    } catch (error: any) {
-      toast({ title: "Failed to resend", description: error.message || "Please try again.", variant: "destructive" });
-    }
+    toast({ title: "Not Available", description: "Email OTP verification is not configured.", variant: "destructive" });
   };
 
   // ── Forgot Password Handlers ──
@@ -433,44 +366,26 @@ export default function Auth() {
     if (isSubmitting || !forgotEmail) return;
     setIsSubmitting(true);
     try {
-      await insforge.auth.sendResetPasswordEmail({ email: forgotEmail });
-      setOtpEmail(forgotEmail);
-      setOtpSource('reset');
-      setOtpDigits(['', '', '', '', '', '']);
-      setResendCooldown(60);
-      setForgotStep(2);
-      setAuthView('verify-otp');
-      toast({ title: "Code Sent!", description: "Check your email for the 6-digit reset code." });
+      await apiRequest("POST", "/api/forgot-password", { email: forgotEmail });
+      toast({
+        title: "Request Received",
+        description: "Please contact support to complete your password reset.",
+      });
+      setAuthView('login');
+      setActiveTab('login');
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to send reset email.", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Failed to submit request.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleResetPassword = async () => {
-    if (isSubmitting) return;
-    if (newPassword.length < 6) {
-      toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" }); return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" }); return;
-    }
-    setIsSubmitting(true);
-    try {
-      const { error } = await insforge.auth.resetPassword({ newPassword, otp: resetToken });
-      if (error) throw new Error(error.message || 'Reset failed');
-      toast({ title: "Password Reset!", description: "Your password has been changed. Please sign in." });
-      setAuthView('login');
-      setActiveTab('login');
-      setForgotStep(1);
-      setNewPassword('');
-      setConfirmNewPassword('');
-    } catch (error: any) {
-      toast({ title: "Reset Failed", description: error.message || "Please try again.", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-    }
+    toast({
+      title: "Not Available",
+      description: "Self-service password reset is not available. Please contact support.",
+      variant: "destructive"
+    });
   };
 
   // Identity generation function
@@ -546,62 +461,23 @@ export default function Auth() {
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || nameParts[0];
 
-      if (!isInsforgeConfigured()) {
-        throw new Error("Insforge is not configured (set VITE_INSFORGE_URL and VITE_INSFORGE_ANON_KEY).");
-      }
-
-      const redirectTo = `${window.location.origin}/auth`;
       const fingerprint = await getDeviceFingerprint();
-      
-      const { data: signUpData, error: signUpErr } = await insforge.auth.signUp({
-        email: data.email,
-        password: data.password,
-        name: data.name.trim(),
-        redirectTo,
-      });
-      if (signUpErr) {
-        throw new Error(signUpErr.message || "Insforge sign up failed");
-      }
 
-      // OTP required — save pending reg data and switch to OTP view
-      if (signUpData?.requireEmailVerification && !signUpData.accessToken) {
-        setPendingRegData({
-          firstName,
-          lastName,
-          email: data.email,
-          phone: data.phone || "",
-          identity: data.identity,
-          referralCode: data.referralCode || "",
-          role: data.role,
-          deviceFingerprint: fingerprint,
-        });
-        setOtpEmail(data.email);
-        setOtpSource('register');
-        setOtpDigits(['', '', '', '', '', '']);
-        setResendCooldown(60);
-        setAuthView('verify-otp');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // No verification needed — complete registration directly
-      if (signUpData?.accessToken) {
-        setInsforgeAccessToken(signUpData.accessToken);
-        if (signUpData.refreshToken) persistInsforgeRefreshToken(signUpData.refreshToken);
-      }
-
-      await apiRequest("POST", "/api/register", {
+      const resp = await apiRequest("POST", "/api/register", {
         firstName,
         lastName,
         email: data.email,
+        password: data.password,
         phone: data.phone || "",
         identity: data.identity,
         referralCode: data.referralCode || "",
         role: data.role,
         deviceFingerprint: fingerprint,
       });
+      const result = await resp.json();
 
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
+      queryClient.setQueryData(["session-auth"], result.user);
       toast({ title: "Registration Successful!", description: `Welcome to THORX, ${firstName}!` });
       setLocation(data.role === 'team' || data.role === 'founder' || data.role === 'admin' ? "/team-portal" : "/user-portal");
     } catch (error: any) {
@@ -617,92 +493,22 @@ export default function Auth() {
 
     setIsSubmitting(true);
 
-    // Helper: attempt direct local login (founder/admin/team bypass or legacy fallback)
-    const tryLocalLogin = async (): Promise<boolean> => {
-      try {
-        const fingerprint = await getDeviceFingerprint();
-        const fallbackResp = await apiRequest("POST", "/api/login", {
-          email: data.email,
-          password: data.password,
-          deviceFingerprint: fingerprint,
-        });
-        const fallbackResult = await fallbackResp.json();
-        const privilegedRoles = ['founder', 'admin', 'team'];
-        if (fallbackResult?.user?.role && privilegedRoles.includes(fallbackResult.user.role)) {
-          // Privileged account — seed the session cache so useAuth sees the user immediately
-          queryClient.setQueryData(["session-auth"], fallbackResult.user);
-          toast({ title: "Login Successful!", description: "Welcome back!" });
-          setLocation("/");
-          return true;
-        }
-        // Regular legacy user — prompt migration
-        toast({
-          title: "Security Update Required",
-          description: "Please re-register your account with the same email to migrate to our new secure authentication system.",
-          variant: "destructive",
-          duration: 8000,
-        });
-        setActiveTab("register");
-        return true; // handled
-      } catch {
-        return false;
-      }
-    };
-
     try {
-      if (!isInsforgeConfigured()) {
-        // No Insforge — fall straight through to local login (founder/admin/team accounts)
-        const handled = await tryLocalLogin();
-        if (!handled) throw new Error("Invalid email or password");
-        setIsSubmitting(false);
-        return;
-      }
-
-      const { data: signInData, error: signInErr } = await insforge.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (signInErr || !signInData?.accessToken) {
-        // Insforge failed — try local fallback
-        const handled = await tryLocalLogin();
-        if (!handled) throw new Error("Invalid email or password");
-        setIsSubmitting(false);
-        return;
-      }
-
-      setInsforgeAccessToken(signInData.accessToken);
-      if (signInData.refreshToken) persistInsforgeRefreshToken(signInData.refreshToken);
-
       const fingerprint = await getDeviceFingerprint();
 
       const response = await apiRequest("POST", "/api/login", {
         email: data.email,
-        insforgeAccessToken: signInData.accessToken,
+        password: data.password,
         deviceFingerprint: fingerprint,
       });
 
       const result = await response.json();
 
-      // Handle email verification gate
-      if (result.requireVerification || result.error === 'EMAIL_NOT_VERIFIED') {
-        setOtpEmail(result.email || data.email);
-        setOtpSource('login');
-        setOtpDigits(['', '', '', '', '', '']);
-        // Send a new verification OTP
-        try {
-          await insforge.auth.resendVerificationEmail({ email: result.email || data.email });
-          setResendCooldown(60);
-        } catch { /* non-blocking */ }
-        setAuthView('verify-otp');
-        toast({ title: "Verification Required", description: "Please enter the 6-digit code sent to your email." });
-        setIsSubmitting(false);
-        return;
-      }
-
+      queryClient.setQueryData(["session-auth"], result.user);
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
-      toast({ title: "Login Successful!", description: `Welcome back!` });
-      setLocation(result.user?.role === 'team' || result.user?.role === 'founder' || result.user?.role === 'admin' ? "/team-portal" : "/user-portal");
+      toast({ title: "Login Successful!", description: "Welcome back!" });
+      const role = result.user?.role;
+      setLocation(role === 'team' || role === 'founder' || role === 'admin' ? "/team-portal" : "/user-portal");
     } catch (error: any) {
       console.error("Login error:", error);
       toast({ title: "Login Failed", description: error.message || "Invalid email or password", variant: "destructive" });

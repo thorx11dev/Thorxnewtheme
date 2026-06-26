@@ -1,3 +1,3 @@
-/** THORX uses Insforge for authentication (JWT Bearer to API + refresh in sessionStorage). */
-export const authProvider = "insforge" as const;
-export const isInsforgeAuth = true;
+/** Session-based auth (express-session + bcrypt). */
+export const authProvider = "session" as const;
+export const isInsforgeAuth = false;
