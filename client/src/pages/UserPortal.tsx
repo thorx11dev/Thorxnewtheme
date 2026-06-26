@@ -91,6 +91,10 @@ import {
   Edit2,
   Settings,
   Network,
+  LayoutDashboard,
+  MonitorPlay,
+  Landmark,
+  Headphones,
   X,
   Send,
   Bell,
@@ -511,11 +515,11 @@ const availableAds: AdItem[] = [
 ];
 
 const sections = [
-  { id: "dashboard", name: "Dashboard", icon: Home },
-  { id: "work", name: "Work", icon: Briefcase },
-  { id: "referrals", name: "Referrals", icon: UserCheck },
-  { id: "payout", name: "Payout", icon: CreditCard },
-  { id: "help", name: "Help", icon: LifeBuoy },
+  { id: "dashboard", name: "Dashboard", icon: LayoutDashboard },
+  { id: "work", name: "Work", icon: MonitorPlay },
+  { id: "referrals", name: "Referrals", icon: Network },
+  { id: "payout", name: "Payout", icon: Landmark },
+  { id: "help", name: "Help", icon: Headphones },
 ];
 
 export default function UserPortal() {
