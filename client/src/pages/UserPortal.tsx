@@ -2028,7 +2028,7 @@ export default function UserPortal() {
             initial: { opacity: 0, y: 30 },
             animate: { opacity: 1, y: 0 }
           }}
-          className="industrial-video-frame p-6 border-4 border-black bg-white shadow-[0_12px_40px_rgba(0,0,0,0.1)]"
+          className="w-full"
         >
           <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
             {WORK_TABS.map(tab => (

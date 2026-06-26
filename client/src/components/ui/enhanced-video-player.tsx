@@ -165,7 +165,12 @@ function AreaPlayer({
     }
   }, [isCompleted, autoplayEnabled, currentAdIndex, adQueue.length]);
 
-  const handlePlay = () => setIsPlaying(true);
+  const handlePlay = () => {
+    setIsPlaying(true);
+    if (!isFullscreen) {
+      onFullscreenToggle();
+    }
+  };
   const handlePause = () => setIsPlaying(false);
 
   const handleSkip = () => {
@@ -598,94 +603,6 @@ export default function EnhancedVideoPlayer({
           ))}
         </div>
 
-        {/* Industrial Status Bar - Mobile Controls on Bottom Left - Hidden in Fullscreen */}
-        {!isFullscreen && (
-          <div className={`bg-white transition-all duration-300 ${isMobileDevice
-              ? 'mt-1 p-1.5 border border-black'
-              : 'mt-2 p-2 border-2 border-black'
-            }`}>
-            <div className={`flex items-center justify-between ${isMobileDevice ? 'text-xs' : ''}`}>
-              <div className={`flex items-center ${isMobileDevice ? 'gap-2' : 'gap-4'}`}>
-                {!isMobileDevice ? (
-                  <>
-                    {/* Desktop Controls */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={handleAutoplayToggle}
-                        className={`relative rounded-full transition-all duration-300 w-10 h-5 ${autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
-                          } border-2 border-black`}
-                        data-testid={`button-autoplay-${activeAreaTab}`}
-                        title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
-                      >
-                        <div className={`absolute top-0.5 transition-all duration-300 rounded-full bg-white w-3 h-3 ${autoplayEnabled ? 'left-5' : 'left-0.5'
-                          }`} />
-                      </button>
-                      <button
-                        onClick={handleVolumeToggle}
-                        className="text-black hover:text-primary transition-colors p-1"
-                        data-testid={`button-volume-${activeAreaTab}`}
-                      >
-                        {isMuted || volume === 0 ?
-                          <VolumeX className="w-4 h-4" /> :
-                          <Volume2 className="w-4 h-4" />
-                        }
-                      </button>
-                      <button
-                        onClick={handleFullscreenToggle}
-                        className="text-black hover:text-primary transition-colors p-1"
-                        data-testid={`button-fullscreen-${activeAreaTab}`}
-                      >
-                        <Maximize2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  /* Mobile Controls - Bottom Left */
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleAutoplayToggle}
-                      className={`relative rounded-full transition-all duration-300 w-9 h-[18px] ${autoplayEnabled ? 'bg-primary' : 'bg-gray-400'
-                        } border border-black`}
-                      data-testid={`button-autoplay-${activeAreaTab}`}
-                      title={autoplayEnabled ? 'Autoplay: ON' : 'Autoplay: OFF'}
-                    >
-                      <div className={`absolute top-[2px] transition-all duration-300 rounded-full bg-white w-[14px] h-[14px] ${autoplayEnabled ? 'left-[18px]' : 'left-[2px]'
-                        }`} />
-                    </button>
-                    <button
-                      onClick={handleVolumeToggle}
-                      className="text-black hover:text-primary transition-colors p-1 active:scale-95"
-                      data-testid={`button-volume-${activeAreaTab}`}
-                    >
-                      {isMuted || volume === 0 ?
-                        <VolumeX className="w-3.5 h-3.5" /> :
-                        <Volume2 className="w-3.5 h-3.5" />
-                      }
-                    </button>
-                    <button
-                      onClick={handleFullscreenToggle}
-                      className="text-black hover:text-primary transition-colors p-1 active:scale-95"
-                      data-testid={`button-fullscreen-${activeAreaTab}`}
-                    >
-                      <Maximize className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className={`flex items-center ${isMobileDevice ? 'gap-1' : 'gap-2'}`}>
-                <TechnicalLabel
-                  text="AREA PLAYER"
-                  className={`text-black ${isMobileDevice ? 'text-xs' : 'text-xs'}`}
-                />
-                <div className={`bg-black ${isMobileDevice ? 'w-3 h-3' : 'w-4 h-4 border border-gray-400'
-                  }`}>
-                  <div className={`bg-primary ${isMobileDevice ? 'w-1.5 h-1.5 m-0.25' : 'w-2 h-2 m-0.5'
-                    }`} />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
