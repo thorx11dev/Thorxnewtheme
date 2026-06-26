@@ -1,51 +1,35 @@
 import React, { FC } from "react";
 import { cn } from "@/lib/utils";
-// Removed next/image and next/link, using standard anchor for external link and div/span for structure
-// Link from wouter or react-router-dom could be used if internal linking is needed, but "How to Earn" is usually informational or links to auth/external.
-// Assuming "Link" usage in the prompt example was for the whole card. I'll make the cards interactive or just static containers depending on needs.
-// For this design, I'll wrap content in a div or anchor if a link is provided.
 import { Play, Users, Clock, ShieldCheck, TrendingUp, Plus } from "lucide-react";
 import TextBlockAnimation from "@/components/ui/text-block-animation";
 import { CinematicBlockReveal } from "@/components/ui/cinematic-block-reveal";
 import { VariableFontHoverByRandomLetter } from "@/components/ui/variable-font-hover";
-
-// Simplified content mapping
-// Card 1: Watch Ads
-// Card 2: Refer Friends
-// Card 3: Real Interaction (How it works - 30s rule)
-// Card 4: Multi-level (Growth)
-// Card 5: Secure (Verified Revenue)
 
 const cardContents = [
     {
         title: "Watch & Earn",
         description: "Watch short videos and visit websites. Stay for 30 seconds to get paid instantly.",
         icon: <Play className="size-6 text-black dark:text-white" />,
-        href: "/work" // Assuming internal route
     },
     {
         title: "Invite Friends",
         description: "Share your link. Earn commissions when your friends start earning.",
         icon: <Users className="size-6 text-black dark:text-white" />,
-        href: "/referrals" // Assuming internal route
     },
     {
         title: "Real Money",
         description: "No fake tasks. Real interaction means real money in your wallet.",
         icon: <Clock className="size-6 text-black dark:text-white" />,
-        href: "#"
     },
     {
         title: "Team Growth",
         description: "Earn from your team's success with our multi-level system.",
         icon: <TrendingUp className="size-6 text-black dark:text-white" />,
-        href: "#"
     },
     {
         title: "Secure & Verified",
         description: "Your earnings are verified and safe. Cash out when you're ready.",
         icon: <ShieldCheck className="size-6 text-black dark:text-white" />,
-        href: "#"
     },
 ];
 
@@ -72,13 +56,9 @@ const PlusCard: React.FC<{
     description: string;
     isActive: boolean;
     icon?: React.ReactNode;
-    href?: string;
-}> = ({ className = "", title, description, isActive, icon, href }) => {
-    const CardWrapper = href && href !== "#" ? "a" : "div";
-
+}> = ({ className = "", title, description, isActive, icon }) => {
     return (
-        <CardWrapper
-            href={href && href !== "#" ? href : undefined}
+        <div
             className={cn(
                 "relative border border-dashed border-zinc-500/50 dark:border-zinc-700/50 rounded-lg p-6 md:p-8 bg-[#EAE5DD] dark:bg-zinc-950 min-h-[200px] md:min-h-[240px]",
                 "flex flex-col justify-between group transition-all duration-500 ease-out",
@@ -88,7 +68,6 @@ const PlusCard: React.FC<{
             )}
         >
             <CornerPlusIcons />
-            {/* Content */}
             <div className="relative z-10 space-y-4">
                 <div className="bg-black/5 dark:bg-white/10 w-fit p-3 rounded-md">
                     {icon}
@@ -104,7 +83,7 @@ const PlusCard: React.FC<{
                     </TextBlockAnimation>
                 </div>
             </div>
-        </CardWrapper>
+        </div>
     );
 };
 
@@ -121,16 +100,17 @@ export default function EarningReveal({ isActive, onAdvance }: { isActive: boole
                         trigger={isActive}
                         blockColor="#000"
                     >
-                        <VariableFontHoverByRandomLetter
-                            label="OUR FEATURES"
-                            className="font-black uppercase tracking-tighter text-4xl md:text-7xl lg:text-8xl leading-none text-black dark:text-white"
-                            fromFontVariationSettings="'wght' 900, 'slnt' 0"
-                            toFontVariationSettings="'wght' 400, 'slnt' -10"
-                        />
+                        <div className="py-2">
+                            <VariableFontHoverByRandomLetter
+                                label="OUR FEATURES"
+                                className="font-black uppercase tracking-tighter text-4xl md:text-7xl lg:text-8xl leading-tight text-black dark:text-white"
+                                fromFontVariationSettings="'wght' 900, 'slnt' 0"
+                                toFontVariationSettings="'wght' 400, 'slnt' -10"
+                            />
+                        </div>
                     </CinematicBlockReveal>
                 </div>
 
-                {/* Responsive Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 auto-rows-auto gap-6 md:gap-8 mb-16 md:mb-24">
                     <PlusCard {...cardContents[0]} className="lg:col-span-3 lg:row-span-2" isActive={isActive} />
                     <PlusCard {...cardContents[1]} className="lg:col-span-3 lg:row-span-2" isActive={isActive} />
@@ -139,8 +119,6 @@ export default function EarningReveal({ isActive, onAdvance }: { isActive: boole
                     <PlusCard {...cardContents[3]} className="md:col-span-1 lg:col-span-2 lg:row-span-1" isActive={isActive} />
                     <PlusCard {...cardContents[4]} className="md:col-span-2 lg:col-span-2 lg:row-span-1" isActive={isActive} />
                 </div>
-
-
             </div>
         </section>
     );

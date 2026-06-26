@@ -210,12 +210,14 @@ export default function FAQSection({ isActive }: FAQSectionProps) {
             trigger={isActive}
             blockColor="#ff6b00"
           >
-            <VariableFontHoverByRandomLetter
-              label="FAQ."
-              className="font-black uppercase tracking-tighter text-4xl md:text-7xl lg:text-8xl leading-none text-black dark:text-white"
-              fromFontVariationSettings="'wght' 900, 'slnt' 0"
-              toFontVariationSettings="'wght' 400, 'slnt' -10"
-            />
+            <div className="py-2">
+              <VariableFontHoverByRandomLetter
+                label="FAQ."
+                className="font-black uppercase tracking-tighter text-4xl md:text-7xl lg:text-8xl leading-tight text-black dark:text-white"
+                fromFontVariationSettings="'wght' 900, 'slnt' 0"
+                toFontVariationSettings="'wght' 400, 'slnt' -10"
+              />
+            </div>
           </CinematicBlockReveal>
         </div>
 

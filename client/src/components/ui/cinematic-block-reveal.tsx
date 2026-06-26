@@ -31,7 +31,7 @@ const CinematicBlockReveal: React.FC<CinematicBlockRevealProps> = ({
     }, [trigger, hasRevealed, isAnimating]);
 
     return (
-        <div className={cn("relative inline-block overflow-hidden", className)}>
+        <div className={cn("relative inline-block", className)}>
             {/* The actual content */}
             <motion.div
                 initial={{ opacity: 0 }}
