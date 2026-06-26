@@ -125,7 +125,7 @@ export default function ValueProposition({ isActive }: { isActive: boolean }) {
                         <div className="py-2">
                             <VariableFontHoverByRandomLetter
                                 label="VALUE PROPOSITION"
-                                className="font-black uppercase tracking-tighter text-4xl md:text-7xl lg:text-8xl leading-tight text-black dark:text-white"
+                                className="font-black uppercase tracking-tighter leading-tight text-black dark:text-white text-[clamp(1.35rem,7vw,2.25rem)] md:text-7xl lg:text-8xl"
                                 fromFontVariationSettings="'wght' 900, 'slnt' 0"
                                 toFontVariationSettings="'wght' 400, 'slnt' -10"
                             />
