@@ -3412,37 +3412,49 @@ export default function UserPortal() {
                             id: "001",
                             protocol: "PLATFORM-OVERVIEW",
                             question: "What is THORX?",
-                            answer: "THORX is an online earning platform designed specifically for Pakistani users, enabling them to convert their attention into real earnings in PKR. Official domain: thorx.pro. Our objective is to provide a halal and sustainable income opportunity through a transparent ecosystem."
+                            answer: "THORX is an AI-powered digital engagement platform that connects businesses with verified human attention while enabling users to earn real money through meaningful online activities. We operate Engine A (Attention Marketplace), Engine B (AI-Driven CPA Offers), and Engine C (3-Division Referral Matrix) — all backed by multi-layer AI fraud prevention."
                           },
                           {
                             id: "002",
                             protocol: "EARNING-MODEL",
                             question: "How do I earn on THORX?",
-                            answer: "You earn by: 1) Watching video advertisements attentively using the THORX Ads Player, 2) Visiting advertiser product pages via the THORX Web Panel and staying for approximately 30 seconds while reading and scrolling, 3) Inviting new users through the referral system. Tasks convert to earnings only when you actively engage with both video ads and web panels."
+                            answer: "Three earning streams: 1) Engine A — Watch 15–25 second video ads, then actively explore the advertiser's page for 15 seconds inside our secure AI sandbox. 2) Engine B — Complete curated CPA tasks (app downloads, reviews, registrations) and submit proof for AI-verified payout. 3) Engine C — Earn 15% when your Level 1 referral withdraws, and 7.5% when their referrals withdraw."
                           },
                           {
                             id: "003",
-                            protocol: "HALAL-ECOSYSTEM",
-                            question: "Is THORX earning Halal?",
-                            answer: "Yes. THORX operates within a halal-based earning model. All video advertisements follow strict content guidelines to ensure haram or inappropriate material is not promoted. Earnings are based on genuine work (attention and engagement), not passive income or interest. Auto-functioning without attention makes earnings haram."
+                            protocol: "WALLET-DEDUCTIONS",
+                            question: "What fees are deducted at withdrawal?",
+                            answer: "THORX uses a Net-First UI — your wallet always shows exactly what you can withdraw, with all fees already calculated in the background. Total deductions at withdrawal: Referred users: 34.5% (12% platform fee + 15% Level 1 + 7.5% Level 2 referral share). Solo/organic users: 27% (12% platform fee + 15% admin charge). What you see is what you get — no surprises."
                           },
                           {
                             id: "004",
                             protocol: "REFERRAL-SYSTEM",
-                            question: "How does the referral system work?",
-                            answer: "Multi-level system: When User A invites User B, User A earns 15% of User B's earnings. When User B invites User C, User A earns 7.5% and User B earns 15%. IMPORTANT: Commission is credited ONLY when the referred user requests a payout, not when they earn."
+                            question: "How does the 3-Division Referral Matrix work?",
+                            answer: "When your Level 1 referral (User B) requests a withdrawal, you receive 15% of their gross earnings. When their referral (User C) withdraws, you receive 7.5% and User B receives 15%. Users who join without a referral link pay a flat 15% Admin Charge at withdrawal. Commissions are deducted from the withdrawing user's gross earnings and distributed to referrers automatically."
                           },
                           {
                             id: "005",
                             protocol: "RANKING-SYSTEM",
                             question: "What are the user ranks?",
-                            answer: "Ranks based on BOTH total referrals AND total earnings: 1) Useless (new users), 2) Worker (5 refs + 2,500 PKR), 3) Soldier (10 refs + 5,000 PKR), 4) Captain (15 refs + 10,000 PKR), 5) General (25 refs + 25,000 PKR). Both conditions must be met to upgrade."
+                            answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks: 1) Useless (Priority 5 — new users), 2) Worker (5 refs + 2,500 PKR — Priority 4), 3) Soldier (10 refs + 5,000 PKR — Priority 3), 4) Captain (15 refs + 10,000 PKR — Priority 2), 5) General (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
                           },
                           {
                             id: "006",
                             protocol: "PAYOUT-METHODS",
                             question: "How do I withdraw my earnings?",
-                            answer: "Withdrawal options: JazzCash, EasyPaisa, or Bank Transfer. You MUST complete required daily tasks to be eligible for payouts. Navigate to the Payout section in your User Portal to request withdrawal. A 10% platform fee applies to every transaction."
+                            answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page — it is mathematically locked until tasks are complete. Higher-ranked users (General, Captain) have payouts processed first. The 12% platform fee plus any applicable referral/admin charges are already reflected in your displayed wallet balance."
+                          },
+                          {
+                            id: "007",
+                            protocol: "AI-ATTENTION-DETECTOR",
+                            question: "How does the AI Attention Detector work?",
+                            answer: "When you complete an ad task, a hidden AI system tracks three behavioral signals simultaneously: Tab Visibility API (pauses your timer if you switch tabs or minimize the window), Micro-Movement Delta (detects cursor coordinates or touch input to confirm the device is being actively used), and Scroll Vector (verifies you scrolled at least 10–20% of the page). All three must pass for a payout to be issued."
+                          },
+                          {
+                            id: "008",
+                            protocol: "ENGINE-B-PROOF",
+                            question: "How does Engine B offer verification work?",
+                            answer: "After completing a CPA task, upload your screenshot or video proof. Our AI Agent runs a 3-tier check: Tier 1 — Metadata & hash extraction to catch duplicate or recycled proofs. Tier 2 — Advanced OCR + LLM analysis to verify target handles, comment text, and UI structures from your screenshot. Tier 3 — Approved tasks enter 'Pending' escrow before the admin panel releases to your wallet."
                           }
                         ].map((faq, idx) => (
                           <motion.div

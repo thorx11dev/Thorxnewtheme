@@ -96,16 +96,16 @@ const ContentBlock = ({ label, description, isActive }: ContentBlockProps) => (
 export default function ValueProposition({ isActive }: { isActive: boolean }) {
     const stakeholders = [
         {
-            label: "FOR USERS",
-            description: "Convert your time into Halal PKR earnings. Navigate our Engine A video players or complete high-paying CPE offers from Engine B. Withdraw your secure earnings directly to JazzCash and EasyPaisa after completing your daily tasks."
+            label: "FOR EARNERS",
+            description: "Turn genuine attention into real PKR earnings — no hidden deductions, no surprises. Our Net-First wallet always shows exactly what you can withdraw. Watch verified ads, complete curated tasks, build a referral team, and cash out directly to JazzCash or EasyPaisa."
         },
         {
-            label: "FOR VAST NETWORKS",
-            description: "Scale your video ad network with genuine human engagement. Our massive 'ENTER' button verification ensures 100% human interactions from a logged-in Pakistan audience, eliminating bot traffic and delivering superior eCPM without clickjacking bans."
+            label: "FOR ADVERTISERS",
+            description: "Get verified human attention, not bot impressions. Every THORX ad view passes a dual-phase behavioral check — video completion plus 15 seconds of active page exploration tracked by our hidden AI detector. Reach a real, engaged Pakistani audience and pay only for verified engagement."
         },
         {
-            label: "FOR CPA NETWORKS",
-            description: "Deploy Cost-Per-Engagement (CPE) offers to an active, verified Pakistani market. Our AI Web Panel tracks 15-second human behavior (scrolling & touches) to guarantee zero bots, delivering real app installs, leads, and measurable ROI."
+            label: "FOR THE ECOSYSTEM",
+            description: "THORX is infrastructure. Our 3-Division Referral Matrix turns every user into an organic growth engine. Our AI fraud stack eliminates fake traffic at every layer. And our LeadX system bridges attention and lead generation — creating a self-sustaining, trusted marketplace for human attention."
         }
     ];
 

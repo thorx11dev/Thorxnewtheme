@@ -77,91 +77,91 @@ const allFaqData = [
     id: "001",
     protocol: "PLATFORM-OVERVIEW",
     question: "What is THORX?",
-    answer: "THORX is an online earning platform designed specifically for Pakistani users, enabling them to convert their attention into real earnings in PKR. Official domain: thorx.pro. We operate a dual-engine architecture offering transparent earning opportunities."
+    answer: "THORX is an AI-powered digital engagement platform that connects businesses with verified human attention while enabling users to earn real money through meaningful online activities. We operate a dual-engine architecture: Engine A (Attention Marketplace) and Engine B (AI-Driven CPA Offers), backed by a 3-tier referral system."
   },
   {
     id: "002",
     protocol: "EARNING-MODEL",
     question: "How do I earn on THORX?",
-    answer: "You earn through two main systems: 1) Engine A (watching video ads in our 4 VAST players), and 2) Engine B (completing high-paying CPE offers). All tasks are verified by our AI Web Panel, tracking 15-second active engagement. Finally, invite new users to earn 15% / 7.5% referral commissions."
+    answer: "You earn through three systems: 1) Engine A — watch 15–25 second video ads then actively explore the advertiser's page for 15 seconds inside our AI sandbox. 2) Engine B — complete curated CPA tasks (app downloads, reviews, registrations) with AI-verified proof submission. 3) Engine C — earn 15% / 7.5% referral commissions when your invited users withdraw earnings."
   },
   {
     id: "003",
     protocol: "ATTENTION-REQUIREMENT",
     question: "What does 'Turn Attention into Currency' mean?",
-    answer: "THORX requires genuine attention and engagement. Whether clicking a video ad or an offer, you must visit the advertiser's product page via our AI Web Panel and stay for 15+ seconds, actively reading and scrolling. Auto-functioning without attention makes earnings haram."
+    answer: "THORX's hidden AI Attention Detector tracks three real behavioral signals: Tab Visibility (pauses if you switch tabs), Micro-Movement Delta (detects cursor or touch activity), and Scroll Vector (confirms you've scrolled at least 10–20% of the page). All three must pass before a payout is issued. Genuine attention is the product — no shortcuts allowed."
   },
   {
     id: "004",
     protocol: "HALAL-ECOSYSTEM",
     question: "Is THORX earning Halal?",
-    answer: "Yes. THORX follows a strict halal-based earning model. All video advertisements and CPE offers undergo content filtering. Furthermore, earnings are based on genuine work (human attention and engagement), not passive income, interest, or gambling."
+    answer: "Yes. THORX operates within a strict halal-based earning model. All video advertisements and CPA offers undergo content filtering — no haram or inappropriate material is promoted. Earnings are based on genuine work (verified human attention and engagement), not passive income, interest, or gambling."
   },
   {
     id: "005",
     protocol: "REFERRAL-SYSTEM",
-    question: "How does the referral system work?",
-    answer: "Multi-level system: Level 1 pays 15%, Level 2 pays 7.5%. IMPORTANT: Commission is credited ONLY when the referred user successfully requests a payout. This ensures maximum safety, value, and cash flow for the ecosystem."
+    question: "How does the 3-Division Referral Matrix work?",
+    answer: "THORX uses a 3-tier referral structure: When your Level 1 referral (User B) withdraws, you receive 15% of their gross earnings. When their Level 1 referral (User C) withdraws, you receive 7.5% and User B receives 15%. Users who join without a referral link pay a flat 15% Admin Charge at withdrawal instead. Commissions are triggered by payout requests — not by earnings."
   },
   {
     id: "006",
-    protocol: "RANKING-SYSTEM",
-    question: "What are the user ranks?",
-    answer: "We use a Dual-Requirement Ranking System (Referrals AND Earnings) that unlocks withdrawal priorities. 1) Useless (Priority 5), 2) Worker (5 Refs + 2,500 PKR, P4), 3) Soldier (10 Refs + 5,000 PKR, P3), 4) Captain (15 Refs + 10,000 PKR, P2), 5) General (25 Refs + 25,000 PKR, P1)."
+    protocol: "WALLET-DEDUCTIONS",
+    question: "What fees are deducted at withdrawal?",
+    answer: "THORX uses a Net-First UI — your wallet always shows your exact withdrawable balance with all fees already calculated in the background. At withdrawal: Referred users have 34.5% deducted total (12% platform fee + 15% Level 1 referral + 7.5% Level 2 referral). Solo/organic users have 27% deducted (12% platform fee + 15% admin charge). What you see is exactly what you get."
   },
   {
     id: "007",
-    protocol: "DAILY-TASKS",
-    question: "What are daily tasks and why are they mandatory?",
-    answer: "Daily Tasks are your Payout Gatekeeper. You MUST complete your assigned tasks (watching specific numbers of ads or doing CPE offers) to unlock the payout page. If tasks are incomplete, the withdrawal system is mathematically locked."
+    protocol: "ENGINE-A",
+    question: "What is Engine A — the Attention Marketplace?",
+    answer: "Engine A is the core earning engine. Phase 1: You watch a 15–25 second video ad via our Waterfall Video Player (if one ad network is empty, the next loads instantly — zero downtime). Phase 2: The advertiser's landing page loads inside a secure Thorx sandbox. You must actively explore it for 15 seconds. A hidden AI behavioral tracker verifies genuine attention before crediting your wallet."
   },
   {
     id: "008",
-    protocol: "ENGINE-A",
-    question: "What is Engine A (Video Ads)?",
-    answer: "Engine A is our VAST Video Waterfall system. It uses 4 custom players connected to multiple ad networks. If one lacks an ad, the next loads instantly. To prevent bot bans, you must click a massive 'ENTER' button after the video to verify human presence."
+    protocol: "ENGINE-B",
+    question: "What is Engine B — AI-Driven CPA Offers?",
+    answer: "Engine B is the high-yield task system. The THORX team curates reliable offers from top CPA networks (app downloads, reviews, registrations). You complete the task and upload proof. Our AI Agent then runs a multi-tier fraud check: Tier 1 checks metadata/hash for duplicates, Tier 2 uses OCR + LLM to verify screenshot content, Tier 3 moves approved tasks to escrow before admin final release."
   },
   {
     id: "009",
-    protocol: "ENGINE-B",
-    question: "What is Engine B (CPE Offerwall)?",
-    answer: "Engine B is our high-profit Cost-Per-Engagement Offerwall pulling tasks from top CPA networks. It features Smart-Cap logic: if an offer needs 1,000 users, we temporarily reserve your slot to ensure no user wastes time on full campaigns."
+    protocol: "LEADX-SYSTEM",
+    question: "What is the LeadX System?",
+    answer: "LeadX is THORX's proprietary lead generation system for advertisers. It combines Engine A's attention verification and Engine B's offer infrastructure to deliver verified, high-quality leads — not just impressions or clicks. Advertisers can opt into LeadX for best results or choose to launch their own campaigns directly through the Advertiser Portal."
   },
   {
     id: "010",
-    protocol: "WEB-PANEL",
-    question: "What is the AI Web Panel?",
-    answer: "The AI Web Panel is our core tracker. You are routed here when completing any task. You must stay for at least 15 seconds while the AI tracks scrolling, touch events, and tab visibility to guarantee zero bot traffic. Pass the test, get paid."
+    protocol: "USER-PORTAL",
+    question: "What is inside the User Portal?",
+    answer: "The User Portal has 5 sections: 1) Dashboard — earnings overview, rank, and analytics. 2) Work — Engine A video players + Engine B CPA Offerwall. 3) Referral — team tracking and referral link. 4) Payout — withdraw to JazzCash or EasyPaisa. 5) Help — Area Guide (FAQs), Area Help (AI chatbot), Area Contact (direct support)."
   },
   {
     id: "011",
-    protocol: "USER-PORTAL",
-    question: "What is the User Portal?",
-    answer: "The User Portal has 5 sections: 1) Dashboard (earnings, rank, analytics), 2) Work (Engine A video players + Engine B CPE Offerwall), 3) Referral (network tracking), 4) Payout (JazzCash/EasyPaisa), 5) Help (FAQs, AI Chatbot, Contact team)."
+    protocol: "RANKING-SYSTEM",
+    question: "What are the user ranks and how do they work?",
+    answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks and withdrawal priorities: 1) Useless (Priority 5 — new users), 2) Worker (5 refs + 2,500 PKR — Priority 4), 3) Soldier (10 refs + 5,000 PKR — Priority 3), 4) Captain (15 refs + 10,000 PKR — Priority 2), 5) General (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
   },
   {
     id: "012",
     protocol: "PAYOUT-METHODS",
     question: "How do I withdraw my earnings?",
-    answer: "Withdrawals are processed via JazzCash, EasyPaisa, or Bank Transfer. You MUST complete your required daily tasks to unlock the payout page. Higher ranks like General and Captain get their payouts processed first."
+    answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page. Higher-ranked users (General, Captain) have their payouts processed first. The minimum withdrawal amount is shown in your Wallet section. Deductions are calculated before display — there are no surprise cuts at checkout."
   },
   {
     id: "013",
-    protocol: "AUTO-FUNCTION-WARNING",
-    question: "Can I use auto-functioning bots?",
-    answer: "WARNING: Auto-functioning bots or scripts are totally banned. Any attempt to use bots will automatically fail the AI Web Panel 15-second tracking test and will result in a permanent shadow-ban from CPE offers."
+    protocol: "AD-BLOCKER",
+    question: "Why does THORX ask me to disable my ad-blocker?",
+    answer: "Thorx delivers real ad content as the core earning mechanism. If an ad-blocker or ad-blocking browser (like Brave) is detected, THORX serves a gateway modal that blocks access to the earning area until you whitelist THORX. Ads must load for the earning loop to function — blocking them means no earning is possible."
   },
   {
     id: "014",
     protocol: "SECURITY",
-    question: "Is THORX secure?",
-    answer: "Yes. THORX uses multi-factor authentication via Email OTP for registration. We also feature advanced ad-fraud prevention mechanisms, ensuring our publisher accounts and your earnings remain safe from malicious networks."
+    question: "Is THORX secure and my data safe?",
+    answer: "Yes. THORX uses secure authentication, encrypted data handling, and AI-powered fraud prevention on every interaction. The platform is web-first by design — no app download needed — which allows immediate security patches and hot-fixes to be deployed without app store delays."
   },
   {
     id: "015",
     protocol: "VALUE-PROPOSITION",
-    question: "How does THORX create value?",
-    answer: "For Users: Convert genuine attention into halal earnings. For VAST Networks: High-quality leads without clickjacking. For CPA Networks: Verified human engagement on CPE offers, meaning real App Installs and Action completions."
+    question: "How does THORX create value for all sides?",
+    answer: "For Users: Convert genuine attention into real PKR earnings via JazzCash/EasyPaisa with full fee transparency. For Advertisers: Verified human attention — not bot traffic — with AI behavioral proof on every impression, delivering higher conversion rates than traditional social media ads. For the Ecosystem: A self-sustaining viral growth engine powered by the 3-tier referral matrix."
   }
 ];
 

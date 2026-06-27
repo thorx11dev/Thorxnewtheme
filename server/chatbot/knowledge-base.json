@@ -1,12 +1,12 @@
 {
   "metadata": {
-    "version": "4.1.0",
-    "lastUpdated": "2026-03-25",
+    "version": "5.0.0",
+    "lastUpdated": "2026-06-27",
     "language": [
       "en",
       "ur"
     ],
-    "description": "Official Knowledge Base for Thorx AI Support Assistant - Dual Engine Halal Ad-Tech Platform"
+    "description": "Official Knowledge Base for Thorx AI Support Assistant - AI-Powered Digital Engagement Platform"
   },
   "intents": [
     {
@@ -40,14 +40,14 @@
       },
       "responses": {
         "en": [
-          "Hello {name}! Welcome to THORX. I'm your AI assistant, here to explain our Halal earning model where you convert attention into currency. How can I assist you today?",
-          "Hi {name}! Welcome to the THORX community. I can help you understand how to earn by watching video ads (Engine A), completing CPE tasks (Engine B), and building your team. What would you like to know?",
-          "Greetings {name}! I'm here to support your earning journey on THORX. Whether it's about the AI Web Panel, Daily Tasks, or the dual-requirement ranking system, feel free to ask!"
+          "Hello {name}! Welcome to THORX — the AI-Powered Digital Engagement Platform. I'm your AI assistant. Ask me about how to earn, the referral matrix, wallet fees, or anything else about the platform!",
+          "Hi {name}! Welcome to THORX. I can help you understand Engine A (Attention Marketplace), Engine B (CPA Offers), the 3-Division Referral Matrix, or wallet deductions. What would you like to know?",
+          "Greetings {name}! I'm here to support your THORX journey. Ask me about earnings, the AI Attention Detector, withdrawal fees, or how to climb the ranks!"
         ],
         "ur": [
-          "Assalam o Alaikum {name}! THORX mein khushamdeed. Main aapka AI assistant hoon aur hamare Halal earning model ke baare mein batane ke liye yahan hoon. Aaj main aapki kaise madad kar sakta hoon?",
-          "Hello {name}! THORX community mein swagat hai. Main aapko bata sakta hoon ke kaise video ads (Engine A) dekh kar aur CPE tasks (Engine B) poore kar ke kamaya ja sakta ہے۔ Aap kya jaanna chahenge?",
-          "Salam {name}! Main THORX par aapki earning journey mein madad ke liye hoon. Chahe AI Web Panel ho, Daily Tasks hon ya naya ranking system, befikr hokar poochein!"
+          "Assalam o Alaikum {name}! THORX mein khushamdeed — AI-Powered Digital Engagement Platform. Main aapka AI assistant hoon. Engine A, Engine B, referral matrix ya wallet fees ke baare mein poochein!",
+          "Hello {name}! THORX community mein swagat hai. Main aapko Engine A (video ads), Engine B (CPA offers) aur 3-tier referral system ke baare mein bata sakta hoon. Kya jaanna chahenge?",
+          "Salam {name}! Main THORX par aapki earning journey mein madad ke liye hoon. Earning, AI Attention Detector, withdrawal fees ya rank ke baare mein befikr poochein!"
         ]
       },
       "followUp": [
@@ -80,14 +80,14 @@
       },
       "responses": {
         "en": [
-          "Goodbye {name}! Thank you for being part of our transparent earning ecosystem. Stay attentive and keep earning!",
-          "Take care {name}! I'm available 24/7 if you need legal or task clarifications. See you next time!",
-          "Bye {name}! Wishing you success on THORX. Remember, real attention brings real rewards. Allah Hafiz!"
+          "Goodbye {name}! Thank you for being part of the THORX ecosystem. Stay attentive and keep earning — real attention brings real rewards!",
+          "Take care {name}! I'm available 24/7 for any questions. See you next time!",
+          "Bye {name}! Wishing you success on THORX. Remember: What You See Is What You Get. Allah Hafiz!"
         ],
         "ur": [
-          "Allah Hafiz {name}! Hamare transparent earning ecosystem ka hissa banne ka shukriya. Tawajjo rakhein aur kamate rahein!",
+          "Allah Hafiz {name}! THORX ecosystem ka hissa banne ka shukriya. Tawajjo rakhein aur kamate rahein!",
           "Apna khayal rakhein {name}! Main 24/7 available hoon agar koi sawal ho. Phir milenge!",
-          "Khuda Hafiz {name}! THORX par kamyabi ki dua. Yaad rakhein, asli tawajjo hi asli inaam lati hai. Allah Hafiz!"
+          "Khuda Hafiz {name}! THORX par kamyabi ki dua. Yaad rakhein: Jo dikhta hai wahi milta hai. Allah Hafiz!"
         ]
       }
     },
@@ -104,7 +104,8 @@
           "thorx kya hai",
           "what does thorx do",
           "how thorx works",
-          "is thorx real"
+          "is thorx real",
+          "thorx overview"
         ],
         "ur": [
           "thorx kya hai",
@@ -118,14 +119,14 @@
       },
       "responses": {
         "en": [
-          "THORX is an advanced \"Attention-as-a-Service\" platform designed for Pakistanis. We operate two main earning engines: Engine A (VAST Video Ads Waterfall) and Engine B (High-profit CPE Offerwall). You earn Halal income by giving verified human attention to these tasks via our AI Web Panel tracker.",
-          "{name}, THORX offers a transparent ecosystem for Pakistanis to earn together. Unlike other platforms, we require **active engagement** for 15+ seconds on advertiser landing pages. Our AI verifies this attention to generate legimate revenue. We support payouts via JazzCash and EasyPaisa.",
-          "THORX is where verified attention meets opportunity. We filter out bots and guarantee our advertisers human traffic, allowing us to pay you premium rates in PKR. We also feature a highly profitable 2-level referral system (15% L1, 7.5% L2) triggered upon withdrawals."
+          "THORX is an AI-Powered Digital Engagement Platform that connects businesses with verified human attention while enabling users to earn real money. We operate three core engines: Engine A (Attention Marketplace), Engine B (AI-Driven CPA Offers), and Engine C (3-Division Referral Matrix). Payouts go directly to JazzCash and EasyPaisa.",
+          "{name}, THORX is built around one idea: turning genuine human attention into currency. Unlike other platforms, every ad view is verified by our hidden AI Attention Detector — tracking tab visibility, cursor movement, and scroll behavior. No fake traffic, no bots, no passive clicking. Real attention = real money.",
+          "THORX is where verified attention meets opportunity. Advertisers get real human engagement (not bot impressions). Users get transparent, Net-First earnings in PKR — what you see in your wallet is exactly what you receive. We also feature a 3-tier referral system that pays 15% / 7.5% commissions triggered at withdrawal."
         ],
         "ur": [
-          "THORX ek advanced \"Attention-as-a-Service\" platform hai. Hum do blocks chalate hain: Engine A (Video Ads) aur Engine B (CPE Offers). Aap hamare AI Web Panel ke zariye in tasks ko tawajjo de kar Halal aamdani kamate hain.",
-          "{name}, THORX Pakistanion ke liye ek shafaf ecosystem hai. Yahan aapko advertiser ke page par 15+ seconds ki **active engagement** deni hoti hai jo hamara AI verify karta hai, taake kamai Halal aur jaiz ho. Hum JazzCash aur EasyPaisa support karte hain.",
-          "THORX wo jagah hai jahan tawajjo se mauqa milta hai. Hum bots ko rokte hain aur advertisers ko human traffic ki guarantee dete hain, is liye aapko PKR mein behtar rate milta hai. Sath hi 2-level referral system (15% L1, 7.5% L2) bhi mojood hai."
+          "THORX ek AI-Powered Digital Engagement Platform hai jo businesses ko verified human attention se connect karta hai. Teen engines hain: Engine A (Attention Marketplace), Engine B (CPA Offers), Engine C (3-Division Referral Matrix). Payouts JazzCash aur EasyPaisa par jaate hain.",
+          "{name}, THORX ka maqsad hai asli human attention ko paison mein tabdeel karna. Hamesha AI Attention Detector se verify hota hai — tab visibility, cursor movement aur scroll behavior track karta hai. Koi fake traffic nahi, koi bot nahi. Asli tawajjo = asli paisa.",
+          "THORX mein asli mauqa milta hai. Advertisers ko real human engagement milti hai. Users ko Net-First earnings milti hai PKR mein — jo wallet mein dikhta hai wahi milta hai. 3-tier referral system bhi hai jo 15% / 7.5% deta hai jab referral withdraw kare."
         ]
       },
       "followUp": [
@@ -160,14 +161,12 @@
       },
       "responses": {
         "en": [
-          "Yes, {name}, THORX operates within a **Halal-based earning model**. We strictly curate our video advertisements and CPE offers to ensure NO haram or inappropriate material is promoted.",
-          "We take this seriously. THORX ensures that: 1) All ad content covers strict guidelines, and 2) Income is generated through active user engagement (real work inside our AI Web Panel), not interest or gambling.",
-          "Transparency is key to our Halal model. You satisfy advertisers by giving genuine attention to their products (visiting pages for ~15 seconds). This exchange of value makes the earning legitimate."
+          "Yes, {name}, THORX operates a strict **Halal-based earning model**. All video ads and CPA offers are content-filtered — no haram or inappropriate material is promoted. Earnings come from genuine work (verified human attention and engagement), not interest or gambling.",
+          "We take Halal compliance seriously. Income is generated through active, real user engagement inside our AI sandbox — not passive clicking or bots. Genuine attention is the exchange of value that makes earning legitimate and halal."
         ],
         "ur": [
-          "Ji haan, {name}, THORX ek **Halal-based earning model** par chalta hai. Hum sakhti se video advertisements aur CPE offers check karte hain taake koi haram ya namunasib mawad promote na ho.",
-          "Hum is baat ko sanjeedgi se lete hain. THORX yakeeni banata hai ke aamdani active engagement (AI Web Panel mein asli kaam) se aaye, sood ya juway se nahi. Bina dihan diye auto-functioning haram samjhi jati hai.",
-          "Hamare Halal model ki bunyad shafafiyat hai. Aap advertisers ko unki products par asli tawajjo de kar (~15 seconds ruk kar) value dete hain. Yeh len-den kamai ko legitimate banata hai."
+          "Ji haan {name}, THORX ek **Halal-based earning model** par chalta hai. Tamam video ads aur CPA offers content filter se guzarte hain — koi haram ya namunasib mawad promote nahi hota. Aamdani asli kaam (verified human attention) se aati hai, sood ya juway se nahi.",
+          "Hum Halal compliance ko sanjeedgi se lete hain. Kamai active, real user engagement se hoti hai AI sandbox mein — passive clicking ya bots se nahi. Asli tawajjo hi kamai ko jaiz banati hai."
         ]
       },
       "followUp": [
@@ -186,7 +185,8 @@
           "work",
           "what do i do",
           "watch ads",
-          "visit pages"
+          "visit pages",
+          "start earning"
         ],
         "ur": [
           "kaise kamaon",
@@ -194,17 +194,18 @@
           "earning ka tareeqa",
           "kaam kya hai",
           "ads dekhna",
-          "pages visit karna"
+          "pages visit karna",
+          "earning shuru"
         ]
       },
       "responses": {
         "en": [
-          "Earning on THORX requires active participation, {name}. You can earn through two main systems:\n1. **Engine A (Video Ads)**: Watch short videos fully and click the 'ENTER' button to verify your presence.\n2. **Engine B (CPE Offerwall)**: Complete high-paying engagement tasks sourced from global networks.\nBoth methods require passing the 15-second tracking test inside our **AI Web Panel**.",
-          "To earn, go to the Work section. You must actively engage with either video ads or CPE offers. Our AI Web Panel tracks your scrolling and reading behavior to ensure you are paying attention. If you pass the 15-second tracking rule, your balance is credited instantly."
+          "THORX has three earning streams, {name}:\n1. **Engine A (Attention Marketplace)**: Watch a 15–25 second video ad, then actively explore the advertiser's page inside our secure AI sandbox for 15 seconds. The hidden AI Attention Detector verifies your engagement before crediting your wallet.\n2. **Engine B (CPA Offers)**: Complete curated tasks from top CPA networks — app downloads, reviews, registrations. Submit proof and our AI Agent verifies it through a 3-tier fraud check.\n3. **Engine C (Referral Matrix)**: Earn 15% when your Level 1 referral withdraws, and 7.5% when their referrals withdraw.",
+          "Go to the Work section to start earning. Engine A = watch video ads + explore pages for 15 seconds. Engine B = complete CPA tasks and upload proof for AI verification. Engine C = invite friends and earn commissions at their withdrawal. All earnings appear in your Net-First wallet — showing exactly what you can withdraw."
         ],
         "ur": [
-          "THORX par kamane ke liye active rehna zaroori hai, {name}. Kamai ke do tareeqay hain:\n1. **Engine A (Video Ads)**: Pura video dekhein aur human presence verify karne ke liye 'ENTER' button dabayein.\n2. **Engine B (CPE Offers)**: Globally sourced high-paying engagement tasks poore karein.\nDono mein kamyabi ke liye hamare **AI Web Panel** ka 15-second tracking test pass karna lazmi hai.",
-          "Kamane ke liye Work section mein jayen. Aapko video ads ya CPE offers par active rehna hoga. Hamara AI Web Panel aapki scrolling check karta hai. Agar aap 15-second ka test pass karte hain, toh aapki balance fauran badh jati hai."
+          "THORX mein teen tareeqay hain, {name}:\n1. **Engine A**: 15–25 second video ad dekhein, phir AI sandbox mein 15 seconds tak advertiser ka page explore karein. AI Attention Detector verify karta hai.\n2. **Engine B**: Top CPA networks ke curated tasks karein — app download, review, registration. Proof submit karein aur AI Agent 3-tier check karta hai.\n3. **Engine C**: Level 1 referral ke withdrawal par 15% aur unke referral ke withdrawal par 7.5% milta hai.",
+          "Work section mein jayen earning shuru karne ke liye. Engine A = video ads + 15 second page exploration. Engine B = CPA tasks + proof upload. Engine C = doston ko invite karein aur unke withdrawal par commission payen. Sab kuch Net-First wallet mein dikhta hai — jo dikhta hai wahi milta hai."
         ]
       },
       "followUp": [
@@ -221,22 +222,26 @@
           "video ad",
           "waterfall",
           "video player",
-          "watch video"
+          "watch video",
+          "attention marketplace",
+          "sandbox",
+          "attention detector"
         ],
         "ur": [
           "engine a",
           "video ad",
           "waterfall",
           "video player",
-          "video dekhne"
+          "video dekhne",
+          "attention marketplace"
         ]
       },
       "responses": {
         "en": [
-          "**Engine A** is our VAST Video Waterfall system. It uses 4 custom, lightning-fast video players connected to premium ad networks. If one network is empty, the next loads in milliseconds! To prevent bot bans, videos do NOT automatically redirect. You must click the massive 'ENTER' button at the end to claim your reward."
+          "**Engine A — The Attention Marketplace** runs in two phases:\n**Phase 1 (Video Player)**: Watch a 15–25 second video ad served through our Waterfall Video Player. If one ad network is empty, the next loads instantly — zero downtime, maximum fill rates.\n**Phase 2 (AI Sandbox)**: The advertiser's landing page loads inside a secure Thorx sandbox. You must actively explore it for 15 seconds. A hidden AI behavioral tracker monitors tab visibility, cursor/touch movement, and scroll depth. Pass all three signals = wallet credited. Fail = no payout."
         ],
         "ur": [
-          "**Engine A** hamara VAST Video Waterfall system hai. Badi ad networks se connect hokar yeh 4 tez players chalata hai. Bot ban se bachne ke liye, video khatam hone par aapko khud screen par anay wale bade 'ENTER' button par click karna hota hai apna inam lene ke liye."
+          "**Engine A — Attention Marketplace** do phases mein kaam karta hai:\n**Phase 1 (Video Player)**: Hamara Waterfall Video Player 15–25 second ka video ad serve karta hai. Agar ek network khali ho toh dusra fauran load hota hai — zero downtime.\n**Phase 2 (AI Sandbox)**: Advertiser ka landing page secure Thorx sandbox mein khulta hai. 15 seconds tak active explore karna zaroori hai. Hidden AI tracker tab visibility, cursor/touch movement aur scroll depth check karta hai. Teeno pass = wallet credit. Fail = koi payout nahi."
         ]
       },
       "followUp": [
@@ -250,25 +255,30 @@
         "en": [
           "engine b",
           "cpe",
+          "cpa",
           "offerwall",
           "engagement task",
-          "surveys",
-          "offers"
+          "offers",
+          "tasks proof",
+          "submit proof",
+          "offer verification"
         ],
         "ur": [
           "engine b",
           "cpe",
+          "cpa",
           "offerwall",
           "tasks",
-          "offers"
+          "offers",
+          "proof submit"
         ]
       },
       "responses": {
         "en": [
-          "**Engine B** is our high-profit Cost-Per-Engagement (CPE) Offerwall. It pulls tasks from top CPA networks. We use Smart-Cap logic: if an offer needs 1,000 users, we temporarily reserve your slot when you click it. Once the cap hits zero, the offer vanishes so no user wastes their time on full campaigns."
+          "**Engine B — AI-Driven CPA Offers** is the high-yield task system. The THORX team curates reliable offers from top CPA networks — app downloads, social media reviews, registrations.\n\nAfter completing a task, upload your screenshot/video proof. Our AI Agent runs a **3-tier fraud check**:\n• Tier 1: Metadata & hash extraction — catches duplicate or recycled proofs\n• Tier 2: OCR + LLM analysis — verifies target handles and screenshot content\n• Tier 3: Approved tasks enter 'Pending' escrow before admin final wallet release"
         ],
         "ur": [
-          "**Engine B** ek high-paying Cost-Per-Engagement (CPE) Offerwall hai jahan hum top CPA networks se tasks layte hain. Ismein Smart-Cap logic use hoti hai – agar offer poori hojaye toh wo screen se ghaib ho jati hai taake kisi ka waqt zaya na ho."
+          "**Engine B — AI-Driven CPA Offers** high-yield task system hai. THORX team top CPA networks se reliable offers curate karti hai — app download, social media reviews, registrations.\n\nTask complete karne ke baad proof upload karein. AI Agent **3-tier fraud check** karta hai:\n• Tier 1: Metadata & hash — duplicate ya recycled proof pakarta hai\n• Tier 2: OCR + LLM — screenshot content verify karta hai\n• Tier 3: Approved tasks 'Pending' escrow mein jate hain admin final release se pehle"
         ]
       },
       "followUp": [
@@ -285,7 +295,11 @@
           "tracker",
           "15 seconds",
           "15s rule",
-          "tracking"
+          "tracking",
+          "attention detector",
+          "scroll",
+          "tab visibility",
+          "cursor movement"
         ],
         "ur": [
           "web panel",
@@ -293,15 +307,16 @@
           "tracker",
           "15 seconds",
           "tracking kaise",
-          "check"
+          "check",
+          "scroll"
         ]
       },
       "responses": {
         "en": [
-          "**The THORX AI Web Panel** is our secret sauce. When you click an ad or offer, you land in our custom browser panel. You must stay for at least 15 seconds. The AI tracks real human behavior like scrolling and touch events to guarantee zero bot traffic. If you pass, you get paid instantly!"
+          "**The THORX AI Attention Detector** is our core verification system. When you complete an ad task, a hidden script tracks three behavioral signals simultaneously:\n• **Tab Visibility API**: Instantly pauses the countdown if you switch tabs or minimize the window\n• **Micro-Movement Delta**: Detects cursor (x,y) coordinates or touch input — confirms the device is being actively used\n• **Scroll Vector**: Verifies you've scrolled at least 10–20% of the viewport height, proving active reading\n\nAll three must pass for the payout to be credited. The user only sees a minimalist countdown timer — all tracking is invisible."
         ],
         "ur": [
-          "**THORX AI Web Panel** hamara tracker hai. Jab aap kisi ad par click karte hain toh aap is panel mein jate hain jahan aapko kam az kam 15 seconds rukna hota hai. AI aapki scrolling aur touch movement judge karta hai bot traffic rokne ke liye. Agar pass hue, toh paisay fauran account mein!"
+          "**THORX AI Attention Detector** hamara core verification system hai. Jab aap ad task complete karte hain, ek hidden script teen behavioral signals track karta hai:\n• **Tab Visibility API**: Agar tab switch karein ya window minimize karein toh timer fauran rukta hai\n• **Micro-Movement Delta**: Cursor ya touch input detect karta hai — confirm karta hai device active use ho rahi hai\n• **Scroll Vector**: Verify karta hai ke aap ne kam az kam 10–20% page scroll kiya — asli reading ka saboot\n\nTeeno pass hone chahiye payout credit hone ke liye. User sirf minimalist countdown timer dekhta hai — sab tracking invisible hai."
         ]
       },
       "followUp": [
@@ -321,7 +336,11 @@
           "7.5%",
           "percentage",
           "affiliate",
-          "invite code"
+          "invite code",
+          "referral matrix",
+          "3 division",
+          "level 1",
+          "level 2"
         ],
         "ur": [
           "referral",
@@ -331,21 +350,105 @@
           "network",
           "percent",
           "dost ko bulao",
-          "code"
+          "code",
+          "level 1",
+          "level 2"
         ]
       },
       "responses": {
         "en": [
-          "Our Multi-Level Referral System pays 15% (Level 1) and 7.5% (Level 2). \n**Important**: Commission is credited ONLY when your referral requests a payout. This ensures maximum safety, value, and cash flow for the ecosystem.",
-          "Grow your team to earn passive income! You earn 15% from direct referrals and 7.5% from indirect. To ensure long-term stability, we distribute this commission at the moment your team members successfully withdraw, directly from our platform margin."
+          "THORX uses the **3-Division Referral Matrix** spanning three tiers:\n• **Level 1**: When User B (your direct referral) withdraws → you receive 15% of their gross earnings\n• **Level 2**: When User C (User B's referral) withdraws → you receive 7.5% and User B receives 15%\n• **Solo Loop**: Users who join without a referral link pay a flat 15% Admin Charge at withdrawal (no referrer to distribute to)\n\n**Important**: Commissions are deducted from the withdrawing user's gross earnings — not added as a platform bonus. Triggered by payout requests, not earnings.",
+          "Your referral commissions are part of the withdrawal deduction, {name}. When your referral withdraws, 15% goes to you (Level 1). When their referral withdraws, 7.5% goes to you and 15% goes to your referral (Level 2). Find your unique referral link in the Referral section of your User Portal."
         ],
         "ur": [
-          "Hamara Multi-Level Referral System aapko Level 1 par 15% aur Level 2 par 7.5% deta hai.\n**Zaroori**: Commission sirf tab credit hoti hai jab aapka referral payout request (JazzCash/Easypaisa) karta hai, jo system ko safe rakhta hai.",
-          "Passive income ke liye team banayein! Direct referrals se 15% aur unke referrals se 7.5%. Sustainability ke liye, yeh commissions unke withdrawal ke waqt process hoti hain."
+          "THORX **3-Division Referral Matrix** 3 tiers mein kaam karta hai:\n• **Level 1**: Jab User B (aapka direct referral) withdraw kare → aapko unki gross earnings ka 15% milta hai\n• **Level 2**: Jab User C (User B ka referral) withdraw kare → aapko 7.5% aur User B ko 15% milta hai\n• **Solo Loop**: Bina referral link ke join karne walon ko withdrawal par flat 15% Admin Charge lagti hai\n\n**Zaroori**: Commissions withdrawing user ki gross earnings se kati hain — platform ki taraf se extra bonus nahi. Payout request par trigger hoti hai, earning par nahi.",
+          "Aapki referral commissions withdrawal deduction ka hissa hain, {name}. Jab aapka referral withdraw kare, 15% aapko milta hai. Jab unka referral withdraw kare, 7.5% aapko aur 15% unhe milta hai. Referral link User Portal ke Referral section mein milega."
         ]
       },
       "followUp": [
-        "user_levels"
+        "user_levels",
+        "withdrawal_fees"
+      ]
+    },
+    {
+      "id": "withdrawal_fees",
+      "patterns": {
+        "en": [
+          "fees",
+          "deduction",
+          "platform fee",
+          "how much deducted",
+          "withdrawal fee",
+          "12%",
+          "27%",
+          "34.5%",
+          "net first",
+          "what i see",
+          "wallet balance",
+          "admin charge",
+          "charges"
+        ],
+        "ur": [
+          "fees",
+          "deduction",
+          "platform fee",
+          "kitna katega",
+          "withdrawal fee",
+          "12%",
+          "27%",
+          "34.5%",
+          "net first",
+          "wallet balance",
+          "admin charge",
+          "charges"
+        ]
+      },
+      "responses": {
+        "en": [
+          "THORX uses a **Net-First UI** — your wallet always displays your exact withdrawable amount after all deductions are silently calculated in the background. What you see is exactly what you receive.\n\n**Deduction breakdown at withdrawal:**\n• Platform Fee: 12% flat (all users, for system maintenance)\n• Referred Users: additional 15% (Level 1 commission) + 7.5% (Level 2 commission) = **34.5% total**\n• Solo/Organic Users (no referral link): additional 15% Admin Charge = **27% total**\n\nThese cuts are already reflected in your displayed balance — no surprise deductions at checkout.",
+          "Here's the simple breakdown, {name}:\n• If you were referred by someone: 34.5% total deducted (12% platform + 22.5% referral network)\n• If you joined organically (no referral): 27% total deducted (12% platform + 15% admin)\n\nYour wallet balance already reflects these deductions. There are no hidden fees beyond what's displayed."
+        ],
+        "ur": [
+          "THORX **Net-First UI** use karta hai — aapka wallet hamesha exact withdrawable amount dikhata hai, tamam deductions pehle se calculate ho chuki hoti hain. Jo dikhta hai wahi milta hai.\n\n**Withdrawal par deductions:**\n• Platform Fee: 12% flat (sabke liye, system maintenance)\n• Referred Users: additional 15% (Level 1) + 7.5% (Level 2) = **kul 34.5%**\n• Solo/Organic Users (bina referral): additional 15% Admin Charge = **kul 27%**\n\nYeh cuts already aapke displayed balance mein reflect hoti hain — checkout par koi surprise nahi.",
+          "Simple breakdown, {name}:\n• Agar kisi ne refer kiya: kul 34.5% kata (12% platform + 22.5% referral network)\n• Organically join kiya (bina referral): kul 27% kata (12% platform + 15% admin)\n\nWallet balance already in deductions ko reflect karta hai. Display se zyada koi hidden fees nahi."
+        ]
+      },
+      "followUp": [
+        "withdrawal",
+        "referral_system"
+      ]
+    },
+    {
+      "id": "leadx_system",
+      "patterns": {
+        "en": [
+          "leadx",
+          "lead generation",
+          "advertiser",
+          "advertiser portal",
+          "for advertisers",
+          "lead marketplace",
+          "campaign"
+        ],
+        "ur": [
+          "leadx",
+          "lead generation",
+          "advertiser",
+          "advertiser portal",
+          "campaign"
+        ]
+      },
+      "responses": {
+        "en": [
+          "**LeadX** is THORX's proprietary lead generation system for advertisers. It combines Engine A's verified attention infrastructure and Engine B's CPA offer system to deliver real, qualified leads — not just impressions or clicks. Advertisers can opt into LeadX for best results or launch their own direct campaigns through the Advertiser Portal. LeadX is what separates THORX from traditional ad platforms."
+        ],
+        "ur": [
+          "**LeadX** THORX ka proprietary lead generation system hai advertisers ke liye. Yeh Engine A ki verified attention aur Engine B ki CPA offer infrastructure ko combine karta hai — real, qualified leads deliver karta hai, sirf impressions nahi. Advertisers LeadX use kar sakte hain ya directly Advertiser Portal se apni campaigns launch kar sakte hain."
+        ]
+      },
+      "followUp": [
+        "engine_a",
+        "engine_b"
       ]
     },
     {
@@ -357,25 +460,24 @@
           "requirements",
           "payout eligibility",
           "optional tasks",
-          "youtube",
           "gatekeeper",
-          "locked"
+          "locked",
+          "payout locked"
         ],
         "ur": [
           "daily task",
           "lazmi",
           "requirements",
           "payout ke liye",
-          "optional tasks",
           "locked payout"
         ]
       },
       "responses": {
         "en": [
-          "Daily Tasks act as our **Payout Gatekeeper**. Your payout page is mathematically LOCKED by the system until your Daily Mandatory Tasks are complete. These tasks ensure constant platform engagement and usually include watching Video Ads (Engine A), completing CPE Offers (Engine B), and verifying codes."
+          "Daily Tasks are your **Payout Gatekeeper**, {name}. Your payout page is mathematically LOCKED until your assigned Daily Mandatory Tasks are complete. These tasks ensure consistent platform engagement and typically include Engine A ad views and Engine B offer completions. Complete your tasks first — then unlock the withdrawal page."
         ],
         "ur": [
-          "Daily Tasks hamara **Payout Gatekeeper** hain. Jab tak aap apne aaj kay Mandatory Tasks poore nahi karte, aapka withdrawal page mathematically LOCKED rehta hai. In tasks mein Engine A aur Engine B kay zariye ads dekhna aur codes dalna shamil ho sakta hai."
+          "Daily Tasks aapka **Payout Gatekeeper** hain, {name}. Jab tak aaj kay Mandatory Tasks poore nahi karte, aapka withdrawal page mathematically LOCKED rehta hai. In tasks mein Engine A ke ad views aur Engine B ke offer completions shamil hote hain. Pehle tasks poore karein — phir withdrawal page unlock hoga."
         ]
       },
       "followUp": [
@@ -396,7 +498,8 @@
           "general",
           "upgrade",
           "promotion",
-          "priority"
+          "priority",
+          "ranking system"
         ],
         "ur": [
           "rank",
@@ -413,10 +516,10 @@
       },
       "responses": {
         "en": [
-          "THORX uses a **Dual-Requirement Ranking System**. You must hit BOTH referral bounds and personal earning bounds to upgrade. Upgrading unlocks better withdrawal priorities (1 to 5)!\n1. **Useless**: Priority 5.\n2. **Worker**: 5 Invites AND 2,500 PKR earned (Priority 4).\n3. **Soldier**: 10 Invites AND 5,000 PKR earned (Priority 3).\n4. **Captain**: 15 Invites AND 10,000 PKR earned (Priority 2).\n5. **General**: 25 Invites AND 25,000 PKR earned (Priority 1 = Fastest payouts)."
+          "THORX uses a **Dual-Requirement Ranking System**. You must meet BOTH referral AND personal earnings thresholds to upgrade. Higher ranks unlock faster withdrawal priorities:\n\n1. **Useless**: New user — Priority 5\n2. **Worker**: 5 referrals + 2,500 PKR earned — Priority 4\n3. **Soldier**: 10 referrals + 5,000 PKR earned — Priority 3\n4. **Captain**: 15 referrals + 10,000 PKR earned — Priority 2\n5. **General**: 25 referrals + 25,000 PKR earned — Priority 1 (fastest payouts)\n\nBoth conditions must be met simultaneously — you cannot upgrade on referrals or earnings alone."
         ],
         "ur": [
-          "THORX ka **Dual-Requirement Ranking System** fake referrals rokta hai. Rank barhane kay liye invites AUR earnings donon zaroori hain:\n1. **Useless**: Priority 5.\n2. **Worker**: 5 Invites AUR 2,500 PKR kamana zaruri (Priority 4).\n3. **Soldier**: 10 Invites AUR 5,000 PKR (Priority 3).\n4. **Captain**: 15 Invites AUR 10,000 PKR (Priority 2).\n5. **General**: 25 Invites AUR 25,000 PKR (Priority 1 = Sab se tez withdrawals)."
+          "THORX ka **Dual-Requirement Ranking System** fake referrals rokta hai. Rank barhane ke liye referrals AUR earnings donon zaroori hain:\n\n1. **Useless**: Naya user — Priority 5\n2. **Worker**: 5 referrals + 2,500 PKR — Priority 4\n3. **Soldier**: 10 referrals + 5,000 PKR — Priority 3\n4. **Captain**: 15 referrals + 10,000 PKR — Priority 2\n5. **General**: 25 referrals + 25,000 PKR — Priority 1 (sab se tez withdrawals)\n\nDono conditions ek saath poori karni hain — sirf referrals ya sirf earnings se upgrade nahi hoga."
         ]
       },
       "followUp": [
@@ -434,7 +537,9 @@
           "easypaisa",
           "bank transfer",
           "cash out",
-          "payment"
+          "payment",
+          "how to withdraw",
+          "request payout"
         ],
         "ur": [
           "withdraw",
@@ -443,20 +548,24 @@
           "easypaisa",
           "bank transfer",
           "paise nikalna",
-          "payment"
+          "payment",
+          "withdraw kaise"
         ]
       },
       "responses": {
         "en": [
-          "You can request withdrawals via **JazzCash**, **EasyPaisa**, or **Bank Transfer**. \n**Crucial Rule**: The withdrawal page is securely locked until you complete your assigned Daily Tasks for the day. High-ranking users (Generals, Captains) get their payouts processed first due to priority."
+          "Withdrawals go directly to **JazzCash** or **EasyPaisa**. Before you can withdraw:\n1. Complete your daily mandatory tasks (the payout page is locked until tasks are done)\n2. Meet your rank's withdrawal requirements\n\nHigher-ranking users (General, Captain) have payouts processed first. Your wallet balance already reflects all deductions — what you see is exactly what arrives in your account.",
+          "Go to the **Payout section** in your User Portal to request a withdrawal. Funds are sent to JazzCash or EasyPaisa. The 12% platform fee plus any referral/admin charges are already calculated in your displayed balance — no surprise cuts at checkout."
         ],
         "ur": [
-          "Aap **JazzCash**, **EasyPaisa**, ya **Bank Transfer** se payout le saktay hain. \n**Crucial Rule**: Payout page bilkul LOCK rehta hai jab tak aaj kay Daily Tasks poore na hon. Oonchay rank walay users (General/Captain) ki payment pehlay process hoti hai priority rules kay mutabiq."
+          "Withdrawal seedha **JazzCash** ya **EasyPaisa** par jaata hai. Withdraw karne se pehle:\n1. Daily mandatory tasks poore karein (tasks se pehle payout page LOCKED hai)\n2. Apne rank ki withdrawal requirements meet karein\n\nUonche rank waale (General, Captain) ki payment pehle process hoti hai. Wallet balance mein sab deductions already calculate hain — jo dikhta hai wahi account mein aata hai.",
+          "User Portal ke **Payout section** mein jayen withdrawal request karne ke liye. JazzCash ya EasyPaisa par paisa jaata hai. 12% platform fee aur referral/admin charges pehle se balance mein reflect hain — checkout par koi surprise nahi."
         ]
       },
       "followUp": [
         "daily_tasks",
-        "user_levels"
+        "user_levels",
+        "withdrawal_fees"
       ]
     },
     {
@@ -469,7 +578,8 @@
           "script",
           "auto play",
           "cheat",
-          "cheat code"
+          "cheat code",
+          "bypass"
         ],
         "ur": [
           "auto",
@@ -483,22 +593,82 @@
       },
       "responses": {
         "en": [
-          "**Warning**: Auto-functioning bots or scripts are totally banned and will automatically fail the AI Web Panel 15-second tracking test. Any attempt to use bots will result in a permanent shadow-ban from CPE offers."
+          "**Warning**: Auto-functioning bots or scripts are strictly banned on THORX. Our hidden AI Attention Detector tracks real behavioral signals — cursor movement, scroll depth, and tab visibility — and will automatically fail any bot attempt. Using bots results in a permanent shadow-ban from CPA offers and loss of pending earnings."
         ],
         "ur": [
-          "**Warning**: Auto-functioning bots aur scripts strictly sakhti say manna hain. Hamara AI Web Panel 15-second tracking test bots ko pakkar lega aur apka account block hojaye ga CPE offers kay liye."
+          "**Warning**: Auto-functioning bots aur scripts THORX par strictly mana hain. Hamara hidden AI Attention Detector real behavioral signals track karta hai — cursor movement, scroll depth, tab visibility — aur koi bhi bot attempt automatically fail ho jaayegi. Bot use karne par CPA offers se permanent shadow-ban aur pending earnings ka nuqsan hoga."
+        ]
+      }
+    },
+    {
+      "id": "ad_blocker",
+      "patterns": {
+        "en": [
+          "ad blocker",
+          "adblocker",
+          "brave",
+          "blocked",
+          "disable ad blocker",
+          "whitelist",
+          "cant see ads",
+          "no ads loading"
+        ],
+        "ur": [
+          "ad blocker",
+          "adblocker",
+          "brave",
+          "blocked",
+          "ad blocker hatao",
+          "whitelist"
+        ]
+      },
+      "responses": {
+        "en": [
+          "THORX detects ad-blockers automatically. If you're using an ad-blocker or an ad-blocking browser like Brave, a **Gateway Block modal** will prevent access to the earning area. You must whitelist THORX in your ad-blocker to proceed. Ad delivery is the core mechanism behind your earnings — blocking ads means the earning loop cannot function."
+        ],
+        "ur": [
+          "THORX automatically ad-blockers detect karta hai. Agar aap ad-blocker ya ad-blocking browser jaise Brave use kar rahe hain, ek **Gateway Block modal** earning area ka access rok dega. THORX ko apne ad-blocker mein whitelist karna zaroori hai. Ad delivery earning ka core mechanism hai — ads block karne se earning loop kaam nahi karta."
+        ]
+      }
+    },
+    {
+      "id": "security",
+      "patterns": {
+        "en": [
+          "secure",
+          "security",
+          "data safe",
+          "is it safe",
+          "privacy",
+          "authentication"
+        ],
+        "ur": [
+          "secure",
+          "security",
+          "data safe",
+          "kya safe hai",
+          "privacy",
+          "authentication"
+        ]
+      },
+      "responses": {
+        "en": [
+          "THORX is built with security at every layer, {name}. We use secure authentication, encrypted data handling, and multi-layer AI fraud prevention on every interaction. The platform is web-first by design — no app download needed — which allows us to deploy immediate security patches and hot-fixes without app store delays."
+        ],
+        "ur": [
+          "THORX har layer par security ke saath bana hai, {name}. Secure authentication, encrypted data handling, aur multi-layer AI fraud prevention use hoti hai har interaction par. Platform web-first hai — koi app download zaroori nahi — jo hamen immediate security patches deploy karne ki ijazat deta hai app store delays ke bina."
         ]
       }
     }
   ],
   "fallback": {
     "en": [
-      "I didn't quite catch that, {name}. I can help with Earning rules, Engine A, Engine B, or the Payout lock systems.",
-      "I'm not sure, but remember: THORX is about converting human attention to currency. Ask me about the 'AI Web Panel' or 'How to rank up'!"
+      "I didn't quite catch that, {name}. I can help with earnings, Engine A (Attention Marketplace), Engine B (CPA Offers), referral commissions, wallet fees, or withdrawal. What would you like to know?",
+      "I'm not sure about that, but THORX is all about turning real human attention into currency. Ask me about 'how to earn', 'referral commissions', 'withdrawal fees', or 'how ranks work'!"
     ],
     "ur": [
-      "Maine sahi se samjha nahi, {name}. Kya aap dubara pooch sakte hain? Main Engine A, Engine B, ya Payout locks mein madad kar sakta hoon.",
-      "Mujhe yakeen nahi, lekin yaad rakhein: THORX mein human attention paison mein tabdeel hoti hai. Mujhse 'AI Web Panel' ya 'Rank UP kaise karein' poochein!"
+      "Maine sahi se samjha nahi, {name}. Main Engine A, Engine B, referral commissions, wallet fees ya withdrawal mein madad kar sakta hoon. Kya jaanna chahenge?",
+      "Mujhe yakeen nahi, lekin THORX asli human attention ko currency mein tabdeel karta hai. Mujhse 'kaise kamaon', 'referral commission', 'withdrawal fees' ya 'rank system' ke baare mein poochein!"
     ]
   },
   "security_blocked_topics": [

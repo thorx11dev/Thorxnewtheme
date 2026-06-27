@@ -7,28 +7,28 @@ import { VariableFontHoverByRandomLetter } from "@/components/ui/variable-font-h
 
 const cardContents = [
     {
-        title: "Watch & Earn",
-        description: "Watch short videos and visit websites. Stay for 30 seconds to get paid instantly.",
+        title: "Attention Marketplace",
+        description: "Watch 15–25 second video ads via our Waterfall Player, then actively explore the advertiser's page inside a secure AI sandbox. Our hidden behavioral tracker verifies genuine attention before crediting your wallet — zero bot tolerance.",
         icon: <Play className="size-6 text-black dark:text-white" />,
     },
     {
-        title: "Invite Friends",
-        description: "Share your link. Earn commissions when your friends start earning.",
+        title: "3-Division Referral Matrix",
+        description: "Build a self-sustaining income stream across 3 tiers. Earn 15% when your Level 1 referral withdraws, and 7.5% when their referrals withdraw. Commissions are triggered by real payouts — making your network genuinely valuable.",
         icon: <Users className="size-6 text-black dark:text-white" />,
     },
     {
-        title: "Real Money",
-        description: "No fake tasks. Real interaction means real money in your wallet.",
+        title: "Net-First Wallet",
+        description: "No surprise deductions at checkout. All fees are calculated silently in the background. What you see in your wallet is exactly what you receive in your JazzCash or EasyPaisa account.",
         icon: <Clock className="size-6 text-black dark:text-white" />,
     },
     {
-        title: "Team Growth",
-        description: "Earn from your team's success with our multi-level system.",
+        title: "AI-Driven CPA Offers",
+        description: "Complete curated tasks from top CPA networks. Submit proof and our AI Agent runs a multi-tier fraud check — metadata analysis, OCR verification, and escrow release — ensuring fair, fast payouts for real work.",
         icon: <TrendingUp className="size-6 text-black dark:text-white" />,
     },
     {
-        title: "Secure & Verified",
-        description: "Your earnings are verified and safe. Cash out when you're ready.",
+        title: "AI Fraud Prevention",
+        description: "Every interaction is protected by multi-layer verification: the Super AI Attention Detector on ads, automated proof vetting on tasks, and the LeadX intelligence system — guaranteeing a trusted ecosystem for earners and advertisers alike.",
         icon: <ShieldCheck className="size-6 text-black dark:text-white" />,
     },
 ];
