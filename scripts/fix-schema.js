@@ -15,7 +15,7 @@ async function fixSchema() {
         console.log("Checking and adding 'rank' column to 'users' table...");
         await pool.query(`
       ALTER TABLE users 
-      ADD COLUMN IF NOT EXISTS rank text DEFAULT 'Useless'
+      ADD COLUMN IF NOT EXISTS rank text DEFAULT 'Nawa Aya'
     `);
         console.log("Column 'rank' added or already exists.");
 

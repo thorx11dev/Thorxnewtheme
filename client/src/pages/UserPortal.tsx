@@ -712,6 +712,11 @@ export default function UserPortal() {
         if (data.updated) {
           // Invalidate auth cache so the new rank shows in the header
           queryClient.invalidateQueries({ queryKey: ["auth"] });
+          // Show rank upgrade toast notification
+          toast({
+            title: "🎉 Rank Upgrade!",
+            description: `Congratulations! You've been promoted to ${data.newRank}!`,
+          });
         }
       } catch {
         // Silently fail — rank refresh is non-critical
@@ -774,11 +779,11 @@ export default function UserPortal() {
     }
     // Default fallbacks if no config is set yet
     const defaults: Record<string, { minAds: number; minTasks: number }> = {
-      useless: { minAds: 5, minTasks: 0 },
-      worker: { minAds: 10, minTasks: 1 },
-      soldier: { minAds: 15, minTasks: 2 },
-      captain: { minAds: 20, minTasks: 3 },
-      general: { minAds: 30, minTasks: 5 }
+      "nawa aya":       { minAds: 5,  minTasks: 0 },
+      "munna":          { minAds: 10, minTasks: 1 },
+      "bawa ji":        { minAds: 15, minTasks: 2 },
+      "haji saab":      { minAds: 20, minTasks: 3 },
+      "chacha supreme": { minAds: 30, minTasks: 5 }
     };
     return defaults[userRank] || { minAds: 5, minTasks: 0 };
   }, [payoutRules, userRank]);
@@ -1470,14 +1475,14 @@ export default function UserPortal() {
 
 
     const getRank = (rankTitle?: string) => {
-      const title = rankTitle?.toUpperCase() || "USELESS";
+      const title = rankTitle?.toUpperCase() || "NAWA AYA";
       // Force all ranks to use the Silver (Zinc-500) style as requested
       const silver = { color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
-      if (title === "GENERAL") return { title: "GENERAL", icon: Crown, ...silver };
-      if (title === "CAPTAIN") return { title: "CAPTAIN", icon: Trophy, ...silver };
-      if (title === "SOLDIER") return { title: "SOLDIER", icon: Medal, ...silver };
-      if (title === "WORKER") return { title: "WORKER", icon: Shield, ...silver };
-      return { title: "USELESS", icon: User, ...silver };
+      if (title === "CHACHA SUPREME") return { title: "CHACHA SUPREME", icon: Crown, ...silver };
+      if (title === "HAJI SAAB") return { title: "HAJI SAAB", icon: Trophy, ...silver };
+      if (title === "BAWA JI") return { title: "BAWA JI", icon: Medal, ...silver };
+      if (title === "MUNNA") return { title: "MUNNA", icon: Shield, ...silver };
+      return { title: "NAWA AYA", icon: User, ...silver };
     };
 
     const rank = getRank(displayUser?.rank);

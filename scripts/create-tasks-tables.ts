@@ -11,7 +11,7 @@ async function main() {
       type TEXT NOT NULL,
       action_url TEXT,
       secret_code TEXT,
-      target_rank TEXT DEFAULT 'Useless',
+      target_rank TEXT DEFAULT 'Nawa Aya',
       is_active BOOLEAN DEFAULT true,
       is_mandatory BOOLEAN DEFAULT false,
       created_at TIMESTAMP DEFAULT now(),

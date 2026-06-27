@@ -73,13 +73,11 @@ export function AdminInbox() {
   const emails = data?.emails || [];
   
   const rankPriority: Record<string, number> = {
-    "FOUNDER": 1,
-    "ADMIN": 2,
-    "GENERAL": 3,
-    "CAPTAIN": 4,
-    "SOLDIER": 5,
-    "WORKER": 6,
-    "USELESS": 7
+    "CHACHA SUPREME": 1,
+    "HAJI SAAB": 2,
+    "BAWA JI": 3,
+    "MUNNA": 4,
+    "NAWA AYA": 5,
   };
 
   const getDeadtimeLeft = (createdAt: string) => {
@@ -108,8 +106,8 @@ export function AdminInbox() {
     })
     .sort((a, b) => {
       if (sortType === 'rank') {
-        const pA = rankPriority[a.fromUserRank?.toUpperCase() || "USELESS"] || 6;
-        const pB = rankPriority[b.fromUserRank?.toUpperCase() || "USELESS"] || 6;
+        const pA = rankPriority[a.fromUserRank?.toUpperCase() || "NAWA AYA"] || 6;
+        const pB = rankPriority[b.fromUserRank?.toUpperCase() || "NAWA AYA"] || 6;
         if (pA !== pB) return pA - pB;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }

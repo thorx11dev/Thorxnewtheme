@@ -208,7 +208,7 @@ const statements = [
     "action_url" text,
     "secret_code" text,
     "instructions" text,
-    "target_rank" text DEFAULT 'Useless',
+    "target_rank" text DEFAULT 'Nawa Aya',
     "is_active" boolean DEFAULT true,
     "is_mandatory" boolean DEFAULT false,
     "created_at" timestamp DEFAULT now(),
