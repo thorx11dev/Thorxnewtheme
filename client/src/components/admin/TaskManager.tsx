@@ -178,7 +178,7 @@ export function TaskManager() {
     });
   };
 
-  const RANKS = ["General", "Captain", "Soldier", "Worker", "Useless"];
+  const RANKS = ["Chacha Supreme", "Haji Saab", "Bawa Ji", "Munna", "Nawa Aya"];
 
   const filteredTasks = tasks?.filter(task => 
     task.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -514,16 +514,16 @@ export function TaskManager() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-4">Target</Label>
-                  <Select name="targetRank" defaultValue={editingTask?.targetRank || "Useless"}>
+                  <Select name="targetRank" defaultValue={editingTask?.targetRank || "Nawa Aya"}>
                     <SelectTrigger className="h-12 bg-white border-[1.5px] border-[#111] rounded-full font-black uppercase tracking-widest text-[10px] px-6">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="border-[1.5px] border-[#111] rounded-2xl uppercase font-black text-[10px]">
-                      <SelectItem value="Useless">Useless (Public)</SelectItem>
-                      <SelectItem value="Worker">Worker</SelectItem>
-                      <SelectItem value="Soldier">Soldier</SelectItem>
-                      <SelectItem value="Captain">Captain</SelectItem>
-                      <SelectItem value="General">General</SelectItem>
+                      <SelectItem value="Nawa Aya">Nawa Aya (Public)</SelectItem>
+                      <SelectItem value="Munna">Munna</SelectItem>
+                      <SelectItem value="Bawa Ji">Bawa Ji</SelectItem>
+                      <SelectItem value="Haji Saab">Haji Saab</SelectItem>
+                      <SelectItem value="Chacha Supreme">Chacha Supreme</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

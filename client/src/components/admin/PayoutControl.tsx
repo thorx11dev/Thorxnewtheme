@@ -361,7 +361,7 @@ export function PayoutControl() {
                       <td className="p-6 text-center">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-[8px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
-                            {(withdrawal.user.rank ?? 'Useless')}
+                            {(withdrawal.user.rank ?? 'Nawa Aya')}
                           </span>
                           {sortType === 'deadtime' && (
                             <div className={cn(

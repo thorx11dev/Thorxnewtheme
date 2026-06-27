@@ -175,11 +175,11 @@ export default function TermsAndConditions() {
                                     </thead>
                                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                                         {[
-                                            { r: "Useless", ref: "0", pkr: "0", ads: "50" },
-                                            { r: "Worker", ref: "10", pkr: "25k", ads: "75" },
-                                            { r: "Soldier", ref: "15", pkr: "35k", ads: "100" },
-                                            { r: "Captain", ref: "20", pkr: "50k", ads: "125" },
-                                            { r: "General", ref: "25+", pkr: "100k+", ads: "150" },
+                                            { r: "Nawa Aya", ref: "0", pkr: "0", ads: "50" },
+                                            { r: "Munna", ref: "10", pkr: "25k", ads: "75" },
+                                            { r: "Bawa Ji", ref: "15", pkr: "35k", ads: "100" },
+                                            { r: "Haji Saab", ref: "20", pkr: "50k", ads: "125" },
+                                            { r: "Chacha Supreme", ref: "25+", pkr: "100k+", ads: "150" },
                                         ].map((row) => (
                                             <tr key={row.r} className="hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
                                                 <td className="p-4 font-bold">{row.r}</td>

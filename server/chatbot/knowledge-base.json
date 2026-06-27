@@ -516,10 +516,10 @@
       },
       "responses": {
         "en": [
-          "THORX uses a **Dual-Requirement Ranking System**. You must meet BOTH referral AND personal earnings thresholds to upgrade. Higher ranks unlock faster withdrawal priorities:\n\n1. **Useless**: New user — Priority 5\n2. **Worker**: 5 referrals + 2,500 PKR earned — Priority 4\n3. **Soldier**: 10 referrals + 5,000 PKR earned — Priority 3\n4. **Captain**: 15 referrals + 10,000 PKR earned — Priority 2\n5. **General**: 25 referrals + 25,000 PKR earned — Priority 1 (fastest payouts)\n\nBoth conditions must be met simultaneously — you cannot upgrade on referrals or earnings alone."
+          "THORX uses a **Dual-Requirement Ranking System**. You must meet BOTH referral AND personal earnings thresholds to upgrade. Higher ranks unlock faster withdrawal priorities:\n\n1. **Nawa Aya**: New user — Priority 5\n2. **Munna**: 5 referrals + 2,500 PKR earned — Priority 4\n3. **Bawa Ji**: 10 referrals + 5,000 PKR earned — Priority 3\n4. **Haji Saab**: 15 referrals + 10,000 PKR earned — Priority 2\n5. **Chacha Supreme**: 25 referrals + 25,000 PKR earned — Priority 1 (fastest payouts)\n\nBoth conditions must be met simultaneously — you cannot upgrade on referrals or earnings alone."
         ],
         "ur": [
-          "THORX ka **Dual-Requirement Ranking System** fake referrals rokta hai. Rank barhane ke liye referrals AUR earnings donon zaroori hain:\n\n1. **Useless**: Naya user — Priority 5\n2. **Worker**: 5 referrals + 2,500 PKR — Priority 4\n3. **Soldier**: 10 referrals + 5,000 PKR — Priority 3\n4. **Captain**: 15 referrals + 10,000 PKR — Priority 2\n5. **General**: 25 referrals + 25,000 PKR — Priority 1 (sab se tez withdrawals)\n\nDono conditions ek saath poori karni hain — sirf referrals ya sirf earnings se upgrade nahi hoga."
+          "THORX ka **Dual-Requirement Ranking System** fake referrals rokta hai. Rank barhane ke liye referrals AUR earnings donon zaroori hain:\n\n1. **Nawa Aya**: Naya user — Priority 5\n2. **Munna**: 5 referrals + 2,500 PKR — Priority 4\n3. **Bawa Ji**: 10 referrals + 5,000 PKR — Priority 3\n4. **Haji Saab**: 15 referrals + 10,000 PKR — Priority 2\n5. **Chacha Supreme**: 25 referrals + 25,000 PKR — Priority 1 (sab se tez withdrawals)\n\nDono conditions ek saath poori karni hain — sirf referrals ya sirf earnings se upgrade nahi hoga."
         ]
       },
       "followUp": [
@@ -554,11 +554,11 @@
       },
       "responses": {
         "en": [
-          "Withdrawals go directly to **JazzCash** or **EasyPaisa**. Before you can withdraw:\n1. Complete your daily mandatory tasks (the payout page is locked until tasks are done)\n2. Meet your rank's withdrawal requirements\n\nHigher-ranking users (General, Captain) have payouts processed first. Your wallet balance already reflects all deductions — what you see is exactly what arrives in your account.",
+          "Withdrawals go directly to **JazzCash** or **EasyPaisa**. Before you can withdraw:\n1. Complete your daily mandatory tasks (the payout page is locked until tasks are done)\n2. Meet your rank's withdrawal requirements\n\nHigher-ranking users (Chacha Supreme, Haji Saab) have payouts processed first. Your wallet balance already reflects all deductions — what you see is exactly what arrives in your account.",
           "Go to the **Payout section** in your User Portal to request a withdrawal. Funds are sent to JazzCash or EasyPaisa. The 12% platform fee plus any referral/admin charges are already calculated in your displayed balance — no surprise cuts at checkout."
         ],
         "ur": [
-          "Withdrawal seedha **JazzCash** ya **EasyPaisa** par jaata hai. Withdraw karne se pehle:\n1. Daily mandatory tasks poore karein (tasks se pehle payout page LOCKED hai)\n2. Apne rank ki withdrawal requirements meet karein\n\nUonche rank waale (General, Captain) ki payment pehle process hoti hai. Wallet balance mein sab deductions already calculate hain — jo dikhta hai wahi account mein aata hai.",
+          "Withdrawal seedha **JazzCash** ya **EasyPaisa** par jaata hai. Withdraw karne se pehle:\n1. Daily mandatory tasks poore karein (tasks se pehle payout page LOCKED hai)\n2. Apne rank ki withdrawal requirements meet karein\n\nUonche rank waale (Chacha Supreme, Haji Saab) ki payment pehle process hoti hai. Wallet balance mein sab deductions already calculate hain — jo dikhta hai wahi account mein aata hai.",
           "User Portal ke **Payout section** mein jayen withdrawal request karne ke liye. JazzCash ya EasyPaisa par paisa jaata hai. 12% platform fee aur referral/admin charges pehle se balance mein reflect hain — checkout par koi surprise nahi."
         ]
       },

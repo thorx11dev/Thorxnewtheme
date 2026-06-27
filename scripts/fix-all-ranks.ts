@@ -16,9 +16,9 @@ async function fixAllRanks() {
     let updated = 0;
     for (const u of allUsers) {
       try {
-        const before = u.rank || 'Useless';
+        const before = u.rank || 'Nawa Aya';
         const result = await storage.checkAndUpdateRank(u.id);
-        const after = result.rank || 'Useless';
+        const after = result.rank || 'Nawa Aya';
         
         if (before !== after) {
           console.log(`✅ ${u.firstName}: ${before} → ${after} (earnings: ${u.totalEarnings})`);

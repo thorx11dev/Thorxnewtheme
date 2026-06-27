@@ -587,7 +587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         permissions: permissions,
         avatar: user.avatar || 'default',
         profilePicture: user.profilePicture,
-        rank: user.rank || 'Useless',
+        rank: user.rank || 'Nawa Aya',
         name: `${user.firstName} ${user.lastName || ""}`.trim(),
       });
     } catch (error) {
@@ -844,11 +844,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has completed all mandatory tasks
       const tasksWithRecords = await storage.getDailyTasksForUser(userId);
       const user = await storage.getUserById(userId);
-      const userRank = (user?.rank || "Useless").toLowerCase();
+      const userRank = (user?.rank || "Nawa Aya").toLowerCase();
 
       // 1. Check Mandatory Individual Tasks (status must be 'completed')
       const incompleteMandatory = tasksWithRecords.filter(({ task, record }) => {
-        const isTargeted = (task.targetRank || "useless").toLowerCase() === "useless" || (task.targetRank || "useless").toLowerCase() === userRank;
+        const isTargeted = (task.targetRank || "nawa aya").toLowerCase() === "nawa aya" || (task.targetRank || "nawa aya").toLowerCase() === userRank;
         const isCompleted = record?.status === 'completed';
         return task.isActive && task.isMandatory && isTargeted && !isCompleted;
       });
@@ -856,14 +856,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 2. Check Rank-Based Numeric Requirements (Ads & CPA Tasks)
       const configRes = await storage.getSystemConfig("rank_payout_requirements");
       const requirementsMap = configRes?.value as any || {
-        "useless": { minAds: 5, minTasks: 0 },
-        "worker": { minAds: 10, minTasks: 1 },
-        "soldier": { minAds: 15, minTasks: 2 },
-        "captain": { minAds: 20, minTasks: 3 },
-        "general": { minAds: 30, minTasks: 5 }
+        "nawa aya": { minAds: 5, minTasks: 0 },
+        "munna": { minAds: 10, minTasks: 1 },
+        "bawa ji": { minAds: 15, minTasks: 2 },
+        "haji saab": { minAds: 20, minTasks: 3 },
+        "chacha supreme": { minAds: 30, minTasks: 5 }
       };
 
-      const rankReqs = (requirementsMap[userRank] || requirementsMap["useless"]) as { minAds: number, minTasks: number };
+      const rankReqs = (requirementsMap[userRank] || requirementsMap["nawa aya"]) as { minAds: number, minTasks: number };
       
       const adsWatchedToday = await storage.getTodayAdViews(userId);
       const cpaTasksCompletedToday = await storage.getTodayCompletedTasksByType(userId, "internal");
@@ -912,23 +912,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // --- PAYOUT LOCK LOGIC (Repeated for POST to ensure security) ---
       const tasksWithRecords = await storage.getDailyTasksForUser(userId);
       const user = await storage.getUserById(userId);
-      const userRank = (user?.rank || "Useless").toLowerCase();
+      const userRank = (user?.rank || "Nawa Aya").toLowerCase();
 
       const incompleteMandatory = tasksWithRecords.filter(({ task, record }) => {
-        const isTargeted = (task.targetRank || "useless").toLowerCase() === "useless" || (task.targetRank || "useless").toLowerCase() === userRank;
+        const isTargeted = (task.targetRank || "nawa aya").toLowerCase() === "nawa aya" || (task.targetRank || "nawa aya").toLowerCase() === userRank;
         const isCompleted = record?.status === 'completed';
         return task.isActive && task.isMandatory && isTargeted && !isCompleted;
       });
 
       const configRes = await storage.getSystemConfig("rank_payout_requirements");
       const requirementsMap = configRes?.value as any || {
-        "useless": { minAds: 5, minTasks: 0 },
-        "worker": { minAds: 10, minTasks: 1 },
-        "soldier": { minAds: 15, minTasks: 2 },
-        "captain": { minAds: 20, minTasks: 3 },
-        "general": { minAds: 30, minTasks: 5 }
+        "nawa aya": { minAds: 5, minTasks: 0 },
+        "munna": { minAds: 10, minTasks: 1 },
+        "bawa ji": { minAds: 15, minTasks: 2 },
+        "haji saab": { minAds: 20, minTasks: 3 },
+        "chacha supreme": { minAds: 30, minTasks: 5 }
       };
-      const rankReqs = (requirementsMap[userRank] || requirementsMap["useless"]) as { minAds: number; minTasks: number };
+      const rankReqs = (requirementsMap[userRank] || requirementsMap["nawa aya"]) as { minAds: number; minTasks: number };
       
       const adsWatchedToday = await storage.getTodayAdViews(userId);
       const cpaTasksCompletedToday = await storage.getTodayCompletedTasksByType(userId, "internal");
@@ -1246,7 +1246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (thorxPid.startsWith('anonymous_')) {
         return res.json({
           rankLogs: [],
-          currentRank: "Useless"
+          currentRank: "Nawa Aya"
         });
       }
 
@@ -1259,7 +1259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         rankLogs,
-        currentRank: user.rank || "Useless"
+        currentRank: user.rank || "Nawa Aya"
       });
     } catch (error) {
       console.error("Get rank history error:", error);
@@ -1283,8 +1283,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (thorxPid.startsWith('anonymous_')) {
         return res.json({
-          oldRank: "Useless",
-          newRank: "Useless",
+          oldRank: "Nawa Aya",
+          newRank: "Nawa Aya",
           updated: false
         });
       }
@@ -1294,9 +1294,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const oldRank = userBefore.rank || "Useless";
+      const oldRank = userBefore.rank || "Nawa Aya";
       const updatedUser = await storage.checkAndUpdateRank(thorxPid);
-      const newRank = updatedUser.rank || "Useless";
+      const newRank = updatedUser.rank || "Nawa Aya";
 
       res.json({
         oldRank,
@@ -2800,13 +2800,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
       const user = await storage.getUserById(userId);
-      const userRank = (user?.rank || "Useless").toLowerCase();
+      const userRank = (user?.rank || "Nawa Aya").toLowerCase();
 
       const tasksWithRecords = await storage.getDailyTasksForUser(userId);
       
       // Filter by rank and active status
       const filteredTasks = tasksWithRecords.filter(({ task }) => {
-          const isTargeted = (task.targetRank || "useless").toLowerCase() === "useless" || (task.targetRank || "useless").toLowerCase() === userRank;
+          const isTargeted = (task.targetRank || "nawa aya").toLowerCase() === "nawa aya" || (task.targetRank || "nawa aya").toLowerCase() === userRank;
           return isTargeted && task.isActive;
       });
 

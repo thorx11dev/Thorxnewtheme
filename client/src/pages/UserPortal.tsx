@@ -758,11 +758,11 @@ export default function UserPortal() {
     enabled: !!user && user.id !== 'guest',
   });
 
-  const userRank = (user?.rank || "Useless").toLowerCase();
+  const userRank = (user?.rank || "Nawa Aya").toLowerCase();
 
   const incompleteMandatory = (tasksWithRecords || []).filter((tr) => {
     if (!tr || !tr.task) return false;
-    const isTargeted = tr.task.targetRank.toLowerCase() === "useless" || tr.task.targetRank.toLowerCase() === userRank;
+    const isTargeted = tr.task.targetRank.toLowerCase() === "nawa aya" || tr.task.targetRank.toLowerCase() === userRank;
     const isCompleted = tr.record?.status === 'completed';
     return tr.task.isActive && tr.task.isMandatory && isTargeted && !isCompleted;
   });
@@ -3436,13 +3436,13 @@ export default function UserPortal() {
                             id: "005",
                             protocol: "RANKING-SYSTEM",
                             question: "What are the user ranks?",
-                            answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks: 1) Useless (Priority 5 — new users), 2) Worker (5 refs + 2,500 PKR — Priority 4), 3) Soldier (10 refs + 5,000 PKR — Priority 3), 4) Captain (15 refs + 10,000 PKR — Priority 2), 5) General (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
+                            answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks: 1) Nawa Aya (Priority 5 — new users), 2) Munna (5 refs + 2,500 PKR — Priority 4), 3) Bawa Ji (10 refs + 5,000 PKR — Priority 3), 4) Haji Saab (15 refs + 10,000 PKR — Priority 2), 5) Chacha Supreme (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
                           },
                           {
                             id: "006",
                             protocol: "PAYOUT-METHODS",
                             question: "How do I withdraw my earnings?",
-                            answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page — it is mathematically locked until tasks are complete. Higher-ranked users (General, Captain) have payouts processed first. The 12% platform fee plus any applicable referral/admin charges are already reflected in your displayed wallet balance."
+                            answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page — it is mathematically locked until tasks are complete. Higher-ranked users (Chacha Supreme, Haji Saab) have payouts processed first. The 12% platform fee plus any applicable referral/admin charges are already reflected in your displayed wallet balance."
                           },
                           {
                             id: "007",

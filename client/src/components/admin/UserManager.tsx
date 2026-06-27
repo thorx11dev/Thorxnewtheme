@@ -355,7 +355,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     <td className="p-6 text-center">
                         <div className="flex flex-col gap-2 items-center">
                            <span className="text-[9px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
-                             {(user.rank ?? 'Useless')}
+                             {(user.rank ?? 'Nawa Aya')}
                            </span>
                         </div>
                     </td>
@@ -747,7 +747,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     <div>
                       <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Rank</div>
                       <span className="text-[10px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm inline-block">
-                        {(selectedUser?.rank ?? 'Useless')}
+                        {(selectedUser?.rank ?? 'Nawa Aya')}
                       </span>
                     </div>
                     <div>

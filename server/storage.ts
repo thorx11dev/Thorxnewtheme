@@ -279,11 +279,11 @@ export interface IStorage {
 }
 
 const RANKS = [
-  { name: "Useless", minEarned: 0, minRefs: 0, priority: 5 },
-  { name: "Worker", minEarned: 2500, minRefs: 5, priority: 4 },
-  { name: "Soldier", minEarned: 5000, minRefs: 10, priority: 3 },
-  { name: "Captain", minEarned: 10000, minRefs: 15, priority: 2 },
-  { name: "General", minEarned: 25000, minRefs: 25, priority: 1 },
+  { name: "Nawa Aya", minEarned: 0, minRefs: 0, priority: 5 },
+  { name: "Munna", minEarned: 2500, minRefs: 5, priority: 4 },
+  { name: "Bawa Ji", minEarned: 5000, minRefs: 10, priority: 3 },
+  { name: "Haji Saab", minEarned: 10000, minRefs: 15, priority: 2 },
+  { name: "Chacha Supreme", minEarned: 25000, minRefs: 25, priority: 1 },
 ];
 
 export class DatabaseStorage implements IStorage {
@@ -1548,7 +1548,7 @@ export class DatabaseStorage implements IStorage {
 
       const activeRefs = Number(refCount) || 0;
 
-      let newRank = "Useless";
+      let newRank = "Nawa Aya";
 
       // Evaluate Rank based on BOTH earnings and referrals thresholds
       for (const rank of RANKS) {
@@ -1561,7 +1561,7 @@ export class DatabaseStorage implements IStorage {
         // Log the change
         await tx.insert(rankLogs).values({
           userId: user.id,
-          oldRank: user.rank || "Useless",
+          oldRank: user.rank || "Nawa Aya",
           newRank: newRank,
           triggerSource: "earning_update_or_refresh"
         });

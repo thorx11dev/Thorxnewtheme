@@ -43,7 +43,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   avatar: text("avatar").default("default"),
-  rank: text("rank").default("Useless"),
+  rank: text("rank").default("Nawa Aya"),
   profilePicture: text("profile_picture"),
   permissions: jsonb("permissions").default('[]'),
   emailVerifiedAt: timestamp("email_verified_at"),
@@ -288,7 +288,7 @@ export const dailyTasks = pgTable("daily_tasks", {
   actionUrl: text("action_url"), // URL to visit
   secretCode: text("secret_code"), // Code required to pass verification
   instructions: text("instructions"), // How to do the task
-  targetRank: text("target_rank").default("Useless"), // minimum rank to see it
+  targetRank: text("target_rank").default("Nawa Aya"), // minimum rank to see it
   isActive: boolean("is_active").default(true),
   isMandatory: boolean("is_mandatory").default(false), // controls payout access
   createdAt: timestamp("created_at").defaultNow(),
@@ -809,7 +809,7 @@ export const insertDailyTaskSchema = createInsertSchema(dailyTasks, {
   instructions: z.string().nullable().optional(),
   actionUrl: z.string().nullable().optional(),
   secretCode: z.string().nullable().optional(),
-  targetRank: z.string().default("Useless"),
+  targetRank: z.string().default("Nawa Aya"),
   isMandatory: z.boolean().default(false),
   isActive: z.boolean().default(true),
 }).omit({

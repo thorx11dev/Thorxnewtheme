@@ -348,7 +348,7 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                           <td className="p-5">
                             <div className="flex flex-col gap-1">
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 border-[1px] border-[#111]/20 bg-zinc-100 rounded-full font-black text-[8px] tracking-widest uppercase text-[#111]">
-                                {user.rank || "Useless"}
+                                {user.rank || "Nawa Aya"}
                               </span>
                               {user.isVerified && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 border-[1px] border-green-200 rounded-full font-black text-[8px] tracking-widest uppercase text-green-600">
