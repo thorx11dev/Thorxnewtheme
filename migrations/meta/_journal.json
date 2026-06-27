@@ -8,6 +8,13 @@
       "when": 1759651873923,
       "tag": "0000_handy_siren",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1751017200000,
+      "tag": "0005_add_missing_tables",
+      "breakpoints": true
     }
   ]
 }
