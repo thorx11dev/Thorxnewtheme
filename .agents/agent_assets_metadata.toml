@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "kprhpA9J8y7_eGOt4KEHU"
+uri = "file://docs/THORX_Knowledge_Base_Master.md"
+type = "text"
+title = "THORX Master Knowledge Base"
