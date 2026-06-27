@@ -50,7 +50,7 @@ const AVATARS = [
 ];
 
 const getRankDetails = (rankTitle?: string) => {
-    const title = rankTitle?.toUpperCase() || "USELESS";
+    const title = rankTitle?.toUpperCase() || "NAWA AYA";
     // Force silver/zinc style for all ranks as requested
     return { title: title, color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
 };

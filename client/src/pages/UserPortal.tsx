@@ -134,7 +134,7 @@ const GUEST_USER: AuthUser = {
   availableBalance: "0.00",
   isActive: true,
   createdAt: "1970-01-01T00:00:00.000Z",
-  rank: "USELESS",
+  rank: "Nawa Aya",
 };
 
 // Interactive Divider Component

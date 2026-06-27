@@ -131,10 +131,10 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
       : AVATARS.find((a) => a.id === avatar)?.url;
 
   const getNextRankReqs = (earnings: number, refs: number) => {
-    if (earnings < 2500 || refs < 5)  return { name: "WORKER",  reqEarned: 2500,  reqRefs: 5 };
-    if (earnings < 5000 || refs < 10) return { name: "SOLDIER", reqEarned: 5000,  reqRefs: 10 };
-    if (earnings < 10000 || refs < 15) return { name: "CAPTAIN", reqEarned: 10000, reqRefs: 15 };
-    if (earnings < 25000 || refs < 25) return { name: "GENERAL", reqEarned: 25000, reqRefs: 25 };
+    if (earnings < 2500 || refs < 5)  return { name: "MUNNA",          reqEarned: 2500,  reqRefs: 5 };
+    if (earnings < 5000 || refs < 10) return { name: "BAWA JI",        reqEarned: 5000,  reqRefs: 10 };
+    if (earnings < 10000 || refs < 15) return { name: "HAJI SAAB",     reqEarned: 10000, reqRefs: 15 };
+    if (earnings < 25000 || refs < 25) return { name: "CHACHA SUPREME", reqEarned: 25000, reqRefs: 25 };
     return null;
   };
 
@@ -150,7 +150,7 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
       
       return { title: displayTitle, color: "text-zinc-500", bg: "bg-zinc-500", border: "border-zinc-500" };
     }
-    const title = rankTitle?.toUpperCase() || "USELESS";
+    const title = rankTitle?.toUpperCase() || "NAWA AYA";
     // Force silver/zinc style for all ranks as requested
     return { title: title, color: "text-zinc-500", bg: "bg-zinc-500", border: "border-zinc-500" };
   };
