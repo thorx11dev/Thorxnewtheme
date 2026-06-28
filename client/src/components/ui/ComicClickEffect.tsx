@@ -13,14 +13,10 @@ interface ClickEffect {
 const COMIC_WORDS = ['GHOP-GHOP', 'MEOW', 'OUAAAAA', 'NESHA POMI'];
 
 // THORX brand color pairs [burstBackground, textColor]
-// Palette: primary orange #FF6B33, black #0A0A0A, white #FFFFFF
+// Palette: primary orange #FF6B33 and white #FFFFFF only
 const COLOR_PAIRS: [string, string][] = [
-  ['#FF6B33', '#000000'],
-  ['#000000', '#FF6B33'],
   ['#FF6B33', '#FFFFFF'],
-  ['#000000', '#FFFFFF'],
   ['#FFFFFF', '#FF6B33'],
-  ['#FFFFFF', '#000000'],
 ];
 
 const ComicClickEffect: React.FC = () => {
