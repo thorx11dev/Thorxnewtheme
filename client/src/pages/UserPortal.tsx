@@ -1975,16 +1975,22 @@ export default function UserPortal() {
             {activeWorkEngine === 1 ? (
               <motion.div
                 key="engine-1"
-                initial={{ opacity: 0, x: -60 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial="hidden"
+                animate="show"
                 exit={{ opacity: 0, x: -60 }}
-                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                variants={{
+                  hidden: { opacity: 0, x: -60 },
+                  show: {
+                    opacity: 1,
+                    x: 0,
+                    transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.06 }
+                  }
+                }}
               >
                 {/* Key Metrics Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12 mt-12">
                   <motion.div
-                    variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    variants={{ hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }}
                     whileHover={{ scale: 1.02, translateY: -4 }}
                     whileTap={{ scale: 0.98 }}
                     className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
@@ -2000,8 +2006,7 @@ export default function UserPortal() {
                   </motion.div>
 
                   <motion.div
-                    variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    variants={{ hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }}
                     whileHover={{ scale: 1.02, translateY: -4 }}
                     whileTap={{ scale: 0.98 }}
                     className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
@@ -2017,8 +2022,7 @@ export default function UserPortal() {
                   </motion.div>
 
                   <motion.div
-                    variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    variants={{ hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }}
                     whileHover={{ scale: 1.02, translateY: -4 }}
                     whileTap={{ scale: 0.98 }}
                     className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
@@ -2034,8 +2038,7 @@ export default function UserPortal() {
                   </motion.div>
 
                   <motion.div
-                    variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    variants={{ hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }}
                     whileHover={{ scale: 1.02, translateY: -4 }}
                     whileTap={{ scale: 0.98 }}
                     className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
@@ -2057,7 +2060,7 @@ export default function UserPortal() {
 
                 {/* Video Player */}
                 <motion.div
-                  variants={{ initial: { opacity: 0, y: 30 }, animate: { opacity: 1, y: 0 } }}
+                  variants={{ hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }}
                   className="w-full"
                 >
                   <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
