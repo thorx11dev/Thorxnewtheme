@@ -1395,24 +1395,71 @@ export default function UserPortal() {
       {/* Section Content */}
       <div className="pt-24 md:pt-24 pb-24 md:pb-12">
         <AnimatePresence mode="wait">
-          <motion.section
-            key={sections[currentSection].id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{
-              duration: 0.5,
-              ease: [0.16, 1, 0.3, 1]
-            }}
-            className="cinematic-section active"
-            data-testid={`section-${sections[currentSection].id}`}
-          >
-            {currentSection === 0 && renderDashboardSection()}
-            {currentSection === 1 && renderWorkSection()}
-            {currentSection === 2 && renderReferralsSection()}
-            {currentSection === 3 && renderPayoutSection()}
-            {currentSection === 4 && renderHelpSection()}
-          </motion.section>
+          {currentSection === 0 && (
+            <motion.section
+              key="section-dashboard"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="cinematic-section active"
+              data-testid="section-dashboard"
+            >
+              {renderDashboardSection()}
+            </motion.section>
+          )}
+          {currentSection === 1 && (
+            <motion.section
+              key="section-work"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="cinematic-section active"
+              data-testid="section-work"
+            >
+              {renderWorkSection()}
+            </motion.section>
+          )}
+          {currentSection === 2 && (
+            <motion.section
+              key="section-referrals"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="cinematic-section active"
+              data-testid="section-referrals"
+            >
+              {renderReferralsSection()}
+            </motion.section>
+          )}
+          {currentSection === 3 && (
+            <motion.section
+              key="section-payout"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="cinematic-section active"
+              data-testid="section-payout"
+            >
+              {renderPayoutSection()}
+            </motion.section>
+          )}
+          {currentSection === 4 && (
+            <motion.section
+              key="section-help"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="cinematic-section active"
+              data-testid="section-help"
+            >
+              {renderHelpSection()}
+            </motion.section>
+          )}
         </AnimatePresence>
       </div>
 
@@ -1971,7 +2018,7 @@ export default function UserPortal() {
 
         {/* ── Engine Pages (slide below selector) ── */}
         <div className="overflow-hidden">
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence initial={false}>
             {activeWorkEngine === 1 ? (
               <motion.div
                 key="engine-1"
