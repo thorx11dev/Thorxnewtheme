@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "python-3.12", "postgresql-16"]
+modules = ["nodejs-20", "web", "python-3.12"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -44,15 +44,6 @@ outputType = "webview"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
-
-[[workflows.workflow]]
-name = "Start Development Server"
-author = 41928461
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
 
 [agent]
 integrations = ["javascript_log_in_with_replit:1.0.0", "javascript_database:1.0.0", "javascript_supabase:1.0.0", "javascript_openai:1.0.0"]
