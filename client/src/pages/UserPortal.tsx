@@ -547,6 +547,7 @@ export default function UserPortal() {
 
   // Enhanced work section states
   const [activeWorkTab, setActiveWorkTab] = useState<string>("player1");
+  const [activeWorkEngine, setActiveWorkEngine] = useState<1 | 2>(1);
   const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
 
@@ -1924,124 +1925,289 @@ export default function UserPortal() {
 
         <InteractiveDivider className="my-12" />
 
-        {/* Key Metrics Cards - Exact Dashboard Layout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
-          {/* Ads Watched */}
-          <motion.div
-            variants={{
-              initial: { opacity: 0, y: 15 },
-              animate: { opacity: 1, y: 0 }
-            }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ scale: 1.02, translateY: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
-            data-testid="card-work-ads-watched"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <Eye className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="ADS WATCHED" className="text-muted-foreground text-xs" />
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-ads-watched">
-              {dashboardStats?.adsWatchedToday || todayAdViews?.count || 0}
-            </p>
-          </motion.div>
-
-          {/* Remaining Ads */}
-          <motion.div
-            variants={{
-              initial: { opacity: 0, y: 15 },
-              animate: { opacity: 1, y: 0 }
-            }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ scale: 1.02, translateY: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
-            data-testid="card-work-remaining-ads"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <Target className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="REMAINING ADS" className="text-muted-foreground text-xs" />
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-remaining-ads">
-              {remainingAds}
-            </p>
-          </motion.div>
-
-          {/* Today's Earnings */}
-          <motion.div
-            variants={{
-              initial: { opacity: 0, y: 15 },
-              animate: { opacity: 1, y: 0 }
-            }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ scale: 1.02, translateY: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
-            data-testid="card-work-today-earnings"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <DollarSign className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
-              <TechnicalLabel text="TODAY'S EARNINGS" className="text-muted-foreground text-xs" />
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-work-today-earnings">
-              {formatCurrency(dashboardStats?.todayEarnings || (completedAds.size * 2.5))}
-            </p>
-          </motion.div>
-
-          {/* Daily Goal */}
-          <motion.div
-            variants={{
-              initial: { opacity: 0, y: 15 },
-              animate: { opacity: 1, y: 0 }
-            }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ scale: 1.02, translateY: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
-            data-testid="card-work-daily-goal"
-            onClick={() => setShowDailyGoalModal(true)}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <Award className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs" />
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-work-daily-goal">
-              {Math.round((completedAds.size / dailyLimit) * 100)}%
-            </p>
-            <Progress value={Math.round((completedAds.size / dailyLimit) * 100)} className="progress-enhanced h-2 mb-3" />
-          </motion.div>
-        </div>
-
-        <InteractiveDivider className="my-12" />
-
-        {/* Industrial Work Interface - Full Width */}
-        <motion.div
-          variants={{
-            initial: { opacity: 0, y: 30 },
-            animate: { opacity: 1, y: 0 }
-          }}
-          className="w-full"
-        >
-          <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
-            {WORK_TABS.map(tab => (
-              <TabsContent key={tab.id} value={tab.id} className="mt-0">
-                <div className="space-y-4">
-                  {/* Enhanced Video Player for active tab */}
-                  {tab.id === activeWorkTab && (
-                    <EnhancedVideoPlayer
-                      tab={currentVideoTab}
-                      isActive={true}
-                      onComplete={handleVideoComplete}
-                      autoplay={false}
-                      isMobile={isMobile}
-                    />
+        {/* ── Engine Selector ── */}
+        <div className="grid grid-cols-2 gap-4 mb-0">
+          {([1, 2] as const).map((engine) => {
+            const active = activeWorkEngine === engine;
+            return (
+              <button
+                key={engine}
+                onClick={() => setActiveWorkEngine(engine)}
+                className={cn(
+                  "relative overflow-hidden wireframe-border border-4 rounded-lg p-5 md:p-7 text-left transition-all duration-300 group",
+                  active
+                    ? "bg-black border-black"
+                    : "bg-card border-muted-foreground/30 hover:border-black/60"
+                )}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <TechnicalLabel
+                    text={`ENGINE ${engine}`}
+                    className={cn("text-xs", active ? "text-primary" : "text-muted-foreground")}
+                  />
+                  {engine === 2 && (
+                    <span className="text-[10px] font-black tracking-widest uppercase bg-primary text-white px-2 py-0.5 rounded-sm">
+                      SOON
+                    </span>
                   )}
                 </div>
-              </TabsContent>
-            ))}
-          </Tabs>
-        </motion.div>
+                <p className={cn(
+                  "text-2xl md:text-3xl font-black tracking-tighter uppercase transition-colors",
+                  active ? "text-white" : "text-foreground group-hover:text-black"
+                )}>
+                  {engine === 1 ? "ADS" : "OFFERS"}
+                </p>
+                {active && (
+                  <motion.div
+                    layoutId="engine-active-bar"
+                    className="absolute bottom-0 left-0 right-0 h-1 bg-primary"
+                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Engine Pages (slide below selector) ── */}
+        <div className="overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            {activeWorkEngine === 1 ? (
+              <motion.div
+                key="engine-1"
+                initial={{ opacity: 0, x: -60 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -60 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {/* Key Metrics Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12 mt-12">
+                  <motion.div
+                    variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    whileHover={{ scale: 1.02, translateY: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
+                    data-testid="card-work-ads-watched"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <Eye className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+                      <TechnicalLabel text="ADS WATCHED" className="text-muted-foreground text-xs" />
+                    </div>
+                    <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-ads-watched">
+                      {dashboardStats?.adsWatchedToday || todayAdViews?.count || 0}
+                    </p>
+                  </motion.div>
+
+                  <motion.div
+                    variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    whileHover={{ scale: 1.02, translateY: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
+                    data-testid="card-work-remaining-ads"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <Target className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+                      <TechnicalLabel text="REMAINING ADS" className="text-muted-foreground text-xs" />
+                    </div>
+                    <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-work-remaining-ads">
+                      {remainingAds}
+                    </p>
+                  </motion.div>
+
+                  <motion.div
+                    variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    whileHover={{ scale: 1.02, translateY: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+                    data-testid="card-work-today-earnings"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <DollarSign className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
+                      <TechnicalLabel text="TODAY'S EARNINGS" className="text-muted-foreground text-xs" />
+                    </div>
+                    <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-work-today-earnings">
+                      {formatCurrency(dashboardStats?.todayEarnings || (completedAds.size * 2.5))}
+                    </p>
+                  </motion.div>
+
+                  <motion.div
+                    variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    whileHover={{ scale: 1.02, translateY: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+                    data-testid="card-work-daily-goal"
+                    onClick={() => setShowDailyGoalModal(true)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <Award className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+                      <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs" />
+                    </div>
+                    <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-work-daily-goal">
+                      {Math.round((completedAds.size / dailyLimit) * 100)}%
+                    </p>
+                    <Progress value={Math.round((completedAds.size / dailyLimit) * 100)} className="progress-enhanced h-2 mb-3" />
+                  </motion.div>
+                </div>
+
+                <InteractiveDivider className="my-12" />
+
+                {/* Video Player */}
+                <motion.div
+                  variants={{ initial: { opacity: 0, y: 30 }, animate: { opacity: 1, y: 0 } }}
+                  className="w-full"
+                >
+                  <Tabs value={activeWorkTab} onValueChange={setActiveWorkTab} className="w-full">
+                    {WORK_TABS.map(tab => (
+                      <TabsContent key={tab.id} value={tab.id} className="mt-0">
+                        <div className="space-y-4">
+                          {tab.id === activeWorkTab && (
+                            <EnhancedVideoPlayer
+                              tab={currentVideoTab}
+                              isActive={true}
+                              onComplete={handleVideoComplete}
+                              autoplay={false}
+                              isMobile={isMobile}
+                            />
+                          )}
+                        </div>
+                      </TabsContent>
+                    ))}
+                  </Tabs>
+                </motion.div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="engine-2"
+                initial={{ opacity: 0, x: 60 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 60 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className="mt-12"
+              >
+                {/* Engine 2 — blurred preview + Coming Soon overlay */}
+                <div className="relative">
+                  {/* ── Blurred ghost content ── */}
+                  <div className="blur-sm opacity-50 pointer-events-none select-none">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
+                      {[
+                        { icon: <Gift className="w-8 h-8 text-primary" />, label: "TOTAL OFFERS", value: "47" },
+                        { icon: <CheckCircle2 className="w-8 h-8 text-primary" />, label: "COMPLETED", value: "0" },
+                        { icon: <DollarSign className="w-8 h-8 text-foreground/80" />, label: "OFFERS EARNED", value: "PKR 0" },
+                        { icon: <Zap className="w-8 h-8 text-primary" />, label: "POTENTIAL DAILY", value: "PKR 850" },
+                      ].map((card, i) => (
+                        <div
+                          key={i}
+                          className="split-card bg-gradient-to-br from-card to-card/80 border-2 border-muted-foreground/20 p-6 shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            {card.icon}
+                            <TechnicalLabel text={card.label} className="text-muted-foreground text-xs" />
+                          </div>
+                          <p className="text-2xl md:text-3xl font-black text-foreground mb-2">{card.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <InteractiveDivider className="my-12" />
+
+                    {/* Mock Offers List */}
+                    <div className="space-y-4">
+                      {[
+                        { name: "Tech Survey — Smartphones 2025", reward: "PKR 120", type: "SURVEY", duration: "5 MIN", difficulty: "EASY" },
+                        { name: "App Install — Mobile Gaming", reward: "PKR 85", type: "INSTALL", duration: "2 MIN", difficulty: "EASY" },
+                        { name: "Brand Video — Fashion Retail", reward: "PKR 45", type: "VIDEO", duration: "3 MIN", difficulty: "EASY" },
+                        { name: "Product Review — Electronics", reward: "PKR 200", type: "REVIEW", duration: "10 MIN", difficulty: "MEDIUM" },
+                        { name: "Registration Offer — Finance App", reward: "PKR 350", type: "SIGNUP", duration: "8 MIN", difficulty: "MEDIUM" },
+                      ].map((offer, i) => (
+                        <div
+                          key={i}
+                          className="wireframe-border border-2 border-muted-foreground/20 rounded-lg p-5 flex items-center justify-between gap-4 bg-card"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-black tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-sm">{offer.type}</span>
+                              <span className="text-[10px] text-muted-foreground font-bold">{offer.duration}</span>
+                              <span className="text-[10px] text-muted-foreground font-bold">· {offer.difficulty}</span>
+                            </div>
+                            <p className="font-black text-foreground text-sm md:text-base truncate">{offer.name}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-lg md:text-xl font-black text-primary">{offer.reward}</p>
+                            <div className="mt-1 text-xs text-muted-foreground font-bold">PER OFFER</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Coming Soon Overlay ── */}
+                  <div className="absolute inset-0 flex items-center justify-center z-10">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.15, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                      className="w-full max-w-lg mx-auto text-center px-4"
+                    >
+                      {/* Card */}
+                      <div className="wireframe-border border-4 border-black bg-white rounded-2xl p-8 md:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.25)] relative overflow-hidden">
+                        {/* Orange accent bar */}
+                        <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary" />
+
+                        {/* Decorative corner marks */}
+                        <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-black/20" />
+                        <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-black/20" />
+                        <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-black/20" />
+                        <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-black/20" />
+
+                        {/* Engine badge */}
+                        <div className="inline-flex items-center gap-2 bg-black text-white text-xs font-black tracking-widest uppercase px-4 py-1.5 rounded-full mb-6">
+                          <Zap className="w-3.5 h-3.5 text-primary" />
+                          ENGINE 2 — OFFERS
+                        </div>
+
+                        {/* Main headline */}
+                        <motion.h2
+                          animate={{ opacity: [1, 0.7, 1] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                          className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none text-black mb-4"
+                        >
+                          COMING
+                          <br />
+                          <span className="text-primary">SOON</span>
+                        </motion.h2>
+
+                        {/* Subtext */}
+                        <p className="text-sm md:text-base text-black/60 font-bold mb-8 leading-relaxed">
+                          Complete surveys, install apps &amp; earn big.<br />
+                          Engine 2 is being loaded into the system.
+                        </p>
+
+                        {/* Progress bar — decorative */}
+                        <div className="w-full bg-black/10 rounded-full h-1.5 overflow-hidden mb-3">
+                          <motion.div
+                            className="h-full bg-primary rounded-full"
+                            initial={{ width: "0%" }}
+                            animate={{ width: "68%" }}
+                            transition={{ duration: 1.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[10px] font-black tracking-widest text-black/40 uppercase">
+                          <span>BUILD PROGRESS</span>
+                          <span>68%</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
     );
   }
