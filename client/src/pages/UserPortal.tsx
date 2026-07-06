@@ -2018,7 +2018,7 @@ export default function UserPortal() {
 
         {/* ── Engine Pages (slide below selector) ── */}
         <div className="overflow-hidden">
-          <AnimatePresence initial={false}>
+          <AnimatePresence mode="wait" initial={false}>
             {activeWorkEngine === 1 ? (
               <motion.div
                 key="engine-1"
@@ -2221,15 +2221,11 @@ export default function UserPortal() {
                         </div>
 
                         {/* Main headline */}
-                        <motion.h2
-                          animate={{ opacity: [1, 0.7, 1] }}
-                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                          className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none text-black mb-4"
-                        >
+                        <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none text-black mb-4 engine2-pulse">
                           COMING
                           <br />
                           <span className="text-primary">SOON</span>
-                        </motion.h2>
+                        </h2>
 
                         {/* Subtext */}
                         <p className="text-sm md:text-base text-black/60 font-bold mb-8 leading-relaxed">
@@ -2239,12 +2235,7 @@ export default function UserPortal() {
 
                         {/* Progress bar — decorative */}
                         <div className="w-full bg-black/10 rounded-full h-1.5 overflow-hidden mb-3">
-                          <motion.div
-                            className="h-full bg-primary rounded-full"
-                            initial={{ width: "0%" }}
-                            animate={{ width: "68%" }}
-                            transition={{ duration: 1.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                          />
+                          <div className="h-full bg-primary rounded-full engine2-progress" />
                         </div>
                         <div className="flex justify-between text-[10px] font-black tracking-widest text-black/40 uppercase">
                           <span>BUILD PROGRESS</span>
