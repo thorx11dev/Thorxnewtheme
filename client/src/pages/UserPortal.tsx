@@ -18,6 +18,7 @@ import MetricsCards from "@/components/ui/metrics-cards";
 import { DailyGoalModal } from "@/components/ui/daily-goal-modal";
 import { ProfileModal } from "@/components/ui/profile-modal";
 import { MobileNavBar } from "@/components/ui/mobile-nav-bar";
+import TextMarquee from "@/components/ui/text-marquee";
 import { DesktopNavTabs } from "@/components/ui/desktop-nav-tabs";
 import { AdWebPanel } from "@/components/ui/ad-web-panel";
 import { WaterfallAdPlayer } from "@/components/ads/HilltopAdsPlayer";
@@ -2132,10 +2133,36 @@ export default function UserPortal() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 60 }}
                 transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                className="mt-12 flex flex-col items-center justify-center py-24 text-center gap-4"
+                className="mt-12 py-16 space-y-0 overflow-hidden"
               >
-                <p className="text-4xl md:text-6xl font-black tracking-tighter uppercase text-foreground">Coming Soon</p>
-                <p className="text-sm md:text-base font-bold text-muted-foreground uppercase tracking-widest">Under Process</p>
+                <TextMarquee
+                  baseVelocity={-4}
+                  delay={200}
+                  className="font-black tracking-tighter leading-none uppercase text-foreground"
+                >
+                  Engine B is being engineered for maximum earning potential —
+                </TextMarquee>
+                <TextMarquee
+                  baseVelocity={3}
+                  delay={400}
+                  className="font-black tracking-tighter leading-none uppercase text-muted-foreground"
+                >
+                  Surveys · App Installs · Brand Videos · Product Reviews · Sign-ups —
+                </TextMarquee>
+                <TextMarquee
+                  baseVelocity={-3}
+                  delay={600}
+                  className="font-black tracking-tighter leading-none uppercase text-foreground"
+                >
+                  Your next income stream is loading — stay tuned —
+                </TextMarquee>
+                <TextMarquee
+                  baseVelocity={4}
+                  delay={800}
+                  className="font-black tracking-tighter leading-none uppercase text-muted-foreground"
+                >
+                  Higher rewards · More tasks · New opportunities incoming —
+                </TextMarquee>
               </motion.div>
             )}
           </AnimatePresence>
