@@ -1394,7 +1394,7 @@ export default function UserPortal() {
 
       {/* Section Content */}
       <div className="pt-24 md:pt-24 pb-24 md:pb-12">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {currentSection === 0 && (
             <motion.section
               key="section-dashboard"
@@ -2197,12 +2197,7 @@ export default function UserPortal() {
 
                   {/* ── Coming Soon Overlay ── */}
                   <div className="absolute inset-0 flex items-center justify-center z-10">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.15, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                      className="w-full max-w-lg mx-auto text-center px-4"
-                    >
+                    <div className="w-full max-w-lg mx-auto text-center px-4 engine2-overlay-enter">
                       {/* Card */}
                       <div className="wireframe-border border-4 border-black bg-white rounded-2xl p-8 md:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.25)] relative overflow-hidden">
                         {/* Orange accent bar */}
@@ -2242,7 +2237,7 @@ export default function UserPortal() {
                           <span>68%</span>
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   </div>
                 </div>
               </motion.div>
