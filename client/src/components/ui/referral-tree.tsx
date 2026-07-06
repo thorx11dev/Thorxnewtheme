@@ -37,16 +37,16 @@ interface TreeNode {
 }
 
 const AVATARS = [
-    { id: "avatar1", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
-    { id: "avatar2", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" },
-    { id: "avatar3", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Luna" },
-    { id: "avatar4", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Max" },
-    { id: "avatar5", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie" },
-    { id: "avatar6", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver" },
-    { id: "avatar7", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma" },
-    { id: "avatar8", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack" },
-    { id: "avatar9", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mia" },
-    { id: "avatar10", url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie" },
+    { id: "avatar1",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4" },
+    { id: "avatar2",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=d1d4f9" },
+    { id: "avatar3",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Luna&backgroundColor=c0aede" },
+    { id: "avatar4",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Max&backgroundColor=ffd5dc" },
+    { id: "avatar5",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Sophie&backgroundColor=ffdfbf" },
+    { id: "avatar6",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Oliver&backgroundColor=b6e3f4" },
+    { id: "avatar7",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Emma&backgroundColor=d1d4f9" },
+    { id: "avatar8",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack&backgroundColor=c0aede" },
+    { id: "avatar9",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Mia&backgroundColor=ffd5dc" },
+    { id: "avatar10", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Charlie&backgroundColor=ffdfbf" },
 ];
 
 const getRankDetails = (rankTitle?: string) => {

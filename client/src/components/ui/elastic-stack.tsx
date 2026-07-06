@@ -61,11 +61,11 @@ export function ElasticStack({
             onMouseEnter={() => setHoveredIndex(i)}
             onClick={() => onSelect?.(item.id)}
             className={cn(
-              "relative flex items-center justify-center rounded-full isolate transition-all duration-700",
+              "relative flex items-center justify-center rounded-full isolate transition-all duration-700 bg-[#1a1a1a]",
               isSelected
-                ? "ring-4 ring-primary ring-offset-2 ring-offset-black shadow-[0_0_20px_rgba(255,107,51,0.5)]"
-                : "ring-2 ring-white/20",
-              isHovered && !isSelected ? "shadow-xl" : "shadow-sm"
+                ? "ring-[3px] ring-primary ring-offset-2 ring-offset-black shadow-[0_0_16px_rgba(255,107,51,0.45)]"
+                : "ring-[2px] ring-black",
+              isHovered && !isSelected ? "shadow-xl" : ""
             )}
             style={{
               width: itemSize,
@@ -80,10 +80,7 @@ export function ElasticStack({
               <img
                 src={item.image}
                 alt={item.name || `Avatar ${i + 1}`}
-                className={cn(
-                  "w-full h-full object-cover rounded-full pointer-events-none transition-all duration-300",
-                  !isSelected && !isHovered ? "grayscale opacity-60" : "grayscale-0 opacity-100"
-                )}
+                className="w-full h-full object-cover rounded-full pointer-events-none"
               />
             ) : (
               <div className="w-full h-full rounded-full flex items-center justify-center font-semibold text-white/60 bg-white/10">
