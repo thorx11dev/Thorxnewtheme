@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ElasticStack } from "@/components/ui/elastic-stack";
 
 // Exported so other components (e.g. AdminHeader) can use avatar URLs directly
 export const AVATARS = [
@@ -301,25 +302,17 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
               </button>
             </div>
 
-            {/* Avatar Grid */}
-            <div className="space-y-3">
+            {/* Avatar Selector — Elastic Stack */}
+            <div className="space-y-1">
               <span className="text-xs font-mono tracking-widest text-white/40 uppercase">Or Choose an Avatar</span>
-              <div className="grid grid-cols-5 gap-3">
-                {AVATARS.map((av, index) => (
-                  <button
-                    key={av.id}
-                    onClick={() => { setAvatar(av.id); setUploadedPhotoUrl(null); }}
-                    className={cn(
-                      "aspect-square flex items-center justify-center transition-all duration-300 relative overflow-hidden bg-white/5 hover:bg-white/10 border-3",
-                      avatar === av.id && avatar !== "custom"
-                        ? "border-primary shadow-[4px_4px_0px_#000] -translate-x-[2px] -translate-y-[2px]"
-                        : "border-white/10 grayscale opacity-60 hover:opacity-100 hover:grayscale-0 hover:border-white/30"
-                    )}
-                  >
-                    <img src={av.url} alt={`Avatar ${index + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
+              <ElasticStack
+                items={AVATARS.map((av) => ({ id: av.id, image: av.url, name: av.id }))}
+                selectedId={avatar !== "custom" ? avatar : null}
+                onSelect={(id) => { setAvatar(id as string); setUploadedPhotoUrl(null); }}
+                itemSize={58}
+                overlap={22}
+                pushForce={18}
+              />
             </div>
 
             {/* Action Buttons */}
