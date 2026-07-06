@@ -1988,10 +1988,6 @@ export default function UserPortal() {
                 )}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <TechnicalLabel
-                    text={`ENGINE ${String.fromCharCode(64 + engine)}`}
-                    className={cn("text-xs", active ? "text-white" : "text-muted-foreground")}
-                  />
                   {engine === 2 && (
                     <span className="text-[10px] font-black tracking-widest uppercase bg-black text-white px-2 py-0.5 rounded-sm border border-white/20">
                       SOON
