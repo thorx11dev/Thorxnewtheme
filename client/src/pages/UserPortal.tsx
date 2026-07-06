@@ -1989,11 +1989,11 @@ export default function UserPortal() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <TechnicalLabel
-                    text={`ENGINE ${engine}`}
-                    className={cn("text-xs", active ? "text-primary" : "text-muted-foreground")}
+                    text={`ENGINE ${String.fromCharCode(64 + engine)}`}
+                    className={cn("text-xs", active ? "text-white" : "text-muted-foreground")}
                   />
                   {engine === 2 && (
-                    <span className="text-[10px] font-black tracking-widest uppercase bg-primary text-white px-2 py-0.5 rounded-sm">
+                    <span className="text-[10px] font-black tracking-widest uppercase bg-black text-white px-2 py-0.5 rounded-sm border border-white/20">
                       SOON
                     </span>
                   )}
@@ -2002,12 +2002,12 @@ export default function UserPortal() {
                   "text-2xl md:text-3xl font-black tracking-tighter uppercase transition-colors",
                   active ? "text-white" : "text-foreground group-hover:text-black"
                 )}>
-                  {engine === 1 ? "ADS" : "OFFERS"}
+                  {engine === 1 ? "ENGINE A" : "ENGINE B"}
                 </p>
                 {active && (
                   <motion.div
                     layoutId="engine-active-bar"
-                    className="absolute bottom-0 left-0 right-0 h-1 bg-primary"
+                    className="absolute bottom-0 left-0 right-0 h-1 bg-white"
                     transition={{ type: "spring", stiffness: 400, damping: 35 }}
                   />
                 )}
@@ -2200,8 +2200,8 @@ export default function UserPortal() {
                     <div className="w-full max-w-lg mx-auto text-center px-4 engine2-overlay-enter">
                       {/* Card */}
                       <div className="wireframe-border border-4 border-black bg-white rounded-2xl p-8 md:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.25)] relative overflow-hidden">
-                        {/* Orange accent bar */}
-                        <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary" />
+                        {/* Black accent bar */}
+                        <div className="absolute top-0 left-0 right-0 h-1.5 bg-black" />
 
                         {/* Decorative corner marks */}
                         <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-black/20" />
@@ -2211,15 +2211,15 @@ export default function UserPortal() {
 
                         {/* Engine badge */}
                         <div className="inline-flex items-center gap-2 bg-black text-white text-xs font-black tracking-widest uppercase px-4 py-1.5 rounded-full mb-6">
-                          <Zap className="w-3.5 h-3.5 text-primary" />
-                          ENGINE 2 — OFFERS
+                          <Zap className="w-3.5 h-3.5 text-white" />
+                          ENGINE B
                         </div>
 
                         {/* Main headline */}
                         <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-none text-black mb-4 engine2-pulse">
                           COMING
                           <br />
-                          <span className="text-primary">SOON</span>
+                          <span className="text-black">SOON</span>
                         </h2>
 
                         {/* Subtext */}
