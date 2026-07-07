@@ -329,7 +329,7 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
               <ElasticStack
                 items={rankAvatars.map((av) => ({ id: av.id, image: av.url, name: av.label }))}
                 selectedId={avatar !== "custom" ? avatar : null}
-                onSelect={(id) => { setAvatar(id as string); setUploadedPhotoUrl(null); }}
+                onItemSelect={(id) => { setAvatar(id as string); setUploadedPhotoUrl(null); }}
                 itemSize={54}
                 overlap={26}
                 pushForce={20}

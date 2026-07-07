@@ -10,7 +10,7 @@ export interface ElasticStackItem {
 export interface ElasticStackProps extends React.HTMLAttributes<HTMLDivElement> {
   items: ElasticStackItem[];
   selectedId?: string | number | null;
-  onSelect?: (id: string | number) => void;
+  onItemSelect?: (id: string | number) => void;
   itemSize?: number;
   overlap?: number;
   pushForce?: number;
@@ -19,7 +19,7 @@ export interface ElasticStackProps extends React.HTMLAttributes<HTMLDivElement> 
 export function ElasticStack({
   items,
   selectedId,
-  onSelect,
+  onItemSelect,
   itemSize = 64,
   overlap = 28,
   pushForce = 14,
@@ -59,7 +59,7 @@ export function ElasticStack({
           <div
             key={item.id}
             onMouseEnter={() => setHoveredIndex(i)}
-            onClick={() => onSelect?.(item.id)}
+            onClick={() => onItemSelect?.(item.id)}
             className={cn(
               "relative flex items-center justify-center rounded-full isolate transition-all duration-700 bg-[#1a1a1a]",
               isSelected
