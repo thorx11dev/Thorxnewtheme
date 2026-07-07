@@ -36,18 +36,35 @@ interface TreeNode {
     isRoot?: boolean;
 }
 
-const AVATARS = [
-    { id: "avatar1",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4" },
-    { id: "avatar2",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=d1d4f9" },
-    { id: "avatar3",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Luna&backgroundColor=c0aede" },
-    { id: "avatar4",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Max&backgroundColor=ffd5dc" },
-    { id: "avatar5",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Sophie&backgroundColor=ffdfbf" },
-    { id: "avatar6",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Oliver&backgroundColor=b6e3f4" },
-    { id: "avatar7",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Emma&backgroundColor=d1d4f9" },
-    { id: "avatar8",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack&backgroundColor=c0aede" },
-    { id: "avatar9",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Mia&backgroundColor=ffd5dc" },
-    { id: "avatar10", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Charlie&backgroundColor=ffdfbf" },
-];
+// Avatar resolution is now handled by resolveAvatarUrl from rankAvatars.ts
+// keeping inline helper here for the tree component's local use
+function getAvatarUrl(avatar?: string, rank?: string): string {
+  // import is not available in .tsx without top-level import; inline resolution
+  if (!avatar || avatar === "default") {
+    // rank-based default
+    const rankMap: Record<string, string> = {
+      "Nawa Aya":       "/avatars/nawa-aya/1-default.png",
+      "Munna":          "/avatars/munna/1-default.png",
+      "Bawa Ji":        "https://api.dicebear.com/7.x/adventurer/svg?seed=BawaJiDefault&backgroundColor=1c2b3a",
+      "Haji Saab":      "https://api.dicebear.com/7.x/adventurer/svg?seed=HajiSaabDefault&backgroundColor=1a3d2b",
+      "Chacha Supreme": "https://api.dicebear.com/7.x/adventurer/svg?seed=ChachaDefault&backgroundColor=2d1a00",
+    };
+    return rankMap[rank || "Nawa Aya"] ?? "/avatars/nawa-aya/1-default.png";
+  }
+  if (avatar.startsWith("http") || avatar.startsWith("data:") || avatar.startsWith("/")) return avatar;
+  // Check if it's a rank avatar id (e.g. "nawa-aya-1")
+  // All rank avatar IDs map to paths via pattern
+  if (avatar.startsWith("nawa-aya-")) return `/avatars/nawa-aya/${avatar.replace("nawa-aya-", "")}.png`.replace(/(\d+)\.png/, (_, n) => {
+    const names = ["default","cricket","school","eid","winter","street","chef","hero"];
+    return `${n}-${names[parseInt(n)-1] || n}.png`;
+  });
+  if (avatar.startsWith("munna-")) {
+    const n = parseInt(avatar.replace("munna-", ""));
+    const names = ["default","casanova","gangster","wedding","racer","spy","gym","tech"];
+    return `/avatars/munna/${n}-${names[n-1] || n}.png`;
+  }
+  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(avatar)}&backgroundColor=1a1a1a`;
+}
 
 const getRankDetails = (rankTitle?: string) => {
     const title = rankTitle?.toUpperCase() || "NAWA AYA";
@@ -238,17 +255,9 @@ function NodeCard({ node, isRoot }: { node: TreeNode; isRoot: boolean }) {
 
     const rank = getRankDetails(user.rank);
 
-    let userAvatar = AVATARS[0].url;
-    if (user.profilePicture) {
-        userAvatar = user.profilePicture;
-    } else if (user.avatar) {
-        const predefined = AVATARS.find(a => a.id === user.avatar);
-        if (predefined) {
-            userAvatar = predefined.url;
-        } else if (user.avatar !== 'default' && user.avatar.length > 20) {
-            userAvatar = user.avatar;
-        }
-    }
+    const userAvatar = user.profilePicture
+        ? user.profilePicture
+        : getAvatarUrl(user.avatar, user.rank);
 
     const isCurrentUser = isRoot;
 
@@ -273,8 +282,7 @@ function NodeCard({ node, isRoot }: { node: TreeNode; isRoot: boolean }) {
                             alt={`${user.firstName} ${user.lastName}`}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                                // Fallback if image fails to load
-                                (e.target as HTMLImageElement).src = AVATARS[0].url;
+                                (e.target as HTMLImageElement).src = "/avatars/nawa-aya/1-default.png";
                             }}
                         />
                     </div>

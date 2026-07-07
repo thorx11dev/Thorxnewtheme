@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, User, Edit2, Camera } from "lucide-react";
+import { X, User, Edit2, Camera, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,20 +7,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ElasticStack } from "@/components/ui/elastic-stack";
+import {
+  getRankDef,
+  resolveAvatarUrl,
+  ALL_AVATARS,
+  getDefaultAvatarUrl,
+  type RankAvatar,
+} from "@/lib/rankAvatars";
 
-// Exported so other components (e.g. AdminHeader) can use avatar URLs directly
-export const AVATARS = [
-  { id: "avatar1",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4" },
-  { id: "avatar2",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=d1d4f9" },
-  { id: "avatar3",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Luna&backgroundColor=c0aede" },
-  { id: "avatar4",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Max&backgroundColor=ffd5dc" },
-  { id: "avatar5",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Sophie&backgroundColor=ffdfbf" },
-  { id: "avatar6",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Oliver&backgroundColor=b6e3f4" },
-  { id: "avatar7",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Emma&backgroundColor=d1d4f9" },
-  { id: "avatar8",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack&backgroundColor=c0aede" },
-  { id: "avatar9",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Mia&backgroundColor=ffd5dc" },
-  { id: "avatar10", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Charlie&backgroundColor=ffdfbf" },
-];
+// Legacy export — consumed by AdminHeader and other components
+export const AVATARS = ALL_AVATARS;
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -33,26 +29,42 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
   const [isVisible, setIsVisible] = useState(false);
   const initialName = user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "");
   const [name, setName] = useState(initialName);
-  const [avatar, setAvatar] = useState(user?.avatar || "avatar1");
+  const [avatar, setAvatar] = useState(user?.avatar || "default");
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(user?.profilePicture || null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Current rank config
+  const rankDef = getRankDef(user?.rank);
+
+  // Only show current rank's avatars in the selector
+  const rankAvatars: RankAvatar[] = rankDef.avatars;
+
+  // Ensure avatar is always valid for the current rank
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
       const currentName = user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "");
       setName(currentName);
-      setAvatar(user?.avatar || "avatar1");
+
+      // If saved avatar belongs to this rank, keep it; otherwise assign rank default
+      const savedAvatar = user?.avatar;
+      const isInCurrentRank = savedAvatar && rankDef.avatars.some((a) => a.id === savedAvatar);
+      if (!savedAvatar || savedAvatar === "default" || (!isInCurrentRank && savedAvatar !== "custom")) {
+        setAvatar(rankDef.defaultAvatarId);
+      } else {
+        setAvatar(savedAvatar);
+      }
+
       setUploadedPhotoUrl(user?.profilePicture || null);
       document.body.style.overflow = "hidden";
     } else {
       setIsVisible(false);
       document.body.style.overflow = "auto";
     }
-  }, [isOpen, user]);
+  }, [isOpen, user, rankDef]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,10 +133,11 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
     updateProfileMutation.mutate(payload);
   };
 
+  // Resolve what to show in the avatar preview
   const previewSrc =
     avatar === "custom" && uploadedPhotoUrl
       ? uploadedPhotoUrl
-      : AVATARS.find((a) => a.id === avatar)?.url;
+      : resolveAvatarUrl(avatar, user?.rank);
 
   const getNextRankReqs = (earnings: number, refs: number) => {
     if (earnings < 2500 || refs < 5)   return { name: "MUNNA",           reqEarned: 2500,  reqRefs: 5 };
@@ -135,7 +148,6 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
   };
 
   const nextRank = getNextRankReqs(Number(user?.totalEarnings || 0), activeRefsCount);
-
   const isAdmin = user?.role === "admin" || user?.role === "founder" || user?.role === "team";
 
   const getRankDetails = (rankTitle?: string) => {
@@ -228,7 +240,10 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
                   <p className="text-white font-black text-lg md:text-xl uppercase tracking-tighter leading-tight truncate">
                     {name || "—"}
                   </p>
-                  <div className="mt-2 inline-block text-xs font-black text-black bg-zinc-500 px-3 py-0.5 uppercase tracking-widest">
+                  <div className={cn(
+                    "mt-2 inline-block text-xs font-black text-white px-3 py-0.5 uppercase tracking-widest",
+                    rankDef.bgColor
+                  )}>
                     {rank.title}
                   </div>
                 </div>
@@ -296,10 +311,23 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
               </div>
             </div>
 
-            {/* Avatar selector — Elastic Stack, no label */}
-            <div>
+            {/* Rank-locked avatar selector */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black tracking-widest text-white/40 uppercase">
+                  {rankDef.label} Getups
+                </span>
+                <span className={cn("text-[9px] font-black px-2 py-0.5 uppercase tracking-widest", rankDef.bgColor)}>
+                  {rankAvatars.length} styles
+                </span>
+                {!isAdmin && (
+                  <span className="flex items-center gap-1 text-[9px] text-white/30 uppercase tracking-widest ml-auto">
+                    <Lock className="w-3 h-3" /> Rank locked
+                  </span>
+                )}
+              </div>
               <ElasticStack
-                items={AVATARS.map((av) => ({ id: av.id, image: av.url, name: av.id }))}
+                items={rankAvatars.map((av) => ({ id: av.id, image: av.url, name: av.label }))}
                 selectedId={avatar !== "custom" ? avatar : null}
                 onSelect={(id) => { setAvatar(id as string); setUploadedPhotoUrl(null); }}
                 itemSize={54}

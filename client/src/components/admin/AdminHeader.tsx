@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
 import { ProfileModal } from "@/components/ui/profile-modal";
 import { useAuth } from "@/hooks/useAuth";
-import { AVATARS } from "@/components/ui/profile-modal";
+import { resolveAvatarUrl } from "@/lib/rankAvatars";
 import TextBlockAnimation from "@/components/ui/text-block-animation";
 
 interface AdminHeaderProps {
@@ -16,7 +16,7 @@ export function AdminHeader({ userName, role, className }: AdminHeaderProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user } = useAuth();
 
-  const avatarUrl = user?.profilePicture || AVATARS.find((a) => a.id === (user?.avatar || "avatar1"))?.url;
+  const avatarUrl = user?.profilePicture || resolveAvatarUrl(user?.avatar, user?.rank);
 
   return (
     <>

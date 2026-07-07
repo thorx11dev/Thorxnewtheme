@@ -1566,10 +1566,31 @@ export class DatabaseStorage implements IStorage {
           triggerSource: "earning_update_or_refresh"
         });
 
-        // Update user
+        // Auto-assign the default avatar for the new rank (only if user hasn't customised)
+        const RANK_DEFAULT_AVATARS: Record<string, string> = {
+          "Nawa Aya":       "nawa-aya-1",
+          "Munna":          "munna-1",
+          "Bawa Ji":        "bawa-ji-1",
+          "Haji Saab":      "haji-saab-1",
+          "Chacha Supreme": "chacha-1",
+        };
+        const currentAvatarId = user.avatar || "default";
+        const isDefaultOrRankAvatar =
+          currentAvatarId === "default" ||
+          Object.values(RANK_DEFAULT_AVATARS).includes(currentAvatarId) ||
+          currentAvatarId.startsWith("nawa-aya-") ||
+          currentAvatarId.startsWith("munna-") ||
+          currentAvatarId.startsWith("bawa-ji-") ||
+          currentAvatarId.startsWith("haji-saab-") ||
+          currentAvatarId.startsWith("chacha-");
+        const newAvatarId = isDefaultOrRankAvatar
+          ? (RANK_DEFAULT_AVATARS[newRank] ?? "nawa-aya-1")
+          : currentAvatarId; // keep custom photo/avatar
+
+        // Update user rank + avatar
         const [updatedUser] = await tx
           .update(users)
-          .set({ rank: newRank, updatedAt: new Date() })
+          .set({ rank: newRank, avatar: newAvatarId, updatedAt: new Date() })
           .where(eq(users.id, userId))
           .returning();
 

@@ -17,6 +17,7 @@ import IndustrialTabs, { WORK_TABS } from "@/components/ui/industrial-tabs";
 import MetricsCards from "@/components/ui/metrics-cards";
 import { DailyGoalModal } from "@/components/ui/daily-goal-modal";
 import { ProfileModal } from "@/components/ui/profile-modal";
+import { resolveAvatarUrl } from "@/lib/rankAvatars";
 import { MobileNavBar } from "@/components/ui/mobile-nav-bar";
 import TextMarquee from "@/components/ui/text-marquee";
 import { DesktopNavTabs } from "@/components/ui/desktop-nav-tabs";
@@ -1509,20 +1510,6 @@ export default function UserPortal() {
 
   // Dashboard Section
   function renderDashboardSection() {
-    const AVATARS = [
-      { id: "avatar1",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4" },
-      { id: "avatar2",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka&backgroundColor=d1d4f9" },
-      { id: "avatar3",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Luna&backgroundColor=c0aede" },
-      { id: "avatar4",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Max&backgroundColor=ffd5dc" },
-      { id: "avatar5",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Sophie&backgroundColor=ffdfbf" },
-      { id: "avatar6",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Oliver&backgroundColor=b6e3f4" },
-      { id: "avatar7",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Emma&backgroundColor=d1d4f9" },
-      { id: "avatar8",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Jack&backgroundColor=c0aede" },
-      { id: "avatar9",  url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Mia&backgroundColor=ffd5dc" },
-      { id: "avatar10", url: "https://api.dicebear.com/7.x/adventurer/svg?seed=Charlie&backgroundColor=ffdfbf" },
-    ];
-
-
     const getRank = (rankTitle?: string) => {
       const title = rankTitle?.toUpperCase() || "NAWA AYA";
       // Force all ranks to use the Silver (Zinc-500) style as requested
@@ -1537,29 +1524,10 @@ export default function UserPortal() {
     const rank = getRank(displayUser?.rank);
 
     // Improved Avatar Logic:
-    // 1. Prioritize uploaded profile picture
-    // 2. Try to find ID in predefined list
-    // 3. Fallback to default
-    let userAvatar = AVATARS[0].url;
-
-    if (displayUser?.profilePicture) {
-      userAvatar = displayUser.profilePicture;
-    } else if (displayUser?.avatar) {
-      const predefined = AVATARS.find(a => a.id === displayUser.avatar);
-      if (predefined) {
-        userAvatar = predefined.url;
-      } else if (displayUser.avatar !== 'default' && displayUser.avatar.length > 20) {
-        // Assume it's a custom Base64 or URL
-        userAvatar = displayUser.avatar;
-      }
-    }
-
-    console.log("[UserPortal] Rendering with avatar:", {
-      displayUserAvatar: displayUser?.avatar ? displayUser.avatar.substring(0, 30) + "..." : "undefined",
-      resolvedUrl: userAvatar.substring(0, 50) + "...",
-      isLoading: isLoading,
-      isAuthenticated: !!user
-    });
+    // Resolve avatar using rank-aware system
+    const userAvatar = displayUser?.profilePicture
+      ? displayUser.profilePicture
+      : resolveAvatarUrl(displayUser?.avatar, displayUser?.rank);
 
     return (
       <motion.div

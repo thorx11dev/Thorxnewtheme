@@ -1,0 +1,1 @@
+- [Rank Avatar System](rank-avatar-system.md) — 5 rank-locked character avatar sets; single source of truth in `client/src/lib/rankAvatars.ts`; server auto-assigns default avatar on rank-up in `checkAndUpdateRank`.
