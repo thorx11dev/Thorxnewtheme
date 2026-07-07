@@ -67,7 +67,6 @@ export function useAuth() {
 
   return {
     user: user ?? null,
-    insforgeAccessToken: null,
     isAuthenticated: !!user,
     isLoading: isLoading || isTransitioning,
     error: null,

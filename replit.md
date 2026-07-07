@@ -1,36 +1,41 @@
 # THORX
 
-THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQL via Drizzle). **Authentication, session validation for uploads, and profile object storage** are integrated with **Insforge** (same project: Auth + Postgres + Storage).
+THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQL via Drizzle).
 
-## Stack (source of truth)
+## Stack
 
 | Layer | Technology |
 |--------|------------|
 | Frontend | React 18, TypeScript, Vite, Wouter, TanStack Query, shadcn/ui, Tailwind |
-| API | Node.js, Express, `dist/index.js` from `npm run build` |
-| Database | PostgreSQL — `DATABASE_URL` (Insforge-hosted or any Postgres) |
-| Auth | Insforge (`@insforge/sdk` on client; Bearer validation against `INSFORGE_API_URL` on server) |
-| Files | Insforge Storage bucket (default `thorx-assets`); private buckets use `THORX_PUBLIC_API_URL` + `/api/thorx/storage-proxy` |
+| API | Node.js, Express (`npm run dev` in development) |
+| Database | PostgreSQL — Replit's built-in managed database (`DATABASE_URL` auto-injected) |
+| Auth | Session-based (express-session + connect-pg-simple); users stored in `users` table |
+| Files | Profile pictures compressed with sharp and stored as base64 data URLs in the DB |
 
-## Local development
+## Local / Replit development
 
-1. Copy `.env.example` → `.env` and fill all required variables (see `insforge.deploy.json` and `docs/insforge-cutover-checklist.md`).
-2. `npm install`
-3. `npm run db:push` when the schema changes
-4. `npm run dev`
+1. `npm install`
+2. `npm run db:push` when the schema changes
+3. `npm run dev` — serves on port 5000
 
-## Production
+## Production build
 
 - Build: `npm run build`
-- Run: `npm run start` (or `node dist/index.js` with `NODE_ENV=production` and env injected by your host)
-- Pre-flight: `npm run preflight:insforge` (with `.env` loaded)
+- Run: `npm run start` (or `node dist/index.js` with `NODE_ENV=production`)
 
-## Replit (optional)
+## Required environment variables
 
-If you run on Replit, the app still reads **the same** env vars; optional Replit-specific vars (`REPL_ID`, `REPLIT_DEV_DOMAIN`, etc.) only extend CORS origins in `server/config/runtime.ts`. There is **no** Supabase or alternate auth provider in this codebase.
+| Variable | Notes |
+|----------|-------|
+| `DATABASE_URL` | Auto-injected by Replit's managed PostgreSQL |
+| `SESSION_SECRET` | Random hex string for signing session cookies |
 
 ## Documentation
 
-- `docs/insforge-cutover-checklist.md` — deployment model and cutover steps  
-- `insforge.deploy.json` — required env names for Insforge Cloud–style deploys  
-- `.env.example` — placeholder template (never commit real secrets)
+- `shared/schema.ts` — full Drizzle schema (all tables)
+- `server/routes.ts` — all API routes
+- `server/storage.ts` — database access layer
+
+## User preferences
+
+- Use Replit's built-in PostgreSQL (no external auth or storage providers)

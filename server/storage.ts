@@ -2716,9 +2716,6 @@ export class MemStorage {
 }
 
 /**
- * THORX domain data always uses Drizzle + PostgreSQL (`DATABASE_URL`).
- * On Insforge Cloud, set `DATABASE_URL` to the Postgres connection string from the same
- * Insforge project as `INSFORGE_API_URL` / `VITE_INSFORGE_URL`. There is no alternate
- * "Insforge DB driver" in code — the stack is explicitly Postgres + Insforge Auth + Insforge Storage API.
+ * THORX domain data uses Drizzle + PostgreSQL (`DATABASE_URL`).
  */
 export const storage = new DatabaseStorage();
