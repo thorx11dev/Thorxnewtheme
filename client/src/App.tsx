@@ -68,27 +68,39 @@ function Router() {
         </Route>
 
         <Route path="/user-portal">
-          <UserPortal />
+          <ProtectedRoute>
+            <UserPortal />
+          </ProtectedRoute>
         </Route>
 
         <Route path="/portal">
-          <UserPortal />
+          <ProtectedRoute>
+            <UserPortal />
+          </ProtectedRoute>
         </Route>
 
         <Route path="/team-portal">
-          <TeamPortal />
+          <TeamProtectedRoute>
+            <TeamPortal />
+          </TeamProtectedRoute>
         </Route>
 
         <Route path="/team">
-          <TeamPortal />
+          <TeamProtectedRoute>
+            <TeamPortal />
+          </TeamProtectedRoute>
         </Route>
 
         <Route path="/dashboard">
-          <UserPortal />
+          <ProtectedRoute>
+            <UserPortal />
+          </ProtectedRoute>
         </Route>
 
         <Route path="/work">
-          <UserPortal />
+          <ProtectedRoute>
+            <UserPortal />
+          </ProtectedRoute>
         </Route>
 
         <Route path="/hilltopads">

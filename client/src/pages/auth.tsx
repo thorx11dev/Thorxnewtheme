@@ -963,7 +963,7 @@ export default function Auth() {
                                       <div className="space-y-1 text-xs">
                                         <div className={`flex items-center gap-1.5 ${/^.{6,}$/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
                                           <span className="text-sm">{/^.{6,}$/.test(field.value) ? '✓' : '○'}</span>
-                                          <span>At least 6 characters (Insforge)</span>
+                                          <span>At least 6 characters</span>
                                         </div>
                                         <div className={`flex items-center gap-1.5 ${field.value.length < 8 || /[A-Z]/.test(field.value) ? 'text-green-600' : 'text-muted-foreground'}`}>
                                           <span className="text-sm">{field.value.length < 8 || /[A-Z]/.test(field.value) ? '✓' : '○'}</span>
@@ -1158,28 +1158,20 @@ export default function Auth() {
                     </form>
                   </Form>
 
-                  {/* Direct Portal Access */}
+                  {/* Already registered? */}
                   <div className="mt-8 pt-8 border-t-2 border-black">
-                    <div className="text-center space-y-5">
-                      <TechnicalLabel text="OR NAVIGATE TO PORTAL" className="text-muted-foreground" />
-                      <div className="grid grid-cols-2 gap-4 md:gap-5">
-                        <Button
-                          onClick={() => setLocation("/portal")}
-                          variant="outline"
-                          className="w-full border-2 border-primary text-primary hover:bg-primary hover:text-white text-base md:text-lg font-black py-3 md:py-4"
-                          data-testid="button-user-portal"
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground font-bold tracking-wide">
+                        Already have an account?{" "}
+                        <button
+                          type="button"
+                          onClick={() => { setActiveTab("login"); setAuthView("login"); }}
+                          className="text-black underline underline-offset-2 hover:text-primary transition-colors"
+                          data-testid="button-switch-to-login"
                         >
-                          USER PORTAL →
-                        </Button>
-                        <Button
-                          onClick={() => setLocation("/team")}
-                          variant="outline"
-                          className="w-full border-2 border-black text-black hover:bg-black hover:text-white text-base md:text-lg font-black py-3 md:py-4"
-                          data-testid="button-team-portal"
-                        >
-                          TEAM PORTAL →
-                        </Button>
-                      </div>
+                          LOGIN →
+                        </button>
+                      </p>
                     </div>
                   </div>
                 </TabsContent>

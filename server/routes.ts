@@ -200,7 +200,9 @@ const registerSchema = z.object({
       "For passwords of 8+ characters, include at least one uppercase letter, one lowercase letter, and one number.",
     ),
   referralCode: z.string().optional(),
-  role: z.enum(["user", "team", "founder"]).default("user"),
+  // Public registration always creates a regular user.
+  // Team / admin / founder roles are assigned via bootstrap or invitations only.
+  role: z.enum(["user"]).default("user"),
 });
 
 const loginSchema = z.object({
@@ -1995,8 +1997,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Bootstrap founder endpoint (only works when no team members exist)
+  // Bootstrap founder endpoint — dev/first-boot only
+  // Disabled in production. In dev, requires BOOTSTRAP_SECRET env var if set.
   app.post("/api/bootstrap-founder", async (req, res) => {
+    // Hard-disable in production
+    if (runtimeConfig.isProd) {
+      return res.status(403).json({
+        message: "Bootstrap is disabled in production. Use the seed script directly.",
+        error: "FORBIDDEN"
+      });
+    }
+
+    // If BOOTSTRAP_SECRET is configured, validate the caller knows it
+    const bootstrapSecret = process.env.BOOTSTRAP_SECRET;
+    if (bootstrapSecret) {
+      const provided =
+        (req.headers['x-bootstrap-secret'] as string) ||
+        req.body?.bootstrapSecret;
+      if (!provided || provided !== bootstrapSecret) {
+        return res.status(403).json({
+          message: "Invalid or missing bootstrap secret.",
+          error: "FORBIDDEN"
+        });
+      }
+    }
+
     try {
       const { email, password, firstName, lastName } = req.body;
 
@@ -2142,7 +2167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: (phone && phone.trim() !== '') ? normalizePhoneNumber(phone) : "+1 555 0000000",
         identity,
         referralCode: referralCode || '',
-        role: role || 'user',
+        role: 'user', // always "user" — elevated roles via bootstrap/invitations only
         passwordHash: password,
         password: password,
         name: `${firstName} ${lastName}`,
@@ -3175,12 +3200,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.userProfile) return res.status(401).send();
       const { id } = req.params;
       const { accessLevel, isActive } = req.body;
+
+      // Only admin or founder can modify team member records
+      const actorRole = req.userProfile.role;
+      const isAdminOrFounder = actorRole === 'founder' || actorRole === 'admin';
+      if (!isAdminOrFounder) {
+        return res.status(403).json({ message: "Insufficient authorization to modify team members." });
+      }
+
+      // Only founders can elevate a role to admin or founder level
+      if (accessLevel && ['admin', 'founder'].includes(accessLevel) && actorRole !== 'founder') {
+        return res.status(403).json({ message: "Only founders can assign admin or founder roles." });
+      }
+
       const targetUser = await storage.getUserById(id);
 
       if (!targetUser) return res.status(404).json({ message: "Target node detached." });
 
-      // Peer Governance Logic
-      if (targetUser.role === 'founder' && req.userProfile.role !== 'founder') {
+      // Founders are immutable by non-founders
+      if (targetUser.role === 'founder' && actorRole !== 'founder') {
         return res.status(403).json({ message: "Founding nodes cannot be altered." });
       }
 
@@ -3252,10 +3290,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       if (!req.userProfile) return res.status(401).send();
       const { id } = req.params;
+
+      // Only admin or founder can remove team members
+      const actorRole = req.userProfile.role;
+      if (actorRole !== 'founder' && actorRole !== 'admin') {
+        return res.status(403).json({ message: "Insufficient authorization to remove team members." });
+      }
+
       const targetUser = await storage.getUserById(id);
 
       if (!targetUser) return res.status(404).json({ message: "Node missing." });
-      if (targetUser.role === 'founder' && req.userProfile.role !== 'founder') {
+      if (targetUser.role === 'founder' && actorRole !== 'founder') {
          return res.status(403).json({ message: "Founders are immutable." });
       }
 
