@@ -1568,29 +1568,23 @@ export class DatabaseStorage implements IStorage {
 
         // Auto-assign the default avatar for the new rank (only if user hasn't customised)
         const RANK_DEFAULT_AVATARS: Record<string, string> = {
-          "Nawa Aya":       "nawa_aya-1",
+          "Nawa Aya":       "nawa-aya-1",
           "Munna":          "munna-1",
-          "Bawa Ji":        "bawa_ji-1",
-          "Haji Saab":      "haji_saab-1",
-          "Chacha Supreme": "chacha_supreme-1",
+          "Bawa Ji":        "bawa-ji-1",
+          "Haji Saab":      "haji-saab-1",
+          "Chacha Supreme": "chacha-1",
         };
         const currentAvatarId = user.avatar || "default";
         const isDefaultOrRankAvatar =
           currentAvatarId === "default" ||
           Object.values(RANK_DEFAULT_AVATARS).includes(currentAvatarId) ||
-          // new-style ids (underscore folders)
-          currentAvatarId.startsWith("nawa_aya-") ||
-          currentAvatarId.startsWith("munna-") ||
-          currentAvatarId.startsWith("bawa_ji-") ||
-          currentAvatarId.startsWith("haji_saab-") ||
-          currentAvatarId.startsWith("chacha_supreme-") ||
-          // legacy hyphen ids (keep migrating gracefully)
           currentAvatarId.startsWith("nawa-aya-") ||
+          currentAvatarId.startsWith("munna-") ||
           currentAvatarId.startsWith("bawa-ji-") ||
           currentAvatarId.startsWith("haji-saab-") ||
           currentAvatarId.startsWith("chacha-");
         const newAvatarId = isDefaultOrRankAvatar
-          ? (RANK_DEFAULT_AVATARS[newRank] ?? "nawa_aya-1")
+          ? (RANK_DEFAULT_AVATARS[newRank] ?? "nawa-aya-1")
           : currentAvatarId; // keep custom photo/avatar
 
         // Update user rank + avatar
