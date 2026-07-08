@@ -80,14 +80,14 @@ export function DesktopNavTabs({
                             />
                         </div>
 
-                        {/* Tooltip label — absolutely positioned below, no layout shift */}
+                        {/* Tooltip label — positioned above the button, away from bottom divider */}
                         <span
                             aria-hidden="true"
                             className={cn(
-                                "pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50",
+                                "pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50",
                                 "px-2 py-1 bg-black text-white text-[9px] font-black tracking-[0.12em] whitespace-nowrap",
                                 // Smooth reveal on hover and keyboard focus
-                                "opacity-0 translate-y-1 transition-[opacity,transform] duration-200 ease-out",
+                                "opacity-0 -translate-y-1 transition-[opacity,transform] duration-200 ease-out",
                                 "group-hover:opacity-100 group-hover:translate-y-0",
                                 "group-focus-visible:opacity-100 group-focus-visible:translate-y-0"
                             )}
