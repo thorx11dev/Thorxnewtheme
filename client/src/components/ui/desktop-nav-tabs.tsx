@@ -39,44 +39,69 @@ export function DesktopNavTabs({
         <div className={cn("flex items-center", className)}>
             {tabs.map((tab, index) => {
                 if (tab.type === "separator") {
-                    // Render a separator if needed, or omit for a perfectly joined look
                     return null;
                 }
 
                 const isActive = activeTab === index;
                 const Icon = tab.icon;
-                
-                // Determine if it's the first or last real tab to apply grouping borders if desired
-                // In brutalism, individual distinct blocks often work best.
 
                 return (
                     <button
                         key={`tab-${index}-${tab.title}`}
                         onClick={() => handleSelect(index)}
+                        aria-label={tab.title}
+                        aria-current={isActive ? "page" : undefined}
                         className={cn(
-                            "relative flex items-center justify-center gap-2 h-10 md:h-12 px-4 md:px-6 transition-all duration-200 border-3 border-black group",
-                            "ml-[-3px]", // Negative margin to overlap borders and create a segmented control look
-                            isActive
-                                ? "bg-primary text-black z-10 scale-[1.05] shadow-[4px_4px_0px_#000]"
-                                : "bg-white text-zinc-600 hover:bg-zinc-100 hover:text-black z-0 hover:z-10 hover:shadow-[4px_4px_0px_#000]"
+                            // Fixed width so no sibling reflow when tooltip appears
+                            "relative flex items-center justify-center w-11 md:w-12 h-10 md:h-12",
+                            "border-3 border-black transition-all duration-200 group",
+                            "ml-[-3px]",
+                            // Uniform rest state — active & inactive look the same at rest
+                            "bg-white text-zinc-600 z-0",
+                            "hover:bg-zinc-100 hover:text-black hover:z-10 hover:shadow-[4px_4px_0px_#000]",
+                            // Keyboard focus — same elevated treatment as hover
+                            "focus-visible:outline-none focus-visible:bg-zinc-100 focus-visible:text-black focus-visible:z-10 focus-visible:shadow-[4px_4px_0px_#000]"
                         )}
                         style={{
-                            // First item shouldn't have negative margin to avoid shifting the whole block
                             marginLeft: index === 0 ? '0' : undefined
                         }}
                     >
-                        <div className="relative z-10 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
-                            <Icon size={18} strokeWidth={isActive ? 3 : 2} className={cn(
-                                "transition-colors duration-200",
-                                isActive ? "text-black" : "text-inherit"
-                            )} />
+                        {/* Icon — always visible, slightly bolder when active */}
+                        <div className="flex items-center justify-center transition-transform duration-200 group-hover:scale-110 group-focus-visible:scale-110">
+                            <Icon
+                                size={18}
+                                strokeWidth={isActive ? 2.5 : 1.75}
+                                className={cn(
+                                    "transition-colors duration-200",
+                                    isActive
+                                        ? "text-black"
+                                        : "text-zinc-500 group-hover:text-black group-focus-visible:text-black"
+                                )}
+                            />
                         </div>
 
-                        <span className={cn(
-                            "relative z-10 font-black text-xs tracking-[0.1em] whitespace-nowrap transition-all duration-200"
-                        )}>
+                        {/* Tooltip label — absolutely positioned below, no layout shift */}
+                        <span
+                            aria-hidden="true"
+                            className={cn(
+                                "pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50",
+                                "px-2 py-1 bg-black text-white text-[9px] font-black tracking-[0.12em] whitespace-nowrap",
+                                // Smooth reveal on hover and keyboard focus
+                                "opacity-0 translate-y-1 transition-[opacity,transform] duration-200 ease-out",
+                                "group-hover:opacity-100 group-hover:translate-y-0",
+                                "group-focus-visible:opacity-100 group-focus-visible:translate-y-0"
+                            )}
+                        >
                             {tab.title.toUpperCase()}
                         </span>
+
+                        {/* Active indicator — thin primary accent line at bottom */}
+                        {isActive && (
+                            <span
+                                className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary"
+                                aria-hidden="true"
+                            />
+                        )}
                     </button>
                 );
             })}

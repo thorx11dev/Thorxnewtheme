@@ -2,15 +2,15 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { 
   Users, 
-  CreditCard, 
+  Wallet,
   Mail, 
-  Key, 
+  ShieldCheck,
   LayoutDashboard,
-  FileText,
+  ScrollText,
   Menu,
   LogOut,
   Target,
-  Shield,
+  Trophy,
   Settings
 } from "lucide-react";
 import TechnicalLabel from "@/components/ui/technical-label";
@@ -27,15 +27,15 @@ interface AdminSidebarProps {
 }
 
 const adminSections = [
-  { id: "dashboard", name: "DASHBOARD", icon: LayoutDashboard },
-  { id: "leaderboard", name: "LEADERBOARD", icon: Shield },
-  { id: "tasks", name: "DAILY TASKS", icon: Target },
-  { id: "payouts", name: "PAYOUT QUEUE", icon: CreditCard },
-  { id: "users", name: "USER CRM", icon: Users },
-  { id: "inbox", name: "INBOX", icon: Mail },
-  { id: "audit", name: "AUDIT LOGS", icon: FileText },
-  { id: "team", name: "TEAM KEYS", icon: Key },
-  { id: "settings", name: "SETTINGS", icon: Settings },
+  { id: "dashboard",   name: "DASHBOARD",    icon: LayoutDashboard },
+  { id: "leaderboard", name: "LEADERBOARD",  icon: Trophy        },
+  { id: "tasks",       name: "DAILY TASKS",  icon: Target        },
+  { id: "payouts",     name: "PAYOUT QUEUE", icon: Wallet        },
+  { id: "users",       name: "USER CRM",     icon: Users         },
+  { id: "inbox",       name: "INBOX",        icon: Mail          },
+  { id: "audit",       name: "AUDIT LOGS",   icon: ScrollText    },
+  { id: "team",        name: "TEAM KEYS",    icon: ShieldCheck   },
+  { id: "settings",    name: "SETTINGS",     icon: Settings      },
 ];
 
 export function AdminNavigation({ activeSection, onSectionChange, onLogout, className }: AdminSidebarProps) {

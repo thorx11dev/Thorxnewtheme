@@ -108,16 +108,17 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* High-Level Metrics - Mirrored from User Portal */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-12">
-        {/* Total Revenue - Styled like Available Balance */}
+      {/* High-Level Metrics - Matching User Portal card style */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
+        {/* Total Revenue */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           whileHover={{ scale: 1.02, translateY: -4 }}
           whileTap={{ scale: 0.98 }}
-          className="group bg-muted/10 border-3 border-black p-6 text-left transition-all duration-300 cursor-pointer shadow-[6px_6px_0_0_#000] hover:shadow-[8px_8px_0_0_#000] hover:border-primary"
+          className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
+          data-testid="card-total-revenue"
         >
           <div className="flex items-start justify-between mb-3">
             <DollarSign className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
@@ -128,14 +129,15 @@ export function AdminDashboard() {
           </p>
         </motion.div>
 
-        {/* Active Users - Styled like Active Referrals */}
+        {/* Active Users */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
           whileHover={{ scale: 1.02, translateY: -4 }}
           whileTap={{ scale: 0.98 }}
-          className="group bg-muted/10 border-3 border-black p-6 text-left transition-all duration-300 cursor-pointer shadow-[6px_6px_0_0_#000] hover:shadow-[8px_8px_0_0_#000] hover:border-primary"
+          className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+          data-testid="card-active-users"
         >
           <div className="flex items-start justify-between mb-3">
             <UserCheck className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
@@ -146,14 +148,15 @@ export function AdminDashboard() {
           </p>
         </motion.div>
 
-        {/* System Health - Styled like Total Earnings */}
+        {/* System Health */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.16 }}
           whileHover={{ scale: 1.02, translateY: -4 }}
           whileTap={{ scale: 0.98 }}
-          className="group bg-white border-3 border-black p-6 text-left transition-all duration-300 cursor-pointer shadow-[6px_6px_0_0_#000] hover:shadow-[8px_8px_0_0_#000]"
+          className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
+          data-testid="card-system-health"
         >
           <div className="flex items-start justify-between mb-3">
             <Zap className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
@@ -161,6 +164,25 @@ export function AdminDashboard() {
           </div>
           <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors">
             99.9%
+          </p>
+        </motion.div>
+
+        {/* Total Members */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.24 }}
+          whileHover={{ scale: 1.02, translateY: -4 }}
+          whileTap={{ scale: 0.98 }}
+          className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
+          data-testid="card-total-members"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <Users className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
+            <TechnicalLabel text="TOTAL MEMBERS" className="text-muted-foreground text-xs" />
+          </div>
+          <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors">
+            {metrics?.totalUsers?.toLocaleString() || metrics?.activeUsers?.toLocaleString() || "0"}
           </p>
         </motion.div>
       </div>
