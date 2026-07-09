@@ -24,28 +24,28 @@ const RANK_CONFIG: Record<string, {
         borderColor: "border-gray-300 dark:border-gray-700",
         gradient: "from-gray-400 to-gray-600"
     },
-    "Munna": {
+    "Chota Don": {
         icon: Shield,
         color: "text-blue-500",
         bgColor: "bg-blue-100 dark:bg-blue-900/30",
         borderColor: "border-blue-300 dark:border-blue-700",
         gradient: "from-blue-400 to-blue-600"
     },
-    "Bawa Ji": {
+    "Baja Ji": {
         icon: Medal,
         color: "text-green-500",
         bgColor: "bg-green-100 dark:bg-green-900/30",
         borderColor: "border-green-300 dark:border-green-700",
         gradient: "from-green-400 to-green-600"
     },
-    "Haji Saab": {
+    "Haji Sab": {
         icon: Trophy,
         color: "text-purple-500",
         bgColor: "bg-purple-100 dark:bg-purple-900/30",
         borderColor: "border-purple-300 dark:border-purple-700",
         gradient: "from-purple-400 to-purple-600"
     },
-    "Chacha Supreme": {
+    "Supreme Chacha": {
         icon: Crown,
         color: "text-yellow-500",
         bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
@@ -124,11 +124,11 @@ interface RankProgressBarProps {
 }
 
 const RANK_THRESHOLDS = [
-    { name: "Nawa Aya", min: 0, max: 25000 },
-    { name: "Munna", min: 25000, max: 50000 },
-    { name: "Bawa Ji", min: 50000, max: 75000 },
-    { name: "Haji Saab", min: 75000, max: 100000 },
-    { name: "Chacha Supreme", min: 100000, max: Infinity },
+    { name: "Nawa Aya",      min: 0,      max: 25000    },
+    { name: "Chota Don",     min: 25000,  max: 50000    },
+    { name: "Baja Ji",       min: 50000,  max: 75000    },
+    { name: "Haji Sab",      min: 75000,  max: 100000   },
+    { name: "Supreme Chacha",min: 100000, max: Infinity },
 ];
 
 export function RankProgressBar({
@@ -140,7 +140,7 @@ export function RankProgressBar({
     const currentThreshold = RANK_THRESHOLDS[currentRankIndex];
     const nextThreshold = RANK_THRESHOLDS[currentRankIndex + 1];
 
-    if (!nextThreshold || currentRank === "Chacha Supreme") {
+    if (!nextThreshold || currentRank === "Supreme Chacha") {
         return (
             <div className={cn("space-y-2", className)}>
                 <div className="flex items-center justify-between text-sm">

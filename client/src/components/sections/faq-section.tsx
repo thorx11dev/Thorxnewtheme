@@ -137,13 +137,13 @@ const allFaqData = [
     id: "011",
     protocol: "RANKING-SYSTEM",
     question: "What are the user ranks and how do they work?",
-    answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks and withdrawal priorities: 1) Nawa Aya (Priority 5 — new users), 2) Munna (5 refs + 2,500 PKR — Priority 4), 3) Bawa Ji (10 refs + 5,000 PKR — Priority 3), 4) Haji Saab (15 refs + 10,000 PKR — Priority 2), 5) Chacha Supreme (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
+    answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks and withdrawal priorities: 1) Nawa Aya (Priority 5 — new users), 2) Chota Don (5 refs + 2,500 PKR — Priority 4), 3) Baja Ji (10 refs + 5,000 PKR — Priority 3), 4) Haji Sab (15 refs + 10,000 PKR — Priority 2), 5) Supreme Chacha (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
   },
   {
     id: "012",
     protocol: "PAYOUT-METHODS",
     question: "How do I withdraw my earnings?",
-    answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page. Higher-ranked users (Chacha Supreme, Haji Saab) have their payouts processed first. The minimum withdrawal amount is shown in your Wallet section. Deductions are calculated before display — there are no surprise cuts at checkout."
+    answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page. Higher-ranked users (Supreme Chacha, Haji Sab) have their payouts processed first. The minimum withdrawal amount is shown in your Wallet section. Deductions are calculated before display — there are no surprise cuts at checkout."
   },
   {
     id: "013",

@@ -178,7 +178,7 @@ export function TaskManager() {
     });
   };
 
-  const RANKS = ["Chacha Supreme", "Haji Saab", "Bawa Ji", "Munna", "Nawa Aya"];
+  const RANKS = ["Supreme Chacha", "Haji Sab", "Baja Ji", "Chota Don", "Nawa Aya"];
 
   const filteredTasks = tasks?.filter(task => 
     task.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -520,10 +520,10 @@ export function TaskManager() {
                     </SelectTrigger>
                     <SelectContent className="border-[1.5px] border-[#111] rounded-2xl uppercase font-black text-[10px]">
                       <SelectItem value="Nawa Aya">Nawa Aya (Public)</SelectItem>
-                      <SelectItem value="Munna">Munna</SelectItem>
-                      <SelectItem value="Bawa Ji">Bawa Ji</SelectItem>
-                      <SelectItem value="Haji Saab">Haji Saab</SelectItem>
-                      <SelectItem value="Chacha Supreme">Chacha Supreme</SelectItem>
+                      <SelectItem value="Chota Don">Chota Don</SelectItem>
+                      <SelectItem value="Baja Ji">Baja Ji</SelectItem>
+                      <SelectItem value="Haji Sab">Haji Sab</SelectItem>
+                      <SelectItem value="Supreme Chacha">Supreme Chacha</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

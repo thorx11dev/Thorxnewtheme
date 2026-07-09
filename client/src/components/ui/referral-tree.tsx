@@ -43,26 +43,21 @@ function getAvatarUrl(avatar?: string, rank?: string): string {
   if (!avatar || avatar === "default") {
     // rank-based default
     const rankMap: Record<string, string> = {
-      "Nawa Aya":       "/avatars/nawa-aya/1-default.png",
-      "Munna":          "/avatars/munna/1-default.png",
-      "Bawa Ji":        "https://api.dicebear.com/7.x/adventurer/svg?seed=BawaJiDefault&backgroundColor=1c2b3a",
-      "Haji Saab":      "https://api.dicebear.com/7.x/adventurer/svg?seed=HajiSaabDefault&backgroundColor=1a3d2b",
-      "Chacha Supreme": "https://api.dicebear.com/7.x/adventurer/svg?seed=ChachaDefault&backgroundColor=2d1a00",
+      "Nawa Aya":       "/avatars/nawa-aya.png",
+      "Chota Don":      "/avatars/chota-don.png",
+      "Baja Ji":        "/avatars/baja-ji.png",
+      "Haji Sab":       "/avatars/haji-sab.png",
+      "Supreme Chacha": "/avatars/supreme-chacha.png",
     };
-    return rankMap[rank || "Nawa Aya"] ?? "/avatars/nawa-aya/1-default.png";
+    return rankMap[rank || "Nawa Aya"] ?? "/avatars/nawa-aya.png";
   }
   if (avatar.startsWith("http") || avatar.startsWith("data:") || avatar.startsWith("/")) return avatar;
-  // Check if it's a rank avatar id (e.g. "nawa-aya-1")
-  // All rank avatar IDs map to paths via pattern
-  if (avatar.startsWith("nawa-aya-")) return `/avatars/nawa-aya/${avatar.replace("nawa-aya-", "")}.png`.replace(/(\d+)\.png/, (_, n) => {
-    const names = ["default","cricket","school","eid","winter","street","chef","hero"];
-    return `${n}-${names[parseInt(n)-1] || n}.png`;
-  });
-  if (avatar.startsWith("munna-")) {
-    const n = parseInt(avatar.replace("munna-", ""));
-    const names = ["default","casanova","gangster","wedding","racer","spy","gym","tech"];
-    return `/avatars/munna/${n}-${names[n-1] || n}.png`;
-  }
+  // Legacy rank avatar IDs — fall back to new single images
+  if (avatar.startsWith("nawa-aya"))   return "/avatars/nawa-aya.png";
+  if (avatar.startsWith("chota-don") || avatar.startsWith("munna-"))   return "/avatars/chota-don.png";
+  if (avatar.startsWith("baja-ji")  || avatar.startsWith("bawa-ji-"))  return "/avatars/baja-ji.png";
+  if (avatar.startsWith("haji-sab") || avatar.startsWith("haji-saab-"))return "/avatars/haji-sab.png";
+  if (avatar.startsWith("supreme-chacha") || avatar.startsWith("chacha-")) return "/avatars/supreme-chacha.png";
   return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(avatar)}&backgroundColor=1a1a1a`;
 }
 

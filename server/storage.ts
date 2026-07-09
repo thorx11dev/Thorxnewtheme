@@ -279,11 +279,11 @@ export interface IStorage {
 }
 
 const RANKS = [
-  { name: "Nawa Aya", minEarned: 0, minRefs: 0, priority: 5 },
-  { name: "Munna", minEarned: 2500, minRefs: 5, priority: 4 },
-  { name: "Bawa Ji", minEarned: 5000, minRefs: 10, priority: 3 },
-  { name: "Haji Saab", minEarned: 10000, minRefs: 15, priority: 2 },
-  { name: "Chacha Supreme", minEarned: 25000, minRefs: 25, priority: 1 },
+  { name: "Nawa Aya",      minEarned: 0,     minRefs: 0,  priority: 5 },
+  { name: "Chota Don",     minEarned: 2500,  minRefs: 5,  priority: 4 },
+  { name: "Baja Ji",       minEarned: 5000,  minRefs: 10, priority: 3 },
+  { name: "Haji Sab",      minEarned: 10000, minRefs: 15, priority: 2 },
+  { name: "Supreme Chacha",minEarned: 25000, minRefs: 25, priority: 1 },
 ];
 
 export class DatabaseStorage implements IStorage {
@@ -1568,16 +1568,17 @@ export class DatabaseStorage implements IStorage {
 
         // Auto-assign the default avatar for the new rank (only if user hasn't customised)
         const RANK_DEFAULT_AVATARS: Record<string, string> = {
-          "Nawa Aya":       "nawa-aya-1",
-          "Munna":          "munna-1",
-          "Bawa Ji":        "bawa-ji-1",
-          "Haji Saab":      "haji-saab-1",
-          "Chacha Supreme": "chacha-1",
+          "Nawa Aya":       "nawa-aya",
+          "Chota Don":      "chota-don",
+          "Baja Ji":        "baja-ji",
+          "Haji Sab":       "haji-sab",
+          "Supreme Chacha": "supreme-chacha",
         };
         const currentAvatarId = user.avatar || "default";
         const isDefaultOrRankAvatar =
           currentAvatarId === "default" ||
           Object.values(RANK_DEFAULT_AVATARS).includes(currentAvatarId) ||
+          // legacy IDs — treated as replaceable
           currentAvatarId.startsWith("nawa-aya-") ||
           currentAvatarId.startsWith("munna-") ||
           currentAvatarId.startsWith("bawa-ji-") ||
