@@ -2423,6 +2423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
+        name: `${user.firstName} ${user.lastName}`.trim(),
         email: user.email,
         identity: user.identity,
         phone: user.phone,
@@ -2432,6 +2433,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: user.isActive,
         createdAt: user.createdAt,
         role: user.role || 'user',
+        rank: (user as any).rank,
+        avatar: (user as any).avatar,
+        profilePicture: (user as any).profilePicture,
       });
     } catch (error) {
       console.error("Get profile error:", error);
@@ -2530,6 +2534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: updatedUser.id,
           firstName: updatedUser.firstName,
           lastName: updatedUser.lastName,
+          name: `${updatedUser.firstName} ${updatedUser.lastName}`.trim(),
           email: updatedUser.email,
           identity: updatedUser.identity,
           phone: updatedUser.phone,
@@ -2539,6 +2544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: updatedUser.isActive,
           createdAt: updatedUser.createdAt,
           role: updatedUser.role || 'user',
+          rank: (updatedUser as any).rank,
           avatar: (updatedUser as any).avatar,
           profilePicture: (updatedUser as any).profilePicture,
         }

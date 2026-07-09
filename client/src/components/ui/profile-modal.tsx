@@ -89,32 +89,51 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
   };
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { name: string; avatar: string; profilePicture?: string }) => {
+    mutationFn: async (data: { name: string; avatar: string; profilePicture?: string | null }) => {
       const res = await apiRequest("PATCH", "/api/profile", data);
-      return res.json();
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to save profile");
+      }
+      return res.json(); // { message, user }
     },
     onMutate: async (newData) => {
-      await queryClient.cancelQueries({ queryKey: ["auth"] });
-      const previousUser = queryClient.getQueryData(["auth"]);
-      queryClient.setQueryData(["auth"], (old: any) => ({
+      // ["session-auth"] is the key used by useAuth
+      await queryClient.cancelQueries({ queryKey: ["session-auth"] });
+      const previousUser = queryClient.getQueryData(["session-auth"]);
+
+      // Split name the same way the server does so firstName/lastName stay correct
+      const parts = newData.name.trim().split(/\s+/);
+      const firstName = parts[0];
+      const lastName = parts.length > 1 ? parts.slice(1).join(" ") : parts[0];
+
+      queryClient.setQueryData(["session-auth"], (old: any) => ({
         ...old,
         name: newData.name,
+        firstName,
+        lastName,
         avatar: newData.avatar,
-        profilePicture: newData.profilePicture,
+        // Use Object.prototype.hasOwnProperty to distinguish explicit null (clear)
+        // from undefined (not provided) — ?? would treat null as "not set"
+        profilePicture: Object.prototype.hasOwnProperty.call(newData, "profilePicture")
+          ? newData.profilePicture
+          : old?.profilePicture,
       }));
       onClose();
       return { previousUser };
     },
-    onSuccess: (updatedUser) => {
-      if (updatedUser) queryClient.setQueryData(["auth"], updatedUser);
-      queryClient.invalidateQueries({ queryKey: ["auth"] });
+    onSuccess: (response) => {
+      // Server returns { message, user } — write the user object into the cache
+      const updatedUser = response?.user ?? response;
+      if (updatedUser) queryClient.setQueryData(["session-auth"], updatedUser);
+      queryClient.invalidateQueries({ queryKey: ["session-auth"] });
       queryClient.invalidateQueries({ queryKey: ["referrals"] });
       queryClient.invalidateQueries({ queryKey: ["earnings"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({ title: "Profile Updated", description: "Your changes have been saved." });
     },
     onError: (_err, _newData, context: any) => {
-      if (context?.previousUser) queryClient.setQueryData(["auth"], context.previousUser);
+      if (context?.previousUser) queryClient.setQueryData(["session-auth"], context.previousUser);
       toast({ title: "Error", description: "Could not save changes.", variant: "destructive" });
     },
   });
