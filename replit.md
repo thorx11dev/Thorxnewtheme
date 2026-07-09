@@ -36,6 +36,12 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 - `server/routes.ts` — all API routes
 - `server/storage.ts` — database access layer
 
+## Founder account
+
+- Email: `thorx11dev@gmail.com`
+- Role: `founder` (full access to team portal)
+- Created via `POST /api/bootstrap-founder` (one-time; blocked once any team member exists)
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)

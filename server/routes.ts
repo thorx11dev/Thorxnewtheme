@@ -2192,6 +2192,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mark email as verified immediately (no OTP required)
       await storage.markUserEmailVerified(newUser.id);
 
+      // Regenerate session ID to prevent fixation before assigning identity
+      await new Promise<void>((resolve, reject) => {
+        req.session.regenerate((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
       // Set session data
       req.session.userId = newUser.id;
       req.session.user = {
@@ -2338,6 +2346,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("Login fingerprint storage failed (non-blocking):", fpErr);
         }
       }
+
+      // Regenerate session ID to prevent fixation before assigning identity
+      await new Promise<void>((resolve, reject) => {
+        req.session.regenerate((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
 
       // Set session data
       req.session.userId = user.id;
@@ -3165,6 +3181,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hardcoded Peer Governance rule (Open Question resolution: Peer deletion restriction)
       if (targetUser.role === 'founder' && req.userProfile.role !== 'founder') {
         return res.status(403).json({ message: "System override blocked: Cannot control Founder nodes." });
+      }
+
+      // Only founders can elevate a role to admin or founder level
+      if (role && ['admin', 'founder'].includes(role) && req.userProfile.role !== 'founder') {
+        return res.status(403).json({ message: "Only founders can assign admin or founder roles." });
       }
 
       // 1. Elevate Privilege Level
