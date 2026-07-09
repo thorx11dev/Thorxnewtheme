@@ -1,8 +1,8 @@
 /**
  * THORX Rank Avatar System
  * ─────────────────────────────────────────────────────────────────────────
- * Each rank has one default avatar image.
- * The profile modal shows the single avatar for the user's current rank.
+ * Each rank has 3 selectable avatar outfits.
+ * The default (first) avatar is auto-assigned on rank-up.
  *
  * Rank progression: Nawa Aya → Chota Don → Baja Ji → Haji Sab → Supreme Chacha
  * ─────────────────────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ export interface RankDefinition {
   color: string;        // Tailwind color class for badge
   bgColor: string;      // Tailwind bg class for badge
   defaultAvatarId: string; // id of the avatar auto-assigned on rank-up
-  avatars: RankAvatar[];   // selectable avatar(s) for this rank
+  avatars: RankAvatar[];   // selectable avatar outfits for this rank
 }
 
 // ── NAWA AYA ──────────────────────────────────────────────────────────────
@@ -31,7 +31,9 @@ const NAWA_AYA: RankDefinition = {
   bgColor: "bg-zinc-600",
   defaultAvatarId: "nawa-aya",
   avatars: [
-    { id: "nawa-aya", url: "/avatars/nawa-aya.png", label: "Nawa Aya" },
+    { id: "nawa-aya",   url: "/avatars/nawa-aya.png",   label: "Classic"      },
+    { id: "nawa-aya-2", url: "/avatars/nawa-aya-2.png", label: "Green Waistcoat" },
+    { id: "nawa-aya-3", url: "/avatars/nawa-aya-3.png", label: "Street Hoodie"   },
   ],
 };
 
@@ -43,7 +45,9 @@ const CHOTA_DON: RankDefinition = {
   bgColor: "bg-blue-700",
   defaultAvatarId: "chota-don",
   avatars: [
-    { id: "chota-don", url: "/avatars/chota-don.png", label: "Chota Don" },
+    { id: "chota-don",   url: "/avatars/chota-don.png",   label: "Classic"       },
+    { id: "chota-don-2", url: "/avatars/chota-don-2.png", label: "Gamer Mode"    },
+    { id: "chota-don-3", url: "/avatars/chota-don-3.png", label: "Black Suit"    },
   ],
 };
 
@@ -55,7 +59,9 @@ const BAJA_JI: RankDefinition = {
   bgColor: "bg-amber-700",
   defaultAvatarId: "baja-ji",
   avatars: [
-    { id: "baja-ji", url: "/avatars/baja-ji.png", label: "Baja Ji" },
+    { id: "baja-ji",   url: "/avatars/baja-ji.png",   label: "Classic"        },
+    { id: "baja-ji-2", url: "/avatars/baja-ji-2.png", label: "Cap & Tasbih"   },
+    { id: "baja-ji-3", url: "/avatars/baja-ji-3.png", label: "Leather Jacket" },
   ],
 };
 
@@ -67,7 +73,9 @@ const HAJI_SAB: RankDefinition = {
   bgColor: "bg-emerald-700",
   defaultAvatarId: "haji-sab",
   avatars: [
-    { id: "haji-sab", url: "/avatars/haji-sab.png", label: "Haji Sab" },
+    { id: "haji-sab",   url: "/avatars/haji-sab.png",   label: "Classic"      },
+    { id: "haji-sab-2", url: "/avatars/haji-sab-2.png", label: "Royal Bisht"  },
+    { id: "haji-sab-3", url: "/avatars/haji-sab-3.png", label: "Dark Thobe"   },
   ],
 };
 
@@ -79,7 +87,9 @@ const SUPREME_CHACHA: RankDefinition = {
   bgColor: "bg-orange-700",
   defaultAvatarId: "supreme-chacha",
   avatars: [
-    { id: "supreme-chacha", url: "/avatars/supreme-chacha.png", label: "Supreme Chacha" },
+    { id: "supreme-chacha",   url: "/avatars/supreme-chacha.png",   label: "Classic"     },
+    { id: "supreme-chacha-2", url: "/avatars/supreme-chacha-2.png", label: "The Elder"   },
+    { id: "supreme-chacha-3", url: "/avatars/supreme-chacha-3.png", label: "Golden Cane" },
   ],
 };
 

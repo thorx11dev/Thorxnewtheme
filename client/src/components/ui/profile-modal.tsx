@@ -10,13 +10,9 @@ import { ElasticStack } from "@/components/ui/elastic-stack";
 import {
   getRankDef,
   resolveAvatarUrl,
-  ALL_AVATARS,
   getDefaultAvatarUrl,
   type RankAvatar,
 } from "@/lib/rankAvatars";
-
-// Legacy export — consumed by AdminHeader and other components
-export const AVATARS = ALL_AVATARS;
 
 interface ProfileModalProps {
   isOpen: boolean;

@@ -442,10 +442,11 @@ export default function Auth() {
   const name = registerForm.watch('name');
 
   useEffect(() => {
-    if (name && name.trim().includes(' ')) {
+    if (name && name.trim().length >= 2) {
       const nameParts = name.trim().split(' ');
       const firstName = nameParts[0];
-      const lastName = nameParts[nameParts.length - 1];
+      // Use last word as last name; fall back to first word if single name entered
+      const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
       const identity = generateThorxIdentity(firstName, lastName);
       setGeneratedIdentity(identity);
       registerForm.setValue('identity', identity);
