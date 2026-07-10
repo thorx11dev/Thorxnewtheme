@@ -41,7 +41,9 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 - Email: `thorx11dev@gmail.com`
 - Role: `founder` (full access to team portal)
 - Created via `POST /api/bootstrap-founder` (one-time; blocked once any team member exists)
+- Already created in this environment's database — log in with the password set when it was created.
 
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
+- Insforge is fully removed. Auth is session-based (express-session + scrypt), profile pictures are stored as compressed base64 in Postgres. `.env.example` reflects only the variables the server actually reads.
