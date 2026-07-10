@@ -128,8 +128,9 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
       if (updatedUser) queryClient.setQueryData(["session-auth"], updatedUser);
       queryClient.invalidateQueries({ queryKey: ["session-auth"] });
       queryClient.invalidateQueries({ queryKey: ["referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["referrals", "leaderboard"] });
       queryClient.invalidateQueries({ queryKey: ["earnings"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
       toast({ title: "Profile Updated", description: "Your changes have been saved." });
     },
     onError: (_err, _newData, context: any) => {

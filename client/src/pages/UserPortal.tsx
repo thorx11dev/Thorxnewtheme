@@ -1558,13 +1558,13 @@ export default function UserPortal() {
             {/* Avatar with Premium Comic Border */}
             <div className="relative">
               <div className={cn(
-                "w-32 h-32 md:w-40 md:h-40 border-4 bg-black overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.1)] rotate-2 group-hover:rotate-0 transition-transform duration-500",
+                "w-32 h-32 md:w-40 md:h-40 border-4 bg-black overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.1)]",
                 rank.border
               )}>
                 <img
                   src={userAvatar}
                   alt="User Avatar"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover will-change-transform"
                 />
               </div>
               <div className={cn(

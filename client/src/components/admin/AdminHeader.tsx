@@ -47,9 +47,9 @@ export function AdminHeader({ userName, role, className }: AdminHeaderProps) {
                 </div>
               </div>
               
-              <div className="w-10 h-10 md:w-12 md:h-12 border-2 border-black bg-black overflow-hidden relative rotate-2 group-hover:rotate-0 transition-transform duration-300">
+              <div className="w-10 h-10 md:w-12 md:h-12 border-2 border-black bg-black overflow-hidden relative">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                  <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover will-change-transform" />
                 ) : (
                   <User className="w-6 h-6 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                 )}

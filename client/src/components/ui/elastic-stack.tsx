@@ -74,6 +74,7 @@ export function ElasticStack({
               transform: `translateX(${translateX}px) scale(${scale})`,
               transitionTimingFunction: springEasing,
               zIndex,
+              willChange: "transform",
             }}
           >
             {item.image ? (
@@ -81,6 +82,7 @@ export function ElasticStack({
                 src={item.image}
                 alt={item.name || `Avatar ${i + 1}`}
                 className="w-full h-full object-cover rounded-full pointer-events-none"
+                style={{ imageRendering: "auto" }}
               />
             ) : (
               <div className="w-full h-full rounded-full flex items-center justify-center font-semibold text-white/60 bg-white/10">

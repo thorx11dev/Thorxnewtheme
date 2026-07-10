@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Crown, User, Shield, Medal, Award } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resolveAvatarUrl } from "@/lib/rankAvatars";
 
 interface NetworkUser {
     id: string;
@@ -36,29 +37,10 @@ interface TreeNode {
     isRoot?: boolean;
 }
 
-// Avatar resolution is now handled by resolveAvatarUrl from rankAvatars.ts
-// keeping inline helper here for the tree component's local use
+// Avatar resolution delegated to the central rankAvatars registry.
+// This handles all rank IDs including -2 / -3 variants, legacy IDs, and custom URLs.
 function getAvatarUrl(avatar?: string, rank?: string): string {
-  // import is not available in .tsx without top-level import; inline resolution
-  if (!avatar || avatar === "default") {
-    // rank-based default
-    const rankMap: Record<string, string> = {
-      "Nawa Aya":       "/avatars/nawa-aya.png",
-      "Chota Don":      "/avatars/chota-don.png",
-      "Baja Ji":        "/avatars/baja-ji.png",
-      "Haji Sab":       "/avatars/haji-sab.png",
-      "Supreme Chacha": "/avatars/supreme-chacha.png",
-    };
-    return rankMap[rank || "Nawa Aya"] ?? "/avatars/nawa-aya.png";
-  }
-  if (avatar.startsWith("http") || avatar.startsWith("data:") || avatar.startsWith("/")) return avatar;
-  // Legacy rank avatar IDs — fall back to new single images
-  if (avatar.startsWith("nawa-aya"))   return "/avatars/nawa-aya.png";
-  if (avatar.startsWith("chota-don") || avatar.startsWith("munna-"))   return "/avatars/chota-don.png";
-  if (avatar.startsWith("baja-ji")  || avatar.startsWith("bawa-ji-"))  return "/avatars/baja-ji.png";
-  if (avatar.startsWith("haji-sab") || avatar.startsWith("haji-saab-"))return "/avatars/haji-sab.png";
-  if (avatar.startsWith("supreme-chacha") || avatar.startsWith("chacha-")) return "/avatars/supreme-chacha.png";
-  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(avatar)}&backgroundColor=1a1a1a`;
+  return resolveAvatarUrl(avatar, rank);
 }
 
 const getRankDetails = (rankTitle?: string) => {
@@ -267,17 +249,17 @@ function NodeCard({ node, isRoot }: { node: TreeNode; isRoot: boolean }) {
             {/* Top Section: Avatar with Comic Border & Rank Badge */}
             <div className="pt-6 pb-2 flex justify-center w-full relative">
 
-                <div className="relative group-hover:scale-105 transition-transform duration-500">
+                <div className="relative">
                     <div className={cn(
-                        "w-20 h-20 md:w-24 md:h-24 border-4 bg-black overflow-hidden shadow-md rotate-2 group-hover:rotate-0 transition-transform duration-500",
+                        "w-20 h-20 md:w-24 md:h-24 border-4 bg-black overflow-hidden shadow-md",
                         rank.border
                     )}>
                         <img
                             src={userAvatar}
                             alt={`${user.firstName} ${user.lastName}`}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover will-change-transform"
                             onError={(e) => {
-                                (e.target as HTMLImageElement).src = "/avatars/nawa-aya/1-default.png";
+                                (e.target as HTMLImageElement).src = "/avatars/nawa-aya.png";
                             }}
                         />
                     </div>

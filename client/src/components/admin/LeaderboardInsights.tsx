@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { resolveAvatarUrl } from "@/lib/rankAvatars";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -37,9 +38,10 @@ interface LeaderboardData {
 }
 
 function getAvatarSrc(user: any) {
-  if (user.avatar && user.avatar !== "default" && user.avatar !== "") return user.avatar;
+  // profilePicture (custom upload) takes priority over rank avatar ID
   if (user.profilePicture && user.profilePicture !== "") return user.profilePicture;
-  return null;
+  // resolveAvatarUrl handles all IDs including -2/-3 variants and legacy IDs
+  return resolveAvatarUrl(user.avatar, user.rank);
 }
 
 function UserAvatar({ user, size = 10 }: { user: any; size?: number }) {

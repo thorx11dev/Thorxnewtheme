@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { resolveAvatarUrl } from "@/lib/rankAvatars";
 
 interface UserInspectorProps {
   user: any | null;
@@ -38,11 +39,8 @@ export function UserInspectorPanel({ user, isOpen, onClose, onViewInCRM }: UserI
     }
   };
 
-  const avatarSrc = (() => {
-    if (user.avatar && user.avatar !== "default" && user.avatar !== "") return user.avatar;
-    if (user.profilePicture && user.profilePicture !== "") return user.profilePicture;
-    return null;
-  })();
+  // profilePicture (custom upload) takes priority; resolveAvatarUrl handles all rank IDs
+  const avatarSrc = user.profilePicture || resolveAvatarUrl(user.avatar, user.rank);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
