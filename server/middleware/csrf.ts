@@ -35,6 +35,10 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
       sameSite,
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week (matches session TTL)
+      // CHIPS: exempt this cookie from third-party-cookie blocking inside
+      // Replit's cross-site preview iframe (see session cookie config for
+      // the full explanation). Only valid alongside SameSite=None.
+      ...(sameSite === "none" ? { partitioned: true } : {}),
     });
     return next();
   }

@@ -280,7 +280,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       maxAge: sessionTtl,
       sameSite: sameSite as "lax" | "strict" | "none",
       domain: runtimeConfig.sessionCookieDomain,
-      path: '/'
+      path: '/',
+      // CHIPS: browsers are phasing out third-party cookies even when
+      // SameSite=None; Secure is set (Replit's preview embeds the app in a
+      // cross-site iframe, making this a third-party cookie from the
+      // browser's point of view). "Partitioned" cookies are exempt from
+      // that blocking because they're scoped per top-level site, so they
+      // still round-trip correctly inside the preview iframe.
+      ...(sameSite === "none" ? { partitioned: true } : {}),
     },
     name: 'thorx.sid',
   };
