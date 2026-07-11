@@ -25,7 +25,9 @@ import {
   StickyNote,
   Send,
   Plus,
-  Check
+  Check,
+  Lock,
+  Unlock
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -60,6 +62,7 @@ interface UserProfile {
   identity: string;
   role: string;
   rank: string;
+  rankLocked?: boolean;
   availableBalance: string;
   totalEarnings: string;
   referralCode: string;
@@ -86,7 +89,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   const itemsPerPage = 10; // Optimized for admin view
   
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [modalType, setModalType] = useState<'details' | 'balance' | 'network' | 'notes' | 'delete' | null>(null);
+  const [modalType, setModalType] = useState<'details' | 'balance' | 'network' | 'notes' | 'delete' | 'rank' | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
@@ -94,6 +97,10 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   const [newNote, setNewNote] = useState("");
   const [networkZoom, setNetworkZoom] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedRank, setSelectedRank] = useState("");
+  const [lockRank, setLockRank] = useState(false);
+
+  const RANK_OPTIONS = ["Nawa Aya", "Chota Don", "Baja Ji", "Haji Sab", "Supreme Chacha"];
 
   
   const { toast } = useToast();
@@ -144,6 +151,17 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
     }
   });
 
+  const setRankMutation = useMutation({
+    mutationFn: async ({ userId, rank, locked }: { userId: string, rank: string, locked: boolean }) => {
+      return await apiRequest("PATCH", `/api/admin/users/${userId}/rank`, { rank, locked });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/team/users'] });
+      toast({ title: "Rank Updated", description: "User's rank has been manually set." });
+      closeModal();
+    }
+  });
+
   const createNoteMutation = useMutation({
     mutationFn: async ({ targetType, targetId, content }: { targetType: string, targetId: string, content: string }) => {
       return await apiRequest("POST", "/api/admin/notes", { targetType, targetId, content });
@@ -189,6 +207,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
     setNewNote("");
     setConfirmText("");
     setNetworkZoom(1);
+    setSelectedRank("");
+    setLockRank(false);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -354,8 +374,9 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     </td>
                     <td className="p-6 text-center">
                         <div className="flex flex-col gap-2 items-center">
-                           <span className="text-[9px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
+                           <span className="inline-flex items-center gap-1 text-[9px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
                              {(user.rank ?? 'Nawa Aya')}
+                             {user.rankLocked && <Lock size={10} className="text-black" />}
                            </span>
                         </div>
                     </td>
@@ -746,8 +767,9 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   <div className="p-5 bg-white border-[1.5px] border-[#111]/20 rounded-2xl grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Rank</div>
-                      <span className="text-[10px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm inline-block">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
                         {(selectedUser?.rank ?? 'Nawa Aya')}
+                        {selectedUser?.rankLocked && <Lock size={10} />}
                       </span>
                     </div>
                     <div>
@@ -795,10 +817,84 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
               Network Map
             </Button>
             <Button 
+                variant="outline"
+                className="flex-1 h-14 border-[1.5px] border-[#111] rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
+                onClick={() => {
+                  setSelectedRank(selectedUser?.rank || 'Nawa Aya');
+                  setLockRank(!!selectedUser?.rankLocked);
+                  setModalType('rank');
+                }}
+            >
+              Rank Control
+            </Button>
+            <Button 
                 className="flex-1 h-14 bg-primary border-[1.5px] border-[#111] rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-[#111] hover:text-white"
                 onClick={() => setModalType('balance')}
             >
               Adjust Ledger
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rank Control Dialog */}
+      <Dialog open={!!selectedUser && modalType === 'rank'} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="border-[1.5px] border-[#111] bg-background rounded-[2rem] p-0 max-w-md overflow-hidden shadow-2xl *:!rounded-none [&>button]:hidden">
+          <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white">
+            <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">
+              Rank Control
+            </DialogTitle>
+            <DialogDescription className="text-zinc-500 font-bold text-[10px] tracking-widest mt-1 uppercase">
+              Account: {selectedUser?.firstName} {selectedUser?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-8 space-y-6 bg-transparent">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">Rank</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {RANK_OPTIONS.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setSelectedRank(r)}
+                    className={cn(
+                      "h-12 rounded-2xl border-[1.5px] border-[#111] font-black text-[11px] tracking-widest uppercase transition-colors px-4 text-left",
+                      selectedRank === r ? "bg-[#111] text-white" : "bg-white hover:bg-black/5 text-[#111]"
+                    )}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setLockRank(!lockRank)}
+              className={cn(
+                "w-full flex items-center justify-between gap-3 p-4 rounded-2xl border-[1.5px] border-[#111] transition-colors",
+                lockRank ? "bg-[#111] text-white" : "bg-white text-[#111] hover:bg-black/5"
+              )}
+            >
+              <span className="flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
+                {lockRank ? <Lock size={14} /> : <Unlock size={14} />}
+                Lock Rank
+              </span>
+              <span className="text-[9px] font-bold opacity-70 uppercase text-right max-w-[55%]">
+                {lockRank ? "Stops auto-rank changes" : "Rank auto-updates normally"}
+              </span>
+            </button>
+          </div>
+
+          <DialogFooter className="p-8 bg-white border-t-[1.5px] border-[#111]/10">
+            <Button
+              className="w-full h-14 rounded-full bg-primary text-white hover:bg-[#111] hover:text-white border-[1.5px] border-[#111] font-black uppercase tracking-widest text-[11px] transition-colors shadow-sm"
+              onClick={() => {
+                if (!selectedUser || !selectedRank) return;
+                setRankMutation.mutate({ userId: selectedUser.id, rank: selectedRank, locked: lockRank });
+              }}
+              disabled={setRankMutation.isPending}
+            >
+              {setRankMutation.isPending ? "Applying..." : "Apply Rank"}
             </Button>
           </DialogFooter>
         </DialogContent>

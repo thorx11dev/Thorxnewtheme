@@ -3,8 +3,9 @@ import { createServer, type Server } from "http";
 import crypto from "crypto";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
+import { storage, RANK_NAMES } from "./storage";
 import { pool, db } from "./db";
+import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh } from "./realtime";
 import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, dailyTasks, systemConfig } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -444,6 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedUser = await storage.getUserById(id);
+      broadcastUserUpdated(id, `admin_action_${action}`);
       res.json(updatedUser ? sanitizeUser(updatedUser) : null);
     } catch (error) {
       console.error("User admin action error:", error);
@@ -1300,6 +1302,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedUser = await storage.checkAndUpdateRank(thorxPid);
       const newRank = updatedUser.rank || "Nawa Aya";
 
+      if (oldRank !== newRank) {
+        broadcastUserUpdated(thorxPid, "rank_updated");
+      }
+
       res.json({
         oldRank,
         newRank,
@@ -1633,6 +1639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.bulkUpdateWithdrawalStatus(ids, status, req.userProfile.id);
+      broadcastTeamRefresh("withdrawals_bulk_updated");
       res.json({ message: `Successfully updated ${ids.length} withdrawals to ${status}` });
     } catch (error) {
       console.error("Bulk update withdrawals error:", error);
@@ -1661,6 +1668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adminId = req.userProfile.id;
 
       const user = await storage.adjustUserBalance(userId, amount, type, adminId, reason);
+      broadcastUserUpdated(userId, "balance_adjusted");
       res.json(sanitizeUser(user));
     } catch (error) {
       console.error("Adjust balance error:", error);
@@ -1758,6 +1766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      broadcastUserUpdated(id, "account_deleted");
       res.json({ message: "User deleted successfully" });
     } catch (error) {
       console.error("Delete user error:", error);
@@ -1789,6 +1798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress: req.ip
       });
 
+      broadcastUserUpdated(updated.userId, `withdrawal_${status}`);
       res.json({ success: true, withdrawal: updated });
     } catch (error) {
       console.error("Update withdrawal error:", error);
@@ -1924,39 +1934,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Adjust user balance (Admin Control)
-  app.post("/api/admin/users/:id/adjust-balance", async (req, res) => {
-    try {
-      if (!req.userProfile) return res.status(401).json({ message: "Authentication required" });
-      const adminKeys = await storage.getTeamKeysByUser(req.userProfile.id);
-      const isAdmin = adminKeys.some(k => k.accessLevel === 'admin' || k.accessLevel === 'founder');
-      if (!isAdmin) return res.status(403).json({ message: "Admin access required" });
-
-      const userId = req.params.id;
-      const { amount, type, reason } = req.body; // type: 'add' | 'subtract'
-
-      const user = await storage.getUserById(userId);
-      if (!user) return res.status(404).json({ message: "User not found" });
-
-      // Use the dedicated adjustUserBalance method for proper audit logging
-      await storage.adjustUserBalance(userId, amount, type as 'add' | 'subtract', req.userProfile.id, reason || 'Admin balance adjustment');
-
-      // Log the action
-      await storage.createAuditLog({
-        adminId: req.userProfile.id,
-        action: "BALANCE_ADJUSTMENT",
-        targetType: "user",
-        targetId: userId,
-        details: { amount, type, reason, previousBalance: user.availableBalance },
-        ipAddress: req.ip
-      });
-
-      res.json({ success: true, message: "Balance adjusted successfully" });
-    } catch (error) {
-      console.error("Adjust balance error:", error);
-      res.status(500).json({ message: "Failed to adjust balance" });
-    }
-  });
+  // NOTE: the canonical "adjust balance" route is defined earlier as
+  // POST /api/admin/users/:userId/adjust-balance (requirePermission("MANAGE_USERS"),
+  // with broadcastUserUpdated wired in). Express matches routes in registration
+  // order and both paths are structurally identical, so a second handler here
+  // was always unreachable dead code — removed to eliminate the shadowing/drift
+  // risk the duplicate created (it lacked the permission middleware and broadcast).
 
   // User contact message endpoint
   app.post("/api/contact", async (req, res) => {
@@ -3266,10 +3249,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      broadcastUserUpdated(id, "team_privileges_updated");
+      broadcastTeamRefresh("team_member_updated");
       res.json({ success: true, message: "Matrix privileges updated." });
     } catch (e) {
       console.error(e);
       res.status(500).json({ message: "Modification failed." });
+    }
+  });
+
+  // Manually set (and optionally lock) a user's rank — bypasses the automatic
+  // earnings/referral thresholds. Once locked, checkAndUpdateRank leaves the
+  // rank untouched until an admin unlocks it; all other rank-linked benefits
+  // (avatar unlocks, badges, etc.) continue to apply exactly as if the rank
+  // had been earned normally — only future automatic *changes* are suppressed.
+  app.patch("/api/admin/users/:id/rank", requirePermission("MANAGE_USERS"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rank, locked } = req.body;
+
+      if (typeof rank !== "string" || !RANK_NAMES.includes(rank)) {
+        return res.status(400).json({ message: `Rank must be one of: ${RANK_NAMES.join(", ")}` });
+      }
+
+      const targetUser = await storage.getUserById(id);
+      if (!targetUser) return res.status(404).json({ message: "User not found" });
+
+      const updatedUser = await storage.setUserRank(id, rank, !!locked, req.userProfile.id);
+
+      await storage.createAuditLog({
+        adminId: req.userProfile.id,
+        action: "RANK_MANUALLY_SET",
+        targetType: "user",
+        targetId: id,
+        details: { oldRank: targetUser.rank, newRank: rank, locked: !!locked },
+        ipAddress: req.ip
+      });
+
+      broadcastUserUpdated(id, "rank_manually_set");
+      res.json(sanitizeUser(updatedUser));
+    } catch (error) {
+      console.error("Manual rank update error:", error);
+      res.status(500).json({ message: "Failed to update rank" });
     }
   });
 
@@ -3306,6 +3327,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress: req.ip
       });
 
+      broadcastUserUpdated(id, "team_permissions_updated");
+      broadcastTeamRefresh("team_permissions_updated");
       res.json({ success: true, message: "Node access matrix reconfigured." });
     } catch (e) {
       console.error(e);
@@ -3404,5 +3427,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  initRealtime(httpServer, session(sessionConfig));
   return httpServer;
 }

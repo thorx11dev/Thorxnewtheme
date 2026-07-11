@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { ProtectedRoute, PublicOnlyRoute, TeamProtectedRoute } from "@/components/auth/ProtectedRoute";
 import ThorxLoadingScreen from "@/components/ui/thorx-loading-screen";
 import ComicClickEffect from "@/components/ui/ComicClickEffect";
@@ -27,6 +28,10 @@ function Router() {
   const [location] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [showLoadingScreen, setShowLoadingScreen] = useState(true);
+
+  // Real-time sync: pushes admin-side changes (balance, rank, status) to this
+  // session instantly so the portal never shows stale data.
+  useRealtimeSync(isAuthenticated ? user : null);
 
   useEffect(() => {
     if (!isLoading) {

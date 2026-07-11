@@ -44,6 +44,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
   avatar: text("avatar").default("default"),
   rank: text("rank").default("Nawa Aya"),
+  rankLocked: boolean("rank_locked").default(false),
   profilePicture: text("profile_picture"),
   permissions: jsonb("permissions").default('[]'),
   emailVerifiedAt: timestamp("email_verified_at"),

@@ -216,6 +216,7 @@ export interface IStorage {
 
   // Ranking System
   checkAndUpdateRank(userId: string): Promise<User>;
+  setUserRank(userId: string, rank: string, locked: boolean, adminId: string): Promise<User>;
   getRankHistory(userId: string): Promise<RankLog[]>;
 
   // Real-time Dashboard & Analytics
@@ -285,6 +286,16 @@ const RANKS = [
   { name: "Haji Sab",      minEarned: 10000, minRefs: 15, priority: 2 },
   { name: "Supreme Chacha",minEarned: 25000, minRefs: 25, priority: 1 },
 ];
+
+export const RANK_NAMES = RANKS.map(r => r.name);
+
+const RANK_DEFAULT_AVATARS: Record<string, string> = {
+  "Nawa Aya":       "nawa-aya",
+  "Chota Don":      "chota-don",
+  "Baja Ji":        "baja-ji",
+  "Haji Sab":       "haji-sab",
+  "Supreme Chacha": "supreme-chacha",
+};
 
 export class DatabaseStorage implements IStorage {
   constructor() {
@@ -865,6 +876,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: users.updatedAt,
         avatar: users.avatar,
         rank: users.rank,
+        rankLocked: users.rankLocked,
         profilePicture: users.profilePicture,
         permissions: users.permissions,
         teamKey: teamKeys,
@@ -952,6 +964,7 @@ export class DatabaseStorage implements IStorage {
           updatedAt: users.updatedAt,
           avatar: users.avatar,
           rank: users.rank,
+          rankLocked: users.rankLocked,
           profilePicture: users.profilePicture,
           permissions: users.permissions
         })
@@ -1538,6 +1551,12 @@ export class DatabaseStorage implements IStorage {
 
       if (!user) throw new Error("User not found");
 
+      // Manually locked ranks (set via admin rank override) are never
+      // touched by the automatic earnings/referral evaluation.
+      if (user.rankLocked) {
+        return user;
+      }
+
       const totalEarnings = parseFloat(user.totalEarnings || "0");
 
       // Count direct active referrals
@@ -1567,13 +1586,6 @@ export class DatabaseStorage implements IStorage {
         });
 
         // Auto-assign the default avatar for the new rank (only if user hasn't customised)
-        const RANK_DEFAULT_AVATARS: Record<string, string> = {
-          "Nawa Aya":       "nawa-aya",
-          "Chota Don":      "chota-don",
-          "Baja Ji":        "baja-ji",
-          "Haji Sab":       "haji-sab",
-          "Supreme Chacha": "supreme-chacha",
-        };
         const currentAvatarId = user.avatar || "default";
         const isDefaultOrRankAvatar =
           currentAvatarId === "default" ||
@@ -2257,16 +2269,59 @@ export class DatabaseStorage implements IStorage {
       });
 
       return updatedUser;
+    }).then(async (updatedUser) => {
+      // After the transaction commits: re-evaluate rank if credit increased
+      // totalEarnings. This runs outside the transaction and after it
+      // resolves, so a rank check never blocks/deadlocks the balance write.
+      if (type === 'add') {
+        await this.checkAndUpdateRank(userId);
+        const finalUser = await this.getUserById(userId);
+        return finalUser!;
+      }
+      return updatedUser;
     });
+  }
 
-    // After transaction: re-evaluate rank if credit increased totalEarnings.
-    if (type === 'add') {
-      await this.checkAndUpdateRank(userId);
-    }
+  // Manually set a user's rank, bypassing the automatic earnings/referral
+  // evaluation. When `locked` is true, checkAndUpdateRank will leave this
+  // user's rank untouched on future earning/referral changes until an admin
+  // unlocks it again (locked=false via a follow-up call to this method).
+  async setUserRank(userId: string, rank: string, locked: boolean, adminId: string): Promise<User> {
+    return await db.transaction(async (tx) => {
+      const [user] = await tx.select().from(users).where(eq(users.id, userId)).for('update');
+      if (!user) throw new Error("User not found");
 
-    // Return the latest user state after rank check
-    const finalUser = await this.getUserById(userId);
-    return finalUser!;
+      const oldRank = user.rank || "Nawa Aya";
+      const currentAvatarId = user.avatar || "default";
+      const isDefaultOrRankAvatar =
+        currentAvatarId === "default" ||
+        Object.values(RANK_DEFAULT_AVATARS).includes(currentAvatarId) ||
+        currentAvatarId.startsWith("nawa-aya-") ||
+        currentAvatarId.startsWith("munna-") ||
+        currentAvatarId.startsWith("bawa-ji-") ||
+        currentAvatarId.startsWith("haji-saab-") ||
+        currentAvatarId.startsWith("chacha-");
+      const newAvatarId = isDefaultOrRankAvatar
+        ? (RANK_DEFAULT_AVATARS[rank] ?? currentAvatarId)
+        : currentAvatarId;
+
+      const [updatedUser] = await tx
+        .update(users)
+        .set({ rank, rankLocked: locked, avatar: newAvatarId, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (oldRank !== rank) {
+        await tx.insert(rankLogs).values({
+          userId,
+          oldRank,
+          newRank: rank,
+          triggerSource: `manual_admin_override:${adminId}`
+        });
+      }
+
+      return updatedUser;
+    });
   }
 
   async createNotification(insertNotification: InsertNotification): Promise<Notification> {
@@ -2689,6 +2744,7 @@ export class MemStorage {
   async processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
   async rejectWithdrawal(withdrawalId: string, adminId: string, reason: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
   async checkAndUpdateRank(userId: string): Promise<User> { throw new Error("Not implemented in MemStorage"); }
+  async setUserRank(userId: string, rank: string, locked: boolean, adminId: string): Promise<User> { throw new Error("Not implemented in MemStorage"); }
   async getRankHistory(userId: string): Promise<RankLog[]> { throw new Error("Not implemented in MemStorage"); }
 
   // Admin Features Stubs

@@ -714,7 +714,7 @@ export default function UserPortal() {
         const data = await response.json();
         if (data.updated) {
           // Invalidate auth cache so the new rank shows in the header
-          queryClient.invalidateQueries({ queryKey: ["auth"] });
+          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
           // Show rank upgrade toast notification
           toast({
             title: "🎉 Rank Upgrade!",
@@ -836,7 +836,7 @@ export default function UserPortal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ad-views"] });
-      queryClient.invalidateQueries({ queryKey: ["auth"] });
+      queryClient.invalidateQueries({ queryKey: ["session-auth"] });
     },
   });
 
