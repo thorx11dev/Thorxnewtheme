@@ -23,12 +23,17 @@ export interface RankDefinition {
   avatars: RankAvatar[];   // selectable avatar outfits for this rank
 }
 
+// All ranks share a single silver/zinc frame + badge style (per design decision:
+// avatar frame color reflects account tier consistently, not per-rank branding).
+const SILVER_COLOR = "text-zinc-400";
+const SILVER_BG = "bg-zinc-600";
+
 // ── NAWA AYA ──────────────────────────────────────────────────────────────
 const NAWA_AYA: RankDefinition = {
   key: "Nawa Aya",
   label: "NAWA AYA",
-  color: "text-zinc-400",
-  bgColor: "bg-zinc-600",
+  color: SILVER_COLOR,
+  bgColor: SILVER_BG,
   defaultAvatarId: "nawa-aya",
   avatars: [
     { id: "nawa-aya",   url: "/avatars/nawa-aya.png",   label: "Classic"      },
@@ -41,8 +46,8 @@ const NAWA_AYA: RankDefinition = {
 const CHOTA_DON: RankDefinition = {
   key: "Chota Don",
   label: "CHOTA DON",
-  color: "text-blue-400",
-  bgColor: "bg-blue-700",
+  color: SILVER_COLOR,
+  bgColor: SILVER_BG,
   defaultAvatarId: "chota-don",
   avatars: [
     { id: "chota-don",   url: "/avatars/chota-don.png",   label: "Classic"       },
@@ -55,8 +60,8 @@ const CHOTA_DON: RankDefinition = {
 const BAJA_JI: RankDefinition = {
   key: "Baja Ji",
   label: "BAJA JI",
-  color: "text-amber-400",
-  bgColor: "bg-amber-700",
+  color: SILVER_COLOR,
+  bgColor: SILVER_BG,
   defaultAvatarId: "baja-ji",
   avatars: [
     { id: "baja-ji",   url: "/avatars/baja-ji.png",   label: "Classic"        },
@@ -69,8 +74,8 @@ const BAJA_JI: RankDefinition = {
 const HAJI_SAB: RankDefinition = {
   key: "Haji Sab",
   label: "HAJI SAB",
-  color: "text-emerald-400",
-  bgColor: "bg-emerald-700",
+  color: SILVER_COLOR,
+  bgColor: SILVER_BG,
   defaultAvatarId: "haji-sab",
   avatars: [
     { id: "haji-sab",   url: "/avatars/haji-sab.png",   label: "Classic"      },
@@ -83,8 +88,8 @@ const HAJI_SAB: RankDefinition = {
 const SUPREME_CHACHA: RankDefinition = {
   key: "Supreme Chacha",
   label: "SUPREME CHACHA",
-  color: "text-orange-400",
-  bgColor: "bg-orange-700",
+  color: SILVER_COLOR,
+  bgColor: SILVER_BG,
   defaultAvatarId: "supreme-chacha",
   avatars: [
     { id: "supreme-chacha",   url: "/avatars/supreme-chacha.png",   label: "Classic"     },

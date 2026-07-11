@@ -49,6 +49,7 @@ import { ReferralTree } from "@/components/ui/referral-tree";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebounce } from "@/hooks/use-debounce";
+import { resolveAvatarUrl } from "@/lib/rankAvatars";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -280,7 +281,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-white/50 border-b-[1.5px] border-[#111]/10">
+              <tr className="bg-white/50 border-b border-zinc-100">
                 <th className="p-6 w-12 text-center align-middle">
                   <Checkbox 
                     checked={allSelected}
@@ -351,8 +352,12 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     </td>
                     <td className="p-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 min-w-[3rem] shrink-0 bg-white border-[1.5px] border-[#111] rounded-[1rem] flex items-center justify-center group-hover:bg-primary/20 transition-all">
-                          <User className="w-6 h-6 text-[#111]/50 group-hover:text-primary transition-colors" />
+                        <div className="w-12 h-12 min-w-[3rem] shrink-0 bg-white border-[1.5px] border-[#111] rounded-[1rem] overflow-hidden group-hover:border-primary transition-all">
+                          <img
+                            src={user.profilePicture || resolveAvatarUrl(user.avatar, user.rank)}
+                            alt={`${user.firstName} ${user.lastName}`}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                         <div>
                           <div className="font-black text-sm tracking-tight text-[#111] uppercase">{user.firstName} {user.lastName}</div>
@@ -450,7 +455,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
         {/* Global Pagination Controls */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-8 border-t-[1.5px] border-[#111]/10">
+          <div className="flex items-center justify-between pt-8 border-t border-zinc-100">
             <div className="text-[10px] font-black tracking-widest uppercase text-zinc-400">
               Showing <span className="text-[#111]">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-[#111]">{Math.min(currentPage * itemsPerPage, totalCount)}</span> of <span className="text-[#111]">{totalCount}</span> nodes
             </div>
@@ -490,8 +495,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
       {/* Internal Notes Dialog */}
       <Dialog open={!!selectedUser && modalType === 'notes'} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="border-[1.5px] border-[#111] bg-background rounded-[2rem] p-0 max-w-lg flex flex-col overflow-hidden shadow-2xl h-[600px] max-h-[85vh] *:!rounded-none [&>button]:hidden">
-          <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white shrink-0">
+        <DialogContent className="border border-black/5 bg-white rounded-[2rem] p-0 max-w-lg flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] h-[600px] max-h-[85vh] *:!rounded-none [&>button]:hidden">
+          <DialogHeader className="p-8 border-b border-zinc-100 bg-white shrink-0">
              <div className="flex items-center justify-between">
                 <div>
                   <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">
@@ -517,8 +522,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     </div>
                   )}
                   {notesData?.notes.map((note) => (
-                    <div key={note.id} className="bg-white border-[1.5px] border-[#111]/20 rounded-2xl p-5 space-y-3 relative hover:border-[#111]/50 transition-colors">
-                       <div className="flex items-center justify-between border-b-[1.5px] border-[#111]/5 pb-3">
+                    <div key={note.id} className="bg-white border border-zinc-200 rounded-2xl p-5 space-y-3 relative hover:border-[#111]/50 transition-colors">
+                       <div className="flex items-center justify-between border-b border-zinc-100/5 pb-3">
                           <TechnicalLabel 
                             text={`Author: ${note.admin ? `${note.admin.firstName} ${note.admin.lastName}` : note.adminId.substring(0, 8)}`} 
                             className="text-zinc-400 text-[9px] uppercase tracking-wider font-black" 
@@ -531,11 +536,11 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                </div>
             </ScrollArea>
            
-            <div className="p-6 bg-white border-t-[1.5px] border-[#111]/10 shrink-0">
+            <div className="p-6 bg-white border-t border-zinc-100 shrink-0">
                <div className="flex gap-3">
                   <Input 
                     placeholder="Type a new note..." 
-                    className="flex-1 rounded-full border-[1.5px] border-[#111]/30 h-12 px-6 font-bold text-xs focus:ring-0 focus:border-[#111] transition-colors"
+                    className="flex-1 rounded-full border border-zinc-200 h-12 px-6 font-bold text-xs focus:ring-0 focus:border-[#111] transition-colors"
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
                     onKeyDown={(e) => {
@@ -545,7 +550,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     }}
                   />
                   <Button 
-                    className="h-12 w-12 rounded-full bg-[#111] text-white hover:bg-primary hover:text-white border-[1.5px] border-[#111] transition-colors p-0 flex items-center justify-center shrink-0 shadow-sm"
+                    className="h-12 w-12 rounded-full bg-[#111] text-white hover:bg-primary hover:text-white border border-zinc-200 transition-colors p-0 flex items-center justify-center shrink-0 shadow-sm"
                     onClick={() => {
                       if (!newNote) return;
                       createNoteMutation.mutate({ targetType: 'user', targetId: selectedUser!.id, content: newNote });
@@ -562,8 +567,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
       {/* Network View Dialog */}
       <Dialog open={!!selectedUser && modalType === 'network'} onOpenChange={(open) => { if (!open) { closeModal(); setNetworkZoom(1); } }}>
-        <DialogContent className="border-[1.5px] border-[#111] bg-background rounded-[2rem] p-0 max-w-4xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl *:!rounded-none [&>button]:hidden">
-          <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white">
+        <DialogContent className="border border-black/5 bg-white rounded-[2rem] p-0 max-w-4xl max-h-[85vh] flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] *:!rounded-none [&>button]:hidden">
+          <DialogHeader className="p-8 border-b border-zinc-100 bg-white">
              <div className="flex items-center justify-between">
                 <div>
                   <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">
@@ -577,18 +582,18 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   {/* Zoom Controls */}
                   <button
                     onClick={() => setNetworkZoom(z => Math.max(0.4, parseFloat((z - 0.15).toFixed(2))))}
-                    className="h-9 w-9 rounded-full border-[1.5px] border-[#111]/20 hover:border-[#111] hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center text-[#111] font-black text-lg"
+                    className="h-9 w-9 rounded-full border border-zinc-200 hover:border-[#111] hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center text-[#111] font-black text-lg"
                     title="Zoom Out"
                   >−</button>
                   <span className="text-[10px] font-black text-zinc-400 tracking-widest uppercase w-10 text-center">{Math.round(networkZoom * 100)}%</span>
                   <button
                     onClick={() => setNetworkZoom(z => Math.min(2.5, parseFloat((z + 0.15).toFixed(2))))}
-                    className="h-9 w-9 rounded-full border-[1.5px] border-[#111]/20 hover:border-[#111] hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center text-[#111] font-black text-lg"
+                    className="h-9 w-9 rounded-full border border-zinc-200 hover:border-[#111] hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center text-[#111] font-black text-lg"
                     title="Zoom In"
                   >+</button>
                   <button
                     onClick={() => setNetworkZoom(1)}
-                    className="h-8 px-3 rounded-full border-[1.5px] border-[#111]/20 hover:border-[#111] hover:bg-[#111] hover:text-white transition-colors text-[#111] font-black text-[9px] tracking-widest uppercase"
+                    className="h-8 px-3 rounded-full border border-zinc-200 hover:border-[#111] hover:bg-[#111] hover:text-white transition-colors text-[#111] font-black text-[9px] tracking-widest uppercase"
                     title="Fit to View"
                   >Fit</button>
                   <Button onClick={() => { closeModal(); setNetworkZoom(1); }} variant="ghost" className="h-10 w-10 p-0 rounded-full hover:bg-black/5 ml-1">
@@ -634,8 +639,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
       {/* Balance Adjustment Dialog */}
       <Dialog open={!!selectedUser && modalType === 'balance'} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="border-[1.5px] border-[#111] bg-background rounded-[2rem] p-0 max-w-md overflow-hidden shadow-2xl *:!rounded-none [&>button]:hidden">
-          <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white">
+        <DialogContent className="border border-black/5 bg-white rounded-[2rem] p-0 max-w-md overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] *:!rounded-none [&>button]:hidden">
+          <DialogHeader className="p-8 border-b border-zinc-100 bg-white">
             <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">
               Financial Operation
             </DialogTitle>
@@ -648,14 +653,14 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
              <div className="flex gap-4">
                 <button 
                   onClick={() => setAdjustmentType('add')}
-                  className={cn("flex-1 h-14 rounded-[1.5rem] border-[1.5px] border-[#111] font-black text-[10px] tracking-widest uppercase transition-colors flex items-center justify-center gap-2", adjustmentType === 'add' ? "bg-[#111] text-white" : "bg-white hover:bg-black/5 text-[#111]")}
+                  className={cn("flex-1 h-14 rounded-[1.5rem] border border-zinc-200 font-black text-[10px] tracking-widest uppercase transition-colors flex items-center justify-center gap-2", adjustmentType === 'add' ? "bg-[#111] text-white" : "bg-white hover:bg-black/5 text-[#111]")}
                 >
                   <ArrowUpRight size={16} />
                   Credit
                 </button>
                 <button 
                   onClick={() => setAdjustmentType('subtract')}
-                  className={cn("flex-1 h-14 rounded-[1.5rem] border-[1.5px] border-[#111] font-black text-[10px] tracking-widest uppercase transition-colors flex items-center justify-center gap-2", adjustmentType === 'subtract' ? "bg-red-500 text-white border-red-500" : "bg-white hover:bg-black/5 text-[#111]")}
+                  className={cn("flex-1 h-14 rounded-[1.5rem] border border-zinc-200 font-black text-[10px] tracking-widest uppercase transition-colors flex items-center justify-center gap-2", adjustmentType === 'subtract' ? "bg-red-500 text-white border-red-500" : "bg-white hover:bg-black/5 text-[#111]")}
                 >
                   <ArrowDownRight size={16} />
                   Debit
@@ -668,7 +673,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   <Input 
                     type="number"
                     placeholder="0.00" 
-                    className="rounded-[1.5rem] border-[1.5px] border-[#111]/30 focus:border-[#111] focus:ring-0 font-mono text-xl font-black h-16 px-6 bg-white transition-colors"
+                    className="rounded-[1.5rem] border border-zinc-200 focus:border-[#111] focus:ring-0 font-mono text-xl font-black h-16 px-6 bg-white transition-colors"
                     value={adjustmentAmount}
                     onChange={(e) => setAdjustmentAmount(e.target.value)}
                   />
@@ -677,7 +682,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">Operation Reason</Label>
                   <Input 
                     placeholder="Enter short description..." 
-                    className="rounded-full border-[1.5px] border-[#111]/30 focus:border-[#111] focus:ring-0 font-bold text-sm h-14 px-6 bg-white transition-colors"
+                    className="rounded-full border border-zinc-200 focus:border-[#111] focus:ring-0 font-bold text-sm h-14 px-6 bg-white transition-colors"
                     value={adjustmentReason}
                     onChange={(e) => setAdjustmentReason(e.target.value)}
                   />
@@ -685,9 +690,9 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
              </div>
           </div>
 
-          <DialogFooter className="p-8 bg-white border-t-[1.5px] border-[#111]/10">
+          <DialogFooter className="p-8 pt-2 bg-white border-t border-zinc-100 flex-col gap-3 sm:flex-col sm:space-x-0">
             <Button 
-               className="w-full h-14 rounded-full bg-primary text-white hover:bg-[#111] hover:text-white border-[1.5px] border-[#111] font-black uppercase tracking-widest text-[11px] transition-colors shadow-sm"
+               className="w-full h-14 rounded-2xl bg-[#111] text-white hover:bg-black font-black uppercase tracking-widest text-[11px] transition-colors shadow-sm"
                onClick={() => {
                  if (!adjustmentAmount) return;
                  adjustBalanceMutation.mutate({
@@ -701,14 +706,20 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
             >
               {adjustBalanceMutation.isPending ? "Processing..." : "Confirm Action"}
             </Button>
+            <button
+              onClick={closeModal}
+              className="w-full text-center text-xs font-bold text-zinc-400 hover:text-[#111] transition-colors py-1"
+            >
+              Cancel
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* User Details Dialog */}
       <Dialog open={!!selectedUser && modalType === 'details'} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="border-[1.5px] border-[#111] bg-background rounded-[2rem] p-0 max-w-2xl overflow-hidden shadow-2xl *:!rounded-none [&>button]:hidden">
-          <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white">
+        <DialogContent className="border border-black/5 bg-white rounded-[2rem] p-0 max-w-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] *:!rounded-none [&>button]:hidden">
+          <DialogHeader className="p-8 border-b border-zinc-100 bg-white">
             <div className="flex items-center justify-between">
               <div>
                 <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">
@@ -728,14 +739,14 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
              <div className="space-y-6">
                 <div>
                   <TechnicalLabel text="Identity" className="mb-2" />
-                  <div className="p-5 bg-white border-[1.5px] border-[#111]/20 rounded-2xl relative overflow-hidden group hover:border-[#111] transition-all">
+                  <div className="p-5 bg-white border border-zinc-200 rounded-2xl relative overflow-hidden group hover:border-[#111] transition-all">
                     <div className="text-lg font-black text-[#111] uppercase">{selectedUser?.firstName} {selectedUser?.lastName}</div>
                     <div className="text-[10px] text-zinc-400 font-bold uppercase mt-1">TX-ID: {selectedUser?.identity}</div>
                   </div>
                 </div>
                 <div>
                   <TechnicalLabel text="Contact Node" className="mb-2" />
-                  <div className="p-5 bg-white border-[1.5px] border-[#111]/20 rounded-2xl space-y-3">
+                  <div className="p-5 bg-white border border-zinc-200 rounded-2xl space-y-3">
                     <div className="flex items-center gap-3">
                       <Mail size={14} className="text-primary" />
                       <span className="text-xs font-bold text-[#111]">{selectedUser?.email}</span>
@@ -751,7 +762,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
              <div className="space-y-6">
                 <div>
                   <TechnicalLabel text="Financial Ledger" className="mb-2" />
-                  <div className="p-5 bg-[#111] border-[1.5px] border-[#111] rounded-2xl space-y-4">
+                  <div className="p-5 bg-[#111] border border-zinc-200 rounded-2xl space-y-4">
                     <div>
                       <div className="text-[9px] font-black text-white/40 uppercase tracking-widest">Available Balance</div>
                       <div className="text-2xl font-black text-white">₨ {parseFloat(selectedUser?.availableBalance || "0").toLocaleString()}</div>
@@ -764,7 +775,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                 </div>
                 <div>
                   <TechnicalLabel text="System Metadata" className="mb-2" />
-                  <div className="p-5 bg-white border-[1.5px] border-[#111]/20 rounded-2xl grid grid-cols-2 gap-4">
+                  <div className="p-5 bg-white border border-zinc-200 rounded-2xl grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Rank</div>
                       <span className="inline-flex items-center gap-1 text-[10px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
@@ -781,8 +792,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
                 <div>
                   <TechnicalLabel text="Referral Intelligence" className="mb-2" />
-                  <div className="p-5 bg-white border-[1.5px] border-[#111]/20 rounded-2xl grid grid-cols-2 gap-4">
-                    <div className="border-r-[1.5px] border-[#111]/5">
+                  <div className="p-5 bg-white border border-zinc-200 rounded-2xl grid grid-cols-2 gap-4">
+                    <div className="border-r border-zinc-100">
                       <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Level 1</div>
                       <div className="text-xl font-black text-[#111]">
                         {networkData?.referrals?.filter((r: any) => r.level === 1).length || 0}
@@ -801,24 +812,24 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
              </div>
           </div>
 
-          <DialogFooter className="p-8 bg-white border-t-[1.5px] border-[#111]/10 flex gap-4">
+          <DialogFooter className="p-8 bg-white border-t border-zinc-100 flex gap-4">
             <Button 
                 variant="outline"
-                className="flex-1 h-14 border-[1.5px] border-[#111] rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
+                className="flex-1 h-14 border border-zinc-200 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
                 onClick={() => setModalType('notes')}
             >
               Observations
             </Button>
             <Button 
                 variant="outline"
-                className="flex-1 h-14 border-[1.5px] border-[#111] rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
+                className="flex-1 h-14 border border-zinc-200 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
                 onClick={() => setModalType('network')}
             >
               Network Map
             </Button>
             <Button 
                 variant="outline"
-                className="flex-1 h-14 border-[1.5px] border-[#111] rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
+                className="flex-1 h-14 border border-zinc-200 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
                 onClick={() => {
                   setSelectedRank(selectedUser?.rank || 'Nawa Aya');
                   setLockRank(!!selectedUser?.rankLocked);
@@ -828,7 +839,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
               Rank Control
             </Button>
             <Button 
-                className="flex-1 h-14 bg-primary border-[1.5px] border-[#111] rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-[#111] hover:text-white"
+                className="flex-1 h-14 bg-primary border border-zinc-200 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-[#111] hover:text-white"
                 onClick={() => setModalType('balance')}
             >
               Adjust Ledger
@@ -839,8 +850,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
       {/* Rank Control Dialog */}
       <Dialog open={!!selectedUser && modalType === 'rank'} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="border-[1.5px] border-[#111] bg-background rounded-[2rem] p-0 max-w-md overflow-hidden shadow-2xl *:!rounded-none [&>button]:hidden">
-          <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white">
+        <DialogContent className="border border-black/5 bg-white rounded-[2rem] p-0 max-w-md overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] *:!rounded-none [&>button]:hidden">
+          <DialogHeader className="p-8 border-b border-zinc-100 bg-white">
             <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">
               Rank Control
             </DialogTitle>
@@ -850,19 +861,17 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
           </DialogHeader>
 
           <div className="p-8 space-y-6 bg-transparent">
-            <div className="space-y-3">
-              <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">Rank</Label>
-              <div className="grid grid-cols-1 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2 mb-2 block">Select rank</Label>
+              <div className="space-y-1">
                 {RANK_OPTIONS.map((r) => (
                   <button
                     key={r}
                     onClick={() => setSelectedRank(r)}
-                    className={cn(
-                      "h-12 rounded-2xl border-[1.5px] border-[#111] font-black text-[11px] tracking-widest uppercase transition-colors px-4 text-left",
-                      selectedRank === r ? "bg-[#111] text-white" : "bg-white hover:bg-black/5 text-[#111]"
-                    )}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-50 transition-colors text-left"
                   >
-                    {r}
+                    <Checkbox checked={selectedRank === r} className="border-zinc-300 data-[state=checked]:bg-[#111] data-[state=checked]:border-[#111]" />
+                    <span className="text-sm font-semibold text-[#111]">{r}</span>
                   </button>
                 ))}
               </div>
@@ -870,24 +879,24 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
             <button
               onClick={() => setLockRank(!lockRank)}
-              className={cn(
-                "w-full flex items-center justify-between gap-3 p-4 rounded-2xl border-[1.5px] border-[#111] transition-colors",
-                lockRank ? "bg-[#111] text-white" : "bg-white text-[#111] hover:bg-black/5"
-              )}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-zinc-100 hover:bg-zinc-50 transition-colors text-left"
             >
-              <span className="flex items-center gap-2 font-black text-[10px] uppercase tracking-widest">
-                {lockRank ? <Lock size={14} /> : <Unlock size={14} />}
-                Lock Rank
-              </span>
-              <span className="text-[9px] font-bold opacity-70 uppercase text-right max-w-[55%]">
-                {lockRank ? "Stops auto-rank changes" : "Rank auto-updates normally"}
+              <Checkbox checked={lockRank} className="border-zinc-300 data-[state=checked]:bg-[#111] data-[state=checked]:border-[#111]" />
+              <span className="flex-1">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-[#111]">
+                  {lockRank ? <Lock size={13} /> : <Unlock size={13} />}
+                  Lock rank
+                </span>
+                <span className="text-xs text-zinc-400">
+                  {lockRank ? "Stops auto-rank changes" : "Rank will auto-update normally"}
+                </span>
               </span>
             </button>
           </div>
 
-          <DialogFooter className="p-8 bg-white border-t-[1.5px] border-[#111]/10">
+          <DialogFooter className="p-8 pt-2 bg-white border-t border-zinc-100 flex-col gap-3 sm:flex-col sm:space-x-0">
             <Button
-              className="w-full h-14 rounded-full bg-primary text-white hover:bg-[#111] hover:text-white border-[1.5px] border-[#111] font-black uppercase tracking-widest text-[11px] transition-colors shadow-sm"
+              className="w-full h-14 rounded-2xl bg-[#111] text-white hover:bg-black font-black uppercase tracking-widest text-[11px] transition-colors shadow-sm"
               onClick={() => {
                 if (!selectedUser || !selectedRank) return;
                 setRankMutation.mutate({ userId: selectedUser.id, rank: selectedRank, locked: lockRank });
@@ -896,15 +905,21 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
             >
               {setRankMutation.isPending ? "Applying..." : "Apply Rank"}
             </Button>
+            <button
+              onClick={closeModal}
+              className="w-full text-center text-xs font-bold text-zinc-400 hover:text-[#111] transition-colors py-1"
+            >
+              Cancel
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete/Ban Dialog */}
       <Dialog open={!!selectedUser && modalType === 'delete'} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="border-[1.5px] border-[#111] bg-white rounded-[2rem] p-0 max-w-md overflow-hidden shadow-2xl *:!rounded-none [&>button]:hidden">
+        <DialogContent className="border border-black/5 bg-white rounded-[2rem] p-0 max-w-md overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] *:!rounded-none [&>button]:hidden">
           <div className="p-8 text-center space-y-6">
-            <div className="w-20 h-20 bg-red-500 border-[1.5px] border-[#111] rounded-full flex items-center justify-center mx-auto shadow-[0_8px_20px_rgba(239,68,68,0.3)] animate-bounce">
+            <div className="w-20 h-20 bg-red-500 border border-zinc-200 rounded-full flex items-center justify-center mx-auto shadow-[0_8px_20px_rgba(239,68,68,0.3)] animate-bounce">
               <Ban size={32} className="text-white" />
             </div>
             <div>
@@ -918,7 +933,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
               <div className="relative">
                 <Input 
                   placeholder="Type 'TERMINATE' to confirm" 
-                  className="rounded-full border-[1.5px] border-[#111] h-14 text-center font-black uppercase text-xs focus:ring-red-500 focus:border-red-500 transition-all"
+                  className="rounded-full border border-zinc-200 h-14 text-center font-black uppercase text-xs focus:ring-red-500 focus:border-red-500 transition-all"
                   value={confirmText}
                   onChange={(e) => setConfirmText(e.target.value)}
                 />
@@ -926,13 +941,13 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
               <div className="flex gap-3">
                 <Button 
                   variant="outline" 
-                  className="flex-1 h-14 rounded-full border-[1.5px] border-[#111] font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
+                  className="flex-1 h-14 rounded-full border border-zinc-200 font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
                   onClick={closeModal}
                 >
-                  Abort
+                  Cancel
                 </Button>
                 <Button 
-                  className="flex-1 h-14 bg-red-500 text-white border-[1.5px] border-[#111] rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-red-600 disabled:opacity-50"
+                  className="flex-1 h-14 bg-red-500 text-white border border-zinc-200 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-red-600 disabled:opacity-50"
                   disabled={confirmText !== 'TERMINATE' || deleteUserMutation.isPending}
                   onClick={() => deleteUserMutation.mutate(selectedUser!.id)}
                 >

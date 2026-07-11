@@ -1511,13 +1511,14 @@ export default function UserPortal() {
   // Dashboard Section
   function renderDashboardSection() {
     const getRank = (rankTitle?: string) => {
-      const title = rankTitle?.toUpperCase() || "NAWA AYA";
-      // Force all ranks to use the Silver (Zinc-500) style as requested
+      const title = (rankTitle || "Nawa Aya").toUpperCase();
+      // All ranks use the same Silver (Zinc-500) frame/badge style — the avatar
+      // frame color is standardized across tiers, not rank-branded.
       const silver = { color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
-      if (title === "CHACHA SUPREME") return { title: "CHACHA SUPREME", icon: Crown, ...silver };
-      if (title === "HAJI SAAB") return { title: "HAJI SAAB", icon: Trophy, ...silver };
-      if (title === "BAWA JI") return { title: "BAWA JI", icon: Medal, ...silver };
-      if (title === "MUNNA") return { title: "MUNNA", icon: Shield, ...silver };
+      if (title === "SUPREME CHACHA") return { title: "SUPREME CHACHA", icon: Crown, ...silver };
+      if (title === "HAJI SAB") return { title: "HAJI SAB", icon: Trophy, ...silver };
+      if (title === "BAJA JI") return { title: "BAJA JI", icon: Medal, ...silver };
+      if (title === "CHOTA DON") return { title: "CHOTA DON", icon: Shield, ...silver };
       return { title: "NAWA AYA", icon: User, ...silver };
     };
 
