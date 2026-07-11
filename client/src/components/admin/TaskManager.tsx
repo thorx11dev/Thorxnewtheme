@@ -447,34 +447,34 @@ export function TaskManager() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl bg-background border-[1.5px] border-[#111] rounded-[2rem] p-0 gap-0 overflow-hidden outline-none shadow-sm">
+        <DialogContent className="max-w-2xl bg-white border border-zinc-200 rounded-2xl p-0 gap-0 overflow-hidden outline-none shadow-xl">
           <form onSubmit={handleSave}>
-            <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white/50">
-              <DialogTitle className="text-3xl font-black uppercase text-[#111] tracking-tighter">
+            <DialogHeader className="px-7 py-5 border-b border-zinc-100 bg-white">
+              <DialogTitle className="text-xl font-semibold text-zinc-900">
                 Daily Task
               </DialogTitle>
             </DialogHeader>
 
-            <div className="p-10 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-4">Title</Label>
+            <div className="px-7 py-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-400 ml-1">Title</Label>
                   <Input 
                     name="title" 
                     defaultValue={editingTask?.title || ""} 
                     required 
-                    className="h-12 bg-white border-[1.5px] border-[#111] rounded-full font-bold px-6 focus-visible:ring-2 focus-visible:ring-primary/50" 
-                    placeholder="E.G. SUBSCRIBE TO YOUTUBE" 
+                    className="h-11 bg-white border border-zinc-300 rounded-xl font-medium px-4 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary/60" 
+                    placeholder="e.g. Subscribe to YouTube" 
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-4">Type</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-400 ml-1">Type</Label>
                   <Select name="type" defaultValue={editingTask?.type || "video"}>
-                    <SelectTrigger className="h-12 bg-white border-[1.5px] border-[#111] rounded-full font-black uppercase tracking-widest text-[10px] px-6">
+                    <SelectTrigger className="h-11 bg-white border border-zinc-300 rounded-xl font-medium text-sm px-4">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-[1.5px] border-[#111] rounded-2xl uppercase font-black text-[10px]">
-                      <SelectItem value="video">Youtube Video</SelectItem>
+                    <SelectContent className="border border-zinc-200 rounded-xl text-sm">
+                      <SelectItem value="video">YouTube Video</SelectItem>
                       <SelectItem value="social">Social Action</SelectItem>
                       <SelectItem value="internal">Platform Task</SelectItem>
                     </SelectContent>
@@ -482,43 +482,43 @@ export function TaskManager() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-4">URL Address</Label>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-400 ml-1">URL Address</Label>
                 <Input 
                   name="actionUrl" 
                   defaultValue={editingTask?.actionUrl || ""} 
-                  className="h-12 bg-white border-[1.5px] border-[#111] rounded-full font-bold px-6 focus-visible:ring-2 focus-visible:ring-primary/50" 
-                  placeholder="HTTPS://YOUTU.BE/XXXX" 
+                  className="h-11 bg-white border border-zinc-300 rounded-xl font-medium px-4 focus-visible:ring-2 focus-visible:ring-primary/40" 
+                  placeholder="https://youtu.be/xxxx" 
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-4">Instructions (How to do)</Label>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-400 ml-1">Instructions</Label>
                 <Input 
                   name="instructions" 
                   defaultValue={editingTask?.instructions || ""} 
-                  className="h-12 bg-white border-[1.5px] border-[#111] rounded-full font-bold px-6 focus-visible:ring-2 focus-visible:ring-primary/50" 
-                  placeholder="EX: GO TO WORK SECTION AND COMPLETE TASK..." 
+                  className="h-11 bg-white border border-zinc-300 rounded-xl font-medium px-4 focus-visible:ring-2 focus-visible:ring-primary/40" 
+                  placeholder="e.g. Go to Work section and complete task..." 
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-4">Code</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-400 ml-1">Code</Label>
                   <Input 
                     name="secretCode" 
                     defaultValue={editingTask?.secretCode || ""} 
-                    className="h-12 bg-white border-[1.5px] border-[#111] rounded-full font-bold px-6 focus-visible:ring-2 focus-visible:ring-primary/50 uppercase tracking-widest" 
+                    className="h-11 bg-white border border-zinc-300 rounded-xl font-medium px-4 focus-visible:ring-2 focus-visible:ring-primary/40 tracking-widest" 
                     placeholder="SECRET-KEY-123" 
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-4">Target</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-400 ml-1">Target Rank</Label>
                   <Select name="targetRank" defaultValue={editingTask?.targetRank || "Nawa Aya"}>
-                    <SelectTrigger className="h-12 bg-white border-[1.5px] border-[#111] rounded-full font-black uppercase tracking-widest text-[10px] px-6">
+                    <SelectTrigger className="h-11 bg-white border border-zinc-300 rounded-xl font-medium text-sm px-4">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-[1.5px] border-[#111] rounded-2xl uppercase font-black text-[10px]">
+                    <SelectContent className="border border-zinc-200 rounded-xl text-sm">
                       <SelectItem value="Nawa Aya">Nawa Aya (Public)</SelectItem>
                       <SelectItem value="Chota Don">Chota Don</SelectItem>
                       <SelectItem value="Baja Ji">Baja Ji</SelectItem>
@@ -529,38 +529,33 @@ export function TaskManager() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                <div className="flex items-center justify-between p-5 border-[1.5px] border-[#111]/10 bg-black/5 rounded-3xl">
-                  <div className="space-y-0.5">
-                    <Label className="text-[10px] font-black tracking-widest uppercase text-[#111]">Mandatory</Label>
-                  </div>
-                  <input type="checkbox" name="isMandatory" defaultChecked={editingTask?.isMandatory === true} className="w-5 h-5 accent-[#111] cursor-pointer" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div className="flex items-center justify-between px-4 py-3.5 border border-zinc-100 bg-zinc-50 rounded-xl">
+                  <Label className="text-sm font-medium text-zinc-700 cursor-pointer">Mandatory</Label>
+                  <input type="checkbox" name="isMandatory" defaultChecked={editingTask?.isMandatory === true} className="w-4 h-4 accent-zinc-900 cursor-pointer" />
                 </div>
-                <div className="flex items-center justify-between p-5 border-[1.5px] border-[#111]/10 bg-black/5 rounded-3xl">
-                  <div className="space-y-0.5">
-                    <Label className="text-[10px] font-black tracking-widest uppercase text-[#111]">Active</Label>
-                  </div>
-                  <input type="checkbox" name="isActive" defaultChecked={editingTask?.isActive !== false} className="w-5 h-5 accent-[#111] cursor-pointer" />
+                <div className="flex items-center justify-between px-4 py-3.5 border border-zinc-100 bg-zinc-50 rounded-xl">
+                  <Label className="text-sm font-medium text-zinc-700 cursor-pointer">Active</Label>
+                  <input type="checkbox" name="isActive" defaultChecked={editingTask?.isActive !== false} className="w-4 h-4 accent-zinc-900 cursor-pointer" />
                 </div>
               </div>
             </div>
 
-            <DialogFooter className="p-8 border-t-[1.5px] border-[#111]/10 bg-white/50 flex items-center justify-end gap-3">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setIsDialogOpen(false)}
-                className="h-12 px-8 bg-white border-[1.5px] border-[#111] font-black text-[10px] tracking-widest uppercase rounded-full hover:bg-black/5 transition-all shadow-sm"
-              >
-                Cancel
-              </Button>
+            <DialogFooter className="px-7 py-5 border-t border-zinc-100 bg-white flex flex-col items-center gap-2">
               <Button 
                 type="submit"
                 disabled={upsertMutation.isPending}
-                className="h-12 px-8 bg-[#111] text-white font-black text-[10px] tracking-widest uppercase rounded-full hover:bg-[#222] transition-all shadow-md"
+                className="w-full h-11 bg-zinc-900 text-white font-semibold text-sm rounded-xl hover:bg-black transition-all"
               >
-                {upsertMutation.isPending ? "Saving..." : "Save"}
+                {upsertMutation.isPending ? "Saving..." : "Save Task"}
               </Button>
+              <button
+                type="button"
+                onClick={() => setIsDialogOpen(false)}
+                className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors py-1"
+              >
+                Cancel
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>

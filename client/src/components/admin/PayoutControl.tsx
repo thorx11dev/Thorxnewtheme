@@ -477,27 +477,27 @@ export function PayoutControl() {
       </div>
 
       <Dialog open={!!selectedWithdrawal && actionType === 'view'} onOpenChange={(open) => !open && closeModal()}>
-         <DialogContent className="border-[1.5px] border-[#111] bg-white rounded-[2rem] p-0 max-w-lg overflow-hidden shadow-2xl *:!rounded-none [&>button]:hidden">
-            <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white">
+         <DialogContent className="border border-zinc-200 bg-white rounded-2xl p-0 max-w-lg overflow-hidden shadow-xl [&>button]:hidden">
+            <DialogHeader className="px-7 py-5 border-b border-zinc-100 bg-white">
               <div className="flex items-center justify-between">
                 <div>
-                  <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">Withdrawal Entry</DialogTitle>
-                  <DialogDescription className="text-zinc-500 font-bold text-[10px] tracking-widest mt-1 uppercase">ID: {selectedWithdrawal?.id}</DialogDescription>
+                  <DialogTitle className="text-xl font-semibold text-zinc-900">Withdrawal Entry</DialogTitle>
+                  <DialogDescription className="text-zinc-400 text-xs mt-0.5">ID: {selectedWithdrawal?.id}</DialogDescription>
                 </div>
-                <Button onClick={closeModal} variant="ghost" className="h-10 w-10 p-0 rounded-full hover:bg-black/5">
-                  <X size={20} className="text-[#111]" />
+                <Button onClick={closeModal} variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-zinc-100 shrink-0">
+                  <X size={16} className="text-zinc-500" />
                 </Button>
               </div>
             </DialogHeader>
-            <div className="p-8 space-y-6">
-               <div className="grid grid-cols-2 gap-6">
+            <div className="px-7 py-6 space-y-5">
+               <div className="grid grid-cols-2 gap-4">
                   <div>
                     <TechnicalLabel text="Beneficiary" className="mb-2" />
-                    <div className="p-4 bg-muted/10 border-[1.5px] border-[#111]/20 rounded-2xl">
-                      <div className="font-black text-[#111] uppercase">{selectedWithdrawal?.user.firstName} {selectedWithdrawal?.user.lastName}</div>
-                      <div className="text-[10px] font-bold text-zinc-400 mt-1">{selectedWithdrawal?.user.email}</div>
-                      <div className="mt-3">
-                        <span className="text-[8px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
+                    <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
+                      <div className="font-semibold text-zinc-900">{selectedWithdrawal?.user.firstName} {selectedWithdrawal?.user.lastName}</div>
+                      <div className="text-xs text-zinc-400 mt-1">{selectedWithdrawal?.user.email}</div>
+                      <div className="mt-2.5">
+                        <span className="text-[9px] font-bold text-zinc-600 bg-zinc-200 px-2 py-0.5 rounded-full uppercase tracking-wide">
                           {selectedWithdrawal?.user.rank}
                         </span>
                       </div>
@@ -505,32 +505,32 @@ export function PayoutControl() {
                   </div>
                   <div>
                     <TechnicalLabel text="Payout Amount" className="mb-2" />
-                    <div className="p-4 bg-[#111] border-[1.5px] border-[#111] rounded-2xl">
-                      <div className="text-2xl font-black text-primary">₨ {parseFloat(selectedWithdrawal?.amount || "0").toLocaleString()}</div>
-                      <div className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-1">Beneficiary Node Payout</div>
+                    <div className="p-4 bg-zinc-900 border border-zinc-900 rounded-xl">
+                      <div className="text-2xl font-bold text-primary">₨ {parseFloat(selectedWithdrawal?.amount || "0").toLocaleString()}</div>
+                      <div className="text-[9px] font-semibold text-white/40 uppercase tracking-widest mt-1">Beneficiary Node Payout</div>
                     </div>
                   </div>
                </div>
                <div>
-                  <TechnicalLabel text="Account Protocol" className="mb-2" />
-                  <div className="p-5 bg-white border-[1.5px] border-[#111]/20 rounded-2xl space-y-4">
+                  <TechnicalLabel text="Account Details" className="mb-2" />
+                  <div className="p-5 bg-white border border-zinc-200 rounded-xl space-y-3">
                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Gateway</span>
-                        <span className="text-xs font-black text-[#111] uppercase">{selectedWithdrawal?.method}</span>
+                        <span className="text-xs text-zinc-400 font-medium">Gateway</span>
+                        <span className="text-sm font-semibold text-zinc-900">{selectedWithdrawal?.method}</span>
                      </div>
                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Account Name</span>
-                        <span className="text-xs font-black text-[#111] uppercase">{selectedWithdrawal?.accountName}</span>
+                        <span className="text-xs text-zinc-400 font-medium">Account Name</span>
+                        <span className="text-sm font-semibold text-zinc-900">{selectedWithdrawal?.accountName}</span>
                      </div>
-                     <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg">
-                        <div className="flex flex-col">
-                           <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Account/IBAN</span>
-                           <span className="text-xs font-mono font-bold text-[#111]">{selectedWithdrawal?.accountNumber}</span>
+                     <div className="flex items-center justify-between p-3 bg-zinc-50 border border-zinc-100 rounded-lg">
+                        <div className="flex flex-col gap-0.5">
+                           <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wide">Account / IBAN</span>
+                           <span className="text-sm font-mono font-semibold text-zinc-900">{selectedWithdrawal?.accountNumber}</span>
                         </div>
                         <Button 
                           size="icon" 
                           variant="ghost" 
-                          className="h-8 w-8 rounded-full border-[1.5px] border-[#111]/20 hover:bg-black hover:text-white transition-all"
+                          className="h-8 w-8 rounded-lg border border-zinc-200 hover:bg-zinc-900 hover:text-white hover:border-zinc-900 transition-all"
                           onClick={() => handleCopy(selectedWithdrawal?.accountNumber || "")}
                         >
                           {copiedId === selectedWithdrawal?.accountNumber ? <Check size={12} /> : <Copy size={12} />}
@@ -539,75 +539,89 @@ export function PayoutControl() {
                   </div>
                </div>
             </div>
-            <DialogFooter className="p-8 bg-white border-t-[1.5px] border-[#111]/10">
+            <DialogFooter className="px-7 py-5 bg-white border-t border-zinc-100 flex flex-col gap-2">
                {selectedWithdrawal?.status === 'pending' ? (
-                 <div className="flex gap-4 w-full">
-                   <Button variant="outline" className="flex-1 h-12 rounded-full border-[1.5px] border-red-500 text-red-500 font-black uppercase text-[10px] hover:bg-red-500 hover:text-white" onClick={() => setActionType('reject')}>Reject</Button>
-                   <Button className="flex-1 h-12 rounded-full bg-primary text-white font-black uppercase text-[10px] border-[1.5px] border-[#111] hover:bg-[#111]" onClick={() => setActionType('approve')}>Approve Payout</Button>
+                 <div className="flex gap-3 w-full">
+                   <Button variant="outline" className="flex-1 h-11 rounded-xl border border-red-200 text-red-500 font-medium text-sm hover:bg-red-50 hover:border-red-300 transition-all" onClick={() => setActionType('reject')}>Reject</Button>
+                   <Button className="flex-1 h-11 rounded-xl bg-zinc-900 text-white font-semibold text-sm hover:bg-black transition-all" onClick={() => setActionType('approve')}>Approve Payout</Button>
                  </div>
                ) : (
-                 <Button variant="outline" className="w-full h-12 rounded-full border-[1.5px] border-[#111] font-black uppercase text-[10px] hover:bg-black/5" onClick={closeModal}>Close Entry</Button>
+                 <Button variant="outline" className="w-full h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 transition-all" onClick={closeModal}>Close Entry</Button>
                )}
             </DialogFooter>
          </DialogContent>
       </Dialog>
 
       <Dialog open={!!selectedWithdrawal && actionType === 'approve'} onOpenChange={(open) => !open && setActionType('view')}>
-         <DialogContent className="border-[1.5px] border-[#111] bg-white rounded-[2rem] p-0 max-w-md overflow-hidden shadow-2xl *:!rounded-none">
-            <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white">
-              <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">Authorize Payout</DialogTitle>
-              <DialogDescription className="text-zinc-500 font-bold text-[10px] tracking-widest mt-1 uppercase">Enter Transaction Identifier</DialogDescription>
+         <DialogContent className="border border-zinc-200 bg-white rounded-2xl p-0 max-w-md overflow-hidden shadow-xl">
+            <DialogHeader className="px-7 py-5 border-b border-zinc-100 bg-white">
+              <DialogTitle className="text-xl font-semibold text-zinc-900">Authorize Payout</DialogTitle>
+              <DialogDescription className="text-zinc-400 text-xs mt-0.5">Enter the transaction reference ID</DialogDescription>
             </DialogHeader>
-            <div className="p-8 bg-transparent space-y-6">
-               <div className="p-4 bg-primary/5 border-[1.5px] border-primary/20 rounded-2xl flex items-start gap-4">
-                  <AlertCircle className="w-6 h-6 text-primary shrink-0 mt-1" />
-                  <p className="text-xs font-bold text-primary/80 leading-relaxed">Please ensure the transaction has been executed through the bank portal before recording the reference ID.</p>
+            <div className="px-7 py-6 space-y-5">
+               <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                  <p className="text-sm text-primary/80 leading-relaxed">Please ensure the transaction has been executed through the bank portal before recording the reference ID.</p>
                </div>
-               <div className="space-y-2">
-                 <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Ref ID / Transaction Number</Label>
+               <div className="space-y-1.5">
+                 <Label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest ml-1">Ref ID / Transaction Number</Label>
                  <Input 
                    placeholder="e.g. TRX-99283-A" 
-                   className="h-14 rounded-full border-[1.5px] border-[#111]/30 focus:border-primary font-mono font-bold text-sm px-6 transition-all"
+                   className="h-11 rounded-xl border border-zinc-300 focus:border-primary font-mono font-medium text-sm px-4 transition-all"
                    value={transactionId}
                    onChange={(e) => setTransactionId(e.target.value)}
                  />
                </div>
             </div>
-            <DialogFooter className="p-8 bg-white border-t-[1.5px] border-[#111]/10">
-               <Button className="w-full h-14 bg-primary font-black uppercase tracking-widest text-[11px] rounded-full border-[1.5px] border-[#111] hover:bg-[#111]"
+            <DialogFooter className="px-7 py-5 bg-white border-t border-zinc-100 flex flex-col gap-2">
+               <Button className="w-full h-11 bg-zinc-900 text-white font-semibold text-sm rounded-xl hover:bg-black transition-all"
                  onClick={() => updateStatusMutation.mutate({ id: selectedWithdrawal!.id, status: 'completed', transactionId })}
                  disabled={updateStatusMutation.isPending || !transactionId}
                >
-                 {updateStatusMutation.isPending ? "Syncing..." : "Finalize Payout"}
+                 {updateStatusMutation.isPending ? "Processing..." : "Finalize Payout"}
                </Button>
+               <button
+                 type="button"
+                 className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors py-1"
+                 onClick={() => setActionType('view')}
+               >
+                 Cancel
+               </button>
             </DialogFooter>
          </DialogContent>
       </Dialog>
 
       <Dialog open={!!selectedWithdrawal && actionType === 'reject'} onOpenChange={(open) => !open && setActionType('view')}>
-         <DialogContent className="border-[1.5px] border-[#111] bg-white rounded-[2rem] p-0 max-w-md overflow-hidden shadow-2xl *:!rounded-none">
-            <DialogHeader className="p-8 border-b-[1.5px] border-[#111]/10 bg-white">
-              <DialogTitle className="text-2xl font-black tracking-tighter text-red-500 uppercase">Reject Request</DialogTitle>
-              <DialogDescription className="text-zinc-500 font-bold text-[10px] tracking-widest mt-1 uppercase">Specify Conflict Details</DialogDescription>
+         <DialogContent className="border border-zinc-200 bg-white rounded-2xl p-0 max-w-md overflow-hidden shadow-xl">
+            <DialogHeader className="px-7 py-5 border-b border-zinc-100 bg-white">
+              <DialogTitle className="text-xl font-semibold text-red-500">Reject Request</DialogTitle>
+              <DialogDescription className="text-zinc-400 text-xs mt-0.5">Provide a reason for this rejection</DialogDescription>
             </DialogHeader>
-            <div className="p-8 bg-transparent space-y-6">
-               <div className="space-y-2">
-                 <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Rejection Statement</Label>
+            <div className="px-7 py-6 space-y-5">
+               <div className="space-y-1.5">
+                 <Label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest ml-1">Rejection Reason</Label>
                  <Input 
                    placeholder="e.g. Incorrect account details provided." 
-                   className="h-14 rounded-full border-[1.5px] border-[#111]/30 focus:border-red-500 font-bold text-sm px-6 transition-all"
+                   className="h-11 rounded-xl border border-zinc-300 focus:border-red-400 font-medium text-sm px-4 transition-all"
                    value={rejectionReason}
                    onChange={(e) => setRejectionReason(e.target.value)}
                  />
                </div>
             </div>
-            <DialogFooter className="p-8 bg-white border-t-[1.5px] border-[#111]/10">
-               <Button className="w-full h-14 bg-red-500 text-white font-black uppercase tracking-widest text-[11px] rounded-full border-[1.5px] border-[#111] hover:bg-black hover:border-black"
+            <DialogFooter className="px-7 py-5 bg-white border-t border-zinc-100 flex flex-col gap-2">
+               <Button className="w-full h-11 bg-red-500 text-white font-semibold text-sm rounded-xl hover:bg-red-600 transition-all"
                  onClick={() => updateStatusMutation.mutate({ id: selectedWithdrawal!.id, status: 'rejected', rejectionReason })}
                  disabled={updateStatusMutation.isPending || !rejectionReason}
                >
-                 {updateStatusMutation.isPending ? "Syncing..." : "Decline Entry"}
+                 {updateStatusMutation.isPending ? "Processing..." : "Decline Entry"}
                </Button>
+               <button
+                 type="button"
+                 className="text-sm text-zinc-400 hover:text-zinc-600 transition-colors py-1"
+                 onClick={() => setActionType('view')}
+               >
+                 Cancel
+               </button>
             </DialogFooter>
          </DialogContent>
       </Dialog>

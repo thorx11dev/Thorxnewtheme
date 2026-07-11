@@ -28,6 +28,7 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
   const [avatar, setAvatar] = useState(user?.avatar || "default");
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(user?.profilePicture || null);
   const [isUploading, setIsUploading] = useState(false);
+  const [avatarOverlayVisible, setAvatarOverlayVisible] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -228,7 +229,12 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
               {/* Avatar + name row */}
               <div className="flex items-center gap-5 mb-8">
                 {/* Clickable avatar preview */}
-                <div className="relative group/avatar flex-shrink-0">
+                <div
+                  className="relative group/avatar flex-shrink-0"
+                  onTouchStart={() => setAvatarOverlayVisible(true)}
+                  onTouchEnd={() => setAvatarOverlayVisible(false)}
+                  onTouchCancel={() => setAvatarOverlayVisible(false)}
+                >
                   <div className="w-20 h-20 md:w-24 md:h-24 flex items-center justify-center border-2 border-zinc-500 bg-black overflow-hidden">
                     {previewSrc ? (
                       <img src={previewSrc} alt="Avatar" className="w-full h-full object-cover" />
@@ -237,9 +243,14 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
                     )}
                   </div>
                   <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                    className={cn(
+                      "absolute inset-0 bg-black/60 transition-opacity duration-200 flex items-center justify-center cursor-pointer touch-manipulation",
+                      "group-hover/avatar:opacity-100 group-active/avatar:opacity-100 focus-visible:opacity-100 active:opacity-100",
+                      avatarOverlayVisible ? "opacity-100" : "opacity-0"
+                    )}
                     title="Upload photo"
                   >
                     {isUploading ? (
