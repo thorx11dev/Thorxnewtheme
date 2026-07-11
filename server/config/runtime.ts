@@ -19,8 +19,17 @@ function parseCsv(value?: string): string[] {
     .filter(Boolean);
 }
 
+// Replit's preview pane embeds the app in a cross-site iframe (the top-level
+// document is on a different site than the app itself). Browsers refuse to
+// send SameSite=Lax/Strict cookies on subresource (fetch/XHR) requests in
+// that context, so session + CSRF cookies silently stop round-tripping.
+// Replit's proxy always terminates HTTPS, so it's always safe to use
+// SameSite=None + Secure when running on Replit (dev or prod).
+const isReplit = process.env.REPL_ID !== undefined || process.env.REPLIT_DB_URL !== undefined;
+
 export const runtimeConfig = {
   isProd: process.env.NODE_ENV === "production",
+  isReplit,
   port: parseInt(process.env.PORT || "5000", 10),
   frontendOrigins: [
     ...defaultDevOrigins,
@@ -36,9 +45,13 @@ export const runtimeConfig = {
     ] : []),
   ],
   sessionSecret: process.env.SESSION_SECRET,
-  sessionCookieSecure: process.env.SESSION_COOKIE_SECURE === "true",
+  // Explicit env vars always win; otherwise default to cross-site-safe
+  // cookies on Replit (or in prod) and same-site cookies for plain local dev.
+  sessionCookieSecure: process.env.SESSION_COOKIE_SECURE
+    ? process.env.SESSION_COOKIE_SECURE === "true"
+    : (isReplit || process.env.NODE_ENV === "production"),
   sessionCookieDomain: process.env.SESSION_COOKIE_DOMAIN || undefined,
-  sessionCookieSameSite: (process.env.SESSION_COOKIE_SAME_SITE || "lax").toLowerCase() as "lax" | "strict" | "none",
+  sessionCookieSameSite: (process.env.SESSION_COOKIE_SAME_SITE || (isReplit || process.env.NODE_ENV === "production" ? "none" : "lax")).toLowerCase() as "lax" | "strict" | "none",
   proxyAllowedHosts: parseCsv(process.env.PROXY_ALLOWED_HOSTS),
 };
 

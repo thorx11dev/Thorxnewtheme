@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type { Request, Response, NextFunction } from "express";
+import { runtimeConfig } from "../config/runtime";
 
 /**
  * Double-Submit Cookie CSRF protection.
@@ -18,11 +19,15 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
   if (SAFE_METHODS.includes(req.method)) {
     if (!req.cookies?.["thorx.csrf"]) {
       const token = crypto.randomBytes(32).toString("hex");
-      const isSecure = process.env.NODE_ENV === "production" || process.env.SESSION_COOKIE_SECURE === "true";
+      // Mirror the session cookie's SameSite/Secure policy so the CSRF
+      // double-submit cookie round-trips in the same contexts the session
+      // cookie does (see runtimeConfig for why Replit needs SameSite=None).
+      const secure = runtimeConfig.sessionCookieSecure;
+      const sameSite = runtimeConfig.sessionCookieSameSite;
       res.cookie("thorx.csrf", token, {
         httpOnly: false, // JS must read it to set the header
-        secure: isSecure,
-        sameSite: isSecure ? "strict" : "lax",
+        secure,
+        sameSite,
         path: "/",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week (matches session TTL)
       });
