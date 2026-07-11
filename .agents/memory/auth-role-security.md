@@ -49,3 +49,13 @@ Created via `scripts/seed-founder.ts`:
 - Haji Saab → `haji-saab-1` (DiceBear URL)
 - Chacha Supreme → `chacha-1` (DiceBear URL)
 Local avatar files for Nawa Aya (all 8) and Munna (1-2) exist in `client/public/avatars/`.
+
+## drizzle-kit push drops raw `sql` CONSTRAINT clauses
+Table definitions with a raw `sql\`CONSTRAINT ... UNIQUE (...)\`` line inside the third `pgTable` array arg (e.g. `device_fingerprints`'s `uq_device_fp_user_hash`) are NOT applied by `drizzle-kit push`, even though they're in `shared/schema.ts`. The table gets created without that constraint, so any `onConflictDoUpdate({ target: [...] })` referencing it fails at runtime with "no unique or exclusion constraint matching the ON CONFLICT specification".
+
+**Why:** drizzle-kit's push diffing doesn't reliably introspect raw `sql` template constraint declarations the same way it does `unique()`/`.unique()` column modifiers.
+
+**How to apply:** After `db:push`, verify constraints actually landed with `SELECT conname FROM pg_constraint WHERE conrelid = '<table>'::regclass` before relying on `onConflictDoUpdate`/`onConflictDoNothing` against them. If missing, either add the constraint with a direct `ALTER TABLE ... ADD CONSTRAINT` (dev only) or convert the schema to use drizzle's `unique()` table helper instead of a raw `sql` constraint line, then re-push.
+
+## Testing session auth locally needs X-Forwarded-Proto
+This project sets session/CSRF cookies with `Secure; SameSite=None` whenever `isReplit` is true (see `server/config/runtime.ts`), which is correct in the real Replit proxy (always HTTPS) but means a plain `curl http://127.0.0.1:5000/...` never receives a `Set-Cookie` for the session — express-session silently skips it because `req.secure` is false with `trust proxy` set and no forwarded-proto header. Add `-H "X-Forwarded-Proto: https"` to curl calls when manually exercising login/register/logout against the dev server, or the session will appear to "not persist" when it actually would work fine through the browser/proxy.
