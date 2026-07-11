@@ -718,93 +718,93 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
       {/* User Details Dialog */}
       <Dialog open={!!selectedUser && modalType === 'details'} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="border border-black/5 bg-white rounded-[2rem] p-0 max-w-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] *:!rounded-none [&>button]:hidden">
-          <DialogHeader className="p-8 border-b border-zinc-100 bg-white">
+        <DialogContent className="border border-zinc-200 bg-white rounded-2xl p-0 max-w-2xl overflow-hidden shadow-xl [&>button]:hidden">
+          <DialogHeader className="px-7 py-5 border-b border-zinc-100 bg-white">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">
+                <DialogTitle className="text-xl font-semibold text-zinc-900">
                   User Intelligence
                 </DialogTitle>
-                <DialogDescription className="text-zinc-500 font-bold text-[10px] tracking-widest mt-1 uppercase">
-                  Digital Signature ID: {selectedUser?.id}
+                <DialogDescription className="text-zinc-400 text-xs mt-0.5">
+                  ID: {selectedUser?.id}
                 </DialogDescription>
               </div>
-              <Button onClick={closeModal} variant="ghost" className="h-10 w-10 p-0 rounded-full hover:bg-black/5">
-                <X size={20} className="text-[#111]" />
+              <Button onClick={closeModal} variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-zinc-100 shrink-0">
+                <X size={16} className="text-zinc-500" />
               </Button>
             </div>
           </DialogHeader>
 
-          <div className="p-8 grid grid-cols-2 gap-8 bg-transparent">
-             <div className="space-y-6">
+          <div className="px-7 py-6 grid grid-cols-2 gap-5">
+             <div className="space-y-5">
                 <div>
                   <TechnicalLabel text="Identity" className="mb-2" />
-                  <div className="p-5 bg-white border border-zinc-200 rounded-2xl relative overflow-hidden group hover:border-[#111] transition-all">
-                    <div className="text-lg font-black text-[#111] uppercase">{selectedUser?.firstName} {selectedUser?.lastName}</div>
-                    <div className="text-[10px] text-zinc-400 font-bold uppercase mt-1">TX-ID: {selectedUser?.identity}</div>
+                  <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
+                    <div className="font-semibold text-zinc-900">{selectedUser?.firstName} {selectedUser?.lastName}</div>
+                    <div className="text-xs text-zinc-400 mt-1">TX-ID: {selectedUser?.identity}</div>
                   </div>
                 </div>
                 <div>
                   <TechnicalLabel text="Contact Node" className="mb-2" />
-                  <div className="p-5 bg-white border border-zinc-200 rounded-2xl space-y-3">
+                  <div className="p-4 bg-white border border-zinc-200 rounded-xl space-y-3">
                     <div className="flex items-center gap-3">
                       <Mail size={14} className="text-primary" />
-                      <span className="text-xs font-bold text-[#111]">{selectedUser?.email}</span>
+                      <span className="text-xs font-semibold text-zinc-900">{selectedUser?.email}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <Phone size={14} className="text-primary" />
-                      <span className="text-xs font-bold text-[#111]">{selectedUser?.phone}</span>
+                      <span className="text-xs font-semibold text-zinc-900">{selectedUser?.phone}</span>
                     </div>
                   </div>
                 </div>
              </div>
 
-             <div className="space-y-6">
+             <div className="space-y-5">
                 <div>
                   <TechnicalLabel text="Financial Ledger" className="mb-2" />
-                  <div className="p-5 bg-[#111] border border-zinc-200 rounded-2xl space-y-4">
+                  <div className="p-4 bg-zinc-900 border border-zinc-900 rounded-xl space-y-3">
                     <div>
-                      <div className="text-[9px] font-black text-white/40 uppercase tracking-widest">Available Balance</div>
-                      <div className="text-2xl font-black text-white">₨ {parseFloat(selectedUser?.availableBalance || "0").toLocaleString()}</div>
+                      <div className="text-[9px] font-semibold text-white/40 uppercase tracking-widest">Available Balance</div>
+                      <div className="text-2xl font-bold text-white">₨ {parseFloat(selectedUser?.availableBalance || "0").toLocaleString()}</div>
                     </div>
                     <div>
-                      <div className="text-[9px] font-black text-white/40 uppercase tracking-widest">Lifetime Earnings</div>
-                      <div className="text-lg font-black text-primary italic">₨ {parseFloat(selectedUser?.totalEarnings || "0").toLocaleString()}</div>
+                      <div className="text-[9px] font-semibold text-white/40 uppercase tracking-widest">Lifetime Earnings</div>
+                      <div className="text-lg font-bold text-primary">₨ {parseFloat(selectedUser?.totalEarnings || "0").toLocaleString()}</div>
                     </div>
                   </div>
                 </div>
                 <div>
                   <TechnicalLabel text="System Metadata" className="mb-2" />
-                  <div className="p-5 bg-white border border-zinc-200 rounded-2xl grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-2 gap-4">
                     <div>
-                      <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Rank</div>
-                      <span className={cn("inline-flex items-center gap-1 text-[10px] font-black text-white px-2 py-0.5 tracking-widest uppercase shadow-sm", getRankDef(selectedUser?.rank).bgColor)}>
+                      <div className="text-[9px] font-medium text-zinc-400 uppercase tracking-wide mb-1.5">Rank</div>
+                      <span className={cn("inline-flex items-center gap-1 text-[9px] font-bold text-white px-2 py-0.5 rounded-full tracking-wide uppercase", getRankDef(selectedUser?.rank).bgColor)}>
                         {(selectedUser?.rank ?? 'Nawa Aya')}
                         {selectedUser?.rankLocked && <Lock size={10} />}
                       </span>
                     </div>
                     <div>
-                      <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Joined</div>
-                      <div className="text-xs font-black text-[#111] uppercase">{selectedUser ? new Date(selectedUser.createdAt).toLocaleDateString() : ''}</div>
+                      <div className="text-[9px] font-medium text-zinc-400 uppercase tracking-wide">Joined</div>
+                      <div className="text-xs font-semibold text-zinc-900">{selectedUser ? new Date(selectedUser.createdAt).toLocaleDateString() : ''}</div>
                     </div>
                   </div>
                 </div>
 
                 <div>
                   <TechnicalLabel text="Referral Intelligence" className="mb-2" />
-                  <div className="p-5 bg-white border border-zinc-200 rounded-2xl grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-2 gap-4">
                     <div className="border-r border-zinc-100">
-                      <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Level 1</div>
-                      <div className="text-xl font-black text-[#111]">
+                      <div className="text-[9px] font-medium text-zinc-400 uppercase tracking-wide mb-1">Level 1</div>
+                      <div className="text-xl font-bold text-zinc-900">
                         {networkData?.referrals?.filter((r: any) => r.level === 1).length || 0}
-                        <span className="text-[10px] ml-1 opacity-30 font-bold">Nodes</span>
+                        <span className="text-[10px] ml-1 text-zinc-400 font-medium">Nodes</span>
                       </div>
                     </div>
                     <div>
-                      <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Level 2</div>
-                      <div className="text-xl font-black text-[#111]">
+                      <div className="text-[9px] font-medium text-zinc-400 uppercase tracking-wide mb-1">Level 2</div>
+                      <div className="text-xl font-bold text-zinc-900">
                         {networkData?.referrals?.filter((r: any) => r.level === 2).length || 0}
-                        <span className="text-[10px] ml-1 opacity-30 font-bold">Nodes</span>
+                        <span className="text-[10px] ml-1 text-zinc-400 font-medium">Nodes</span>
                       </div>
                     </div>
                   </div>
@@ -812,24 +812,24 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
              </div>
           </div>
 
-          <DialogFooter className="p-8 bg-white border-t border-zinc-100 flex gap-4">
+          <DialogFooter className="px-7 py-5 bg-white border-t border-zinc-100 flex gap-3">
             <Button 
                 variant="outline"
-                className="flex-1 h-14 border border-zinc-200 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
+                className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 transition-all"
                 onClick={() => setModalType('notes')}
             >
               Observations
             </Button>
             <Button 
                 variant="outline"
-                className="flex-1 h-14 border border-zinc-200 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
+                className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 transition-all"
                 onClick={() => setModalType('network')}
             >
               Network Map
             </Button>
             <Button 
                 variant="outline"
-                className="flex-1 h-14 border border-zinc-200 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/5"
+                className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 transition-all"
                 onClick={() => {
                   setSelectedRank(selectedUser?.rank || 'Nawa Aya');
                   setLockRank(!!selectedUser?.rankLocked);
@@ -839,7 +839,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
               Rank Control
             </Button>
             <Button 
-                className="flex-1 h-14 bg-primary border border-zinc-200 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-[#111] hover:text-white"
+                className="flex-1 h-11 rounded-xl bg-zinc-900 text-white font-semibold text-sm hover:bg-black transition-all"
                 onClick={() => setModalType('balance')}
             >
               Adjust Ledger
