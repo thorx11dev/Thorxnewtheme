@@ -49,7 +49,7 @@ import { ReferralTree } from "@/components/ui/referral-tree";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebounce } from "@/hooks/use-debounce";
-import { resolveAvatarUrl } from "@/lib/rankAvatars";
+import { resolveAvatarUrl, getRankDef } from "@/lib/rankAvatars";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -778,7 +778,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   <div className="p-5 bg-white border border-zinc-200 rounded-2xl grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Rank</div>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
+                      <span className={cn("inline-flex items-center gap-1 text-[10px] font-black text-white px-2 py-0.5 tracking-widest uppercase shadow-sm", getRankDef(selectedUser?.rank).bgColor)}>
                         {(selectedUser?.rank ?? 'Nawa Aya')}
                         {selectedUser?.rankLocked && <Lock size={10} />}
                       </span>
