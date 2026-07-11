@@ -16,22 +16,26 @@ import { runtimeConfig } from "../config/runtime";
 export function csrfProtection(req: Request, res: Response, next: NextFunction) {
   const SAFE_METHODS = ["GET", "HEAD", "OPTIONS"];
 
+  // Mirror the session cookie's SameSite/Secure policy so the CSRF
+  // double-submit cookie round-trips in the same contexts the session
+  // cookie does (see runtimeConfig for why Replit needs SameSite=None).
+  const secure = runtimeConfig.sessionCookieSecure;
+  const sameSite = runtimeConfig.sessionCookieSameSite;
+
   if (SAFE_METHODS.includes(req.method)) {
-    if (!req.cookies?.["thorx.csrf"]) {
-      const token = crypto.randomBytes(32).toString("hex");
-      // Mirror the session cookie's SameSite/Secure policy so the CSRF
-      // double-submit cookie round-trips in the same contexts the session
-      // cookie does (see runtimeConfig for why Replit needs SameSite=None).
-      const secure = runtimeConfig.sessionCookieSecure;
-      const sameSite = runtimeConfig.sessionCookieSameSite;
-      res.cookie("thorx.csrf", token, {
-        httpOnly: false, // JS must read it to set the header
-        secure,
-        sameSite,
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week (matches session TTL)
-      });
-    }
+    // Always (re)issue the cookie on safe methods rather than only when
+    // missing. A browser that already cached a cookie from before a
+    // SameSite/Secure policy change would otherwise keep the stale
+    // attributes forever, since the server has no way to inspect the
+    // attributes of a cookie it receives back — only its value.
+    const token = req.cookies?.["thorx.csrf.v2"] || crypto.randomBytes(32).toString("hex");
+    res.cookie("thorx.csrf.v2", token, {
+      httpOnly: false, // JS must read it to set the header
+      secure,
+      sameSite,
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week (matches session TTL)
+    });
     return next();
   }
 
@@ -41,7 +45,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     return next();
   }
 
-  const cookieToken = req.cookies?.["thorx.csrf"];
+  const cookieToken = req.cookies?.["thorx.csrf.v2"];
   const headerToken = req.headers["x-csrf-token"] as string | undefined;
 
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {

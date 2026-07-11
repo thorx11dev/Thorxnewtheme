@@ -10,7 +10,7 @@ async function throwIfResNotOk(res: Response) {
 
 /** Read the CSRF double-submit cookie set by the server. */
 export function getCsrfToken(): string {
-  const match = document.cookie.match(/(?:^|;\s*)thorx\.csrf=([^;]+)/);
+  const match = document.cookie.match(/(?:^|;\s*)thorx\.csrf\.v2=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : "";
 }
 
