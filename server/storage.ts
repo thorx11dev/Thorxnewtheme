@@ -306,6 +306,15 @@ export interface IStorage {
   // Score History
   saveScoreHistory(entry: InsertScoreHistory): Promise<ScoreHistory>;
   getScoreHistory(userId: string, limit?: number): Promise<ScoreHistory[]>;
+
+  // Risk signal feedback loop — which signals actually predict confirmed fraud
+  getRiskSignalStats(): Promise<Array<{
+    signal: string;
+    timesTriggered: number;
+    actioned: number;
+    cleared: number;
+    precision: number | null;
+  }>>;
 }
 
 const RANKS = [
@@ -1955,6 +1964,13 @@ export class DatabaseStorage implements IStorage {
 
     if (isStale) {
       await this.refreshLeaderboardCache();
+      // Keep the risk watchlist current automatically on the same cadence as
+      // the leaderboard recompute — fire-and-forget so it never blocks the
+      // admin's read. Dynamic import avoids a circular module dependency
+      // (risk-engine imports storage).
+      import("./modules/risk-engine")
+        .then((mod) => mod.runFullRiskScan({ broadcastAlerts: true }))
+        .catch((err) => console.error("[RiskEngine] Auto scan on leaderboard refresh failed:", err));
     }
 
     // 1. Get Global Ranking (with pagination)
@@ -2003,43 +2019,59 @@ export class DatabaseStorage implements IStorage {
     .orderBy(desc(leaderboardCache.level1Count))
     .limit(limit);
 
-    // 3. Detect Anomalies (Risk Triage) - This remains real-time for security
-    const anomalies = await db.select({
-      id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      email: users.email,
-      rank: users.rank,
-      avatar: users.avatar,
-      totalEarnings: users.totalEarnings,
-      createdAt: users.createdAt,
-      referralCount: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id), 0) AS INTEGER)`
-    })
-    .from(users)
-    .where(and(
-      eq(users.role, "user"),
-      or(
-        and(
-          gte(users.createdAt, new Date(now.getTime() - 86400000)),
-          gte(users.totalEarnings, "5000")
-        ),
-        and(
-          gte(sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id), 0) AS INTEGER)`, 50),
-          lte(users.totalEarnings, "100")
-        )
-      )
-    ))
-    .limit(50);
+    // 3. Watchlist (Risk Triage) — sourced from the persistent risk_cases table
+    //    (populated by the multi-signal risk engine), not ad-hoc thresholds.
+    //    This is what actually remembers "we looked at this, it's fine" —
+    //    Cleared/Actioned cases are excluded so the list only shows work
+    //    still needing admin attention.
+    const openCases = await db
+      .select({
+        caseId: riskCases.id,
+        riskScore: riskCases.riskScore,
+        severity: riskCases.severity,
+        status: riskCases.status,
+        signals: riskCases.signals,
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        rank: users.rank,
+        avatar: users.avatar,
+        totalEarnings: users.totalEarnings,
+        createdAt: users.createdAt,
+      })
+      .from(riskCases)
+      .innerJoin(users, eq(riskCases.userId, users.id))
+      .where(and(eq(users.role, "user"), inArray(riskCases.status, ["Open", "Investigating"])))
+      .orderBy(desc(riskCases.riskScore))
+      .limit(50);
 
-    const mappedAnomalies = anomalies.map(u => {
-      const userCreatedDate = u.createdAt ? new Date(u.createdAt).getTime() : now.getTime();
+    const mappedAnomalies = openCases.map((c) => {
+      const userCreatedDate = c.createdAt ? new Date(c.createdAt).getTime() : now.getTime();
       const daysActive = Math.max(1, (now.getTime() - userCreatedDate) / (1000 * 60 * 60 * 24));
-      const earnings = parseFloat(u.totalEarnings as string || "0");
-      let reason = "Unknown anomaly";
-      if (daysActive <= 1 && earnings > 5000) reason = "Explosive Earnings Velocity";
-      else if (u.referralCount > 50 && earnings < 100) reason = "Suspicious Bot Network (High Refs, Low Earner)";
-      
-      return { ...u, daysActive: Math.round(daysActive), reason };
+      const topSignals = (Array.isArray(c.signals) ? (c.signals as any[]) : [])
+        .filter((s) => s.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 2)
+        .map((s) => s.name);
+      const reason = topSignals.length
+        ? `${c.severity} Risk — ${topSignals.join(", ")}`
+        : `${c.severity} Risk`;
+
+      return {
+        id: c.id,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        email: c.email,
+        rank: c.rank,
+        avatar: c.avatar,
+        totalEarnings: c.totalEarnings,
+        riskScore: c.riskScore,
+        severity: c.severity,
+        caseStatus: c.status,
+        daysActive: Math.round(daysActive),
+        reason,
+      };
     });
 
     const totalCountResult = await db.select({ count: sql<number>`count(*)` }).from(leaderboardCache);
@@ -2831,6 +2863,44 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(scoreHistory.snapshotAt))
       .limit(limit);
   }
+
+  // ─── Risk Signal Feedback Loop ──────────────────────────────────────────────
+  // Aggregates resolved cases (Cleared = false positive, Actioned = confirmed
+  // fraud) to show which signals actually predict real fraud vs. noise.
+  async getRiskSignalStats(): Promise<Array<{
+    signal: string;
+    timesTriggered: number;
+    actioned: number;
+    cleared: number;
+    precision: number | null;
+  }>> {
+    const resolved = await db
+      .select({ status: riskCases.status, signals: riskCases.signals })
+      .from(riskCases)
+      .where(inArray(riskCases.status, ["Cleared", "Actioned"]));
+
+    const stats = new Map<string, { timesTriggered: number; actioned: number; cleared: number }>();
+
+    for (const row of resolved) {
+      const signals = Array.isArray(row.signals) ? (row.signals as any[]) : [];
+      for (const sig of signals) {
+        if (!sig?.name || !(sig.score > 0)) continue;
+        const entry = stats.get(sig.name) ?? { timesTriggered: 0, actioned: 0, cleared: 0 };
+        entry.timesTriggered++;
+        if (row.status === "Actioned") entry.actioned++;
+        if (row.status === "Cleared") entry.cleared++;
+        stats.set(sig.name, entry);
+      }
+    }
+
+    return Array.from(stats.entries())
+      .map(([signal, s]) => ({
+        signal,
+        ...s,
+        precision: s.timesTriggered > 0 ? Math.round((s.actioned / s.timesTriggered) * 1000) / 10 : null,
+      }))
+      .sort((a, b) => (b.precision ?? 0) - (a.precision ?? 0));
+  }
 }
 
 export class MemStorage {
@@ -2983,6 +3053,7 @@ export class MemStorage {
   // Score History stubs
   async saveScoreHistory(entry: InsertScoreHistory): Promise<ScoreHistory> { throw new Error("Not implemented in MemStorage"); }
   async getScoreHistory(userId: string, limit?: number): Promise<ScoreHistory[]> { throw new Error("Not implemented in MemStorage"); }
+  async getRiskSignalStats(): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
 
   private generateReferralCode(): string {
     const prefix = "THORX";

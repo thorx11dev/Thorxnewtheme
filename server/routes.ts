@@ -424,6 +424,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/leaderboard/force-sync", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
     try {
       await storage.refreshLeaderboardCache();
+      const { runFullRiskScan } = await import("./modules/risk-engine");
+      await runFullRiskScan({ broadcastAlerts: true });
       const insights = await storage.getLeaderboardInsights(50, 0);
       res.json(insights);
     } catch (error: any) {
@@ -3494,6 +3496,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/admin/risk-cases/signal-stats", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
+    try {
+      const stats = await storage.getRiskSignalStats();
+      res.json(stats);
+    } catch (err) {
+      console.error("[RiskCases] getRiskSignalStats error:", err);
+      res.status(500).json({ message: "Failed to load signal stats" });
+    }
+  });
+
   app.get("/api/admin/risk-cases/:id", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
     try {
       const riskCase = await storage.getRiskCase(req.params.id);
@@ -3507,7 +3519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/risk-cases/:id", requirePermission("MANAGE_USERS"), async (req, res) => {
     try {
-      const { status, assignedTo, notes, resolution } = req.body;
+      const { status, assignedTo, notes, resolution, trustStatusOutcome } = req.body;
       const adminId = getThorxPrincipalId(req);
       const updates: any = { notes, assignedTo: assignedTo ?? undefined };
       if (status) {
@@ -3519,6 +3531,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const updated = await storage.updateRiskCase(req.params.id, updates);
+
+      // Trust Status is the resolution of a risk case: an admin investigates
+      // a case, then the outcome (Cleared/Actioned) can set the account's
+      // Trust Status, logged with the case resolution as the "why".
+      if (trustStatusOutcome && adminId && (status === "Cleared" || status === "Actioned")) {
+        const TRUST_STATUSES = ["Special", "Trusted", "Normal", "Dangerous"];
+        if (TRUST_STATUSES.includes(trustStatusOutcome)) {
+          try {
+            await storage.setUserTrustStatus(
+              updated.userId,
+              trustStatusOutcome,
+              `Risk case ${status.toLowerCase()}: ${resolution || `${status} by admin`}`,
+              adminId
+            );
+          } catch (trustErr) {
+            console.error("[RiskCases] setUserTrustStatus error:", trustErr);
+          }
+        }
+      }
+
       res.json(updated);
     } catch (err) {
       console.error("[RiskCases] updateRiskCase error:", err);

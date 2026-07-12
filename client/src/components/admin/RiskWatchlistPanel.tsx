@@ -25,6 +25,9 @@ import {
   Link2,
   Banknote,
   ChevronLeft,
+  GitBranch,
+  Gauge,
+  ShieldQuestion,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -98,12 +101,16 @@ const STATUS_CONFIG = {
 };
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
-  "Earnings Velocity": <TrendingUp size={14} />,
-  "Bot Network":       <Users2     size={14} />,
-  "Device Clustering": <Smartphone size={14} />,
-  "Chain Linearity":   <Link2      size={14} />,
-  "Cash-out Velocity": <Banknote   size={14} />,
+  "Earnings Velocity":     <TrendingUp size={14} />,
+  "Bot Network":           <Users2     size={14} />,
+  "Device Clustering":     <Smartphone size={14} />,
+  "Chain Linearity":       <Link2      size={14} />,
+  "Cash-out Velocity":     <Banknote   size={14} />,
+  "Circular Referral":     <GitBranch  size={14} />,
+  "Task Completion Speed": <Gauge      size={14} />,
 };
+
+const TRUST_STATUSES = ["Special", "Trusted", "Normal", "Dangerous"] as const;
 
 function SeverityBadge({ severity }: { severity: RiskCase["severity"] }) {
   const c = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG.Low;
@@ -227,9 +234,10 @@ function CaseDetailDrawer({
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState(riskCase.notes ?? "");
   const [resolution, setResolution] = useState(riskCase.resolution ?? "");
+  const [trustStatusOutcome, setTrustStatusOutcome] = useState<string>("");
 
   const updateMutation = useMutation({
-    mutationFn: async (updates: { status?: string; notes?: string; resolution?: string }) => {
+    mutationFn: async (updates: { status?: string; notes?: string; resolution?: string; trustStatusOutcome?: string }) => {
       const res = await apiRequest("PATCH", `/api/admin/risk-cases/${riskCase.id}`, updates);
       if (!res.ok) {
         const err = await res.json();
@@ -247,7 +255,12 @@ function CaseDetailDrawer({
   });
 
   const handleStatus = (status: string) => {
-    updateMutation.mutate({ status, notes, resolution });
+    updateMutation.mutate({
+      status,
+      notes,
+      resolution,
+      ...(trustStatusOutcome ? { trustStatusOutcome } : {}),
+    });
   };
 
   const handleSaveNotes = () => {
@@ -260,11 +273,13 @@ function CaseDetailDrawer({
 
   // Signal max scores (fixed weights)
   const maxBySignal: Record<string, number> = {
-    "Earnings Velocity": 30,
-    "Bot Network": 25,
-    "Device Clustering": 20,
-    "Chain Linearity": 15,
+    "Earnings Velocity": 25,
+    "Bot Network": 20,
+    "Device Clustering": 15,
+    "Chain Linearity": 12,
     "Cash-out Velocity": 10,
+    "Circular Referral": 8,
+    "Task Completion Speed": 10,
   };
 
   return (
@@ -376,14 +391,34 @@ function CaseDetailDrawer({
 
           {/* Resolution field for clearing/actioning */}
           {(riskCase.status === "Open" || riskCase.status === "Investigating") && (
-            <div className="space-y-2">
-              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Resolution Reason (optional)</p>
-              <input
-                className="w-full h-9 bg-zinc-50 border-[1.5px] border-[#111]/15 rounded-full px-4 text-xs font-medium text-zinc-700 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all"
-                placeholder="Reason for clearing or actioning…"
-                value={resolution}
-                onChange={(e) => setResolution(e.target.value)}
-              />
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Resolution Reason (optional)</p>
+                <input
+                  className="w-full h-9 bg-zinc-50 border-[1.5px] border-[#111]/15 rounded-full px-4 text-xs font-medium text-zinc-700 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all"
+                  placeholder="Reason for clearing or actioning…"
+                  value={resolution}
+                  onChange={(e) => setResolution(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
+                  Set Trust Status on Clear/Action (optional)
+                </p>
+                <select
+                  value={trustStatusOutcome}
+                  onChange={(e) => setTrustStatusOutcome(e.target.value)}
+                  className="w-full h-9 px-4 bg-zinc-50 border-[1.5px] border-[#111]/15 rounded-full text-xs font-bold text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">Don't change trust status</option>
+                  {TRUST_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <p className="text-[9px] text-zinc-400 leading-snug">
+                  This case's resolution becomes the logged reason for the trust status change.
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -427,6 +462,65 @@ function CaseDetailDrawer({
             </Button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Signal Accuracy (Feedback Loop) ───────────────────────────────────────────
+
+interface SignalStat {
+  signal: string;
+  timesTriggered: number;
+  actioned: number;
+  cleared: number;
+  precision: number | null;
+}
+
+function SignalAccuracyPanel() {
+  const { data: stats = [], isLoading } = useQuery<SignalStat[]>({
+    queryKey: ["/api/admin/risk-cases/signal-stats"],
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return <div className="h-24 bg-zinc-50 rounded-[1.5rem] animate-pulse" />;
+  if (!stats.length) return null;
+
+  return (
+    <div className="bg-white border-[1.5px] border-[#111]/10 rounded-[1.5rem] p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <ShieldQuestion size={16} className="text-zinc-400" />
+        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+          Signal Accuracy — from resolved cases
+        </p>
+      </div>
+      <p className="text-[10px] text-zinc-400 leading-snug">
+        Precision = share of cases where this signal fired that were confirmed as fraud (Actioned) rather than dismissed (Cleared). Low precision means the signal is mostly noise.
+      </p>
+      <div className="space-y-2">
+        {stats.map((s) => (
+          <div key={s.signal} className="flex items-center gap-3">
+            <div className="w-40 shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-zinc-700">
+              {SIGNAL_ICONS[s.signal] ?? <Activity size={14} />}
+              <span className="truncate">{s.signal}</span>
+            </div>
+            <div className="flex-1 h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full",
+                  (s.precision ?? 0) >= 66 ? "bg-emerald-500" : (s.precision ?? 0) >= 33 ? "bg-amber-400" : "bg-red-400"
+                )}
+                style={{ width: `${s.precision ?? 0}%` }}
+              />
+            </div>
+            <span className="w-14 shrink-0 text-right text-[10px] font-black tabular-nums text-zinc-500">
+              {s.precision === null ? "—" : `${s.precision}%`}
+            </span>
+            <span className="w-20 shrink-0 text-right text-[9px] font-bold text-zinc-300 uppercase tracking-widest">
+              {s.timesTriggered} cases
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -497,6 +591,9 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
           {scanMutation.isPending ? "Scanning…" : "Run Risk Scan"}
         </Button>
       </div>
+
+      {/* Signal Accuracy (Feedback Loop) */}
+      <SignalAccuracyPanel />
 
       {/* Severity Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

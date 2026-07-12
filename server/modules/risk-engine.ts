@@ -20,6 +20,8 @@ import {
   earnings,
   withdrawals,
   commissionLogs,
+  taskRecords,
+  scoreHistory,
   type RiskCase,
 } from "@shared/schema";
 import { eq, and, sql, desc, gte, inArray } from "drizzle-orm";
@@ -50,7 +52,7 @@ export function toSeverity(score: number): "Low" | "Medium" | "High" | "Critical
 
 // ─── Signal computers (each returns 0–max_weight) ───────────────────────────
 
-/** Signal 1 — Earnings Velocity (max 30 pts)
+/** Signal 1 — Earnings Velocity (max 25 pts)
  *  Earnings in the last 24 h relative to the configurable threshold.
  */
 async function signalEarningsVelocity(userId: string): Promise<RiskSignal> {
@@ -61,7 +63,7 @@ async function signalEarningsVelocity(userId: string): Promise<RiskSignal> {
     .from(earnings)
     .where(and(eq(earnings.userId, userId), gte(earnings.createdAt, since)));
   const earned24h = parseFloat(row?.total ?? "0");
-  const score = Math.min(30, (earned24h / Math.max(1, threshold)) * 30);
+  const score = Math.min(25, (earned24h / Math.max(1, threshold)) * 25);
   return {
     name: "Earnings Velocity",
     score: Math.round(score),
@@ -69,7 +71,7 @@ async function signalEarningsVelocity(userId: string): Promise<RiskSignal> {
   };
 }
 
-/** Signal 2 — Bot Network Pattern (max 25 pts)
+/** Signal 2 — Bot Network Pattern (max 20 pts)
  *  High referral count paired with very low per-referral earnings suggests
  *  a purchased / bot referral network.
  */
@@ -82,7 +84,7 @@ async function signalBotNetwork(
   const earningsPerRef = totalEarnings / referralCount;
   const threshold = await storage.getSystemConfigValue<number>("RISK_BOT_EARNINGS_PER_REF", 100);
   const score = earningsPerRef < threshold
-    ? Math.min(25, ((threshold - earningsPerRef) / threshold) * 25)
+    ? Math.min(20, ((threshold - earningsPerRef) / threshold) * 20)
     : 0;
   return {
     name: "Bot Network",
@@ -91,7 +93,7 @@ async function signalBotNetwork(
   };
 }
 
-/** Signal 3 — Device Fingerprint Clustering (max 20 pts)
+/** Signal 3 — Device Fingerprint Clustering (max 15 pts)
  *  Multiple accounts sharing the same device fingerprint indicate
  *  one person operating multiple accounts.
  */
@@ -115,7 +117,7 @@ async function signalDeviceClustering(userId: string): Promise<RiskSignal> {
     );
 
   const sharedCount = Number(row?.cnt ?? 0);
-  const score = Math.min(20, sharedCount * 5);
+  const score = Math.min(15, sharedCount * 4);
   return {
     name: "Device Clustering",
     score: Math.round(score),
@@ -126,7 +128,7 @@ async function signalDeviceClustering(userId: string): Promise<RiskSignal> {
   };
 }
 
-/** Signal 4 — Referral Chain Linearity (max 15 pts)
+/** Signal 4 — Referral Chain Linearity (max 12 pts)
  *  When every L1 referral has exactly one more referral themselves,
  *  it looks like a fabricated chain, not organic growth.
  */
@@ -152,11 +154,95 @@ async function signalChainLinearity(userId: string, referralCount: number): Prom
 
   const narrowCount = narrowRefs.filter((r) => Number(r.cnt) === 1).length;
   const ratio = narrowCount / l1.length;
-  const score = ratio > 0.7 ? Math.min(15, ratio * 15) : 0;
+  const score = ratio > 0.7 ? Math.min(12, ratio * 12) : 0;
   return {
     name: "Chain Linearity",
     score: Math.round(score),
     detail: `${Math.round(ratio * 100)}% of L1 referrals have exactly one sub-referral (linear chain pattern).`,
+  };
+}
+
+/** Signal 6 — Circular / Self-Referral Pattern (max 8 pts)
+ *  Two independent checks: (a) a genuine cycle in the referredBy parent
+ *  chain (data-integrity fraud — a user effectively refers their own
+ *  upline), and (b) a direct referral who shares a device fingerprint
+ *  with the referrer (self-funded alt account farming a signup bonus).
+ */
+async function signalCircularReferral(userId: string): Promise<RiskSignal> {
+  // (a) Walk the referredBy chain looking for a cycle back to the user.
+  let cycleFound = false;
+  let cursor: string | null | undefined = userId;
+  for (let hop = 0; hop < 25 && cursor; hop++) {
+    const [parent] = await db
+      .select({ referredBy: users.referredBy })
+      .from(users)
+      .where(eq(users.id, cursor));
+    cursor = parent?.referredBy;
+    if (cursor === userId) {
+      cycleFound = true;
+      break;
+    }
+  }
+
+  // (b) Direct referrals sharing a device fingerprint with this user.
+  const userFPs = await db
+    .select({ hash: deviceFingerprints.fingerprintHash })
+    .from(deviceFingerprints)
+    .where(eq(deviceFingerprints.userId, userId));
+
+  let selfFundedRefs = 0;
+  if (userFPs.length) {
+    const hashes = userFPs.map((f) => f.hash);
+    const [row] = await db
+      .select({ cnt: sql<number>`COUNT(DISTINCT ${users.id})` })
+      .from(users)
+      .innerJoin(deviceFingerprints, eq(deviceFingerprints.userId, users.id))
+      .where(and(eq(users.referredBy, userId), inArray(deviceFingerprints.fingerprintHash, hashes)));
+    selfFundedRefs = Number(row?.cnt ?? 0);
+  }
+
+  const score = (cycleFound ? 4 : 0) + Math.min(4, selfFundedRefs * 4);
+  const parts: string[] = [];
+  if (cycleFound) parts.push("referredBy chain cycles back to this account");
+  if (selfFundedRefs > 0) parts.push(`${selfFundedRefs} direct referral(s) share this account's device`);
+  return {
+    name: "Circular Referral",
+    score: Math.round(score),
+    detail: parts.length ? parts.join("; ") : "No circular or self-funded referral pattern detected.",
+  };
+}
+
+/** Signal 7 — Task Completion Speed (max 10 pts)
+ *  Daily tasks require visiting an external URL and following
+ *  instructions before completion. Repeated completions within
+ *  a couple of seconds of being clicked are not physically plausible.
+ */
+async function signalTaskCompletionSpeed(userId: string): Promise<RiskSignal> {
+  const recent = await db
+    .select({ clickedAt: taskRecords.clickedAt, completedAt: taskRecords.completedAt })
+    .from(taskRecords)
+    .where(and(eq(taskRecords.userId, userId), gte(taskRecords.completedAt, new Date(Date.now() - 14 * 86_400_000))))
+    .orderBy(desc(taskRecords.completedAt))
+    .limit(30);
+
+  const timed = recent.filter((r) => r.clickedAt && r.completedAt);
+  if (!timed.length) return { name: "Task Completion Speed", score: 0, detail: "No timed task completions to evaluate." };
+
+  const threshold = await storage.getSystemConfigValue<number>("RISK_TASK_SPEED_SECONDS", 3);
+  const tooFast = timed.filter((r) => {
+    const seconds = (new Date(r.completedAt!).getTime() - new Date(r.clickedAt!).getTime()) / 1000;
+    return seconds < threshold;
+  });
+
+  const ratio = tooFast.length / timed.length;
+  const score = ratio > 0.3 ? Math.min(10, ratio * 10) : 0;
+  return {
+    name: "Task Completion Speed",
+    score: Math.round(score),
+    detail:
+      tooFast.length > 0
+        ? `${tooFast.length}/${timed.length} recent tasks completed in under ${threshold}s (physically implausible).`
+        : "Task completion timing appears normal.",
   };
 }
 
@@ -209,6 +295,8 @@ export async function scoreUser(userId: string): Promise<RiskResult> {
     signalDeviceClustering(userId),
     signalChainLinearity(userId, referralCount),
     signalCashoutVelocity(userId),
+    signalCircularReferral(userId),
+    signalTaskCompletionSpeed(userId),
   ]);
 
   const riskScore = Math.min(100, signals.reduce((sum, s) => sum + s.score, 0));
@@ -245,6 +333,7 @@ export async function upsertRiskCase(result: RiskResult): Promise<RiskCase> {
       })
       .where(eq(riskCases.userId, result.userId))
       .returning();
+    await backfillLatestRiskScore(result.userId, result.riskScore);
     return updated;
   } else {
     const [created] = await db
@@ -259,7 +348,28 @@ export async function upsertRiskCase(result: RiskResult): Promise<RiskCase> {
         updatedAt: now,
       })
       .returning();
+    await backfillLatestRiskScore(result.userId, result.riskScore);
     return created;
+  }
+}
+
+/** Stamps the freshly computed risk score onto the user's most recent
+ *  score_history snapshot, so the Performance Score Trend chart reflects
+ *  real risk data instead of the "0" placeholder written at snapshot time.
+ */
+async function backfillLatestRiskScore(userId: string, riskScore: number): Promise<void> {
+  try {
+    const [latest] = await db
+      .select({ id: scoreHistory.id })
+      .from(scoreHistory)
+      .where(eq(scoreHistory.userId, userId))
+      .orderBy(desc(scoreHistory.snapshotAt))
+      .limit(1);
+    if (latest) {
+      await db.update(scoreHistory).set({ riskScore: riskScore.toFixed(2) }).where(eq(scoreHistory.id, latest.id));
+    }
+  } catch (err) {
+    console.error(`[RiskEngine] Failed to backfill score_history for ${userId}:`, err);
   }
 }
 

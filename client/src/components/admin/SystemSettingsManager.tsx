@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save, Settings, DollarSign, Network, Trash2, Plus, ArrowUp, ArrowDown } from "lucide-react";
+import { Save, Settings, DollarSign, Network, Trash2, Plus, ArrowUp, ArrowDown, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AdNetwork {
@@ -23,6 +23,21 @@ export function SystemSettingsManager() {
   
   // Fetch specific configuration keys
   const configKeys = ["MIN_PAYOUT", "SYSTEM_FEE", "L1_BONUS", "L2_BONUS", "AD_NETWORKS", "CPA_NETWORKS"];
+
+  // Admin-tunable Performance Score weights and Risk Engine thresholds.
+  // Defaults here must match the fallback defaults read server-side
+  // (server/storage.ts refreshLeaderboardCache, server/modules/risk-engine.ts)
+  // so an unset key shows the value actually in effect.
+  const RISK_CONFIG_DEFAULTS: Record<string, number> = {
+    SCORE_WEIGHT_EARNINGS: 0.40,
+    SCORE_WEIGHT_TEAM: 0.30,
+    SCORE_WEIGHT_ACTIVE: 0.15,
+    SCORE_WEIGHT_HEALTH: 0.15,
+    SCORE_COHORT_DISCOUNT_DAYS: 14,
+    RISK_VELOCITY_THRESHOLD: 5000,
+    RISK_BOT_EARNINGS_PER_REF: 100,
+    RISK_TASK_SPEED_SECONDS: 3,
+  };
   
   const { data: dbConfigs, isLoading } = useQuery<{ key: string; value: any }[]>({
     queryKey: ["/api/admin/config/bulk"],
@@ -202,18 +217,88 @@ export function SystemSettingsManager() {
           />
         </div>
 
+        {/* Risk & Scoring Weights - Full Width */}
+        <div className="lg:col-span-2">
+          <RiskWeightsSection
+            localConfigs={localConfigs}
+            defaults={RISK_CONFIG_DEFAULTS}
+            updateValue={updateValue}
+            handleSave={handleSave}
+            saveMutation={saveMutation}
+          />
+        </div>
+
       </div>
     </div>
   );
 }
 
-function EconomicControl({ label, value, onChange, onSave, isLoading }: any) {
+function RiskWeightsSection({ localConfigs, defaults, updateValue, handleSave, saveMutation }: any) {
+  const val = (key: string) => localConfigs[key] ?? defaults[key];
+  const weightKeys = ["SCORE_WEIGHT_EARNINGS", "SCORE_WEIGHT_TEAM", "SCORE_WEIGHT_ACTIVE", "SCORE_WEIGHT_HEALTH"];
+  const weightSum = weightKeys.reduce((sum, k) => sum + (parseFloat(val(k)) || 0), 0);
+  const weightsOff = Math.abs(weightSum - 1) > 0.001;
+
+  return (
+    <div className="bg-background border-[1.5px] border-[#111] rounded-[2rem] p-8 overflow-hidden shadow-sm hover:shadow-md transition-shadow relative group">
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-10 h-10 bg-white border-[1.5px] border-[#111]/20 flex items-center justify-center rounded-full shadow-sm group-hover:border-primary transition-colors">
+          <ShieldAlert className="w-5 h-5 text-zinc-500 group-hover:text-primary transition-colors" />
+        </div>
+        <div>
+          <h3 className="font-black text-xl uppercase text-[#111] tracking-tight">Performance & Risk Scoring</h3>
+          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-tight">
+            Retune fraud detection without a deploy — every change is audit-logged
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-8">
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Performance Score Weights</p>
+            <span className={cn("text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full", weightsOff ? "bg-red-50 text-red-600 border border-red-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200")}>
+              Sum: {weightSum.toFixed(2)} {weightsOff ? "(should be 1.00)" : "✓"}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <EconomicControl label="Earnings Weight" value={val("SCORE_WEIGHT_EARNINGS")} onChange={(v: number) => updateValue("SCORE_WEIGHT_EARNINGS", v)} onSave={() => handleSave("SCORE_WEIGHT_EARNINGS")} isLoading={saveMutation.isPending && saveMutation.variables?.key === "SCORE_WEIGHT_EARNINGS"} step="0.05" />
+            <EconomicControl label="Team Weight" value={val("SCORE_WEIGHT_TEAM")} onChange={(v: number) => updateValue("SCORE_WEIGHT_TEAM", v)} onSave={() => handleSave("SCORE_WEIGHT_TEAM")} isLoading={saveMutation.isPending && saveMutation.variables?.key === "SCORE_WEIGHT_TEAM"} step="0.05" />
+            <EconomicControl label="Activity Weight" value={val("SCORE_WEIGHT_ACTIVE")} onChange={(v: number) => updateValue("SCORE_WEIGHT_ACTIVE", v)} onSave={() => handleSave("SCORE_WEIGHT_ACTIVE")} isLoading={saveMutation.isPending && saveMutation.variables?.key === "SCORE_WEIGHT_ACTIVE"} step="0.05" />
+            <EconomicControl label="Health Weight" value={val("SCORE_WEIGHT_HEALTH")} onChange={(v: number) => updateValue("SCORE_WEIGHT_HEALTH", v)} onSave={() => handleSave("SCORE_WEIGHT_HEALTH")} isLoading={saveMutation.isPending && saveMutation.variables?.key === "SCORE_WEIGHT_HEALTH"} step="0.05" />
+          </div>
+          <p className="text-[9px] font-bold text-zinc-400 mt-3 uppercase tracking-widest">Weights should sum to 1.00. Takes effect on the next leaderboard recompute.</p>
+        </div>
+
+        <div>
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Risk Engine Thresholds</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <EconomicControl label="Earnings Velocity Threshold (PKR/24h)" value={val("RISK_VELOCITY_THRESHOLD")} onChange={(v: number) => updateValue("RISK_VELOCITY_THRESHOLD", v)} onSave={() => handleSave("RISK_VELOCITY_THRESHOLD")} isLoading={saveMutation.isPending && saveMutation.variables?.key === "RISK_VELOCITY_THRESHOLD"} />
+            <EconomicControl label="Bot Network Earnings/Ref (PKR)" value={val("RISK_BOT_EARNINGS_PER_REF")} onChange={(v: number) => updateValue("RISK_BOT_EARNINGS_PER_REF", v)} onSave={() => handleSave("RISK_BOT_EARNINGS_PER_REF")} isLoading={saveMutation.isPending && saveMutation.variables?.key === "RISK_BOT_EARNINGS_PER_REF"} />
+            <EconomicControl label="Implausible Task Speed (seconds)" value={val("RISK_TASK_SPEED_SECONDS")} onChange={(v: number) => updateValue("RISK_TASK_SPEED_SECONDS", v)} onSave={() => handleSave("RISK_TASK_SPEED_SECONDS")} isLoading={saveMutation.isPending && saveMutation.variables?.key === "RISK_TASK_SPEED_SECONDS"} />
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Cohort Discount</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <EconomicControl label="New Account Grace Period (days)" value={val("SCORE_COHORT_DISCOUNT_DAYS")} onChange={(v: number) => updateValue("SCORE_COHORT_DISCOUNT_DAYS", v)} onSave={() => handleSave("SCORE_COHORT_DISCOUNT_DAYS")} isLoading={saveMutation.isPending && saveMutation.variables?.key === "SCORE_COHORT_DISCOUNT_DAYS"} />
+          </div>
+          <p className="text-[9px] font-bold text-zinc-400 mt-3 uppercase tracking-widest">Accounts younger than this get a 30% Health Score discount to prevent day-1 gaming.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EconomicControl({ label, value, onChange, onSave, isLoading, step }: any) {
   return (
     <div className="space-y-2">
       <TechnicalLabel text={label} className="text-[#111]/50 font-black text-[9px] uppercase tracking-widest pl-1" />
       <div className="flex gap-3">
         <Input 
           type="number"
+          step={step ?? 1}
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
           className="flex-1 h-10 bg-white border-[1.5px] border-[#111] rounded-full focus-visible:ring-primary shadow-sm font-bold text-sm text-[#111]"
