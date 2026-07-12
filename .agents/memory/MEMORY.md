@@ -4,3 +4,4 @@
 - [Realtime WS Sync](realtime-ws-sync.md) — WS auth reuses the express-session middleware on the httpServer upgrade event; cross-user broadcast fanout must be permission-scoped, not role-boolean.
 - [Rank color standardization](rank-color-standardization.md) — all ranks must use the same silver/zinc frame; canonical rank names are "Nawa Aya/Chota Don/Bawa Ji/Haji Sab/Chacha Supreme" (renamed from Baja Ji/Supreme Chacha; watch for mismatched hardcoded strings).
 - [Dual validation guards](dual-validation-guards.md) — routes with a manual required-field check plus a separate zod schema must be updated together; relaxing only the schema leaves the manual truthy-check rejecting valid empty-string values.
+- [Risk Scoring System](risk-scoring-system.md) — 5-signal engine in `server/modules/risk-engine.ts`; persistent cases in `risk_cases` table (unique per user); score snapshots in `score_history`; db:push needs raw SQL in non-TTY env (use executeSql instead).

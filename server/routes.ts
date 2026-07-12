@@ -3475,6 +3475,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Risk Case Management API ──────────────────────────────────────────────
+
+  app.get("/api/admin/risk-cases", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
+    try {
+      const { severity, status, search, limit = "50", offset = "0" } = req.query as Record<string, string>;
+      const result = await storage.listRiskCases({
+        severity: severity || undefined,
+        status: status || undefined,
+        search: search || undefined,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+      });
+      res.json(result);
+    } catch (err) {
+      console.error("[RiskCases] listRiskCases error:", err);
+      res.status(500).json({ message: "Failed to load risk cases" });
+    }
+  });
+
+  app.get("/api/admin/risk-cases/:id", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
+    try {
+      const riskCase = await storage.getRiskCase(req.params.id);
+      if (!riskCase) return res.status(404).json({ message: "Case not found" });
+      res.json(riskCase);
+    } catch (err) {
+      console.error("[RiskCases] getRiskCase error:", err);
+      res.status(500).json({ message: "Failed to load case" });
+    }
+  });
+
+  app.patch("/api/admin/risk-cases/:id", requirePermission("MANAGE_USERS"), async (req, res) => {
+    try {
+      const { status, assignedTo, notes, resolution } = req.body;
+      const adminId = getThorxPrincipalId(req);
+      const updates: any = { notes, assignedTo: assignedTo ?? undefined };
+      if (status) {
+        updates.status = status;
+        if (status === "Cleared" || status === "Actioned") {
+          updates.resolvedBy = adminId;
+          updates.resolvedAt = new Date();
+          updates.resolution = resolution || `${status} by admin`;
+        }
+      }
+      const updated = await storage.updateRiskCase(req.params.id, updates);
+      res.json(updated);
+    } catch (err) {
+      console.error("[RiskCases] updateRiskCase error:", err);
+      res.status(500).json({ message: "Failed to update case" });
+    }
+  });
+
+  app.post("/api/admin/risk-scan", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
+    try {
+      const { runFullRiskScan } = await import("./modules/risk-engine");
+      const result = await runFullRiskScan({ broadcastAlerts: true });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error("[RiskCases] runFullRiskScan error:", err);
+      res.status(500).json({ message: "Risk scan failed" });
+    }
+  });
+
+  app.get("/api/admin/risk-cases/user/:userId/score-history", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
+    try {
+      const history = await storage.getScoreHistory(req.params.userId, 30);
+      res.json(history);
+    } catch (err) {
+      console.error("[RiskCases] getScoreHistory error:", err);
+      res.status(500).json({ message: "Failed to load score history" });
+    }
+  });
+
   const httpServer = createServer(app);
   initRealtime(httpServer, session(sessionConfig));
   return httpServer;

@@ -465,6 +465,51 @@ export const notifications = pgTable("notifications", {
   index("notifications_created_at_idx").on(table.createdAt),
 ]);
 
+// Risk cases — persistent case management for flagged accounts
+export const riskCases = pgTable("risk_cases", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  riskScore: decimal("risk_score", { precision: 5, scale: 2 }).notNull().default("0"),
+  severity: text("severity").notNull().default("Low"), // Low | Medium | High | Critical
+  status: text("status").notNull().default("Open"),    // Open | Investigating | Cleared | Actioned
+  signals: jsonb("signals").notNull().default(sql`'[]'::jsonb`), // [{name, score, detail}]
+  assignedTo: varchar("assigned_to").references(() => users.id, { onDelete: "set null" }),
+  notes: text("notes"),
+  resolvedBy: varchar("resolved_by").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at"),
+  resolution: text("resolution"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("risk_cases_user_id_idx").on(table.userId),
+  index("risk_cases_severity_idx").on(table.severity),
+  index("risk_cases_status_idx").on(table.status),
+  index("risk_cases_created_at_idx").on(table.createdAt),
+  sql`CONSTRAINT risk_cases_user_id_unique UNIQUE (user_id)`,
+]);
+
+export type RiskCase = typeof riskCases.$inferSelect;
+export type InsertRiskCase = typeof riskCases.$inferInsert;
+
+// Score history — snapshot on each leaderboard recompute for trend detection
+export const scoreHistory = pgTable("score_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  performanceScore: decimal("performance_score", { precision: 10, scale: 2 }).notNull(),
+  riskScore: decimal("risk_score", { precision: 5, scale: 2 }).notNull().default("0"),
+  earningsScore: decimal("earnings_score", { precision: 10, scale: 2 }).notNull(),
+  teamScore: decimal("team_score", { precision: 10, scale: 2 }).notNull(),
+  activeScore: decimal("active_score", { precision: 10, scale: 2 }).notNull(),
+  healthScore: decimal("health_score", { precision: 10, scale: 2 }).notNull(),
+  snapshotAt: timestamp("snapshot_at").defaultNow(),
+}, (table) => [
+  index("score_history_user_id_idx").on(table.userId),
+  index("score_history_snapshot_at_idx").on(table.snapshotAt),
+]);
+
+export type ScoreHistory = typeof scoreHistory.$inferSelect;
+export type InsertScoreHistory = typeof scoreHistory.$inferInsert;
+
 // Define relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   earnings: many(earnings),

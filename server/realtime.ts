@@ -96,3 +96,21 @@ export function broadcastTeamRefresh(reason?: string) {
     if (meta.canSeeUserActivity) send(ws, payload);
   });
 }
+
+/**
+ * Push a real-time risk alert to all admin/founder/authorized team sessions.
+ * Only emitted for High and Critical severity cases so the UI badge can pulse.
+ */
+export function broadcastRiskAlert(data: {
+  caseId: string;
+  userId: string;
+  userName: string;
+  riskScore: number;
+  severity: string;
+  signals: { name: string; score: number; detail: string }[];
+}) {
+  const payload = { type: "risk:alert", ...data, at: Date.now() };
+  sockets.forEach((meta, ws) => {
+    if (meta.canSeeUserActivity) send(ws, payload);
+  });
+}

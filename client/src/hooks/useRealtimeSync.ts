@@ -94,6 +94,20 @@ export function useRealtimeSync(user: User | null) {
             });
           }
         }
+
+        if (msg.type === "risk:alert") {
+          const ra = msg as any;
+          queryClient.invalidateQueries({
+            predicate: (q) => typeof q.queryKey[0] === "string" && (q.queryKey[0] as string).startsWith("/api/admin/risk-cases"),
+          });
+          if (ra.severity === "Critical" || ra.severity === "High") {
+            toast({
+              title: `⚠️ ${ra.severity} Risk — ${ra.userName}`,
+              description: `Risk score ${Math.round(ra.riskScore)}/100 · ${ra.signals?.length ?? 0} signals triggered.`,
+              variant: ra.severity === "Critical" ? "destructive" : undefined,
+            });
+          }
+        }
       };
 
       ws.onclose = () => {

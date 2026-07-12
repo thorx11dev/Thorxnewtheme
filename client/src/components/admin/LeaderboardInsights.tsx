@@ -19,7 +19,8 @@ import {
   RefreshCw,
   ServerCrash,
   TrendingUp,
-  Wallet
+  Wallet,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { UserInspectorPanel } from "./UserInspectorPanel";
+import { RiskWatchlistPanel } from "./RiskWatchlistPanel";
 
 interface LeaderboardData {
   globalRanking: any[];
@@ -266,8 +268,9 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
             <TabsTrigger value="referrers" className="rounded-full px-5 py-2 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-[#111] data-[state=active]:text-white transition-all">
               Top Recruiters
             </TabsTrigger>
-            <TabsTrigger value="watchlist" className="rounded-full px-5 py-2 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-[#111] data-[state=active]:text-white transition-all">
-              Watchlist {(insights?.anomalies?.length || 0) > 0 && `(${insights?.anomalies?.length})`}
+            <TabsTrigger value="watchlist" className="rounded-full px-5 py-2 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-[#111] data-[state=active]:text-white transition-all flex items-center gap-1.5">
+              <ShieldAlert size={11} />
+              Risk Watchlist
             </TabsTrigger>
           </TabsList>
 
@@ -546,97 +549,9 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
           </div>
         </TabsContent>
 
-        {/* Watchlist Tab */}
+        {/* Risk Watchlist Tab — powered by persistent case management engine */}
         <TabsContent value="watchlist" className="mt-4">
-          {(insights?.anomalies?.length || 0) === 0 && !isLoading ? (
-            <div className="bg-green-50 border-[1.5px] border-green-200 rounded-[2rem] p-16 flex flex-col items-center justify-center text-center space-y-3">
-              <ShieldCheck className="w-10 h-10 text-green-400" />
-              <p className="font-black text-sm uppercase tracking-widest text-green-600">All Clear</p>
-              <p className="text-[10px] text-green-400 font-bold uppercase tracking-widest">
-                No suspicious accounts found at this time.
-              </p>
-            </div>
-          ) : (
-            <div className="bg-background border-[1.5px] border-[#111] rounded-[2rem] overflow-hidden shadow-sm">
-              <div className="p-5 border-b-[1.5px] border-[#111]/10 flex items-center gap-3">
-                <AlertTriangle size={16} className="text-amber-500" />
-                <span className="font-black text-[10px] uppercase tracking-widest text-zinc-600">
-                  Accounts flagged for unusual activity
-                </span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-white/50 border-b-[1.5px] border-[#111]/10">
-                      <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Member</th>
-                      <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Total Earned</th>
-                      <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Referrals</th>
-                      <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Days Active</th>
-                      <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Flag Reason</th>
-                      <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase text-right">View</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y-[1.5px] divide-[#111]/10">
-                    {isLoading
-                      ? Array.from({ length: 3 }).map((_, i) => (
-                          <tr key={i}>
-                            {Array.from({ length: 6 }).map((_, j) => (
-                              <td key={j} className="p-5"><Skeleton className="h-4 w-full rounded-full" /></td>
-                            ))}
-                          </tr>
-                        ))
-                      : (insights?.anomalies || []).map((user: any) => (
-                          <tr key={user.id} className="hover:bg-amber-50/50 transition-colors">
-                            <td className="p-5">
-                              <div className="flex items-center gap-3">
-                                <UserAvatar user={user} size={10} />
-                                <div>
-                                  <div className="font-black text-sm uppercase text-[#111] tracking-tight">
-                                    {user.firstName} {user.lastName}
-                                  </div>
-                                  <div className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">{user.email}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-5">
-                              <span className="font-black text-sm tabular-nums text-[#111]">
-                                PKR {parseFloat(user.totalEarnings || "0").toLocaleString()}
-                              </span>
-                            </td>
-                            <td className="p-5">
-                              <span className="font-black text-sm tabular-nums text-[#111]">
-                                {user.referralCount || 0}
-                              </span>
-                            </td>
-                            <td className="p-5">
-                              <span className="font-black text-sm tabular-nums text-[#111]">
-                                {user.daysActive || "—"}
-                              </span>
-                            </td>
-                            <td className="p-5">
-                              <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-50 border-[1px] border-amber-200 rounded-full font-black text-[8px] tracking-widest uppercase text-amber-700">
-                                <AlertTriangle size={8} />
-                                {user.reason || "Unusual Activity"}
-                              </span>
-                            </td>
-                            <td className="p-5 text-right">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-9 w-9 border-[1.5px] border-[#111]/20 hover:border-[#111] hover:bg-black/5 rounded-full transition-all text-zinc-400 hover:text-[#111]"
-                                onClick={() => { setSelectedUser(user); setIsInspectorOpen(true); }}
-                              >
-                                <Eye size={14} />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          <RiskWatchlistPanel onViewUserInCRM={onViewUserInCRM} />
         </TabsContent>
       </Tabs>
 

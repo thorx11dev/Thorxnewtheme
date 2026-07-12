@@ -70,6 +70,12 @@ import {
   deviceFingerprints,
   type DeviceFingerprint,
   type InsertDeviceFingerprint,
+  riskCases,
+  type RiskCase,
+  type InsertRiskCase,
+  scoreHistory,
+  type ScoreHistory,
+  type InsertScoreHistory,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, inArray, ilike, gte, lte } from "drizzle-orm";
@@ -278,6 +284,28 @@ export interface IStorage {
   getAccountCountByFingerprint(fingerprintHash: string): Promise<number>;
   updateDeviceFingerprintLastSeen(userId: string, fingerprintHash: string): Promise<void>;
   markUserEmailVerified(userId: string): Promise<void>;
+
+  // Risk Case Management
+  listRiskCases(filters?: {
+    severity?: string;
+    status?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ cases: Array<RiskCase & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email' | 'avatar' | 'rank' | 'profilePicture'> }>; total: number }>;
+  getRiskCase(id: string): Promise<(RiskCase & { user: User }) | undefined>;
+  updateRiskCase(id: string, updates: {
+    status?: string;
+    assignedTo?: string | null;
+    notes?: string;
+    resolvedBy?: string;
+    resolvedAt?: Date;
+    resolution?: string;
+  }): Promise<RiskCase>;
+
+  // Score History
+  saveScoreHistory(entry: InsertScoreHistory): Promise<ScoreHistory>;
+  getScoreHistory(userId: string, limit?: number): Promise<ScoreHistory[]>;
 }
 
 const RANKS = [
@@ -2027,13 +2055,18 @@ export class DatabaseStorage implements IStorage {
 
   async refreshLeaderboardCache(): Promise<void> {
     const now = new Date();
-    
+
+    // Load admin-tunable weights from system config (defaults match original formula)
+    const wEarnings = await this.getSystemConfigValue<number>("SCORE_WEIGHT_EARNINGS", 0.40);
+    const wTeam     = await this.getSystemConfigValue<number>("SCORE_WEIGHT_TEAM",     0.30);
+    const wActive   = await this.getSystemConfigValue<number>("SCORE_WEIGHT_ACTIVE",   0.15);
+    const wHealth   = await this.getSystemConfigValue<number>("SCORE_WEIGHT_HEALTH",   0.15);
+    const cohortDiscountDays = await this.getSystemConfigValue<number>("SCORE_COHORT_DISCOUNT_DAYS", 14);
+
     // Clear existing cache for current period
     await db.delete(leaderboardCache);
 
-    // Fetch all qualified users and calculate scores
-    // Note: In extremely large environments, this would be a single SQL insert statement
-    // For this implementation, we recompute in-memory with SQL-helper logic
+    // Fetch all qualified users (real members only — team/admin/founder excluded)
     const allQualifiedUsers = await db.select({
       id: users.id,
       totalEarnings: users.totalEarnings,
@@ -2044,32 +2077,54 @@ export class DatabaseStorage implements IStorage {
       level2Count: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 JOIN users u3 ON u3.referred_by = u2.id WHERE u2.referred_by = users.id), 0) AS INTEGER)`
     })
     .from(users)
-    // Real members only — team/admin/founder accounts must never appear on the Leaderboard.
     .where(and(eq(users.isActive, true), eq(users.role, "user")));
 
     if (!allQualifiedUsers.length) return;
 
-    const maxEarnings = Math.max(...allQualifiedUsers.map(u => parseFloat(u.totalEarnings || "0")), 1);
-    const maxReferrals = Math.max(...allQualifiedUsers.map(u => u.referralCount), 1);
+    // Pre-sort arrays for percentile normalization (O(n log n) once each)
+    const earningsSorted = [...allQualifiedUsers]
+      .map(u => parseFloat(u.totalEarnings || "0"))
+      .sort((a, b) => a - b);
+    const referralsSorted = [...allQualifiedUsers]
+      .map(u => u.referralCount)
+      .sort((a, b) => a - b);
+
+    function percentileRank(sortedArr: number[], value: number): number {
+      let lo = 0;
+      for (let i = 0; i < sortedArr.length; i++) {
+        if (sortedArr[i] <= value) lo = i + 1;
+        else break;
+      }
+      return (lo / sortedArr.length) * 100;
+    }
 
     const scoredUsers = allQualifiedUsers.map(u => {
       const accountAgeDays = Math.max(1, (now.getTime() - new Date(u.createdAt!).getTime()) / 86400000);
-      
-      // 1. Earnings Score (0-100) - Normalized platform revenue contribution
-      const earningsScore = (parseFloat(u.totalEarnings || "0") / maxEarnings) * 100;
-      
-      // 2. Team Score (0-100) - Referral network depth contribution
-      const teamScore = (u.referralCount / maxReferrals) * 100;
-      
-      // 3. Active Score (0-100) - Consistency (%)
-      const daysSinceLogin = Math.max(0, (now.getTime() - new Date(u.lastLoginDate || u.createdAt!).getTime()) / 86400000);
-      const activeScore = Math.max(0, 100 - (daysSinceLogin * 5)); // Decays every day inactive
-      
-      // 4. Health Score (0-100) - Identity Verification & Account Integrity
-      const healthScore = (u.isVerified ? 60 : 20) + (accountAgeDays > 30 ? 40 : (accountAgeDays / 30) * 40);
+      const earned = parseFloat(u.totalEarnings || "0");
 
-      // Composite Weighted Performance (Earnings 40, Team 30, Active 15, Health 15)
-      const performanceScore = (earningsScore * 0.4) + (teamScore * 0.3) + (activeScore * 0.15) + (healthScore * 0.15);
+      // 1. Earnings Score (0-100) — percentile rank among all qualified users
+      const earningsScore = percentileRank(earningsSorted, earned);
+
+      // 2. Team Score (0-100) — percentile rank by referral count
+      const teamScore = percentileRank(referralsSorted, u.referralCount);
+
+      // 3. Active Score (0-100) — decay by days since last login
+      const daysSinceLogin = Math.max(0, (now.getTime() - new Date(u.lastLoginDate || u.createdAt!).getTime()) / 86400000);
+      const activeScore = Math.max(0, 100 - (daysSinceLogin * 5));
+
+      // 4. Health Score (0-100) — identity + account age
+      //    New accounts (< cohortDiscountDays) get a 30% discount to avoid
+      //    inflated scores from day-1 gamers
+      const baseHealth = (u.isVerified ? 60 : 20) + (accountAgeDays > 30 ? 40 : (accountAgeDays / 30) * 40);
+      const cohortDiscount = accountAgeDays < cohortDiscountDays ? 0.70 : 1.0;
+      const healthScore = baseHealth * cohortDiscount;
+
+      // Composite (admin-tunable weights)
+      const performanceScore =
+        (earningsScore * wEarnings) +
+        (teamScore * wTeam) +
+        (activeScore * wActive) +
+        (healthScore * wHealth);
 
       return {
         userId: u.id,
@@ -2083,23 +2138,35 @@ export class DatabaseStorage implements IStorage {
       };
     });
 
-    // Sort by performance and insert into cache
+    // Sort by performance and assign global rank
     scoredUsers.sort((a, b) => parseFloat(b.performanceScore) - parseFloat(a.performanceScore));
 
-    const cacheEnries = scoredUsers.map((u, index) => ({
+    const cacheEntries = scoredUsers.map((u, index) => ({
       ...u,
       globalRank: index + 1,
       recordedAt: now
     }));
 
-    // Batch insert into cache (drizzle doesn't support massive batching sometimes, so we slice if needed)
-    // Limit to top 10,000 for enterprise performance
-    const topEntries = cacheEnries.slice(0, 10000);
-    
-    // Perform insertions in chunks of 500
-    for(let i = 0; i < topEntries.length; i += 500) {
+    // Batch insert into leaderboard cache (top 10,000 for enterprise performance)
+    const topEntries = cacheEntries.slice(0, 10000);
+    for (let i = 0; i < topEntries.length; i += 500) {
       const chunk = topEntries.slice(i, i + 500);
       await db.insert(leaderboardCache).values(chunk);
+    }
+
+    // Persist score history snapshot (batch of 500 to keep DB writes cheap)
+    for (let i = 0; i < topEntries.length; i += 500) {
+      const chunk = topEntries.slice(i, i + 500).map(u => ({
+        userId: u.userId,
+        performanceScore: u.performanceScore,
+        riskScore: "0",
+        earningsScore: u.earningsScore,
+        teamScore: u.teamScore,
+        activeScore: u.activeScore,
+        healthScore: u.healthScore,
+        snapshotAt: now,
+      }));
+      await db.insert(scoreHistory).values(chunk);
     }
   }
 
@@ -2662,6 +2729,108 @@ export class DatabaseStorage implements IStorage {
       .set({ isVerified: true, emailVerifiedAt: new Date() })
       .where(eq(users.id, userId));
   }
+
+  // ─── Risk Case Management ──────────────────────────────────────────────────
+
+  async listRiskCases(filters?: {
+    severity?: string;
+    status?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ cases: Array<RiskCase & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email' | 'avatar' | 'rank' | 'profilePicture'> }>; total: number }> {
+    const limit = filters?.limit ?? 50;
+    const offset = filters?.offset ?? 0;
+
+    const conditions: any[] = [];
+    if (filters?.severity) conditions.push(eq(riskCases.severity, filters.severity));
+    if (filters?.status) conditions.push(eq(riskCases.status, filters.status));
+    if (filters?.search) {
+      conditions.push(
+        or(
+          ilike(users.firstName, `%${filters.search}%`),
+          ilike(users.lastName, `%${filters.search}%`),
+          ilike(users.email, `%${filters.search}%`)
+        )
+      );
+    }
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const rows = await db
+      .select({
+        riskCase: riskCases,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          avatar: users.avatar,
+          rank: users.rank,
+          profilePicture: users.profilePicture,
+        },
+      })
+      .from(riskCases)
+      .innerJoin(users, eq(riskCases.userId, users.id))
+      .where(where)
+      .orderBy(desc(riskCases.updatedAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [countRow] = await db
+      .select({ cnt: sql<number>`COUNT(*)` })
+      .from(riskCases)
+      .innerJoin(users, eq(riskCases.userId, users.id))
+      .where(where);
+
+    return {
+      cases: rows.map((r) => ({ ...r.riskCase, user: r.user as any })),
+      total: Number(countRow?.cnt ?? 0),
+    };
+  }
+
+  async getRiskCase(id: string): Promise<(RiskCase & { user: User }) | undefined> {
+    const [row] = await db
+      .select({ riskCase: riskCases, user: users })
+      .from(riskCases)
+      .innerJoin(users, eq(riskCases.userId, users.id))
+      .where(eq(riskCases.id, id))
+      .limit(1);
+    if (!row) return undefined;
+    return { ...row.riskCase, user: row.user };
+  }
+
+  async updateRiskCase(id: string, updates: {
+    status?: string;
+    assignedTo?: string | null;
+    notes?: string;
+    resolvedBy?: string;
+    resolvedAt?: Date;
+    resolution?: string;
+  }): Promise<RiskCase> {
+    const [updated] = await db
+      .update(riskCases)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(riskCases.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ─── Score History ─────────────────────────────────────────────────────────
+
+  async saveScoreHistory(entry: InsertScoreHistory): Promise<ScoreHistory> {
+    const [saved] = await db.insert(scoreHistory).values(entry).returning();
+    return saved;
+  }
+
+  async getScoreHistory(userId: string, limit: number = 30): Promise<ScoreHistory[]> {
+    return db
+      .select()
+      .from(scoreHistory)
+      .where(eq(scoreHistory.userId, userId))
+      .orderBy(desc(scoreHistory.snapshotAt))
+      .limit(limit);
+  }
 }
 
 export class MemStorage {
@@ -2805,6 +2974,15 @@ export class MemStorage {
   async getAccountCountByFingerprint(fingerprintHash: string): Promise<number> { throw new Error("Not implemented in MemStorage"); }
   async updateDeviceFingerprintLastSeen(userId: string, fingerprintHash: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
   async markUserEmailVerified(userId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+
+  // Risk Case Management stubs
+  async listRiskCases(): Promise<{ cases: any[]; total: number }> { throw new Error("Not implemented in MemStorage"); }
+  async getRiskCase(id: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async updateRiskCase(id: string, updates: any): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+
+  // Score History stubs
+  async saveScoreHistory(entry: InsertScoreHistory): Promise<ScoreHistory> { throw new Error("Not implemented in MemStorage"); }
+  async getScoreHistory(userId: string, limit?: number): Promise<ScoreHistory[]> { throw new Error("Not implemented in MemStorage"); }
 
   private generateReferralCode(): string {
     const prefix = "THORX";
