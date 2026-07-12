@@ -38,10 +38,9 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 ## Founder account
 
-- Email: `thorx11dev@gmail.com`
 - Role: `founder` (full access to team portal)
 - Created via `POST /api/bootstrap-founder` (one-time; blocked once any team member exists)
-- Already created in this environment's database — log in with the password set when it was created.
+- This environment's database is fresh (re-imported), so no founder account exists yet. Create one by POSTing `{ email, password, firstName, lastName }` to `/api/bootstrap-founder`, then log in normally.
 
 ## User preferences
 
