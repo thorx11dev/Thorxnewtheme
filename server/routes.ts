@@ -3536,7 +3536,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { status, assignedTo, notes, resolution, trustStatusOutcome } = req.body;
       const adminId = getThorxPrincipalId(req);
-      const updates: any = { notes, assignedTo: assignedTo ?? undefined };
+
+      // Stamp note attribution so team members can see who last wrote the notes and when
+      const updates: any = {
+        assignedTo: assignedTo !== undefined ? (assignedTo || null) : undefined,
+      };
+      if (notes !== undefined) {
+        updates.notes = notes;
+        updates.notesBy = adminId;
+        updates.notesUpdatedAt = new Date();
+      }
       if (status) {
         updates.status = status;
         if (status === "Cleared" || status === "Actioned") {

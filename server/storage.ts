@@ -78,7 +78,7 @@ import {
   type InsertScoreHistory,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, sql, inArray, ilike, gte, lte } from "drizzle-orm";
+import { eq, desc, and, or, sql, inArray, ilike, gte, lte, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { encryptCredential, decryptCredential, isEncrypted } from "./utils/credential-crypto";
@@ -292,12 +292,14 @@ export interface IStorage {
     search?: string;
     limit?: number;
     offset?: number;
-  }): Promise<{ cases: Array<RiskCase & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email' | 'avatar' | 'rank' | 'profilePicture'> }>; total: number }>;
+  }): Promise<{ cases: Array<RiskCase & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email' | 'avatar' | 'rank' | 'profilePicture'> }>; total: number; severityCounts: { Critical: number; High: number; Medium: number; Low: number } }>;
   getRiskCase(id: string): Promise<(RiskCase & { user: User }) | undefined>;
   updateRiskCase(id: string, updates: {
     status?: string;
     assignedTo?: string | null;
     notes?: string;
+    notesBy?: string | null;
+    notesUpdatedAt?: Date;
     resolvedBy?: string;
     resolvedAt?: Date;
     resolution?: string;
@@ -2792,7 +2794,16 @@ export class DatabaseStorage implements IStorage {
     const limit = filters?.limit ?? 50;
     const offset = filters?.offset ?? 0;
 
-    const conditions: any[] = [];
+    // Base filter: only surface cases that represent genuine risk.
+    // A case qualifies when it has triggered at least one signal (riskScore > 0)
+    // OR a team member has already started working on it (status != Open).
+    // Zero-score / untouched cases from clean users are excluded from the watchlist.
+    const meaningfulCondition = or(
+      sql`CAST(${riskCases.riskScore} AS NUMERIC) > 0`,
+      ne(riskCases.status, 'Open')
+    );
+
+    const conditions: any[] = [meaningfulCondition];
     if (filters?.severity) conditions.push(eq(riskCases.severity, filters.severity));
     if (filters?.status) conditions.push(eq(riskCases.status, filters.status));
     if (filters?.search) {
@@ -2805,7 +2816,7 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = and(...conditions);
 
     // Sort by risk score descending (highest risk first), then by most recently updated for ties
     const rows = await db
@@ -2834,13 +2845,14 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(riskCases.userId, users.id))
       .where(where);
 
-    // Severity counts across ALL cases (unfiltered) for summary dashboard cards
+    // Severity counts across meaningful cases for summary dashboard cards
     const sevRows = await db
       .select({
         severity: riskCases.severity,
         cnt: sql<number>`COUNT(*)::int`,
       })
       .from(riskCases)
+      .where(meaningfulCondition)
       .groupBy(riskCases.severity);
 
     const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
@@ -2871,6 +2883,8 @@ export class DatabaseStorage implements IStorage {
     status?: string;
     assignedTo?: string | null;
     notes?: string;
+    notesBy?: string | null;
+    notesUpdatedAt?: Date;
     resolvedBy?: string;
     resolvedAt?: Date;
     resolution?: string;

@@ -475,6 +475,8 @@ export const riskCases = pgTable("risk_cases", {
   signals: jsonb("signals").notNull().default(sql`'[]'::jsonb`), // [{name, score, detail}]
   assignedTo: varchar("assigned_to").references(() => users.id, { onDelete: "set null" }),
   notes: text("notes"),
+  notesBy: varchar("notes_by").references(() => users.id, { onDelete: "set null" }),
+  notesUpdatedAt: timestamp("notes_updated_at"),
   resolvedBy: varchar("resolved_by").references(() => users.id, { onDelete: "set null" }),
   resolvedAt: timestamp("resolved_at"),
   resolution: text("resolution"),

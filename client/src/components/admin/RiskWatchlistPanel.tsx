@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +29,9 @@ import {
   Gauge,
   ShieldQuestion,
   ArrowUpDown,
-  TriangleAlert,
+  UserCheck,
+  PenLine,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,6 +65,8 @@ interface RiskCase {
   signals: RiskSignal[];
   assignedTo?: string | null;
   notes?: string | null;
+  notesBy?: string | null;
+  notesUpdatedAt?: string | null;
   resolvedBy?: string | null;
   resolvedAt?: string | null;
   resolution?: string | null;
@@ -74,7 +78,7 @@ interface RiskCase {
 interface RiskCasesResponse {
   cases: RiskCase[];
   total: number;
-  /** Server-computed totals across ALL cases (not page-scoped). */
+  /** Server-computed totals across meaningful cases only. */
   severityCounts: { Critical: number; High: number; Medium: number; Low: number };
 }
 
@@ -88,13 +92,20 @@ interface ScoreHistoryPoint {
   healthScore: string;
 }
 
-// ─── Severity / Status helpers ────────────────────────────────────────────────
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  accessLevel: string;
+}
+
+// ─── Severity / Status config ─────────────────────────────────────────────────
 
 const SEVERITY_CONFIG = {
-  Low:      { bg: "bg-zinc-50",   border: "border-zinc-200",   text: "text-zinc-600",   icon: <Shield      size={12} />, ring: "ring-zinc-200",   bar: "bg-zinc-400"    },
-  Medium:   { bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  icon: <AlertTriangle size={12} />, ring: "ring-amber-200", bar: "bg-amber-400"   },
-  High:     { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: <ShieldAlert size={12} />, ring: "ring-orange-200",  bar: "bg-orange-500"  },
-  Critical: { bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700",    icon: <ShieldX     size={12} />, ring: "ring-red-300",     bar: "bg-red-600"     },
+  Low:      { bg: "bg-zinc-50",   border: "border-zinc-200",   text: "text-zinc-600",   icon: <Shield      size={12} />, ring: "ring-zinc-200",   bar: "bg-zinc-400"   },
+  Medium:   { bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  icon: <AlertTriangle size={12} />, ring: "ring-amber-200", bar: "bg-amber-400"  },
+  High:     { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: <ShieldAlert size={12} />, ring: "ring-orange-200",  bar: "bg-orange-500" },
+  Critical: { bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700",    icon: <ShieldX     size={12} />, ring: "ring-red-300",     bar: "bg-red-600"    },
 };
 
 const STATUS_CONFIG = {
@@ -114,7 +125,6 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
   "Task Completion Speed": <Gauge      size={14} />,
 };
 
-// Signal maximum scores (fixed weights matching risk-engine.ts)
 const MAX_BY_SIGNAL: Record<string, number> = {
   "Earnings Velocity":     25,
   "Bot Network":           20,
@@ -127,7 +137,7 @@ const MAX_BY_SIGNAL: Record<string, number> = {
 
 const TRUST_STATUSES = ["Special", "Trusted", "Normal", "Dangerous"] as const;
 
-// ─── Badges ───────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function SeverityBadge({ severity }: { severity: RiskCase["severity"] }) {
   const c = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG.Low;
@@ -153,8 +163,6 @@ function StatusBadge({ status }: { status: RiskCase["status"] }) {
   );
 }
 
-// ─── User Avatar ─────────────────────────────────────────────────────────────
-
 function UserAvatar({ user, size = 9 }: { user: RiskCaseUser; size?: number }) {
   const [failed, setFailed] = useState(false);
   const src = user.profilePicture || resolveAvatarUrl(user.avatar, user.rank);
@@ -172,8 +180,6 @@ function UserAvatar({ user, size = 9 }: { user: RiskCaseUser; size?: number }) {
     </div>
   );
 }
-
-// ─── Signal Bar ───────────────────────────────────────────────────────────────
 
 function SignalBar({ signal, maxPossible }: { signal: RiskSignal; maxPossible: number }) {
   const pct = Math.min(100, (signal.score / Math.max(1, maxPossible)) * 100);
@@ -195,41 +201,29 @@ function SignalBar({ signal, maxPossible }: { signal: RiskSignal; maxPossible: n
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-        <div
-          className={cn("h-full rounded-full transition-all duration-500", color)}
-          style={{ width: `${pct}%` }}
-        />
+        <div className={cn("h-full rounded-full transition-all duration-500", color)} style={{ width: `${pct}%` }} />
       </div>
       <p className="text-[10px] text-zinc-400 leading-snug">{signal.detail}</p>
     </div>
   );
 }
 
-// ─── Score History Mini Chart ─────────────────────────────────────────────────
-
 function ScoreHistoryChart({ userId }: { userId: string }) {
   const { data: history = [], isLoading } = useQuery<ScoreHistoryPoint[]>({
     queryKey: [`/api/admin/risk-cases/user/${userId}/score-history`],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/admin/risk-cases/user/${userId}/score-history`);
-      return res.json();
-    },
     staleTime: 60_000,
   });
 
   if (isLoading) return <div className="h-16 bg-zinc-50 rounded-xl animate-pulse" />;
   if (!history.length) return (
-    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">
-      No history recorded yet.
-    </p>
+    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">No history recorded yet.</p>
   );
 
   const sorted = [...history].reverse().slice(-15);
-
   return (
     <div className="space-y-2">
       <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
-        Performance Score Trend (last {sorted.length} snapshots)
+        Performance Trend — last {sorted.length} snapshots
       </p>
       <div className="flex items-end gap-1 h-16">
         {sorted.map((pt, i) => {
@@ -261,15 +255,20 @@ function ScoreHistoryChart({ userId }: { userId: string }) {
 }
 
 // ─── Case Detail Drawer ───────────────────────────────────────────────────────
-// Positioned below the portal header (h-20 md:h-24) so it never obscures
-// the THORX branding or the logged-in user badge.
+// Positioned below the admin header. Header height = h-20 (80px) + border-b-4 (4px) = 84px
+// on mobile; h-24 (96px) + 4px = 100px on md+. Both the backdrop and the panel
+// start at exactly this offset so the THORX branding is never obscured.
+// Additionally, a `risk-panel-open` class is toggled on document.body so that
+// AdminHeader can fade out the THORX logo to avoid visual crowding.
 
 function CaseDetailDrawer({
   riskCase,
+  teamMembers,
   onClose,
   onUpdated,
 }: {
   riskCase: RiskCase;
+  teamMembers: TeamMember[];
   onClose: () => void;
   onUpdated: () => void;
 }) {
@@ -278,14 +277,16 @@ function CaseDetailDrawer({
   const [notes, setNotes] = useState(riskCase.notes ?? "");
   const [resolution, setResolution] = useState(riskCase.resolution ?? "");
   const [trustStatusOutcome, setTrustStatusOutcome] = useState<string>("");
+  const [assignedTo, setAssignedTo] = useState<string>(riskCase.assignedTo ?? "");
+
+  // Signal AdminHeader to hide the THORX logo while this panel is mounted
+  useEffect(() => {
+    document.body.classList.add("risk-panel-open");
+    return () => document.body.classList.remove("risk-panel-open");
+  }, []);
 
   const updateMutation = useMutation({
-    mutationFn: async (updates: {
-      status?: string;
-      notes?: string;
-      resolution?: string;
-      trustStatusOutcome?: string;
-    }) => {
+    mutationFn: async (updates: Record<string, unknown>) => {
       const res = await apiRequest("PATCH", `/api/admin/risk-cases/${riskCase.id}`, updates);
       if (!res.ok) {
         const err = await res.json();
@@ -303,40 +304,47 @@ function CaseDetailDrawer({
     },
   });
 
-  const handleStatus = (status: string) => {
+  const handleStatus = (status: string) =>
     updateMutation.mutate({
       status,
       notes,
       resolution,
+      assignedTo: assignedTo || null,
       ...(trustStatusOutcome ? { trustStatusOutcome } : {}),
     });
-  };
 
-  const handleSaveNotes = () => {
+  const handleSaveNotes = () =>
     updateMutation.mutate({ notes });
+
+  const handleAssign = (newAssignee: string) => {
+    setAssignedTo(newAssignee);
+    updateMutation.mutate({ assignedTo: newAssignee || null });
   };
 
   const score = parseFloat(riskCase.riskScore);
   const sc = SEVERITY_CONFIG[riskCase.severity] ?? SEVERITY_CONFIG.Low;
   const isPending = updateMutation.isPending;
 
-  // Score bar color
   const scoreBarColor =
     score >= 75 ? "bg-red-600" :
     score >= 50 ? "bg-orange-500" :
     score >= 25 ? "bg-amber-400" : "bg-emerald-500";
 
+  // Look up names from teamMembers list
+  const assigneeName = teamMembers.find(m => m.id === (assignedTo || riskCase.assignedTo))?.name;
+  const notesAuthorName = teamMembers.find(m => m.id === riskCase.notesBy)?.name;
+
   return (
     <>
-      {/* Backdrop — full screen for click-to-close, but visually behind the panel */}
+      {/* Backdrop — starts BELOW the header so THORX branding stays unobscured */}
       <div
-        className="fixed inset-0 z-50 bg-black/20 backdrop-blur-[1px]"
+        className="fixed top-[84px] md:top-[100px] inset-x-0 bottom-0 z-50 bg-black/25 backdrop-blur-[1px]"
         onClick={onClose}
         aria-label="Close panel"
       />
 
-      {/* Sliding panel — starts below the portal header (h-20 = 5rem on mobile, h-24 = 6rem on desktop) */}
-      <div className="fixed top-20 md:top-24 right-0 bottom-0 z-50 w-full max-w-[480px] flex flex-col bg-[#f5f0e8] border-l-4 border-[#111] shadow-2xl animate-in slide-in-from-right-8 duration-300">
+      {/* Sliding panel — also starts below the header */}
+      <div className="fixed top-[84px] md:top-[100px] right-0 bottom-0 z-50 w-full max-w-[480px] flex flex-col bg-[#f5f0e8] border-l-4 border-[#111] shadow-2xl animate-in slide-in-from-right-8 duration-300">
 
         {/* ── Panel Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b-2 border-[#111]/15 bg-white shrink-0">
@@ -350,6 +358,11 @@ function CaseDetailDrawer({
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <SeverityBadge severity={riskCase.severity} />
                 <StatusBadge status={riskCase.status} />
+                {assigneeName && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest">
+                    <UserCheck size={10} /> {assigneeName}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -399,12 +412,42 @@ function CaseDetailDrawer({
             )}
           </div>
 
-          {/* Score History Chart */}
+          {/* Score History */}
           <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm">
             <ScoreHistoryChart userId={riskCase.userId} />
           </div>
 
-          {/* Timeline */}
+          {/* ── Collaboration: Case Ownership ── */}
+          <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm space-y-3">
+            <div className="flex items-center gap-2">
+              <UserPlus size={13} className="text-zinc-400" />
+              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Case Owner</p>
+            </div>
+            <p className="text-[10px] text-zinc-400 leading-snug">
+              Assign a team member to take ownership. The assignee is visible to all team members so everyone knows who is running this investigation.
+            </p>
+            <select
+              value={assignedTo}
+              onChange={(e) => handleAssign(e.target.value)}
+              disabled={isPending}
+              className="w-full h-9 px-4 bg-[#f5f0e8] border-2 border-[#111]/20 rounded-full text-xs font-bold text-[#111] focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all appearance-none cursor-pointer disabled:opacity-60"
+            >
+              <option value="">— Unassigned —</option>
+              {teamMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.accessLevel})
+                </option>
+              ))}
+            </select>
+            {assigneeName && (
+              <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-full px-3 py-1.5">
+                <UserCheck size={11} />
+                <span>Currently assigned to <strong>{assigneeName}</strong></span>
+              </div>
+            )}
+          </div>
+
+          {/* ── Timeline ── */}
           <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm space-y-3">
             <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Timeline</p>
             <div className="space-y-2 text-[11px] text-zinc-600 font-bold">
@@ -430,12 +473,34 @@ function CaseDetailDrawer({
             </div>
           </div>
 
-          {/* Investigation Notes */}
+          {/* ── Investigation Notes (shared, attributed) ── */}
           <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm space-y-3">
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Investigation Notes</p>
+            <div className="flex items-center gap-2">
+              <PenLine size={13} className="text-zinc-400" />
+              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Shared Investigation Notes</p>
+            </div>
+
+            {/* Attribution — visible to all team members */}
+            {riskCase.notesBy && riskCase.notesUpdatedAt ? (
+              <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-bold bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2">
+                <PenLine size={10} className="shrink-0 text-zinc-300" />
+                <span>
+                  Last edited by{" "}
+                  <strong className="text-zinc-600">
+                    {notesAuthorName ?? "a team member"}
+                  </strong>{" "}
+                  {formatDistanceToNow(new Date(riskCase.notesUpdatedAt), { addSuffix: true })}
+                </span>
+              </div>
+            ) : (
+              <div className="text-[10px] text-zinc-400 font-bold">
+                No notes yet — add your findings below.
+              </div>
+            )}
+
             <textarea
-              className="w-full h-24 bg-[#f5f0e8] border-2 border-[#111]/20 rounded-xl p-3 text-xs font-medium text-[#111] placeholder:text-zinc-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all"
-              placeholder="Add notes about this case…"
+              className="w-full h-28 bg-[#f5f0e8] border-2 border-[#111]/20 rounded-xl p-3 text-xs font-medium text-[#111] placeholder:text-zinc-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all"
+              placeholder="Add investigation findings visible to all team members…"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -444,11 +509,11 @@ function CaseDetailDrawer({
               disabled={isPending}
               className="h-8 bg-[#111] text-white font-black text-[9px] uppercase tracking-widest px-5 rounded-full hover:bg-zinc-700 transition-all"
             >
-              Save Notes
+              {isPending ? <RefreshCw size={12} className="animate-spin" /> : "Save Notes"}
             </Button>
           </div>
 
-          {/* Resolution / Trust Status (only for open cases) */}
+          {/* ── Resolution (open/investigating cases only) ── */}
           {(riskCase.status === "Open" || riskCase.status === "Investigating") && (
             <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm space-y-4">
               <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Resolve Case</p>
@@ -478,7 +543,7 @@ function CaseDetailDrawer({
                   ))}
                 </select>
                 <p className="text-[9px] text-zinc-400 leading-snug">
-                  The resolution reason is logged as the "why" for the trust status change.
+                  Resolution reason is logged as the "why" for the trust status change.
                 </p>
               </div>
             </div>
@@ -534,7 +599,7 @@ function CaseDetailDrawer({
   );
 }
 
-// ─── Signal Accuracy (Feedback Loop) ───────────────────────────────────────────
+// ─── Signal Accuracy Panel ────────────────────────────────────────────────────
 
 interface SignalStat {
   signal: string;
@@ -607,6 +672,13 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
   const [page, setPage] = useState(0);
   const [selectedCase, setSelectedCase] = useState<RiskCase | null>(null);
 
+  // Fetch team members for assignment dropdown — cached for the session
+  const { data: teamData } = useQuery<{ members: TeamMember[] }>({
+    queryKey: ["/api/team/members"],
+    staleTime: 5 * 60 * 1000,
+  });
+  const teamMembers: TeamMember[] = teamData?.members ?? [];
+
   const queryKey = `/api/admin/risk-cases?limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}${severityFilter ? `&severity=${severityFilter}` : ""}${statusFilter ? `&status=${statusFilter}` : ""}${search ? `&search=${encodeURIComponent(search)}` : ""}`;
 
   const { data, isLoading, isError } = useQuery<RiskCasesResponse>({
@@ -633,8 +705,6 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
   });
 
   const totalPages = Math.ceil((data?.total ?? 0) / PAGE_SIZE);
-
-  // Use server-computed counts (all cases in DB, not just the current page)
   const severityCounts = data?.severityCounts ?? { Critical: 0, High: 0, Medium: 0, Low: 0 };
 
   return (
@@ -645,7 +715,7 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
         <div>
           <h2 className="text-3xl font-black tracking-tighter uppercase text-[#111]">Risk Watchlist</h2>
           <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
-            Persistent case management · {data?.total ?? "—"} cases tracked · Sorted by risk score
+            Flagged case management · {data?.total ?? "—"} active cases · Sorted by risk score
           </p>
         </div>
         <Button
@@ -658,10 +728,10 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
         </Button>
       </div>
 
-      {/* Signal Accuracy Feedback Loop */}
+      {/* Signal Accuracy */}
       <SignalAccuracyPanel />
 
-      {/* Severity Summary Cards — counts from server (all cases, not page) */}
+      {/* Severity Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(["Critical", "High", "Medium", "Low"] as const).map((sev) => {
           const c = SEVERITY_CONFIG[sev];
@@ -737,18 +807,15 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
           <div className="p-12 text-center">
             <ShieldX className="w-10 h-10 text-red-400 mx-auto mb-3" />
             <p className="font-black text-sm uppercase tracking-widest text-red-600">Failed to load cases</p>
-            <p className="text-[10px] text-zinc-400 mt-1 uppercase tracking-widest font-bold">
-              Run a Risk Scan to generate the first cases.
-            </p>
           </div>
         ) : !data?.cases.length ? (
           <div className="p-12 text-center">
             <ShieldCheck className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
-            <p className="font-black text-sm uppercase tracking-widest text-zinc-600">No Cases Found</p>
+            <p className="font-black text-sm uppercase tracking-widest text-zinc-600">No Flagged Cases</p>
             <p className="text-[10px] text-zinc-400 mt-1 uppercase tracking-widest font-bold">
               {search || severityFilter || statusFilter
                 ? "Try adjusting your filters."
-                : "Run a Risk Scan to generate cases."}
+                : "Only users with active risk signals appear here. Run a Risk Scan to evaluate."}
             </p>
           </div>
         ) : (
@@ -759,12 +826,13 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
                 <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest">
                   <div className="flex items-center gap-1">
                     Risk Score
-                    <ArrowUpDown size={10} className="text-zinc-300" aria-label="Sorted highest to lowest" />
+                    <ArrowUpDown size={10} className="text-zinc-300" />
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest">Severity</th>
                 <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest">Status</th>
-                <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest">Updated</th>
+                <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest hidden md:table-cell">Assigned</th>
+                <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest hidden lg:table-cell">Updated</th>
                 <th className="pr-6 pl-2 py-3" />
               </tr>
             </thead>
@@ -775,6 +843,7 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
                   score >= 75 ? "bg-red-500" :
                   score >= 50 ? "bg-orange-400" :
                   score >= 25 ? "bg-amber-400" : "bg-zinc-300";
+                const assigneeName = teamMembers.find(m => m.id === rc.assignedTo)?.name;
                 return (
                   <tr
                     key={rc.id}
@@ -792,7 +861,7 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
                           <p className="font-black text-xs text-[#111] truncate">
                             {rc.user.firstName} {rc.user.lastName}
                           </p>
-                          <p className="text-[10px] text-zinc-400 font-bold truncate max-w-[160px]">
+                          <p className="text-[10px] text-zinc-400 font-bold truncate max-w-[140px]">
                             {rc.user.email}
                           </p>
                         </div>
@@ -800,7 +869,7 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-16 h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                        <div className="w-14 h-1.5 rounded-full bg-zinc-100 overflow-hidden">
                           <div
                             className={cn("h-full rounded-full transition-all", barColor)}
                             style={{ width: `${Math.min(100, score)}%` }}
@@ -818,7 +887,16 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
                     </td>
                     <td className="px-4 py-3"><SeverityBadge severity={rc.severity} /></td>
                     <td className="px-4 py-3"><StatusBadge status={rc.status} /></td>
-                    <td className="px-4 py-3 text-[10px] font-bold text-zinc-400 whitespace-nowrap">
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {assigneeName ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-full px-2 py-0.5">
+                          <UserCheck size={9} /> {assigneeName}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell text-[10px] font-bold text-zinc-400 whitespace-nowrap">
                       {formatDistanceToNow(new Date(rc.updatedAt), { addSuffix: true })}
                     </td>
                     <td className="pr-6 pl-2 py-3">
@@ -842,14 +920,14 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
             <Button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="h-9 w-9 p-0 bg-white border-[1.5px] border-[#111] rounded-full font-black text-[10px] flex items-center justify-center hover:bg-zinc-50 disabled:opacity-40 transition-all"
+              className="h-9 w-9 p-0 bg-white border-[1.5px] border-[#111] rounded-full flex items-center justify-center hover:bg-zinc-50 disabled:opacity-40 transition-all"
             >
               <ChevronLeft size={14} />
             </Button>
             <Button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="h-9 w-9 p-0 bg-white border-[1.5px] border-[#111] rounded-full font-black text-[10px] flex items-center justify-center hover:bg-zinc-50 disabled:opacity-40 transition-all"
+              className="h-9 w-9 p-0 bg-white border-[1.5px] border-[#111] rounded-full flex items-center justify-center hover:bg-zinc-50 disabled:opacity-40 transition-all"
             >
               <ChevronRight size={14} />
             </Button>
@@ -861,6 +939,7 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
       {selectedCase && (
         <CaseDetailDrawer
           riskCase={selectedCase}
+          teamMembers={teamMembers}
           onClose={() => setSelectedCase(null)}
           onUpdated={() => {
             queryClient.invalidateQueries({ queryKey: [queryKey] });
