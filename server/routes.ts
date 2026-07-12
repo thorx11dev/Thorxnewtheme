@@ -1682,6 +1682,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.adjustUserBalance(userId, amount, type, adminId, reason);
       broadcastUserUpdated(userId, "balance_adjusted");
       res.json(sanitizeUser(user));
+
+      // After crediting a user, immediately re-score their risk so large admin
+      // credits surface in the Risk Watchlist without waiting for the next
+      // full scan. Fire-and-forget — does not block the response.
+      if (type === 'add') {
+        import("./modules/risk-engine").then(async ({ scoreUser, upsertRiskCase }) => {
+          try {
+            const result = await scoreUser(userId);
+            await upsertRiskCase(result);
+            console.log(`[RiskEngine] Re-scored ${userId} after admin credit — score: ${result.riskScore}, severity: ${result.severity}`);
+          } catch (e) {
+            console.error(`[RiskEngine] Post-credit rescore failed for ${userId}:`, e);
+          }
+        });
+      }
     } catch (error) {
       console.error("Adjust balance error:", error);
       res.status(500).json({ message: "Failed to adjust balance" });

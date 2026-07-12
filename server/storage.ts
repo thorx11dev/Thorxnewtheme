@@ -2362,6 +2362,20 @@ export class DatabaseStorage implements IStorage {
         .where(eq(users.id, userId))
         .returning();
 
+      // When crediting, insert an earnings record so the risk engine's
+      // signalEarningsVelocity (which queries the earnings table directly)
+      // correctly picks up large admin credits as potential risk signals.
+      if (type === 'add') {
+        await tx.insert(earnings).values({
+          userId,
+          type: 'admin_credit',
+          amount,
+          description: reason || 'Admin balance adjustment',
+          status: 'completed',
+          metadata: { source: 'admin_adjustment', adminId },
+        });
+      }
+
       await tx.insert(auditLogs).values({
         adminId,
         action: `BALANCE_ADJUST_${type.toUpperCase()}`,
@@ -2770,7 +2784,11 @@ export class DatabaseStorage implements IStorage {
     search?: string;
     limit?: number;
     offset?: number;
-  }): Promise<{ cases: Array<RiskCase & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email' | 'avatar' | 'rank' | 'profilePicture'> }>; total: number }> {
+  }): Promise<{
+    cases: Array<RiskCase & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email' | 'avatar' | 'rank' | 'profilePicture'> }>;
+    total: number;
+    severityCounts: { Critical: number; High: number; Medium: number; Low: number };
+  }> {
     const limit = filters?.limit ?? 50;
     const offset = filters?.offset ?? 0;
 
@@ -2789,6 +2807,7 @@ export class DatabaseStorage implements IStorage {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
+    // Sort by risk score descending (highest risk first), then by most recently updated for ties
     const rows = await db
       .select({
         riskCase: riskCases,
@@ -2805,7 +2824,7 @@ export class DatabaseStorage implements IStorage {
       .from(riskCases)
       .innerJoin(users, eq(riskCases.userId, users.id))
       .where(where)
-      .orderBy(desc(riskCases.updatedAt))
+      .orderBy(desc(sql<number>`CAST(${riskCases.riskScore} AS NUMERIC)`), desc(riskCases.updatedAt))
       .limit(limit)
       .offset(offset);
 
@@ -2815,9 +2834,25 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(riskCases.userId, users.id))
       .where(where);
 
+    // Severity counts across ALL cases (unfiltered) for summary dashboard cards
+    const sevRows = await db
+      .select({
+        severity: riskCases.severity,
+        cnt: sql<number>`COUNT(*)::int`,
+      })
+      .from(riskCases)
+      .groupBy(riskCases.severity);
+
+    const severityCounts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+    for (const row of sevRows) {
+      const key = row.severity as keyof typeof severityCounts;
+      if (key in severityCounts) severityCounts[key] = Number(row.cnt);
+    }
+
     return {
       cases: rows.map((r) => ({ ...r.riskCase, user: r.user as any })),
       total: Number(countRow?.cnt ?? 0),
+      severityCounts,
     };
   }
 

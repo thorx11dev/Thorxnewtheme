@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,8 @@ import {
   GitBranch,
   Gauge,
   ShieldQuestion,
+  ArrowUpDown,
+  TriangleAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -72,6 +74,8 @@ interface RiskCase {
 interface RiskCasesResponse {
   cases: RiskCase[];
   total: number;
+  /** Server-computed totals across ALL cases (not page-scoped). */
+  severityCounts: { Critical: number; High: number; Medium: number; Low: number };
 }
 
 interface ScoreHistoryPoint {
@@ -84,13 +88,13 @@ interface ScoreHistoryPoint {
   healthScore: string;
 }
 
-// ─── Severity helpers ─────────────────────────────────────────────────────────
+// ─── Severity / Status helpers ────────────────────────────────────────────────
 
 const SEVERITY_CONFIG = {
-  Low:      { bg: "bg-zinc-50",   border: "border-zinc-200",   text: "text-zinc-600",   icon: <Shield      size={12} />, ring: "ring-zinc-200"   },
-  Medium:   { bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  icon: <AlertTriangle size={12} />, ring: "ring-amber-200" },
-  High:     { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: <ShieldAlert size={12} />, ring: "ring-orange-200"  },
-  Critical: { bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700",    icon: <ShieldX     size={12} />, ring: "ring-red-300"    },
+  Low:      { bg: "bg-zinc-50",   border: "border-zinc-200",   text: "text-zinc-600",   icon: <Shield      size={12} />, ring: "ring-zinc-200",   bar: "bg-zinc-400"    },
+  Medium:   { bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  icon: <AlertTriangle size={12} />, ring: "ring-amber-200", bar: "bg-amber-400"   },
+  High:     { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: <ShieldAlert size={12} />, ring: "ring-orange-200",  bar: "bg-orange-500"  },
+  Critical: { bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700",    icon: <ShieldX     size={12} />, ring: "ring-red-300",     bar: "bg-red-600"     },
 };
 
 const STATUS_CONFIG = {
@@ -110,12 +114,28 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
   "Task Completion Speed": <Gauge      size={14} />,
 };
 
+// Signal maximum scores (fixed weights matching risk-engine.ts)
+const MAX_BY_SIGNAL: Record<string, number> = {
+  "Earnings Velocity":     25,
+  "Bot Network":           20,
+  "Device Clustering":     15,
+  "Chain Linearity":       12,
+  "Cash-out Velocity":     10,
+  "Circular Referral":      8,
+  "Task Completion Speed": 10,
+};
+
 const TRUST_STATUSES = ["Special", "Trusted", "Normal", "Dangerous"] as const;
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
 
 function SeverityBadge({ severity }: { severity: RiskCase["severity"] }) {
   const c = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG.Low;
   return (
-    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-widest", c.bg, c.border, c.text)}>
+    <span className={cn(
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-widest",
+      c.bg, c.border, c.text
+    )}>
       {c.icon} {severity}
     </span>
   );
@@ -124,7 +144,10 @@ function SeverityBadge({ severity }: { severity: RiskCase["severity"] }) {
 function StatusBadge({ status }: { status: RiskCase["status"] }) {
   const c = STATUS_CONFIG[status] ?? STATUS_CONFIG.Open;
   return (
-    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-widest", c.bg, c.border, c.text)}>
+    <span className={cn(
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-widest",
+      c.bg, c.border, c.text
+    )}>
       {c.label}
     </span>
   );
@@ -153,19 +176,29 @@ function UserAvatar({ user, size = 9 }: { user: RiskCaseUser; size?: number }) {
 // ─── Signal Bar ───────────────────────────────────────────────────────────────
 
 function SignalBar({ signal, maxPossible }: { signal: RiskSignal; maxPossible: number }) {
-  const pct = Math.min(100, (signal.score / maxPossible) * 100);
-  const color = pct >= 70 ? "bg-red-500" : pct >= 40 ? "bg-orange-400" : "bg-amber-300";
+  const pct = Math.min(100, (signal.score / Math.max(1, maxPossible)) * 100);
+  const color = pct >= 70 ? "bg-red-500" : pct >= 40 ? "bg-orange-400" : pct > 0 ? "bg-amber-300" : "bg-zinc-200";
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-700">
-          {SIGNAL_ICONS[signal.name] ?? <Activity size={14} />}
+        <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#111]">
+          <span className={cn("opacity-60", pct > 0 ? "opacity-100" : "")}>
+            {SIGNAL_ICONS[signal.name] ?? <Activity size={14} />}
+          </span>
           {signal.name}
         </div>
-        <span className="text-[11px] font-black tabular-nums text-zinc-500">{signal.score} pts</span>
+        <span className={cn(
+          "text-[11px] font-black tabular-nums",
+          signal.score > 0 ? (pct >= 70 ? "text-red-600" : pct >= 40 ? "text-orange-600" : "text-amber-600") : "text-zinc-400"
+        )}>
+          {signal.score} pts
+        </span>
       </div>
       <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-        <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${pct}%` }} />
+        <div
+          className={cn("h-full rounded-full transition-all duration-500", color)}
+          style={{ width: `${pct}%` }}
+        />
       </div>
       <p className="text-[10px] text-zinc-400 leading-snug">{signal.detail}</p>
     </div>
@@ -184,25 +217,33 @@ function ScoreHistoryChart({ userId }: { userId: string }) {
     staleTime: 60_000,
   });
 
-  if (isLoading) return <div className="h-16 bg-zinc-50 rounded-2xl animate-pulse" />;
-  if (!history.length) return <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">No history recorded yet.</p>;
+  if (isLoading) return <div className="h-16 bg-zinc-50 rounded-xl animate-pulse" />;
+  if (!history.length) return (
+    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">
+      No history recorded yet.
+    </p>
+  );
 
   const sorted = [...history].reverse().slice(-15);
-  const maxScore = 100;
 
   return (
     <div className="space-y-2">
-      <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Performance Score Trend (last {sorted.length} snapshots)</p>
+      <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
+        Performance Score Trend (last {sorted.length} snapshots)
+      </p>
       <div className="flex items-end gap-1 h-16">
         {sorted.map((pt, i) => {
-          const h = Math.max(4, (parseFloat(pt.performanceScore) / maxScore) * 64);
+          const h = Math.max(4, (parseFloat(pt.performanceScore) / 100) * 64);
           const risk = parseFloat(pt.riskScore);
-          const barColor = risk >= 75 ? "bg-red-400" : risk >= 50 ? "bg-orange-400" : risk >= 25 ? "bg-amber-300" : "bg-emerald-400";
+          const barColor =
+            risk >= 75 ? "bg-red-500" :
+            risk >= 50 ? "bg-orange-400" :
+            risk >= 25 ? "bg-amber-300" : "bg-emerald-400";
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
               <div className={cn("w-full rounded-sm transition-all", barColor)} style={{ height: `${h}px` }} />
               <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
-                <div className="bg-[#111] text-white rounded-lg px-2 py-1 text-[9px] font-black whitespace-nowrap">
+                <div className="bg-[#111] text-white rounded-lg px-2 py-1 text-[9px] font-black whitespace-nowrap shadow-lg">
                   Perf: {parseFloat(pt.performanceScore).toFixed(1)}<br />
                   Risk: {parseFloat(pt.riskScore).toFixed(1)}
                 </div>
@@ -220,6 +261,8 @@ function ScoreHistoryChart({ userId }: { userId: string }) {
 }
 
 // ─── Case Detail Drawer ───────────────────────────────────────────────────────
+// Positioned below the portal header (h-20 md:h-24) so it never obscures
+// the THORX branding or the logged-in user badge.
 
 function CaseDetailDrawer({
   riskCase,
@@ -237,7 +280,12 @@ function CaseDetailDrawer({
   const [trustStatusOutcome, setTrustStatusOutcome] = useState<string>("");
 
   const updateMutation = useMutation({
-    mutationFn: async (updates: { status?: string; notes?: string; resolution?: string; trustStatusOutcome?: string }) => {
+    mutationFn: async (updates: {
+      status?: string;
+      notes?: string;
+      resolution?: string;
+      trustStatusOutcome?: string;
+    }) => {
       const res = await apiRequest("PATCH", `/api/admin/risk-cases/${riskCase.id}`, updates);
       if (!res.ok) {
         const err = await res.json();
@@ -248,6 +296,7 @@ function CaseDetailDrawer({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/risk-cases"] });
       onUpdated();
+      toast({ title: "Case updated" });
     },
     onError: (err: any) => {
       toast({ title: "Update failed", description: err.message, variant: "destructive" });
@@ -265,90 +314,100 @@ function CaseDetailDrawer({
 
   const handleSaveNotes = () => {
     updateMutation.mutate({ notes });
-    toast({ title: "Notes saved" });
   };
 
   const score = parseFloat(riskCase.riskScore);
   const sc = SEVERITY_CONFIG[riskCase.severity] ?? SEVERITY_CONFIG.Low;
+  const isPending = updateMutation.isPending;
 
-  // Signal max scores (fixed weights)
-  const maxBySignal: Record<string, number> = {
-    "Earnings Velocity": 25,
-    "Bot Network": 20,
-    "Device Clustering": 15,
-    "Chain Linearity": 12,
-    "Cash-out Velocity": 10,
-    "Circular Referral": 8,
-    "Task Completion Speed": 10,
-  };
+  // Score bar color
+  const scoreBarColor =
+    score >= 75 ? "bg-red-600" :
+    score >= 50 ? "bg-orange-500" :
+    score >= 25 ? "bg-amber-400" : "bg-emerald-500";
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+    <>
+      {/* Backdrop — full screen for click-to-close, but visually behind the panel */}
       <div
-        className="relative h-full w-full max-w-lg bg-white border-l-2 border-[#111]/10 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className={cn("px-6 py-5 border-b-2 border-[#111]/10 flex items-start justify-between gap-4", sc.bg)}>
+        className="fixed inset-0 z-50 bg-black/20 backdrop-blur-[1px]"
+        onClick={onClose}
+        aria-label="Close panel"
+      />
+
+      {/* Sliding panel — starts below the portal header (h-20 = 5rem on mobile, h-24 = 6rem on desktop) */}
+      <div className="fixed top-20 md:top-24 right-0 bottom-0 z-50 w-full max-w-[480px] flex flex-col bg-[#f5f0e8] border-l-4 border-[#111] shadow-2xl animate-in slide-in-from-right-8 duration-300">
+
+        {/* ── Panel Header ── */}
+        <div className="flex items-center justify-between px-5 py-4 border-b-2 border-[#111]/15 bg-white shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <UserAvatar user={riskCase.user} size={11} />
+            <UserAvatar user={riskCase.user} size={10} />
             <div className="min-w-0">
-              <p className="font-black text-[#111] text-sm truncate">
+              <p className="font-black text-sm text-[#111] uppercase tracking-tight truncate leading-none">
                 {riskCase.user.firstName} {riskCase.user.lastName}
               </p>
-              <p className="text-[10px] font-bold text-zinc-400 truncate">{riskCase.user.email}</p>
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <p className="text-[10px] text-zinc-400 font-bold truncate mt-0.5">{riskCase.user.email}</p>
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 <SeverityBadge severity={riskCase.severity} />
                 <StatusBadge status={riskCase.status} />
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="shrink-0 p-1.5 rounded-full hover:bg-black/10 transition-colors">
-            <X size={16} />
+          <button
+            onClick={onClose}
+            className="shrink-0 w-8 h-8 rounded-full border-2 border-[#111] bg-white hover:bg-[#111] hover:text-white text-[#111] flex items-center justify-center transition-all"
+            aria-label="Close"
+          >
+            <X size={14} />
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Risk Score */}
-          <div className="bg-zinc-50 border-[1.5px] border-[#111]/10 rounded-2xl p-5">
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2">Composite Risk Score</p>
+        {/* ── Scrollable Body ── */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+          {/* Composite Risk Score */}
+          <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm">
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-3">
+              Composite Risk Score
+            </p>
             <div className="flex items-end gap-3">
-              <span className={cn("text-5xl font-black tabular-nums", sc.text)}>{score.toFixed(0)}</span>
+              <span className={cn("text-5xl font-black tabular-nums leading-none", sc.text)}>
+                {score.toFixed(0)}
+              </span>
               <span className="text-zinc-400 font-bold text-sm mb-1">/ 100</span>
             </div>
-            <div className="mt-3 h-2 rounded-full bg-zinc-200 overflow-hidden">
+            <div className="mt-3 h-2 rounded-full bg-zinc-100 border border-[#111]/10 overflow-hidden">
               <div
-                className={cn("h-full rounded-full transition-all", score >= 75 ? "bg-red-500" : score >= 50 ? "bg-orange-400" : score >= 25 ? "bg-amber-400" : "bg-emerald-400")}
-                style={{ width: `${score}%` }}
+                className={cn("h-full rounded-full transition-all duration-700", scoreBarColor)}
+                style={{ width: `${Math.min(100, score)}%` }}
               />
             </div>
-            <div className="flex justify-between text-[9px] font-black text-zinc-400 uppercase mt-1">
+            <div className="flex justify-between text-[9px] font-black text-zinc-400 uppercase tracking-widest mt-1.5">
               <span>Low</span><span>Medium</span><span>High</span><span>Critical</span>
             </div>
           </div>
 
-          {/* Signals */}
-          <div className="space-y-4">
+          {/* Signal Breakdown */}
+          <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm space-y-4">
             <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Signal Breakdown</p>
             {Array.isArray(riskCase.signals) && riskCase.signals.length > 0 ? (
               riskCase.signals.map((sig, i) => (
-                <SignalBar key={i} signal={sig} maxPossible={maxBySignal[sig.name] ?? 30} />
+                <SignalBar key={i} signal={sig} maxPossible={MAX_BY_SIGNAL[sig.name] ?? 30} />
               ))
             ) : (
-              <p className="text-[11px] text-zinc-400">No signals recorded.</p>
+              <p className="text-[11px] text-zinc-400 font-bold">No signals recorded.</p>
             )}
           </div>
 
-          {/* Score History */}
-          <div className="bg-zinc-50 border-[1.5px] border-[#111]/10 rounded-2xl p-5">
+          {/* Score History Chart */}
+          <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm">
             <ScoreHistoryChart userId={riskCase.userId} />
           </div>
 
-          {/* Case Timeline */}
-          <div className="space-y-2">
+          {/* Timeline */}
+          <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm space-y-3">
             <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Timeline</p>
-            <div className="space-y-2 text-[11px] text-zinc-500 font-bold">
+            <div className="space-y-2 text-[11px] text-zinc-600 font-bold">
               <div className="flex items-center gap-2">
                 <Clock size={12} className="text-zinc-300 shrink-0" />
                 <span>Case opened {formatDistanceToNow(new Date(riskCase.createdAt), { addSuffix: true })}</span>
@@ -361,54 +420,57 @@ function CaseDetailDrawer({
               )}
               {riskCase.resolvedAt && (
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 size={12} className="text-green-400 shrink-0" />
+                  <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
                   <span>Resolved {formatDistanceToNow(new Date(riskCase.resolvedAt), { addSuffix: true })}</span>
                 </div>
               )}
               {riskCase.resolution && (
-                <div className="pl-5 text-[10px] text-zinc-400 italic">"{riskCase.resolution}"</div>
+                <p className="pl-5 text-[10px] text-zinc-400 italic">"{riskCase.resolution}"</p>
               )}
             </div>
           </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
+          {/* Investigation Notes */}
+          <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm space-y-3">
             <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Investigation Notes</p>
             <textarea
-              className="w-full h-24 bg-zinc-50 border-[1.5px] border-[#111]/15 rounded-2xl p-3 text-xs font-medium text-zinc-700 placeholder:text-zinc-300 resize-none focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all"
+              className="w-full h-24 bg-[#f5f0e8] border-2 border-[#111]/20 rounded-xl p-3 text-xs font-medium text-[#111] placeholder:text-zinc-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all"
               placeholder="Add notes about this case…"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
             <Button
               onClick={handleSaveNotes}
-              disabled={updateMutation.isPending}
-              className="h-8 bg-zinc-100 text-zinc-700 border-[1.5px] border-zinc-200 font-black text-[9px] uppercase tracking-widest px-4 rounded-full hover:bg-zinc-200 transition-all"
+              disabled={isPending}
+              className="h-8 bg-[#111] text-white font-black text-[9px] uppercase tracking-widest px-5 rounded-full hover:bg-zinc-700 transition-all"
             >
               Save Notes
             </Button>
           </div>
 
-          {/* Resolution field for clearing/actioning */}
+          {/* Resolution / Trust Status (only for open cases) */}
           {(riskCase.status === "Open" || riskCase.status === "Investigating") && (
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Resolution Reason (optional)</p>
+            <div className="bg-white border-2 border-[#111] rounded-2xl p-5 shadow-sm space-y-4">
+              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Resolve Case</p>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Resolution Reason</label>
                 <input
-                  className="w-full h-9 bg-zinc-50 border-[1.5px] border-[#111]/15 rounded-full px-4 text-xs font-medium text-zinc-700 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all"
-                  placeholder="Reason for clearing or actioning…"
+                  className="w-full h-9 bg-[#f5f0e8] border-2 border-[#111]/20 rounded-full px-4 text-xs font-medium text-[#111] placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all"
+                  placeholder="Why clearing or actioning this case…"
                   value={resolution}
                   onChange={(e) => setResolution(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
-                  Set Trust Status on Clear/Action (optional)
-                </p>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
+                  Set Trust Status on Resolution
+                </label>
                 <select
                   value={trustStatusOutcome}
                   onChange={(e) => setTrustStatusOutcome(e.target.value)}
-                  className="w-full h-9 px-4 bg-zinc-50 border-[1.5px] border-[#111]/15 rounded-full text-xs font-bold text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all appearance-none cursor-pointer"
+                  className="w-full h-9 px-4 bg-[#f5f0e8] border-2 border-[#111]/20 rounded-full text-xs font-bold text-[#111] focus:outline-none focus:ring-2 focus:ring-[#111]/20 transition-all appearance-none cursor-pointer"
                 >
                   <option value="">Don't change trust status</option>
                   {TRUST_STATUSES.map((s) => (
@@ -416,20 +478,20 @@ function CaseDetailDrawer({
                   ))}
                 </select>
                 <p className="text-[9px] text-zinc-400 leading-snug">
-                  This case's resolution becomes the logged reason for the trust status change.
+                  The resolution reason is logged as the "why" for the trust status change.
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Action Footer */}
-        <div className="px-6 py-4 border-t-2 border-[#111]/10 bg-white flex flex-wrap gap-2">
+        {/* ── Action Footer ── */}
+        <div className="px-5 py-4 border-t-2 border-[#111]/15 bg-white shrink-0 flex flex-wrap gap-2">
           {riskCase.status === "Open" && (
             <Button
               onClick={() => handleStatus("Investigating")}
-              disabled={updateMutation.isPending}
-              className="flex-1 h-10 bg-purple-600 text-white border-b-4 border-purple-800 font-black text-[10px] uppercase rounded-full hover:bg-purple-700 transition-all flex items-center justify-center gap-2"
+              disabled={isPending}
+              className="flex-1 h-10 bg-purple-600 text-white border-b-4 border-purple-800 font-black text-[10px] uppercase tracking-widest rounded-full hover:bg-purple-700 transition-all flex items-center justify-center gap-1.5"
             >
               <Eye size={13} /> Investigate
             </Button>
@@ -438,15 +500,15 @@ function CaseDetailDrawer({
             <>
               <Button
                 onClick={() => handleStatus("Cleared")}
-                disabled={updateMutation.isPending}
-                className="flex-1 h-10 bg-emerald-600 text-white border-b-4 border-emerald-800 font-black text-[10px] uppercase rounded-full hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                disabled={isPending}
+                className="flex-1 h-10 bg-emerald-600 text-white border-b-4 border-emerald-800 font-black text-[10px] uppercase tracking-widest rounded-full hover:bg-emerald-700 transition-all flex items-center justify-center gap-1.5"
               >
                 <CheckCircle2 size={13} /> Clear
               </Button>
               <Button
                 onClick={() => handleStatus("Actioned")}
-                disabled={updateMutation.isPending}
-                className="flex-1 h-10 bg-red-600 text-white border-b-4 border-red-800 font-black text-[10px] uppercase rounded-full hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                disabled={isPending}
+                className="flex-1 h-10 bg-red-600 text-white border-b-4 border-red-800 font-black text-[10px] uppercase tracking-widest rounded-full hover:bg-red-700 transition-all flex items-center justify-center gap-1.5"
               >
                 <XCircle size={13} /> Action
               </Button>
@@ -455,15 +517,20 @@ function CaseDetailDrawer({
           {(riskCase.status === "Cleared" || riskCase.status === "Actioned") && (
             <Button
               onClick={() => handleStatus("Open")}
-              disabled={updateMutation.isPending}
-              className="flex-1 h-10 bg-zinc-100 text-zinc-700 border-[1.5px] border-zinc-200 font-black text-[10px] uppercase rounded-full hover:bg-zinc-200 transition-all"
+              disabled={isPending}
+              className="flex-1 h-10 bg-[#111] text-white border-b-4 border-zinc-800 font-black text-[10px] uppercase tracking-widest rounded-full hover:bg-zinc-700 transition-all"
             >
               Reopen Case
             </Button>
           )}
+          {isPending && (
+            <div className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2">
+              <RefreshCw size={12} className="animate-spin" /> Saving…
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -495,7 +562,7 @@ function SignalAccuracyPanel() {
         </p>
       </div>
       <p className="text-[10px] text-zinc-400 leading-snug">
-        Precision = share of cases where this signal fired that were confirmed as fraud (Actioned) rather than dismissed (Cleared). Low precision means the signal is mostly noise.
+        Precision = share of triggered cases confirmed as fraud (Actioned) vs. dismissed (Cleared). Low precision = noisy signal.
       </p>
       <div className="space-y-2">
         {stats.map((s) => (
@@ -508,7 +575,8 @@ function SignalAccuracyPanel() {
               <div
                 className={cn(
                   "h-full rounded-full",
-                  (s.precision ?? 0) >= 66 ? "bg-emerald-500" : (s.precision ?? 0) >= 33 ? "bg-amber-400" : "bg-red-400"
+                  (s.precision ?? 0) >= 66 ? "bg-emerald-500" :
+                  (s.precision ?? 0) >= 33 ? "bg-amber-400" : "bg-red-400"
                 )}
                 style={{ width: `${s.precision ?? 0}%` }}
               />
@@ -566,10 +634,8 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
 
   const totalPages = Math.ceil((data?.total ?? 0) / PAGE_SIZE);
 
-  const severityCounts = (data?.cases ?? []).reduce<Record<string, number>>((acc, c) => {
-    acc[c.severity] = (acc[c.severity] ?? 0) + 1;
-    return acc;
-  }, {});
+  // Use server-computed counts (all cases in DB, not just the current page)
+  const severityCounts = data?.severityCounts ?? { Critical: 0, High: 0, Medium: 0, Low: 0 };
 
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
@@ -579,7 +645,7 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
         <div>
           <h2 className="text-3xl font-black tracking-tighter uppercase text-[#111]">Risk Watchlist</h2>
           <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
-            Persistent case management · {data?.total ?? "—"} cases tracked
+            Persistent case management · {data?.total ?? "—"} cases tracked · Sorted by risk score
           </p>
         </div>
         <Button
@@ -592,27 +658,33 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
         </Button>
       </div>
 
-      {/* Signal Accuracy (Feedback Loop) */}
+      {/* Signal Accuracy Feedback Loop */}
       <SignalAccuracyPanel />
 
-      {/* Severity Summary Cards */}
+      {/* Severity Summary Cards — counts from server (all cases, not page) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(["Critical", "High", "Medium", "Low"] as const).map((sev) => {
           const c = SEVERITY_CONFIG[sev];
-          const count = data?.cases.filter(x => x.severity === sev).length ?? "—";
+          const count = severityCounts[sev];
           const isActive = severityFilter === sev;
           return (
             <button
               key={sev}
-              onClick={() => setSeverityFilter(isActive ? "" : sev)}
+              onClick={() => { setSeverityFilter(isActive ? "" : sev); setPage(0); }}
               className={cn(
                 "p-4 rounded-[1.5rem] border-[1.5px] text-left transition-all hover:shadow-md",
-                isActive ? `${c.bg} ${c.border} ring-2 ${c.ring}` : "bg-white border-[#111]/10 hover:border-[#111]/20"
+                isActive
+                  ? `${c.bg} ${c.border} ring-2 ${c.ring}`
+                  : "bg-white border-[#111]/10 hover:border-[#111]/20"
               )}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className={cn("text-[9px] font-black uppercase tracking-widest", isActive ? c.text : "text-zinc-400")}>{sev}</span>
-                <span className={cn("w-7 h-7 rounded-xl flex items-center justify-center border", c.bg, c.border, c.text)}>{c.icon}</span>
+                <span className={cn("text-[9px] font-black uppercase tracking-widest", isActive ? c.text : "text-zinc-400")}>
+                  {sev}
+                </span>
+                <span className={cn("w-7 h-7 rounded-xl flex items-center justify-center border", c.bg, c.border, c.text)}>
+                  {c.icon}
+                </span>
               </div>
               <p className="text-2xl font-black tabular-nums text-[#111]">{count}</p>
             </button>
@@ -674,58 +746,87 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
             <ShieldCheck className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
             <p className="font-black text-sm uppercase tracking-widest text-zinc-600">No Cases Found</p>
             <p className="text-[10px] text-zinc-400 mt-1 uppercase tracking-widest font-bold">
-              {search || severityFilter || statusFilter ? "Try adjusting your filters." : "Run a Risk Scan to generate cases."}
+              {search || severityFilter || statusFilter
+                ? "Try adjusting your filters."
+                : "Run a Risk Scan to generate cases."}
             </p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b-[1.5px] border-[#111]/10 bg-zinc-50">
-                {["User", "Risk Score", "Severity", "Status", "Updated", ""].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest first:pl-6 last:pr-6">{h}</th>
-                ))}
+                <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest pl-6">User</th>
+                <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest">
+                  <div className="flex items-center gap-1">
+                    Risk Score
+                    <ArrowUpDown size={10} className="text-zinc-300" aria-label="Sorted highest to lowest" />
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest">Severity</th>
+                <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest">Status</th>
+                <th className="px-4 py-3 text-left text-[9px] font-black text-zinc-400 uppercase tracking-widest">Updated</th>
+                <th className="pr-6 pl-2 py-3" />
               </tr>
             </thead>
             <tbody>
-              {data.cases.map((rc, i) => (
-                <tr
-                  key={rc.id}
-                  className={cn(
-                    "border-b border-[#111]/5 last:border-0 transition-colors cursor-pointer group",
-                    rc.severity === "Critical" ? "hover:bg-red-50/50" : "hover:bg-zinc-50/80"
-                  )}
-                  onClick={() => setSelectedCase(rc)}
-                >
-                  <td className="pl-6 pr-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <UserAvatar user={rc.user} size={9} />
-                      <div className="min-w-0">
-                        <p className="font-black text-xs text-[#111] truncate">{rc.user.firstName} {rc.user.lastName}</p>
-                        <p className="text-[10px] text-zinc-400 font-bold truncate max-w-[160px]">{rc.user.email}</p>
+              {data.cases.map((rc) => {
+                const score = parseFloat(rc.riskScore);
+                const barColor =
+                  score >= 75 ? "bg-red-500" :
+                  score >= 50 ? "bg-orange-400" :
+                  score >= 25 ? "bg-amber-400" : "bg-zinc-300";
+                return (
+                  <tr
+                    key={rc.id}
+                    className={cn(
+                      "border-b border-[#111]/5 last:border-0 transition-colors cursor-pointer group",
+                      rc.severity === "Critical" ? "hover:bg-red-50/60" :
+                      rc.severity === "High"     ? "hover:bg-orange-50/60" : "hover:bg-zinc-50/80"
+                    )}
+                    onClick={() => setSelectedCase(rc)}
+                  >
+                    <td className="pl-6 pr-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <UserAvatar user={rc.user} size={9} />
+                        <div className="min-w-0">
+                          <p className="font-black text-xs text-[#111] truncate">
+                            {rc.user.firstName} {rc.user.lastName}
+                          </p>
+                          <p className="text-[10px] text-zinc-400 font-bold truncate max-w-[160px]">
+                            {rc.user.email}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-12 h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-                        <div
-                          className={cn("h-full rounded-full", parseFloat(rc.riskScore) >= 75 ? "bg-red-500" : parseFloat(rc.riskScore) >= 50 ? "bg-orange-400" : parseFloat(rc.riskScore) >= 25 ? "bg-amber-400" : "bg-emerald-400")}
-                          style={{ width: `${parseFloat(rc.riskScore)}%` }}
-                        />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all", barColor)}
+                            style={{ width: `${Math.min(100, score)}%` }}
+                          />
+                        </div>
+                        <span className={cn(
+                          "font-black text-xs tabular-nums",
+                          score >= 75 ? "text-red-600" :
+                          score >= 50 ? "text-orange-600" :
+                          score >= 25 ? "text-amber-600" : "text-zinc-500"
+                        )}>
+                          {score.toFixed(0)}
+                        </span>
                       </div>
-                      <span className="font-black text-xs tabular-nums text-[#111]">{parseFloat(rc.riskScore).toFixed(0)}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3"><SeverityBadge severity={rc.severity} /></td>
-                  <td className="px-4 py-3"><StatusBadge status={rc.status} /></td>
-                  <td className="px-4 py-3 text-[10px] font-bold text-zinc-400 whitespace-nowrap">
-                    {formatDistanceToNow(new Date(rc.updatedAt), { addSuffix: true })}
-                  </td>
-                  <td className="pr-6 pl-2 py-3">
-                    <ChevronRight size={14} className="text-zinc-300 group-hover:text-zinc-500 transition-colors" />
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3"><SeverityBadge severity={rc.severity} /></td>
+                    <td className="px-4 py-3"><StatusBadge status={rc.status} /></td>
+                    <td className="px-4 py-3 text-[10px] font-bold text-zinc-400 whitespace-nowrap">
+                      {formatDistanceToNow(new Date(rc.updatedAt), { addSuffix: true })}
+                    </td>
+                    <td className="pr-6 pl-2 py-3">
+                      <ChevronRight size={14} className="text-zinc-300 group-hover:text-zinc-600 transition-colors" />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -739,14 +840,14 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
           </p>
           <div className="flex items-center gap-2">
             <Button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
               className="h-9 w-9 p-0 bg-white border-[1.5px] border-[#111] rounded-full font-black text-[10px] flex items-center justify-center hover:bg-zinc-50 disabled:opacity-40 transition-all"
             >
               <ChevronLeft size={14} />
             </Button>
             <Button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
               className="h-9 w-9 p-0 bg-white border-[1.5px] border-[#111] rounded-full font-black text-[10px] flex items-center justify-center hover:bg-zinc-50 disabled:opacity-40 transition-all"
             >
