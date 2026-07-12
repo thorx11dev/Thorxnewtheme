@@ -688,13 +688,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       debugLog(`[PATCH] Updating persistent DB user...`);
       
       // Elite Validation Layer (Enterprise Standard)
-      const parts = name?.trim().split(' ') || [];
       const updateData: any = {
-        firstName: parts[0] || undefined,
-        lastName: parts.slice(1).join(' ') || undefined,
         avatar: avatar || undefined,
         updatedAt: new Date()
       };
+      if (name) {
+        const parts = name.trim().split(' ');
+        updateData.firstName = parts[0];
+        updateData.lastName = parts.slice(1).join(' ');
+      }
       if (resolvedProfilePicture !== undefined) {
         updateData.profilePicture = resolvedProfilePicture;
       }
