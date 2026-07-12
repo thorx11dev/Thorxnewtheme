@@ -4,7 +4,7 @@
  * Each rank has 3 selectable avatar outfits.
  * The default (first) avatar is auto-assigned on rank-up.
  *
- * Rank progression: Nawa Aya → Chota Don → Baja Ji → Haji Sab → Supreme Chacha
+ * Rank progression: Nawa Aya → Chota Don → Bawa Ji → Haji Sab → Chacha Supreme
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -56,10 +56,10 @@ const CHOTA_DON: RankDefinition = {
   ],
 };
 
-// ── BAJA JI ───────────────────────────────────────────────────────────────
+// ── BAWA JI ───────────────────────────────────────────────────────────────
 const BAJA_JI: RankDefinition = {
-  key: "Baja Ji",
-  label: "BAJA JI",
+  key: "Bawa Ji",
+  label: "BAWA JI",
   color: SILVER_COLOR,
   bgColor: SILVER_BG,
   defaultAvatarId: "baja-ji",
@@ -84,10 +84,10 @@ const HAJI_SAB: RankDefinition = {
   ],
 };
 
-// ── SUPREME CHACHA ────────────────────────────────────────────────────────
+// ── CHACHA SUPREME ────────────────────────────────────────────────────────
 const SUPREME_CHACHA: RankDefinition = {
-  key: "Supreme Chacha",
-  label: "SUPREME CHACHA",
+  key: "Chacha Supreme",
+  label: "CHACHA SUPREME",
   color: SILVER_COLOR,
   bgColor: SILVER_BG,
   defaultAvatarId: "supreme-chacha",

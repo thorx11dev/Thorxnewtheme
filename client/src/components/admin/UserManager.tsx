@@ -26,8 +26,7 @@ import {
   Send,
   Plus,
   Check,
-  Lock,
-  Unlock
+  Lock
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -64,6 +63,8 @@ interface UserProfile {
   role: string;
   rank: string;
   rankLocked?: boolean;
+  trustStatus?: string | null;
+  trustReason?: string | null;
   availableBalance: string;
   totalEarnings: string;
   referralCode: string;
@@ -90,7 +91,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   const itemsPerPage = 10; // Optimized for admin view
   
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [modalType, setModalType] = useState<'details' | 'balance' | 'network' | 'notes' | 'delete' | 'rank' | null>(null);
+  const [modalType, setModalType] = useState<'details' | 'balance' | 'network' | 'notes' | 'delete' | 'trust' | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
@@ -98,10 +99,10 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   const [newNote, setNewNote] = useState("");
   const [networkZoom, setNetworkZoom] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [selectedRank, setSelectedRank] = useState("");
-  const [lockRank, setLockRank] = useState(false);
+  const [selectedTrustStatus, setSelectedTrustStatus] = useState<string | null>(null);
+  const [trustReason, setTrustReason] = useState("");
 
-  const RANK_OPTIONS = ["Nawa Aya", "Chota Don", "Baja Ji", "Haji Sab", "Supreme Chacha"];
+  const TRUST_STATUS_OPTIONS = ["Special", "Trusted", "Normal", "Dangerous"];
 
   
   const { toast } = useToast();
@@ -152,13 +153,13 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
     }
   });
 
-  const setRankMutation = useMutation({
-    mutationFn: async ({ userId, rank, locked }: { userId: string, rank: string, locked: boolean }) => {
-      return await apiRequest("PATCH", `/api/admin/users/${userId}/rank`, { rank, locked });
+  const setTrustStatusMutation = useMutation({
+    mutationFn: async ({ userId, status, reason }: { userId: string, status: string | null, reason: string }) => {
+      return await apiRequest("PATCH", `/api/admin/users/${userId}/trust-status`, { status, reason });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team/users'] });
-      toast({ title: "Rank Updated", description: "User's rank has been manually set." });
+      toast({ title: "Trust Status Updated", description: "User's trust status has been saved." });
       closeModal();
     }
   });
@@ -208,8 +209,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
     setNewNote("");
     setConfirmText("");
     setNetworkZoom(1);
-    setSelectedRank("");
-    setLockRank(false);
+    setSelectedTrustStatus(null);
+    setTrustReason("");
   };
 
   const handlePageChange = (newPage: number) => {
@@ -373,7 +374,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                         </div>
                         <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 uppercase">
                           <Phone size={12} className="text-[#111]/30" />
-                          {user.phone}
+                          {user.phone || "(N/A)"}
                         </div>
                       </div>
                     </td>
@@ -723,11 +724,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
             <div className="flex items-center justify-between">
               <div>
                 <DialogTitle className="text-xl font-semibold text-zinc-900">
-                  User Intelligence
+                  User Bio Data
                 </DialogTitle>
-                <DialogDescription className="text-zinc-400 text-xs mt-0.5">
-                  ID: {selectedUser?.id}
-                </DialogDescription>
               </div>
               <Button onClick={closeModal} variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-zinc-100 shrink-0">
                 <X size={16} className="text-zinc-500" />
@@ -745,7 +743,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   </div>
                 </div>
                 <div>
-                  <TechnicalLabel text="Contact Node" className="mb-2" />
+                  <TechnicalLabel text="Contact" className="mb-2" />
                   <div className="p-4 bg-white border border-zinc-200 rounded-xl space-y-3">
                     <div className="flex items-center gap-3">
                       <Mail size={14} className="text-primary" />
@@ -753,7 +751,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     </div>
                     <div className="flex items-center gap-3">
                       <Phone size={14} className="text-primary" />
-                      <span className="text-xs font-semibold text-zinc-900">{selectedUser?.phone}</span>
+                      <span className="text-xs font-semibold text-zinc-900">{selectedUser?.phone || "(N/A)"}</span>
                     </div>
                   </div>
                 </div>
@@ -761,7 +759,6 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
              <div className="space-y-5">
                 <div>
-                  <TechnicalLabel text="Financial Ledger" className="mb-2" />
                   <div className="p-4 bg-zinc-900 border border-zinc-900 rounded-xl space-y-3">
                     <div>
                       <div className="text-[9px] font-semibold text-white/40 uppercase tracking-widest">Available Balance</div>
@@ -774,7 +771,6 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   </div>
                 </div>
                 <div>
-                  <TechnicalLabel text="System Metadata" className="mb-2" />
                   <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-[9px] font-medium text-zinc-400 uppercase tracking-wide mb-1.5">Rank</div>
@@ -791,7 +787,6 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                 </div>
 
                 <div>
-                  <TechnicalLabel text="Referral Intelligence" className="mb-2" />
                   <div className="p-4 bg-white border border-zinc-200 rounded-xl grid grid-cols-2 gap-4">
                     <div className="border-r border-zinc-100">
                       <div className="text-[9px] font-medium text-zinc-400 uppercase tracking-wide mb-1">Level 1</div>
@@ -815,45 +810,45 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
           <DialogFooter className="px-7 py-5 bg-white border-t border-zinc-100 flex gap-3">
             <Button 
                 variant="outline"
-                className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 transition-all"
+                className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-all"
                 onClick={() => setModalType('notes')}
             >
-              Observations
+              Notes
             </Button>
             <Button 
                 variant="outline"
-                className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 transition-all"
+                className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-all"
                 onClick={() => setModalType('network')}
             >
-              Network Map
+              Referral Tree
             </Button>
             <Button 
                 variant="outline"
-                className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 transition-all"
+                className="flex-1 h-11 rounded-xl border border-zinc-300 font-medium text-sm text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-all"
                 onClick={() => {
-                  setSelectedRank(selectedUser?.rank || 'Nawa Aya');
-                  setLockRank(!!selectedUser?.rankLocked);
-                  setModalType('rank');
+                  setSelectedTrustStatus(selectedUser?.trustStatus || null);
+                  setTrustReason(selectedUser?.trustReason || "");
+                  setModalType('trust');
                 }}
             >
-              Rank Control
+              Trust Status
             </Button>
             <Button 
                 className="flex-1 h-11 rounded-xl bg-zinc-900 text-white font-semibold text-sm hover:bg-black transition-all"
                 onClick={() => setModalType('balance')}
             >
-              Adjust Ledger
+              Adjust Balance
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Rank Control Dialog */}
-      <Dialog open={!!selectedUser && modalType === 'rank'} onOpenChange={(open) => !open && closeModal()}>
+      {/* Trust Status Dialog */}
+      <Dialog open={!!selectedUser && modalType === 'trust'} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="border border-black/5 bg-white rounded-[2rem] p-0 max-w-md overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] *:!rounded-none [&>button]:hidden">
           <DialogHeader className="p-8 border-b border-zinc-100 bg-white">
             <DialogTitle className="text-2xl font-black tracking-tighter text-[#111] uppercase">
-              Rank Control
+              Trust Status
             </DialogTitle>
             <DialogDescription className="text-zinc-500 font-bold text-[10px] tracking-widest mt-1 uppercase">
               Account: {selectedUser?.firstName} {selectedUser?.lastName}
@@ -862,48 +857,44 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
 
           <div className="p-8 space-y-6 bg-transparent">
             <div className="space-y-1">
-              <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2 mb-2 block">Select rank</Label>
+              <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2 mb-2 block">Select status</Label>
               <div className="space-y-1">
-                {RANK_OPTIONS.map((r) => (
+                {TRUST_STATUS_OPTIONS.map((s) => (
                   <button
-                    key={r}
-                    onClick={() => setSelectedRank(r)}
+                    key={s}
+                    onClick={() => setSelectedTrustStatus(s)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-zinc-50 transition-colors text-left"
                   >
-                    <Checkbox checked={selectedRank === r} className="border-zinc-300 data-[state=checked]:bg-[#111] data-[state=checked]:border-[#111]" />
-                    <span className="text-sm font-semibold text-[#111]">{r}</span>
+                    <Checkbox checked={selectedTrustStatus === s} className="border-zinc-300 data-[state=checked]:bg-[#111] data-[state=checked]:border-[#111]" />
+                    <span className="text-sm font-semibold text-[#111]">{s}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <button
-              onClick={() => setLockRank(!lockRank)}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-zinc-100 hover:bg-zinc-50 transition-colors text-left"
-            >
-              <Checkbox checked={lockRank} className="border-zinc-300 data-[state=checked]:bg-[#111] data-[state=checked]:border-[#111]" />
-              <span className="flex-1">
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-[#111]">
-                  {lockRank ? <Lock size={13} /> : <Unlock size={13} />}
-                  Lock rank
-                </span>
-                <span className="text-xs text-zinc-400">
-                  {lockRank ? "Stops auto-rank changes" : "Rank will auto-update normally"}
-                </span>
-              </span>
-            </button>
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">
+                Reason {selectedTrustStatus ? "(required)" : ""}
+              </Label>
+              <Input
+                placeholder="Why is this status being set?"
+                className="rounded-full border border-zinc-200 focus:border-[#111] focus:ring-0 font-bold text-sm h-14 px-6 bg-white transition-colors"
+                value={trustReason}
+                onChange={(e) => setTrustReason(e.target.value)}
+              />
+            </div>
           </div>
 
           <DialogFooter className="p-8 pt-2 bg-white border-t border-zinc-100 flex-col gap-3 sm:flex-col sm:space-x-0">
             <Button
               className="w-full h-14 rounded-2xl bg-[#111] text-white hover:bg-black font-black uppercase tracking-widest text-[11px] transition-colors shadow-sm"
               onClick={() => {
-                if (!selectedUser || !selectedRank) return;
-                setRankMutation.mutate({ userId: selectedUser.id, rank: selectedRank, locked: lockRank });
+                if (!selectedUser || !selectedTrustStatus || !trustReason.trim()) return;
+                setTrustStatusMutation.mutate({ userId: selectedUser.id, status: selectedTrustStatus, reason: trustReason.trim() });
               }}
-              disabled={setRankMutation.isPending}
+              disabled={setTrustStatusMutation.isPending || !selectedTrustStatus || !trustReason.trim()}
             >
-              {setRankMutation.isPending ? "Applying..." : "Apply Rank"}
+              {setTrustStatusMutation.isPending ? "Applying..." : "Apply Status"}
             </Button>
             <button
               onClick={closeModal}

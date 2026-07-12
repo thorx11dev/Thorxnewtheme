@@ -80,8 +80,8 @@ function send(ws: WebSocket, payload: unknown) {
  * permitted to see cross-user activity that the user's record changed. Call
  * this after any mutation to a user's balance, rank, status, role, or profile.
  */
-export function broadcastUserUpdated(userId: string, reason?: string) {
-  const payload = { type: "user:updated", userId, reason, at: Date.now() };
+export function broadcastUserUpdated(userId: string, reason?: string, data?: Record<string, unknown>) {
+  const payload = { type: "user:updated", userId, reason, data, at: Date.now() };
   sockets.forEach((meta, ws) => {
     if (meta.userId === userId || meta.canSeeUserActivity) {
       send(ws, payload);

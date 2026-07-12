@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getApiOrigin } from "@/lib/apiOrigin";
 import type { User } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Query keys that represent "this user's own data". Any of these must be
@@ -47,6 +48,7 @@ function buildWsUrl(): string {
  */
 export function useRealtimeSync(user: User | null) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
@@ -61,7 +63,7 @@ export function useRealtimeSync(user: User | null) {
       socketRef.current = ws;
 
       ws.onmessage = (event) => {
-        let msg: { type?: string; userId?: string };
+        let msg: { type?: string; userId?: string; reason?: string; data?: { oldRank?: string; newRank?: string } };
         try {
           msg = JSON.parse(event.data);
         } catch {
@@ -71,6 +73,17 @@ export function useRealtimeSync(user: User | null) {
         if (msg.type === "user:updated" && msg.userId === user.id) {
           for (const key of OWN_DATA_QUERY_KEYS) {
             queryClient.invalidateQueries({ queryKey: key });
+          }
+
+          if (
+            (msg.reason === "rank_updated" || msg.reason === "rank_manually_set") &&
+            msg.data?.newRank &&
+            msg.data.newRank !== msg.data.oldRank
+          ) {
+            toast({
+              title: "🎉 Rank Upgrade!",
+              description: `Congratulations! You've been promoted to ${msg.data.newRank}.`,
+            });
           }
         }
 

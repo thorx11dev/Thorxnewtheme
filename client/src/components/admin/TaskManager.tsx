@@ -178,7 +178,7 @@ export function TaskManager() {
     });
   };
 
-  const RANKS = ["Supreme Chacha", "Haji Sab", "Baja Ji", "Chota Don", "Nawa Aya"];
+  const RANKS = ["Chacha Supreme", "Haji Sab", "Bawa Ji", "Chota Don", "Nawa Aya"];
 
   const filteredTasks = tasks?.filter(task => 
     task.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -521,9 +521,9 @@ export function TaskManager() {
                     <SelectContent className="border border-zinc-200 rounded-xl text-sm">
                       <SelectItem value="Nawa Aya">Nawa Aya (Public)</SelectItem>
                       <SelectItem value="Chota Don">Chota Don</SelectItem>
-                      <SelectItem value="Baja Ji">Baja Ji</SelectItem>
+                      <SelectItem value="Bawa Ji">Bawa Ji</SelectItem>
                       <SelectItem value="Haji Sab">Haji Sab</SelectItem>
-                      <SelectItem value="Supreme Chacha">Supreme Chacha</SelectItem>
+                      <SelectItem value="Chacha Supreme">Chacha Supreme</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

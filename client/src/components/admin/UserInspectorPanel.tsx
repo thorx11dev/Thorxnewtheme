@@ -22,6 +22,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { resolveAvatarUrl } from "@/lib/rankAvatars";
 
+function trustStatusStyle(status?: string | null) {
+  switch (status) {
+    case "Special": return "bg-purple-50 text-purple-600";
+    case "Trusted": return "bg-green-50 text-green-600";
+    case "Dangerous": return "bg-red-50 text-red-600";
+    case "Normal": return "bg-blue-50 text-blue-600";
+    default: return "bg-zinc-100 text-zinc-400";
+  }
+}
+
 interface UserInspectorProps {
   user: any | null;
   isOpen: boolean;
@@ -83,12 +93,13 @@ export function UserInspectorPanel({ user, isOpen, onClose, onViewInCRM }: UserI
                     <Trophy size={9} />
                     {user.rank || "Nawa Aya"}
                   </span>
-                  {user.isVerified && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded-full font-semibold text-[9px] tracking-wide uppercase text-green-600">
-                      <ShieldCheck size={9} />
-                      Verified
-                    </span>
-                  )}
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[9px] tracking-wide uppercase",
+                    trustStatusStyle(user.trustStatus)
+                  )}>
+                    <ShieldCheck size={9} />
+                    {user.trustStatus || "(N/A)"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -164,12 +175,10 @@ export function UserInspectorPanel({ user, isOpen, onClose, onViewInCRM }: UserI
                 <Mail size={13} className="text-zinc-400 shrink-0" />
                 <span className="text-sm font-medium text-zinc-700 truncate">{user.email}</span>
               </div>
-              {user.phone && (
-                <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-lg">
-                  <Phone size={13} className="text-zinc-400 shrink-0" />
-                  <span className="text-sm font-medium text-zinc-700">{user.phone}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-lg">
+                <Phone size={13} className="text-zinc-400 shrink-0" />
+                <span className="text-sm font-medium text-zinc-700">{user.phone || "(N/A)"}</span>
+              </div>
               <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-lg">
                 <Activity size={13} className="text-zinc-400 shrink-0" />
                 <span className="text-sm font-medium text-zinc-700">

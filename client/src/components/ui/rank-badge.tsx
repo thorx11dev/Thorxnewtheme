@@ -31,7 +31,7 @@ const RANK_CONFIG: Record<string, {
         borderColor: "border-blue-300 dark:border-blue-700",
         gradient: "from-blue-400 to-blue-600"
     },
-    "Baja Ji": {
+    "Bawa Ji": {
         icon: Medal,
         color: "text-green-500",
         bgColor: "bg-green-100 dark:bg-green-900/30",
@@ -45,7 +45,7 @@ const RANK_CONFIG: Record<string, {
         borderColor: "border-purple-300 dark:border-purple-700",
         gradient: "from-purple-400 to-purple-600"
     },
-    "Supreme Chacha": {
+    "Chacha Supreme": {
         icon: Crown,
         color: "text-yellow-500",
         bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
@@ -126,9 +126,9 @@ interface RankProgressBarProps {
 const RANK_THRESHOLDS = [
     { name: "Nawa Aya",      min: 0,      max: 25000    },
     { name: "Chota Don",     min: 25000,  max: 50000    },
-    { name: "Baja Ji",       min: 50000,  max: 75000    },
+    { name: "Bawa Ji",       min: 50000,  max: 75000    },
     { name: "Haji Sab",      min: 75000,  max: 100000   },
-    { name: "Supreme Chacha",min: 100000, max: Infinity },
+    { name: "Chacha Supreme",min: 100000, max: Infinity },
 ];
 
 export function RankProgressBar({
@@ -140,7 +140,7 @@ export function RankProgressBar({
     const currentThreshold = RANK_THRESHOLDS[currentRankIndex];
     const nextThreshold = RANK_THRESHOLDS[currentRankIndex + 1];
 
-    if (!nextThreshold || currentRank === "Supreme Chacha") {
+    if (!nextThreshold || currentRank === "Chacha Supreme") {
         return (
             <div className={cn("space-y-2", className)}>
                 <div className="flex items-center justify-between text-sm">

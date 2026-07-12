@@ -130,7 +130,7 @@ const GUEST_USER: AuthUser = {
   avatar: "default",
   email: "guest@thorx.com",
   identity: "GUEST_USER",
-  phone: "+92 300 0000000",
+  phone: "",
   referralCode: "GUEST-CODE",
   totalEarnings: "0.00",
   availableBalance: "0.00",
@@ -704,28 +704,16 @@ export default function UserPortal() {
     refetchInterval: 30000, // Auto-refresh every 30 seconds
   });
 
-  // Auto rank refresh: silently re-evaluate rank on portal load
-  // This corrects any stale rank without requiring user action
+  // Auto rank refresh: silently re-evaluate rank on portal load.
+  // This corrects any stale rank without requiring user action. The rank-up
+  // toast + cache invalidation is handled reactively by useRealtimeSync via
+  // the server's broadcast (checkAndUpdateRank), so this effect stays silent
+  // to avoid firing a duplicate toast.
   useEffect(() => {
     if (!user || user.id === 'guest') return;
-    const refreshRank = async () => {
-      try {
-        const response = await apiRequest("POST", "/api/rank/refresh");
-        const data = await response.json();
-        if (data.updated) {
-          // Invalidate auth cache so the new rank shows in the header
-          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
-          // Show rank upgrade toast notification
-          toast({
-            title: "🎉 Rank Upgrade!",
-            description: `Congratulations! You've been promoted to ${data.newRank}!`,
-          });
-        }
-      } catch {
-        // Silently fail — rank refresh is non-critical
-      }
-    };
-    refreshRank();
+    apiRequest("POST", "/api/rank/refresh").catch(() => {
+      // Silently fail — rank refresh is non-critical
+    });
   }, [user?.id]); // Only re-run when a different user logs in
 
   const activeRefsCount = dashboardStats?.referralCount || referralsData?.stats.count || 0;
@@ -1515,9 +1503,9 @@ export default function UserPortal() {
       // All ranks use the same Silver (Zinc-500) frame/badge style — the avatar
       // frame color is standardized across tiers, not rank-branded.
       const silver = { color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
-      if (title === "SUPREME CHACHA") return { title: "SUPREME CHACHA", icon: Crown, ...silver };
+      if (title === "CHACHA SUPREME") return { title: "CHACHA SUPREME", icon: Crown, ...silver };
       if (title === "HAJI SAB") return { title: "HAJI SAB", icon: Trophy, ...silver };
-      if (title === "BAJA JI") return { title: "BAJA JI", icon: Medal, ...silver };
+      if (title === "BAWA JI") return { title: "BAWA JI", icon: Medal, ...silver };
       if (title === "CHOTA DON") return { title: "CHOTA DON", icon: Shield, ...silver };
       return { title: "NAWA AYA", icon: User, ...silver };
     };
@@ -3535,13 +3523,13 @@ export default function UserPortal() {
                             id: "005",
                             protocol: "RANKING-SYSTEM",
                             question: "What are the user ranks?",
-                            answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks: 1) Nawa Aya (Priority 5 — new users), 2) Chota Don (5 refs + 2,500 PKR — Priority 4), 3) Baja Ji (10 refs + 5,000 PKR — Priority 3), 4) Haji Sab (15 refs + 10,000 PKR — Priority 2), 5) Supreme Chacha (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
+                            answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks: 1) Nawa Aya (Priority 5 — new users), 2) Chota Don (5 refs + 2,500 PKR — Priority 4), 3) Bawa Ji (10 refs + 5,000 PKR — Priority 3), 4) Haji Sab (15 refs + 10,000 PKR — Priority 2), 5) Chacha Supreme (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
                           },
                           {
                             id: "006",
                             protocol: "PAYOUT-METHODS",
                             question: "How do I withdraw my earnings?",
-                            answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page — it is mathematically locked until tasks are complete. Higher-ranked users (Supreme Chacha, Haji Sab) have payouts processed first. The 12% platform fee plus any applicable referral/admin charges are already reflected in your displayed wallet balance."
+                            answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page — it is mathematically locked until tasks are complete. Higher-ranked users (Chacha Supreme, Haji Sab) have payouts processed first. The 12% platform fee plus any applicable referral/admin charges are already reflected in your displayed wallet balance."
                           },
                           {
                             id: "007",

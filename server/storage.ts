@@ -217,6 +217,7 @@ export interface IStorage {
   // Ranking System
   checkAndUpdateRank(userId: string): Promise<User>;
   setUserRank(userId: string, rank: string, locked: boolean, adminId: string): Promise<User>;
+  setUserTrustStatus(userId: string, status: string, reason: string, adminId: string): Promise<User>;
   getRankHistory(userId: string): Promise<RankLog[]>;
 
   // Real-time Dashboard & Analytics
@@ -282,19 +283,22 @@ export interface IStorage {
 const RANKS = [
   { name: "Nawa Aya",      minEarned: 0,     minRefs: 0,  priority: 5 },
   { name: "Chota Don",     minEarned: 2500,  minRefs: 5,  priority: 4 },
-  { name: "Baja Ji",       minEarned: 5000,  minRefs: 10, priority: 3 },
+  { name: "Bawa Ji",       minEarned: 5000,  minRefs: 10, priority: 3 },
   { name: "Haji Sab",      minEarned: 10000, minRefs: 15, priority: 2 },
-  { name: "Supreme Chacha",minEarned: 25000, minRefs: 25, priority: 1 },
+  { name: "Chacha Supreme",minEarned: 25000, minRefs: 25, priority: 1 },
 ];
 
 export const RANK_NAMES = RANKS.map(r => r.name);
 
+// Note: avatar id strings ("baja-ji", "supreme-chacha") are internal asset
+// identifiers matching existing files in /avatars and are intentionally left
+// unchanged — only the rank display names above were renamed.
 const RANK_DEFAULT_AVATARS: Record<string, string> = {
   "Nawa Aya":       "nawa-aya",
   "Chota Don":      "chota-don",
-  "Baja Ji":        "baja-ji",
+  "Bawa Ji":        "baja-ji",
   "Haji Sab":       "haji-sab",
-  "Supreme Chacha": "supreme-chacha",
+  "Chacha Supreme": "supreme-chacha",
 };
 
 export class DatabaseStorage implements IStorage {
@@ -877,6 +881,8 @@ export class DatabaseStorage implements IStorage {
         avatar: users.avatar,
         rank: users.rank,
         rankLocked: users.rankLocked,
+        trustStatus: users.trustStatus,
+        trustReason: users.trustReason,
         profilePicture: users.profilePicture,
         permissions: users.permissions,
         teamKey: teamKeys,
@@ -965,6 +971,8 @@ export class DatabaseStorage implements IStorage {
           avatar: users.avatar,
           rank: users.rank,
           rankLocked: users.rankLocked,
+          trustStatus: users.trustStatus,
+          trustReason: users.trustReason,
           profilePicture: users.profilePicture,
           permissions: users.permissions
         })
@@ -1607,6 +1615,17 @@ export class DatabaseStorage implements IStorage {
           .where(eq(users.id, userId))
           .returning();
 
+        // Broadcast so every rank-change trigger path (not just the manual
+        // refresh route) pushes an instant update to the client — dynamic
+        // import avoids a circular dependency with ./realtime, which imports
+        // storage.
+        try {
+          const { broadcastUserUpdated } = await import("./realtime");
+          broadcastUserUpdated(userId, "rank_updated", { oldRank: user.rank || "Nawa Aya", newRank });
+        } catch (e) {
+          console.error("Failed to broadcast rank update:", e);
+        }
+
         return updatedUser;
       }
 
@@ -1919,6 +1938,7 @@ export class DatabaseStorage implements IStorage {
       rank: users.rank,
       totalEarnings: users.totalEarnings,
       isVerified: users.isVerified,
+      trustStatus: users.trustStatus,
       avatar: users.avatar,
       globalRank: leaderboardCache.globalRank,
       performanceScore: leaderboardCache.performanceScore,
@@ -1945,6 +1965,7 @@ export class DatabaseStorage implements IStorage {
       rank: users.rank,
       avatar: users.avatar,
       totalEarnings: users.totalEarnings,
+      trustStatus: users.trustStatus,
       level1Count: leaderboardCache.level1Count,
       level2Count: leaderboardCache.level2Count,
       referralCount: leaderboardCache.level1Count
@@ -1967,14 +1988,17 @@ export class DatabaseStorage implements IStorage {
       referralCount: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id), 0) AS INTEGER)`
     })
     .from(users)
-    .where(or(
-      and(
-        gte(users.createdAt, new Date(now.getTime() - 86400000)),
-        gte(users.totalEarnings, "5000")
-      ),
-      and(
-        gte(sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id), 0) AS INTEGER)`, 50),
-        lte(users.totalEarnings, "100")
+    .where(and(
+      eq(users.role, "user"),
+      or(
+        and(
+          gte(users.createdAt, new Date(now.getTime() - 86400000)),
+          gte(users.totalEarnings, "5000")
+        ),
+        and(
+          gte(sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id), 0) AS INTEGER)`, 50),
+          lte(users.totalEarnings, "100")
+        )
       )
     ))
     .limit(50);
@@ -2020,7 +2044,8 @@ export class DatabaseStorage implements IStorage {
       level2Count: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 JOIN users u3 ON u3.referred_by = u2.id WHERE u2.referred_by = users.id), 0) AS INTEGER)`
     })
     .from(users)
-    .where(eq(users.isActive, true));
+    // Real members only — team/admin/founder accounts must never appear on the Leaderboard.
+    .where(and(eq(users.isActive, true), eq(users.role, "user")));
 
     if (!allQualifiedUsers.length) return;
 
@@ -2280,6 +2305,21 @@ export class DatabaseStorage implements IStorage {
       }
       return updatedUser;
     });
+  }
+
+  // Manually set a user's account trust status (Special/Trusted/Normal/Dangerous)
+  // with a mandatory reason, surfaced on the Leaderboard. Independent of rank.
+  async setUserTrustStatus(userId: string, status: string, reason: string, adminId: string): Promise<User> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) throw new Error("User not found");
+
+    const [updatedUser] = await db
+      .update(users)
+      .set({ trustStatus: status, trustReason: reason, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+
+    return updatedUser;
   }
 
   // Manually set a user's rank, bypassing the automatic earnings/referral
@@ -2745,6 +2785,7 @@ export class MemStorage {
   async rejectWithdrawal(withdrawalId: string, adminId: string, reason: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
   async checkAndUpdateRank(userId: string): Promise<User> { throw new Error("Not implemented in MemStorage"); }
   async setUserRank(userId: string, rank: string, locked: boolean, adminId: string): Promise<User> { throw new Error("Not implemented in MemStorage"); }
+  async setUserTrustStatus(userId: string, status: string, reason: string, adminId: string): Promise<User> { throw new Error("Not implemented in MemStorage"); }
   async getRankHistory(userId: string): Promise<RankLog[]> { throw new Error("Not implemented in MemStorage"); }
 
   // Admin Features Stubs

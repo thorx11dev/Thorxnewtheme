@@ -2,4 +2,5 @@
 - [Auth & Role Security](auth-role-security.md) — Route guards, registration hardening, privilege escalation fixes, bootstrap endpoint security, and founder account setup.
 - [Profile Modal Save Fix](profile-modal-save.md) — Wrong query key ["auth"] vs ["session-auth"], response envelope unwrap, and GET/PATCH missing rank/avatar/profilePicture/name fields.
 - [Realtime WS Sync](realtime-ws-sync.md) — WS auth reuses the express-session middleware on the httpServer upgrade event; cross-user broadcast fanout must be permission-scoped, not role-boolean.
-- [Rank color standardization](rank-color-standardization.md) — all ranks must use the same silver/zinc frame; canonical rank names are "Nawa Aya/Chota Don/Baja Ji/Haji Sab/Supreme Chacha" (watch for mismatched hardcoded strings).
+- [Rank color standardization](rank-color-standardization.md) — all ranks must use the same silver/zinc frame; canonical rank names are "Nawa Aya/Chota Don/Bawa Ji/Haji Sab/Chacha Supreme" (renamed from Baja Ji/Supreme Chacha; watch for mismatched hardcoded strings).
+- [Dual validation guards](dual-validation-guards.md) — routes with a manual required-field check plus a separate zod schema must be updated together; relaxing only the schema leaves the manual truthy-check rejecting valid empty-string values.

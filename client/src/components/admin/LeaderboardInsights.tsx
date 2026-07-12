@@ -68,9 +68,19 @@ function UserAvatar({ user, size = 10 }: { user: any; size?: number }) {
   );
 }
 
+function trustStatusStyle(status?: string | null) {
+  switch (status) {
+    case "Special": return "bg-purple-50 border-purple-200 text-purple-600";
+    case "Trusted": return "bg-green-50 border-green-200 text-green-600";
+    case "Dangerous": return "bg-red-50 border-red-200 text-red-600";
+    case "Normal": return "bg-blue-50 border-blue-200 text-blue-600";
+    default: return "bg-zinc-50 border-zinc-200 text-zinc-400";
+  }
+}
+
 function downloadAsCSV(rows: any[], filename: string) {
   if (!rows.length) return;
-  const headers = ["Rank", "Name", "Email", "Total Earned", "Available Balance", "Direct Referrals (L1)", "Network Referrals (L2)", "Performance Score", "Verified"];
+  const headers = ["Rank", "Name", "Email", "Total Earned", "Available Balance", "Direct Referrals (L1)", "Network Referrals (L2)", "Performance Score", "Trust Status"];
   const csvRows = rows.map((u, i) => [
     u.globalRank || i + 1,
     `${u.firstName} ${u.lastName}`,
@@ -80,7 +90,7 @@ function downloadAsCSV(rows: any[], filename: string) {
     u.level1Count || u.referralCount || 0,
     u.level2Count || 0,
     u.performanceScore || 0,
-    u.isVerified ? "Yes" : "No"
+    u.trustStatus || "N/A"
   ]);
   const csv = [headers, ...csvRows].map(r => r.join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
@@ -352,11 +362,12 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 border-[1px] border-[#111]/20 bg-zinc-100 rounded-full font-black text-[8px] tracking-widest uppercase text-[#111]">
                                 {user.rank || "Nawa Aya"}
                               </span>
-                              {user.isVerified && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 border-[1px] border-green-200 rounded-full font-black text-[8px] tracking-widest uppercase text-green-600">
-                                  <ShieldCheck size={8} /> Verified
-                                </span>
-                              )}
+                              <span className={cn(
+                                "inline-flex items-center gap-1 px-2 py-0.5 border-[1px] rounded-full font-black text-[8px] tracking-widest uppercase",
+                                trustStatusStyle(user.trustStatus)
+                              )}>
+                                <ShieldCheck size={8} /> {user.trustStatus || "(N/A)"}
+                              </span>
                             </div>
                           </td>
                           <td className="p-5">

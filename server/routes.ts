@@ -188,7 +188,8 @@ export const requirePermission = (permission: string) => {
 // Registration/Login schemas for validation
 const registerSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  // Last name is optional — single-word names must not be cloned into it.
+  lastName: z.string().optional().default(""),
   identity: z.string().min(1, "Identity is required"),
   phone: z.string().optional(),
   email: z.string().email("Invalid email address"),
@@ -510,7 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName: req.session.user!.lastName,
           email: req.session.user!.email,
           identity: `GUEST_USER_${Math.floor(Math.random() * 9999) + 1000}`,
-          phone: "+92 300 0000000",
+          phone: "",
           referralCode: `GUEST-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
           totalEarnings: "0.00",
           availableBalance: "0.00",
@@ -1358,7 +1359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName,
         lastName,
         email,
-        phone: phone || "+1 555 0000000",
+        phone: phone || "",
         passwordHash,
         password: passwordHash || "legacy",
         identity: identity || `LEGACY_${Date.now()}`,
@@ -2043,7 +2044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName,
         name: `${firstName} ${lastName}`,
         identity: `FOUNDER_${Date.now()}`,
-        phone: "+1 555 0000000",
+        phone: "",
         email,
         password: password,
         passwordHash: password,
@@ -2105,9 +2106,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { firstName, lastName, email, password, phone, identity, referralCode, role, deviceFingerprint } = req.body;
       debugLog(`[POST /api/register] Attempt for ${email}. Role: ${role}`);
 
-      if (!firstName || !lastName || !email || !identity || !password) {
+      if (!firstName || lastName === undefined || lastName === null || !email || !identity || !password) {
         return res.status(400).json({
-          message: "First name, last name, email, identity, and password are required",
+          message: "First name, email, identity, and password are required",
           error: "MISSING_REQUIRED_FIELDS"
         });
       }
@@ -2154,7 +2155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName,
         lastName,
         email,
-        phone: (phone && phone.trim() !== '') ? normalizePhoneNumber(phone) : "+1 555 0000000",
+        phone: (phone && phone.trim() !== '') ? normalizePhoneNumber(phone) : "",
         identity,
         referralCode: referralCode || '',
         role: 'user', // always "user" — elevated roles via bootstrap/invitations only
@@ -3293,11 +3294,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress: req.ip
       });
 
-      broadcastUserUpdated(id, "rank_manually_set");
+      broadcastUserUpdated(id, "rank_manually_set", { oldRank: targetUser.rank || "Nawa Aya", newRank: rank });
       res.json(sanitizeUser(updatedUser));
     } catch (error) {
       console.error("Manual rank update error:", error);
       res.status(500).json({ message: "Failed to update rank" });
+    }
+  });
+
+  const TRUST_STATUSES = ["Special", "Trusted", "Normal", "Dangerous"];
+
+  // Set (or clear) a user's Trust Status — an admin-assigned account
+  // classification surfaced on the Leaderboard. A reason is mandatory
+  // whenever a status is being set (not required when clearing to null).
+  app.patch("/api/admin/users/:id/trust-status", requirePermission("MANAGE_USERS"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, reason } = req.body;
+
+      if (status !== null && (typeof status !== "string" || !TRUST_STATUSES.includes(status))) {
+        return res.status(400).json({ message: `Status must be one of: ${TRUST_STATUSES.join(", ")}` });
+      }
+      if (status !== null && (typeof reason !== "string" || !reason.trim())) {
+        return res.status(400).json({ message: "A reason is required when setting a trust status." });
+      }
+
+      const targetUser = await storage.getUserById(id);
+      if (!targetUser) return res.status(404).json({ message: "User not found" });
+
+      const updatedUser = await storage.setUserTrustStatus(id, status, status === null ? "" : reason.trim(), req.userProfile.id);
+
+      await storage.createAuditLog({
+        adminId: req.userProfile.id,
+        action: "TRUST_STATUS_SET",
+        targetType: "user",
+        targetId: id,
+        details: { oldStatus: targetUser.trustStatus || null, newStatus: status, reason: status === null ? null : reason.trim() },
+        ipAddress: req.ip
+      });
+
+      broadcastUserUpdated(id, "trust_status_updated");
+      res.json(sanitizeUser(updatedUser));
+    } catch (error) {
+      console.error("Trust status update error:", error);
+      res.status(500).json({ message: "Failed to update trust status" });
     }
   });
 

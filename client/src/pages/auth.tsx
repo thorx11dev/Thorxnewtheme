@@ -460,7 +460,8 @@ export default function Auth() {
     try {
       const nameParts = data.name.trim().split(' ');
       const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(' ') || nameParts[0];
+      // Single-word names must not be cloned into the last name field.
+      const lastName = nameParts.slice(1).join(' ');
 
       const fingerprint = await getDeviceFingerprint();
 
