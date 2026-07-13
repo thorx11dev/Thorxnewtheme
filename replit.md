@@ -40,7 +40,12 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - Role: `founder` (full access to team portal)
 - Created via `POST /api/bootstrap-founder` (one-time; blocked once any team member exists)
-- This environment's database was freshly provisioned on import (schema pushed via `drizzle-kit push`), so no founder account exists yet. Create one by POSTing `{ email, password, firstName, lastName }` to `/api/bootstrap-founder`, then log in normally.
+- This environment's database was freshly provisioned on this import (schema pushed via `drizzle-kit push`), so no founder account exists yet. Create one by POSTing `{ email, password, firstName, lastName }` to `/api/bootstrap-founder`, then log in normally.
+
+## Setup notes (this import)
+
+- Ran `npm install`, then `npm run db:push` to create all tables from `shared/schema.ts`.
+- If `db:push` fails with a TTY-prompt error on a fresh database, a leftover `session` table (auto-created by connect-pg-simple at server start) can confuse drizzle-kit's conflict resolver. Drop it (`DROP TABLE IF EXISTS session;`) and rerun `npx drizzle-kit push --force`.
 
 ## User preferences
 
