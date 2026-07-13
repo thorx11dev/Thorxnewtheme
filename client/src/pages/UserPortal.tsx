@@ -51,7 +51,6 @@ import {
   CheckCircle2,
   Wallet,
   Activity,
-  Star,
   Gift,
   Play as PlayIcon,
   Pause,
@@ -754,6 +753,12 @@ export default function UserPortal() {
     enabled: !!user && user.id !== 'guest',
   });
 
+  // Referral LVL 1 / LVL 2 counts — derived directly from the referral
+  // leaderboard entries (by level), never from the aggregate total-referrals
+  // stat, which conflates L1 and L2 into a single number.
+  const referralLevel1Count = (referralLeaderboard || []).filter((r: any) => r.level === 1).length;
+  const referralLevel2Count = (referralLeaderboard || []).filter((r: any) => r.level === 2).length;
+
   const userRank = (user?.rank || "Nawa Aya").toLowerCase();
 
   const incompleteMandatory = (tasksWithRecords || []).filter((tr) => {
@@ -901,9 +906,6 @@ export default function UserPortal() {
   });
   const [isProcessing, setIsProcessing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-
-  // Referral section states
-  const [leaderboardTab, setLeaderboardTab] = useState<"l1" | "l2">("l1");
 
   // Hero section interactive states (30s toggle)
   const [isWorkHeroToggled, setIsWorkHeroToggled] = useState(false);
@@ -2130,73 +2132,6 @@ export default function UserPortal() {
 
   // Enhanced Referrals Section - Dashboard Style
   function renderReferralsSection() {
-    // Hooks moved to top level to avoid order issues
-
-    // Mock data for leadership board
-    const leaderboardData = [
-      {
-        id: "1",
-        rank: 1,
-        name: "Don Ivan",
-        earnings: "2,450.00",
-        referrals: 15,
-        l1: 10,
-        l2: 5,
-        status: "ACTIVE",
-        tier: "PLATINUM",
-        joinDate: "2024-01-15",
-        isCurrentUser: false
-      },
-      {
-        id: "2",
-        rank: 2,
-        name: "Saad Rauf",
-        earnings: "1,890.50",
-        referrals: 12,
-        l1: 8,
-        l2: 4,
-        status: "ACTIVE",
-        tier: "GOLD",
-        joinDate: "2024-02-03",
-        isCurrentUser: false
-      },
-      {
-        id: "3",
-        rank: 3,
-        name: "Zain Abbas",
-        earnings: "1,425.75",
-        referrals: 9,
-        l1: 6,
-        l2: 3,
-        status: "ACTIVE",
-        tier: "SILVER",
-        joinDate: "2024-02-18",
-        isCurrentUser: false
-      }
-    ];
-
-    // Sorting logic based on active tab
-    const sortedLeaderboard = [...leaderboardData].sort((a, b) => b[leaderboardTab] - a[leaderboardTab]);
-
-
-    const getRankIcon = (rank: number) => {
-      switch (rank) {
-        case 1: return <Crown className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />;
-        case 2: return <Trophy className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />;
-        case 3: return <Medal className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />;
-        default: return <Star className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />;
-      }
-    };
-
-    const getTierColor = (tier: string) => {
-      switch (tier) {
-        case 'PLATINUM': return 'bg-gradient-to-r from-blue-600 to-purple-600 text-white';
-        case 'GOLD': return 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white';
-        case 'SILVER': return 'bg-gradient-to-r from-gray-400 to-gray-600 text-white';
-        default: return 'bg-black text-white';
-      }
-    };
-
     return (
       <motion.div
         initial="initial"
@@ -2318,7 +2253,7 @@ export default function UserPortal() {
               <UserCheck className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
               <TechnicalLabel text="Referral LVL 1" className="text-muted-foreground text-xs" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-commission-rate">{referralsData?.stats.count || 0}</p>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-commission-rate">{referralLevel1Count}</p>
           </motion.div>
 
           {/* Network Potential */}
@@ -2337,7 +2272,7 @@ export default function UserPortal() {
               <Network className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
               <TechnicalLabel text="Referral LVL 2" className="text-muted-foreground text-xs" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-network-potential">0</p>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-network-potential">{referralLevel2Count}</p>
           </motion.div>
         </div>
 

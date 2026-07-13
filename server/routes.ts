@@ -413,7 +413,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
-      const insights = await storage.getLeaderboardInsights(limit, offset);
+      const search = typeof req.query.search === "string" ? req.query.search : undefined;
+      const insights = await storage.getLeaderboardInsights(limit, offset, search);
       res.json(insights);
     } catch (error: any) {
       console.error("Leaderboard insights error:", error?.message || error);

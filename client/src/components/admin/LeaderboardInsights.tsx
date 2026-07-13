@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { useDebounce } from "@/hooks/use-debounce";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -105,11 +106,15 @@ function downloadAsCSV(rows: any[], filename: string) {
 }
 
 export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (email: string) => void }) {
-  const [searchTerm, setSearchTerm] = useState("");
+  // Search state is isolated per tab — typing in one tab must never bleed
+  // into the others.
+  const [globalSearchTerm, setGlobalSearchTerm] = useState("");
+  const [referrersSearchTerm, setReferrersSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("global");
   const [pageSize] = useState("50");
   const [page, setPage] = useState(0);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+  const [referrerSortConfig, setReferrerSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -117,8 +122,23 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Debounced so we don't fire a request on every keystroke, and the search
+  // runs server-side against the full leaderboard — not just whatever page
+  // is currently loaded — so results outside the current page are found too.
+  const debouncedGlobalSearch = useDebounce(globalSearchTerm, 400);
+
+  // Any time the search term changes, jump back to page 0 — staying on a
+  // stale page/offset could otherwise land past the end of the filtered set.
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedGlobalSearch]);
+
+  const searchQueryParam = debouncedGlobalSearch.trim()
+    ? `&search=${encodeURIComponent(debouncedGlobalSearch.trim())}`
+    : "";
+
   const { data: insights, isLoading, isError } = useQuery<LeaderboardData>({
-    queryKey: [`/api/admin/leaderboard/insights?limit=${pageSize}&offset=${page * parseInt(pageSize)}`],
+    queryKey: [`/api/admin/leaderboard/insights?limit=${pageSize}&offset=${page * parseInt(pageSize)}${searchQueryParam}`],
   });
 
   const forceSyncMutation = useMutation({
@@ -129,7 +149,14 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/admin/leaderboard/insights?limit=${pageSize}&offset=${page * parseInt(pageSize)}`] });
+      // Prefix match so every paginated insights page gets invalidated, not
+      // just the one matching the currently viewed page/pageSize combo.
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === "string" && key.startsWith("/api/admin/leaderboard/insights");
+        },
+      });
       toast({ title: "Rankings Updated", description: "All scores have been recalculated." });
     },
     onError: (error: any) => {
@@ -149,28 +176,47 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
     );
   };
 
-  const applySort = (arr: any[]) => {
-    if (!sortConfig) return arr;
+  const handleReferrerSort = (key: string) => {
+    setReferrerSortConfig(prev =>
+      prev?.key === key
+        ? { key, direction: prev.direction === "desc" ? "asc" : "desc" }
+        : { key, direction: "desc" }
+    );
+  };
+
+  const applySortWith = (arr: any[], config: { key: string; direction: "asc" | "desc" } | null) => {
+    if (!config) return arr;
     return [...arr].sort((a, b) => {
-      const av = parseFloat(a[sortConfig.key]) || 0;
-      const bv = parseFloat(b[sortConfig.key]) || 0;
-      return sortConfig.direction === "asc" ? av - bv : bv - av;
+      const av = parseFloat(a[config.key]) || 0;
+      const bv = parseFloat(b[config.key]) || 0;
+      return config.direction === "asc" ? av - bv : bv - av;
     });
   };
 
+  // Name/email filtering already happened server-side (see searchQueryParam)
+  // against the full leaderboard, not just this page — only sorting is
+  // applied client-side to the page already returned.
   const filtered = useMemo(() => {
-    const term = searchTerm.toLowerCase();
     const list = insights?.globalRanking || [];
-    return applySort(
-      term ? list.filter(u => `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(term)) : list
-    );
-  }, [insights, searchTerm, sortConfig]);
+    return applySortWith(list, sortConfig);
+  }, [insights, sortConfig]);
 
   const filteredReferrers = useMemo(() => {
-    const term = searchTerm.toLowerCase();
+    const term = referrersSearchTerm.toLowerCase();
     const list = insights?.topReferrers || [];
-    return term ? list.filter(u => `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(term)) : list;
-  }, [insights, searchTerm]);
+    return applySortWith(
+      term ? list.filter(u => `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(term)) : list,
+      referrerSortConfig
+    );
+  }, [insights, referrersSearchTerm, referrerSortConfig]);
+
+  // Computed once from the unsorted/unfiltered dataset so the L1 progress
+  // bar scale stays stable regardless of how the table is currently sorted
+  // or filtered.
+  const maxLevel1Count = useMemo(() => {
+    const list = insights?.topReferrers || [];
+    return list.reduce((max, u) => Math.max(max, u.level1Count || 0), 1);
+  }, [insights]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -280,8 +326,11 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
               type="text"
               placeholder="Search members..."
               className="h-10 pl-11 pr-4 bg-white border-[1.5px] border-[#111] rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-xs font-bold w-64 text-[#111] placeholder:text-zinc-400"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={activeTab === "referrers" ? referrersSearchTerm : globalSearchTerm}
+              onChange={(e) => {
+                if (activeTab === "referrers") setReferrersSearchTerm(e.target.value);
+                else setGlobalSearchTerm(e.target.value);
+              }}
             />
           </div>
         </div>
@@ -465,9 +514,15 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                   <tr className="bg-white/50 border-b-[1.5px] border-[#111]/10">
                     <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Rank</th>
                     <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Member</th>
-                    <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Direct Referrals (L1)</th>
-                    <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Network (L2)</th>
-                    <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase">Total Earned</th>
+                    <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase cursor-pointer select-none" onClick={() => handleReferrerSort("level1Count")}>
+                      <div className="flex items-center gap-1.5">Direct Referrals (L1) <ArrowUpDown size={11} /></div>
+                    </th>
+                    <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase cursor-pointer select-none" onClick={() => handleReferrerSort("level2Count")}>
+                      <div className="flex items-center gap-1.5">Network (L2) <ArrowUpDown size={11} /></div>
+                    </th>
+                    <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase cursor-pointer select-none" onClick={() => handleReferrerSort("totalEarnings")}>
+                      <div className="flex items-center gap-1.5">Total Earned <ArrowUpDown size={11} /></div>
+                    </th>
                     <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase text-right">View</th>
                   </tr>
                 </thead>
@@ -509,7 +564,7 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                               <div className="w-16 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-blue-500 rounded-full"
-                                  style={{ width: `${Math.min(((user.level1Count || 0) / (filteredReferrers[0]?.level1Count || 1)) * 100, 100)}%` }}
+                                  style={{ width: `${Math.min(((user.level1Count || 0) / maxLevel1Count) * 100, 100)}%` }}
                                 />
                               </div>
                               <span className="font-black text-sm tabular-nums text-[#111]">{user.level1Count || 0}</span>

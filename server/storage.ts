@@ -264,7 +264,7 @@ export interface IStorage {
   }>>;
 
   // Admin Features (Platinum Suite)
-  getLeaderboardInsights(limit?: number, offset?: number): Promise<{
+  getLeaderboardInsights(limit?: number, offset?: number, search?: string): Promise<{
     globalRanking: any[];
     topReferrers: any[];
     anomalies: any[];
@@ -1886,6 +1886,8 @@ export class DatabaseStorage implements IStorage {
       console.log(`[ReferralTree] Fetching network for user: ${userId}`);
 
       // 1. Get Top Level 1 Referees (Directly referred by userId)
+      //    Only real, active members count toward the leaderboard — team/admin/
+      //    founder accounts and deactivated users must never appear here.
       const level1Users = await db
         .select({
           id: users.id,
@@ -1900,7 +1902,11 @@ export class DatabaseStorage implements IStorage {
           profilePicture: users.profilePicture
         })
         .from(users)
-        .where(eq(users.referredBy, userId))
+        .where(and(
+          eq(users.referredBy, userId),
+          eq(users.role, "user"),
+          eq(users.isActive, true)
+        ))
         .orderBy(desc(users.totalEarnings))
         .limit(100);
 
@@ -1925,24 +1931,52 @@ export class DatabaseStorage implements IStorage {
           profilePicture: users.profilePicture
           })
           .from(users)
-          .where(inArray(users.referredBy, level1Ids))
+          .where(and(
+            inArray(users.referredBy, level1Ids),
+            eq(users.role, "user"),
+            eq(users.isActive, true)
+          ))
           .orderBy(desc(users.totalEarnings))
           .limit(200);
 
         console.log(`[ReferralTree] Found ${level2Users.length} L2 users (capped at 200)`);
       }
 
-      // 3. Format into a flat list for the frontend to reconstruct
+      // 3. Pull real per-referee commission totals in one batch query instead
+      //    of hardcoding "0.00" — this is how much the viewing user (userId)
+      //    actually earned from each downstream referee's payouts.
+      const allReferredIds = [...level1Users.map(u => u.id), ...level2Users.map(u => u.id)];
+      const earningsByUser = new Map<string, string>();
+
+      if (allReferredIds.length > 0) {
+        const earningsRows = await db
+          .select({
+            sourceUserId: commissionLogs.sourceUserId,
+            total: sql<string>`COALESCE(SUM(${commissionLogs.amount}), '0.00')`
+          })
+          .from(commissionLogs)
+          .where(and(
+            eq(commissionLogs.beneficiaryId, userId),
+            inArray(commissionLogs.sourceUserId, allReferredIds)
+          ))
+          .groupBy(commissionLogs.sourceUserId);
+
+        for (const row of earningsRows) {
+          earningsByUser.set(row.sourceUserId, row.total);
+        }
+      }
+
+      // 4. Format into a flat list for the frontend to reconstruct
       const combined = [
         ...level1Users.map((u) => ({
           ...u,
-          earningsFromUser: '0.00',
+          earningsFromUser: earningsByUser.get(u.id) || '0.00',
           level: 1,
           referredBy: userId
         })),
         ...level2Users.map((u) => ({
           ...u,
-          earningsFromUser: '0.00',
+          earningsFromUser: earningsByUser.get(u.id) || '0.00',
           level: 2,
           referredBy: u.referredBy // This will be one of the L1 IDs
         }))
@@ -2016,7 +2050,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Admin Features Implementation
-  async getLeaderboardInsights(limit: number = 50, offset: number = 0): Promise<{ 
+  async getLeaderboardInsights(limit: number = 50, offset: number = 0, search?: string): Promise<{ 
     globalRanking: any[]; 
     topReferrers: any[]; 
     anomalies: any[]; 
@@ -2043,14 +2077,22 @@ export class DatabaseStorage implements IStorage {
         .catch((err) => console.error("[RiskEngine] Auto scan on leaderboard refresh failed:", err));
     }
 
+    // Search filters at the DB level so it applies across the *entire*
+    // leaderboard, not just whatever page happens to be loaded client-side.
+    const trimmedSearch = search?.trim();
+    const searchCondition = trimmedSearch
+      ? sql`(${users.firstName} ILIKE ${'%' + trimmedSearch + '%'} OR ${users.lastName} ILIKE ${'%' + trimmedSearch + '%'} OR ${users.email} ILIKE ${'%' + trimmedSearch + '%'} OR (${users.firstName} || ' ' || ${users.lastName}) ILIKE ${'%' + trimmedSearch + '%'})`
+      : undefined;
+
     // 1. Get Global Ranking (with pagination)
-    const globalRanking = await db.select({
+    const globalRankingQuery = db.select({
       id: users.id,
       firstName: users.firstName,
       lastName: users.lastName,
       email: users.email,
       rank: users.rank,
       totalEarnings: users.totalEarnings,
+      availableBalance: users.availableBalance,
       isVerified: users.isVerified,
       trustStatus: users.trustStatus,
       avatar: users.avatar,
@@ -2064,10 +2106,12 @@ export class DatabaseStorage implements IStorage {
       level2Count: leaderboardCache.level2Count
     })
     .from(leaderboardCache)
-    .innerJoin(users, eq(leaderboardCache.userId, users.id))
-    .orderBy(leaderboardCache.globalRank)
-    .limit(limit)
-    .offset(offset);
+    .innerJoin(users, eq(leaderboardCache.userId, users.id));
+
+    const globalRanking = await (searchCondition ? globalRankingQuery.where(searchCondition) : globalRankingQuery)
+      .orderBy(leaderboardCache.globalRank)
+      .limit(limit)
+      .offset(offset);
 
     // 2. Get Top Referrers (from users table directly for real-time leader switch if needed, or from cache)
     // For Enterprise, we'll use a slightly different aggregation for referrers here
@@ -2144,14 +2188,22 @@ export class DatabaseStorage implements IStorage {
       };
     });
 
-    const totalCountResult = await db.select({ count: sql<number>`count(*)` }).from(leaderboardCache);
+    // Count must reflect the same search filter as globalRanking, otherwise
+    // pagination controls would imply more pages of results exist than the
+    // filtered query can actually return.
+    const totalCountQuery = db.select({ count: sql<number>`count(*)` })
+      .from(leaderboardCache)
+      .innerJoin(users, eq(leaderboardCache.userId, users.id));
+    const totalCountResult = await (searchCondition ? totalCountQuery.where(searchCondition) : totalCountQuery);
 
     return { 
       globalRanking, 
       topReferrers, 
       anomalies: mappedAnomalies, 
       totalCount: totalCountResult[0]?.count || 0,
-      lastUpdated: lastCacheEntry[0]?.recordedAt || now
+      // If we just rebuilt the cache, report the current timestamp — not the
+      // pre-refresh value captured before refreshLeaderboardCache() ran.
+      lastUpdated: isStale ? now : (lastCacheEntry[0]?.recordedAt || now)
     };
   }
 
@@ -2175,8 +2227,8 @@ export class DatabaseStorage implements IStorage {
       isVerified: users.isVerified,
       createdAt: users.createdAt,
       lastLoginDate: users.lastLoginDate,
-      referralCount: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id), 0) AS INTEGER)`,
-      level2Count: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 JOIN users u3 ON u3.referred_by = u2.id WHERE u2.referred_by = users.id), 0) AS INTEGER)`
+      referralCount: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id AND u2.role = 'user' AND u2.is_active = true), 0) AS INTEGER)`,
+      level2Count: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 JOIN users u3 ON u3.referred_by = u2.id WHERE u2.referred_by = users.id AND u3.role = 'user' AND u3.is_active = true), 0) AS INTEGER)`
     })
     .from(users)
     .where(and(eq(users.isActive, true), eq(users.role, "user")));
@@ -3380,7 +3432,7 @@ export class MemStorage {
   async getRankHistory(userId: string): Promise<RankLog[]> { throw new Error("Not implemented in MemStorage"); }
 
   // Admin Features Stubs
-  async getLeaderboardInsights(): Promise<{ topEarners: any[]; topReferrers: any[]; anomalies: any[] }> { throw new Error("Not implemented in MemStorage"); }
+  async getLeaderboardInsights(limit?: number, offset?: number, search?: string): Promise<{ globalRanking: any[]; topReferrers: any[]; anomalies: any[]; totalCount: number; lastUpdated: Date }> { throw new Error("Not implemented in MemStorage"); }
   async getAdminWithdrawals(): Promise<Array<Withdrawal & { user: User }>> { throw new Error("Not implemented in MemStorage"); }
   async getActiveUsersCount(): Promise<number> { throw new Error("Not implemented in MemStorage"); }
   async updateWithdrawalStatus(id: string, status: string, adminId: string, transactionId?: string, rejectionReason?: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
