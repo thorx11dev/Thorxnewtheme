@@ -40,7 +40,7 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - Role: `founder` (full access to team portal)
 - Created via `POST /api/bootstrap-founder` (one-time; blocked once any team member exists)
-- This environment's database is fresh (re-imported), so no founder account exists yet. Create one by POSTing `{ email, password, firstName, lastName }` to `/api/bootstrap-founder`, then log in normally.
+- This environment's database was freshly provisioned on import (schema pushed via `drizzle-kit push`), so no founder account exists yet. Create one by POSTing `{ email, password, firstName, lastName }` to `/api/bootstrap-founder`, then log in normally.
 
 ## User preferences
 

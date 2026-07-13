@@ -21,3 +21,7 @@ A static sub-route (e.g. `GET /api/admin/risk-cases/signal-stats`) registered **
 
 ## Feedback loop
 Signal predictive accuracy ("precision") is computed on demand from resolved cases only (`Cleared` vs `Actioned` outcomes per signal name) rather than stored incrementally — simpler and always consistent with actual case history, at the cost of an aggregation query. Acceptable given case volume is admin-moderation scale, not high-frequency.
+
+## Fresh-import db:push TTY prompt
+On a freshly-provisioned (re-imported) dev database, `npm run db:push` can still fail with "Interactive prompts require a TTY terminal" even with `--force`, if a leftover `session` table (auto-created by connect-pg-simple at server start) makes drizzle-kit think it needs to resolve a rename/conflict.
+**How to apply:** `DROP TABLE IF EXISTS session;` via executeSql, then rerun `npx drizzle-kit push --force` non-interactively — it recreates cleanly. Verify all expected tables exist afterward (`information_schema.tables`) since a stale/partial `migrations/` folder may not match the current `shared/schema.ts`.
