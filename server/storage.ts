@@ -12,6 +12,12 @@ import {
   hilltopAdsStats,
   commissionLogs,
   withdrawals,
+  founderWithdrawals,
+  type FounderWithdrawal,
+  type InsertFounderWithdrawal,
+  healthSnapshots,
+  type HealthSnapshot,
+  errorEvents,
   type Registration,
   type InsertRegistration,
   type User,
@@ -78,7 +84,7 @@ import {
   type InsertScoreHistory,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, or, sql, inArray, ilike, gte, lte, ne } from "drizzle-orm";
+import { eq, desc, and, or, sql, inArray, ilike, gte, lte, lt, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { encryptCredential, decryptCredential, isEncrypted } from "./utils/credential-crypto";
@@ -272,8 +278,68 @@ export interface IStorage {
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
   createInternalNote(note: InsertInternalNote): Promise<InternalNote>;
   getInternalNotes(targetType: string, targetId: string): Promise<Array<InternalNote & { admin: { firstName: string, lastName: string } }>>;
-  adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string): Promise<User>;
+  adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string, creditIntent?: 'verified_deposit' | 'admin_credit'): Promise<User>;
   deleteUser(userId: string): Promise<void>;
+
+  // Founder Profit Ledger
+  createFounderWithdrawal(data: { amount: string; withdrawalDate: Date; description?: string; createdBy: string }): Promise<FounderWithdrawal>;
+  getFounderWithdrawals(limit?: number, offset?: number): Promise<{ withdrawals: FounderWithdrawal[]; total: number }>;
+  getFounderProfitSummary(): Promise<{
+    totalProfitEarned: string;
+    thisMonthProfitEarned: string;
+    totalWithdrawnToPersonal: string;
+    thisMonthWithdrawn: string;
+    safeToWithdrawNow: string;
+    monthlyBalance: string;
+    isOverWithdrawn: boolean;
+    overWithdrawnAmount: string;
+    currentFeeRate: string;
+    lastWithdrawalDate: string | null;
+    daysSinceLastWithdrawal: number | null;
+  }>;
+
+  // System Health
+  saveHealthSnapshot(data: Omit<HealthSnapshot, 'id' | 'recordedAt'>): Promise<HealthSnapshot>;
+  getLatestHealthSnapshot(): Promise<HealthSnapshot | null>;
+  getHealthHistory(hours?: number): Promise<HealthSnapshot[]>;
+
+  // Financial Reconciliation
+  getReconciliationData(): Promise<{
+    totalUserBalances: string;
+    realEarningsBacking: string;
+    unverifiedCreditExposure: string;
+    pendingWithdrawalLiability: string;
+    netPlatformLiquidity: string;
+    adminCreditDetails: Array<{
+      id: string; userId: string; userName: string; adminName: string;
+      amount: string; description: string; createdAt: string;
+    }>;
+  }>;
+
+  // Reclassify an admin_credit earning as a verified_deposit (founder only)
+  reclassifyEarning(earningId: string, newType: string, adminId: string): Promise<void>;
+
+  // Error event logging for health engine
+  logErrorEvent(route: string, status: number, message?: string): Promise<void>;
+
+  // Extended metrics for dashboard cards
+  getExtendedMetrics(): Promise<{
+    pendingWithdrawalTotal: string;
+    pendingWithdrawalCount: number;
+    oldestPendingDays: number | null;
+    unverifiedCreditTotal: string;
+    unverifiedCreditCount: number;
+    userGrowthThisWeek: number;
+    userGrowthLastWeek: number;
+    userGrowthRate: number;
+    networkL1Total: number;
+    networkL2Total: number;
+    networkRatio: number;
+    teamActivity24h: number;
+    teamActivityAvg7d: number;
+    mostActiveTeamMember: string | null;
+    totalUsers: number;
+  }>;
 
   // Notifications
   createNotification(notification: InsertNotification): Promise<Notification>;
@@ -2341,7 +2407,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string): Promise<User> {
+  async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string, creditIntent: 'verified_deposit' | 'admin_credit' = 'admin_credit'): Promise<User> {
     return await db.transaction(async (tx) => {
       const [user] = await tx.select().from(users).where(eq(users.id, userId));
       if (!user) throw new Error("User not found");
@@ -2370,11 +2436,11 @@ export class DatabaseStorage implements IStorage {
       if (type === 'add') {
         await tx.insert(earnings).values({
           userId,
-          type: 'admin_credit',
+          type: creditIntent,
           amount,
           description: reason || 'Admin balance adjustment',
           status: 'completed',
-          metadata: { source: 'admin_adjustment', adminId },
+          metadata: { source: 'admin_adjustment', adminId, creditIntent },
         });
       }
 
@@ -2420,6 +2486,212 @@ export class DatabaseStorage implements IStorage {
       }
       return updatedUser;
     });
+  }
+
+  // ── Founder Profit Ledger ───────────────────────────────────────────────────
+
+  async createFounderWithdrawal(data: { amount: string; withdrawalDate: Date; description?: string; createdBy: string }): Promise<FounderWithdrawal> {
+    const [fw] = await db.insert(founderWithdrawals).values({
+      amount: data.amount,
+      withdrawalDate: data.withdrawalDate,
+      description: data.description,
+      createdBy: data.createdBy,
+    }).returning();
+    return fw;
+  }
+
+  async getFounderWithdrawals(limit = 50, offset = 0): Promise<{ withdrawals: FounderWithdrawal[]; total: number }> {
+    const rows = await db.select().from(founderWithdrawals).orderBy(desc(founderWithdrawals.createdAt)).limit(limit).offset(offset);
+    const [{ total }] = await db.select({ total: sql<number>`COUNT(*)` }).from(founderWithdrawals);
+    return { withdrawals: rows, total: Number(total) };
+  }
+
+  async getFounderProfitSummary() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalProfitRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(fee AS DECIMAL)), 0)::text` }).from(withdrawals).where(eq(withdrawals.status, 'processed'));
+    const [monthProfitRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(fee AS DECIMAL)), 0)::text` }).from(withdrawals).where(and(eq(withdrawals.status, 'processed'), gte(withdrawals.processedAt, monthStart)));
+    const [totalOutRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(founderWithdrawals);
+    const [monthOutRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(founderWithdrawals).where(gte(founderWithdrawals.createdAt, monthStart));
+    const [lastWd] = await db.select().from(founderWithdrawals).orderBy(desc(founderWithdrawals.createdAt)).limit(1);
+    const feeConfigs = await db.select().from(systemConfig).where(eq(systemConfig.key, 'SYSTEM_FEE'));
+    const feeRate = feeConfigs[0]?.value ?? 10;
+
+    const totalIn = parseFloat(totalProfitRow?.total ?? '0');
+    const monthIn = parseFloat(monthProfitRow?.total ?? '0');
+    const totalOut = parseFloat(totalOutRow?.total ?? '0');
+    const monthOut = parseFloat(monthOutRow?.total ?? '0');
+    const safe = totalIn - totalOut;
+    const monthBalance = monthIn - monthOut;
+    const daysSinceLast = lastWd?.createdAt ? Math.floor((Date.now() - new Date(lastWd.createdAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+    return {
+      totalProfitEarned: totalIn.toFixed(2),
+      thisMonthProfitEarned: monthIn.toFixed(2),
+      totalWithdrawnToPersonal: totalOut.toFixed(2),
+      thisMonthWithdrawn: monthOut.toFixed(2),
+      safeToWithdrawNow: Math.max(0, safe).toFixed(2),
+      monthlyBalance: monthBalance.toFixed(2),
+      isOverWithdrawn: safe < 0,
+      overWithdrawnAmount: safe < 0 ? Math.abs(safe).toFixed(2) : '0',
+      currentFeeRate: String(feeRate),
+      lastWithdrawalDate: lastWd?.withdrawalDate?.toISOString() ?? null,
+      daysSinceLastWithdrawal: daysSinceLast,
+    };
+  }
+
+  // ── System Health Snapshots ─────────────────────────────────────────────────
+
+  async saveHealthSnapshot(data: Omit<HealthSnapshot, 'id' | 'recordedAt'>): Promise<HealthSnapshot> {
+    const [snap] = await db.insert(healthSnapshots).values(data as any).returning();
+    return snap;
+  }
+
+  async getLatestHealthSnapshot(): Promise<HealthSnapshot | null> {
+    const [snap] = await db.select().from(healthSnapshots).orderBy(desc(healthSnapshots.recordedAt)).limit(1);
+    return snap ?? null;
+  }
+
+  async getHealthHistory(hours = 24): Promise<HealthSnapshot[]> {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    return db.select().from(healthSnapshots).where(gte(healthSnapshots.recordedAt, since)).orderBy(desc(healthSnapshots.recordedAt)).limit(Math.min(hours, 48));
+  }
+
+  // ── Financial Reconciliation ────────────────────────────────────────────────
+
+  async getReconciliationData() {
+    const [balRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(available_balance AS DECIMAL)), 0)::text` }).from(users).where(eq(users.isActive, true));
+    const [realRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(earnings).where(sql`type != 'admin_credit'`);
+    const [unverRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(earnings).where(eq(earnings.type, 'admin_credit'));
+    const [pendRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(withdrawals).where(eq(withdrawals.status, 'pending'));
+
+    const realBacking = parseFloat(realRow?.total ?? '0');
+    const pendingLiability = parseFloat(pendRow?.total ?? '0');
+    const netLiquidity = realBacking - pendingLiability;
+
+    const adminCreditRows = await db
+      .select({
+        id: earnings.id,
+        userId: earnings.userId,
+        amount: earnings.amount,
+        description: earnings.description,
+        createdAt: earnings.createdAt,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+      })
+      .from(earnings)
+      .leftJoin(users, eq(earnings.userId, users.id))
+      .where(eq(earnings.type, 'admin_credit'))
+      .orderBy(desc(earnings.createdAt))
+      .limit(100);
+
+    return {
+      totalUserBalances: balRow?.total ?? '0',
+      realEarningsBacking: realRow?.total ?? '0',
+      unverifiedCreditExposure: unverRow?.total ?? '0',
+      pendingWithdrawalLiability: pendRow?.total ?? '0',
+      netPlatformLiquidity: netLiquidity.toFixed(2),
+      adminCreditDetails: adminCreditRows.map(c => ({
+        id: c.id,
+        userId: c.userId,
+        userName: `${c.userFirstName ?? ''} ${c.userLastName ?? ''}`.trim() || 'Unknown',
+        adminName: 'Admin',
+        amount: c.amount,
+        description: c.description ?? '',
+        createdAt: c.createdAt?.toISOString() ?? '',
+      })),
+    };
+  }
+
+  async reclassifyEarning(earningId: string, newType: string, adminId: string): Promise<void> {
+    await db.update(earnings).set({ type: newType }).where(eq(earnings.id, earningId));
+    await db.insert(auditLogs).values({
+      adminId,
+      action: "RECLASSIFY_EARNING",
+      targetType: "earning",
+      targetId: earningId,
+      details: { newType, reclassifiedBy: adminId },
+    });
+  }
+
+  // ── Error Event Logging ─────────────────────────────────────────────────────
+
+  async logErrorEvent(route: string, status: number, message?: string): Promise<void> {
+    await db.insert(errorEvents).values({ route, status, message }).catch(() => {/* silent */});
+  }
+
+  // ── Extended Metrics for Dashboard Cards ────────────────────────────────────
+
+  async getExtendedMetrics() {
+    const now = new Date();
+    const ago7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const ago14d = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const ago24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Pending withdrawals
+    const pendingRows = await db.select({ id: withdrawals.id, amount: withdrawals.amount, createdAt: withdrawals.createdAt }).from(withdrawals).where(eq(withdrawals.status, 'pending'));
+    const pendingTotal = pendingRows.reduce((s, w) => s + parseFloat(w.amount), 0);
+    const oldestPending = pendingRows.reduce((oldest, w) => (!w.createdAt ? oldest : !oldest || w.createdAt < oldest ? w.createdAt : oldest), null as Date | null);
+    const oldestPendingDays = oldestPending ? Math.floor((now.getTime() - oldestPending.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+    // Unverified credits
+    const [unverRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text`, cnt: sql<number>`COUNT(*)` }).from(earnings).where(eq(earnings.type, 'admin_credit'));
+
+    // User growth
+    const [thisWeekRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(gte(users.createdAt, ago7d));
+    const [lastWeekRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(and(gte(users.createdAt, ago14d), lt(users.createdAt, ago7d)));
+    const thisWeek = Number(thisWeekRow?.cnt ?? 0);
+    const lastWeek = Number(lastWeekRow?.cnt ?? 0);
+    const growthRate = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 1000) / 10 : (thisWeek > 0 ? 100 : 0);
+
+    // Referral network depth
+    const [l1Row] = await db.select({ cnt: sql<number>`COUNT(DISTINCT beneficiary_id)` }).from(commissionLogs).where(and(eq(commissionLogs.level, 1), eq(commissionLogs.status, 'paid')));
+    const [l2Row] = await db.select({ cnt: sql<number>`COUNT(DISTINCT beneficiary_id)` }).from(commissionLogs).where(and(eq(commissionLogs.level, 2), eq(commissionLogs.status, 'paid')));
+    const l1Total = Number(l1Row?.cnt ?? 0);
+    const l2Total = Number(l2Row?.cnt ?? 0);
+    const networkRatio = l1Total > 0 ? Math.round((l2Total / l1Total) * 100) / 100 : 0;
+
+    // Team activity
+    const [day1Row] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(auditLogs).where(gte(auditLogs.createdAt, ago24h));
+    const [week7Row] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(auditLogs).where(gte(auditLogs.createdAt, ago7d));
+    const activity24h = Number(day1Row?.cnt ?? 0);
+    const avg7d = Number(week7Row?.cnt ?? 0) / 7;
+
+    // Most active team member last 24h
+    const topMembers = await db
+      .select({ adminId: auditLogs.adminId, cnt: sql<number>`COUNT(*) as cnt` })
+      .from(auditLogs)
+      .where(gte(auditLogs.createdAt, ago24h))
+      .groupBy(auditLogs.adminId)
+      .orderBy(sql`cnt DESC`)
+      .limit(1);
+    let mostActiveTeamMember: string | null = null;
+    if (topMembers[0]?.adminId) {
+      const [m] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, topMembers[0].adminId));
+      mostActiveTeamMember = m ? `${m.firstName} ${m.lastName}` : null;
+    }
+
+    // Total users
+    const [totalUsersRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(eq(users.isActive, true));
+
+    return {
+      pendingWithdrawalTotal: pendingTotal.toFixed(2),
+      pendingWithdrawalCount: pendingRows.length,
+      oldestPendingDays,
+      unverifiedCreditTotal: unverRow?.total ?? '0',
+      unverifiedCreditCount: Number(unverRow?.cnt ?? 0),
+      userGrowthThisWeek: thisWeek,
+      userGrowthLastWeek: lastWeek,
+      userGrowthRate: growthRate,
+      networkL1Total: l1Total,
+      networkL2Total: l2Total,
+      networkRatio,
+      teamActivity24h: activity24h,
+      teamActivityAvg7d: Math.round(avg7d * 10) / 10,
+      mostActiveTeamMember,
+      totalUsers: Number(totalUsersRow?.cnt ?? 0),
+    };
   }
 
   // Manually set a user's account trust status (Special/Trusted/Normal/Dangerous)
@@ -3085,7 +3357,17 @@ export class MemStorage {
   async getAuditLogs(limit?: number): Promise<AuditLog[]> { throw new Error("Not implemented in MemStorage"); }
   async createInternalNote(note: InsertInternalNote): Promise<InternalNote> { throw new Error("Not implemented in MemStorage"); }
   async getInternalNotes(targetType: string, targetId: string): Promise<Array<InternalNote & { admin: { firstName: string, lastName: string } }>> { throw new Error("Not implemented in MemStorage"); }
-  async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string): Promise<User> { throw new Error("Not implemented in MemStorage"); }
+  async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string, creditIntent?: 'verified_deposit' | 'admin_credit'): Promise<User> { throw new Error("Not implemented in MemStorage"); }
+  async createFounderWithdrawal(data: any): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async getFounderWithdrawals(limit?: number, offset?: number): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async getFounderProfitSummary(): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async saveHealthSnapshot(data: any): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async getLatestHealthSnapshot(): Promise<any> { return null; }
+  async getHealthHistory(hours?: number): Promise<any[]> { return []; }
+  async getReconciliationData(): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async reclassifyEarning(earningId: string, newType: string, adminId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+  async logErrorEvent(route: string, status: number, message?: string): Promise<void> { /* no-op in MemStorage */ }
+  async getExtendedMetrics(): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async deleteUser(userId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
 
   // Device Fingerprinting & Email Verification stubs

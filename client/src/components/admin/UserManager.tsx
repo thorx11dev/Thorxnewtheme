@@ -94,6 +94,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   const [modalType, setModalType] = useState<'details' | 'balance' | 'network' | 'notes' | 'delete' | 'trust' | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
+  const [creditIntent, setCreditIntent] = useState<'verified_deposit' | 'admin_credit' | null>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
   const [adjustmentReason, setAdjustmentReason] = useState("");
   const [newNote, setNewNote] = useState("");
@@ -143,8 +144,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   });
 
   const adjustBalanceMutation = useMutation({
-    mutationFn: async ({ userId, amount, type, reason }: { userId: string, amount: string, type: string, reason: string }) => {
-      return await apiRequest("POST", `/api/admin/users/${userId}/adjust-balance`, { amount, type, reason });
+    mutationFn: async ({ userId, amount, type, reason, creditIntent }: { userId: string, amount: string, type: string, reason: string, creditIntent?: string }) => {
+      return await apiRequest("POST", `/api/admin/users/${userId}/adjust-balance`, { amount, type, reason, creditIntent });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team/users'] });
@@ -206,6 +207,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
     setModalType(null);
     setAdjustmentAmount("");
     setAdjustmentReason("");
+    setCreditIntent(null);
     setNewNote("");
     setConfirmText("");
     setNetworkZoom(1);
@@ -669,6 +671,31 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
              </div>
 
              <div className="space-y-6">
+                {/* Credit Intent — required when adding credit */}
+                {adjustmentType === 'add' && (
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">Credit Reason</Label>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setCreditIntent('verified_deposit')}
+                        className={cn("flex-1 h-12 rounded-2xl border-2 font-black text-[10px] tracking-widest uppercase transition-colors", creditIntent === 'verified_deposit' ? "bg-emerald-600 text-white border-emerald-600" : "bg-white border-zinc-200 text-zinc-500 hover:border-zinc-400")}
+                      >
+                        ✓ Verified Bank Deposit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCreditIntent('admin_credit')}
+                        className={cn("flex-1 h-12 rounded-2xl border-2 font-black text-[10px] tracking-widest uppercase transition-colors", creditIntent === 'admin_credit' ? "bg-amber-500 text-white border-amber-500" : "bg-white border-zinc-200 text-zinc-500 hover:border-zinc-400")}
+                      >
+                        ⚠ Manual Adjustment
+                      </button>
+                    </div>
+                    {!creditIntent && (
+                      <p className="text-[9px] font-black uppercase tracking-widest text-red-500 ml-2">Select credit reason before confirming</p>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-3">
                   <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">Amount (₨)</Label>
                   <Input 
@@ -696,14 +723,16 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                className="w-full h-14 rounded-2xl bg-[#111] text-white hover:bg-black font-black uppercase tracking-widest text-[11px] transition-colors shadow-sm"
                onClick={() => {
                  if (!adjustmentAmount) return;
+                 if (adjustmentType === 'add' && !creditIntent) return;
                  adjustBalanceMutation.mutate({
                    userId: selectedUser!.id,
                    amount: adjustmentAmount,
                    type: adjustmentType,
-                   reason: adjustmentReason || "No reason provided"
+                   reason: adjustmentReason || "No reason provided",
+                   creditIntent: adjustmentType === 'add' ? (creditIntent ?? 'admin_credit') : undefined,
                  });
                }}
-               disabled={adjustBalanceMutation.isPending}
+               disabled={adjustBalanceMutation.isPending || (adjustmentType === 'add' && !creditIntent)}
             >
               {adjustBalanceMutation.isPending ? "Processing..." : "Confirm Action"}
             </Button>

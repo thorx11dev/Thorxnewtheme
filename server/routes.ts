@@ -1441,9 +1441,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getEarningsSumInRange(since)
       ]);
 
+      const extended = await storage.getExtendedMetrics().catch(() => null);
       res.json({
         activeUsers,
-        totalEarnings
+        totalEarnings,
+        ...(extended ?? {}),
       });
     } catch (error) {
       console.error("Get team metrics error:", error);
@@ -1676,10 +1678,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/users/:userId/adjust-balance", requirePermission("MANAGE_USERS"), async (req, res) => {
     try {
       const { userId } = req.params;
-      const { amount, type, reason } = req.body;
+      const { amount, type, reason, creditIntent } = req.body;
       const adminId = req.userProfile.id;
 
-      const user = await storage.adjustUserBalance(userId, amount, type, adminId, reason);
+      // When adding credit, a creditIntent is required to distinguish verified deposits from manual adjustments
+      if (type === 'add' && creditIntent && !['verified_deposit', 'admin_credit'].includes(creditIntent)) {
+        return res.status(400).json({ message: "Invalid creditIntent value" });
+      }
+
+      const user = await storage.adjustUserBalance(userId, amount, type, adminId, reason, creditIntent ?? 'admin_credit');
       broadcastUserUpdated(userId, "balance_adjusted");
       res.json(sanitizeUser(user));
 
@@ -1700,6 +1707,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Adjust balance error:", error);
       res.status(500).json({ message: "Failed to adjust balance" });
+    }
+  });
+
+  // ── Founder Profit Ledger ────────────────────────────────────────────────────
+
+  app.get("/api/admin/founder/profit-summary", async (req, res) => {
+    try {
+      if (!req.userProfile || req.userProfile.role !== 'founder') {
+        return res.status(403).json({ message: "Founder access required" });
+      }
+      const summary = await storage.getFounderProfitSummary();
+      res.json(summary);
+    } catch (error) {
+      console.error("Founder profit summary error:", error);
+      res.status(500).json({ message: "Failed to fetch profit summary" });
+    }
+  });
+
+  app.post("/api/admin/founder/withdrawals", async (req, res) => {
+    try {
+      if (!req.userProfile || req.userProfile.role !== 'founder') {
+        return res.status(403).json({ message: "Founder access required" });
+      }
+      const { amount, withdrawalDate, description } = req.body;
+      if (!amount || !withdrawalDate) {
+        return res.status(400).json({ message: "amount and withdrawalDate are required" });
+      }
+      const fw = await storage.createFounderWithdrawal({
+        amount: String(amount),
+        withdrawalDate: new Date(withdrawalDate),
+        description: description ? String(description) : undefined,
+        createdBy: req.userProfile.id,
+      });
+      res.json(fw);
+    } catch (error) {
+      console.error("Create founder withdrawal error:", error);
+      res.status(500).json({ message: "Failed to log withdrawal" });
+    }
+  });
+
+  app.get("/api/admin/founder/withdrawals", async (req, res) => {
+    try {
+      if (!req.userProfile || req.userProfile.role !== 'founder') {
+        return res.status(403).json({ message: "Founder access required" });
+      }
+      const limit = Number(req.query.limit ?? 50);
+      const offset = Number(req.query.offset ?? 0);
+      const result = await storage.getFounderWithdrawals(limit, offset);
+      res.json(result);
+    } catch (error) {
+      console.error("Get founder withdrawals error:", error);
+      res.status(500).json({ message: "Failed to fetch withdrawals" });
+    }
+  });
+
+  // ── System Health ────────────────────────────────────────────────────────────
+
+  app.get("/api/admin/system-health", requirePermission("VIEW_USERS"), async (req, res) => {
+    try {
+      const snap = await storage.getLatestHealthSnapshot();
+      if (!snap) {
+        return res.json(null);
+      }
+      const ageMinutes = snap.recordedAt ? (Date.now() - new Date(snap.recordedAt).getTime()) / 60000 : 9999;
+      res.json({ ...snap, isStale: ageMinutes > 90 });
+    } catch (error) {
+      console.error("System health error:", error);
+      res.status(500).json({ message: "Failed to fetch system health" });
+    }
+  });
+
+  app.get("/api/admin/system-health/history", requirePermission("VIEW_USERS"), async (req, res) => {
+    try {
+      const hours = Number(req.query.hours ?? 24);
+      const history = await storage.getHealthHistory(hours);
+      res.json(history);
+    } catch (error) {
+      console.error("System health history error:", error);
+      res.status(500).json({ message: "Failed to fetch health history" });
+    }
+  });
+
+  app.post("/api/admin/system-health/recalculate", requirePermission("MANAGE_USERS"), async (req, res) => {
+    try {
+      const { computeAndSaveHealthSnapshot } = await import("./modules/health-engine");
+      await computeAndSaveHealthSnapshot();
+      const snap = await storage.getLatestHealthSnapshot();
+      const ageMinutes = snap?.recordedAt ? (Date.now() - new Date(snap.recordedAt).getTime()) / 60000 : 0;
+      res.json({ ...snap, isStale: ageMinutes > 90 });
+    } catch (error) {
+      console.error("Recalculate health error:", error);
+      res.status(500).json({ message: "Failed to recalculate health" });
+    }
+  });
+
+  // ── Financial Reconciliation ─────────────────────────────────────────────────
+
+  app.get("/api/admin/reconciliation", requirePermission("VIEW_USERS"), async (req, res) => {
+    try {
+      const data = await storage.getReconciliationData();
+      res.json(data);
+    } catch (error) {
+      console.error("Reconciliation error:", error);
+      res.status(500).json({ message: "Failed to fetch reconciliation data" });
+    }
+  });
+
+  app.post("/api/admin/earnings/:earningId/reclassify", async (req, res) => {
+    try {
+      if (!req.userProfile || req.userProfile.role !== 'founder') {
+        return res.status(403).json({ message: "Founder access required" });
+      }
+      const { earningId } = req.params;
+      const { type } = req.body;
+      if (!['verified_deposit', 'admin_credit'].includes(type)) {
+        return res.status(400).json({ message: "Invalid type" });
+      }
+      await storage.reclassifyEarning(earningId, type, req.userProfile.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Reclassify earning error:", error);
+      res.status(500).json({ message: "Failed to reclassify earning" });
     }
   });
 

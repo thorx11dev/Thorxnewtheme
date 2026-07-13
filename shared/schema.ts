@@ -878,3 +878,58 @@ export const insertTaskRecordSchema = createInsertSchema(taskRecords).omit({
 });
 export type InsertTaskRecord = z.infer<typeof insertTaskRecordSchema>;
 export type TaskRecord = typeof taskRecords.$inferSelect;
+
+// ── Feature 1: Founder Profit Ledger ──────────────────────────────────────────
+// Tracks every time the founder transfers money from the THORX bank account to
+// their personal account. Used to compute "Safe to Withdraw = fees collected − already withdrawn".
+export const founderWithdrawals = pgTable("founder_withdrawals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  withdrawalDate: timestamp("withdrawal_date").notNull(),
+  description: text("description"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("founder_withdrawals_created_at_idx").on(table.createdAt),
+  index("founder_withdrawals_created_by_idx").on(table.createdBy),
+]);
+
+export type FounderWithdrawal = typeof founderWithdrawals.$inferSelect;
+export type InsertFounderWithdrawal = typeof founderWithdrawals.$inferInsert;
+
+// ── Feature 2: System Health Engine ───────────────────────────────────────────
+// Stores hourly composite health snapshots computed from 5 dimensions.
+// Stale if latest snapshot is > 90 minutes old.
+export const healthSnapshots = pgTable("health_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  overallScore: decimal("overall_score", { precision: 5, scale: 2 }).notNull(),
+  financialScore: decimal("financial_score", { precision: 5, scale: 2 }).notNull(),
+  operationalScore: decimal("operational_score", { precision: 5, scale: 2 }).notNull(),
+  userHealthScore: decimal("user_health_score", { precision: 5, scale: 2 }).notNull(),
+  riskHealthScore: decimal("risk_health_score", { precision: 5, scale: 2 }).notNull(),
+  integrityScore: decimal("integrity_score", { precision: 5, scale: 2 }).notNull(),
+  signalsJson: jsonb("signals_json").notNull().default(sql`'{}'::jsonb`),
+  topReason: text("top_reason").notNull(),
+  delta1h: decimal("delta_1h", { precision: 5, scale: 2 }),
+  delta24h: decimal("delta_24h", { precision: 5, scale: 2 }),
+  recordedAt: timestamp("recorded_at").defaultNow(),
+}, (table) => [
+  index("health_snapshots_recorded_at_idx").on(table.recordedAt),
+]);
+
+export type HealthSnapshot = typeof healthSnapshots.$inferSelect;
+export type InsertHealthSnapshot = typeof healthSnapshots.$inferInsert;
+
+// Logs 5xx errors emitted by the API — read by the operational health signal.
+export const errorEvents = pgTable("error_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  route: text("route").notNull(),
+  status: integer("status").notNull(),
+  message: text("message"),
+  occurredAt: timestamp("occurred_at").defaultNow(),
+}, (table) => [
+  index("error_events_occurred_at_idx").on(table.occurredAt),
+  index("error_events_status_idx").on(table.status),
+]);
+
+export type ErrorEvent = typeof errorEvents.$inferSelect;

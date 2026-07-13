@@ -1,326 +1,348 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  Users, 
-  Activity, 
-  DollarSign, 
-  TrendingUp, 
-  Clock, 
-  UserCheck,
-  LayoutDashboard,
-  ArrowUpRight,
-  BarChart3,
-  Zap
+import {
+  Users, Activity, DollarSign, TrendingUp, TrendingDown, Minus,
+  Clock, UserCheck, LayoutDashboard, ArrowUpRight, BarChart3, Zap,
+  AlertTriangle, Network, Pulse, ShieldAlert
 } from "lucide-react";
 import TechnicalLabel from "@/components/ui/technical-label";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Cell
 } from "recharts";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { SystemHealthCard } from "./SystemHealthCard";
+import { FounderProfitCard } from "./FounderProfitCard";
+import { useAuth } from "@/hooks/useAuth";
+
+// ── Compact metric card ─────────────────────────────────────────────────────
+
+function MetricCard({
+  title, value, subtitle, icon: Icon, trend, variant = "white", delay = 0
+}: {
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon: React.ElementType;
+  trend?: { direction: "up" | "down" | "flat"; label: string };
+  variant?: "orange" | "black" | "white" | "warning" | "danger";
+  delay?: number;
+}) {
+  const styles = {
+    orange: "bg-gradient-to-br from-orange-400 to-amber-500 border-orange-500 text-white",
+    black:  "bg-[#111] border-black text-white",
+    white:  "bg-white border-black/10 text-foreground",
+    warning:"bg-amber-50 border-amber-300 text-foreground",
+    danger: "bg-red-50 border-red-300 text-foreground",
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
+      className={cn(
+        "split-card border-2 p-5 shadow-[4px_4px_0_0_#000] space-y-3 flex flex-col justify-between min-h-[130px]",
+        styles[variant]
+      )}
+    >
+      <div className="flex items-start justify-between">
+        <div className={cn("p-2 rounded-full border", variant === "white" ? "bg-zinc-100 border-zinc-200" : "bg-white/10 border-white/20")}>
+          <Icon className={cn("w-4 h-4", variant === "white" ? "text-foreground" : "text-white")} />
+        </div>
+        <TechnicalLabel text={title} className={cn("text-[9px]", variant === "white" ? "text-muted-foreground" : "text-white/60")} />
+      </div>
+      <div>
+        <p className={cn("text-2xl font-black tracking-tight", variant === "white" ? "text-foreground" : "text-white")}>{value}</p>
+        {subtitle && <p className={cn("text-[10px] font-bold mt-0.5", variant === "white" ? "text-muted-foreground" : "text-white/60")}>{subtitle}</p>}
+        {trend && (
+          <div className={cn("flex items-center gap-1 text-[10px] font-black mt-1", variant === "white" ? (trend.direction === "up" ? "text-emerald-600" : trend.direction === "down" ? "text-red-500" : "text-muted-foreground") : "text-white/80")}>
+            {trend.direction === "up" ? <TrendingUp className="w-3 h-3" /> : trend.direction === "down" ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+            {trend.label}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Main Dashboard ──────────────────────────────────────────────────────────
 
 export function AdminDashboard() {
+  const { user } = useAuth();
   const [dateRange, setDateRange] = React.useState("7d");
 
   const { data: metrics, isLoading: metricsLoading } = useQuery<any>({
     queryKey: [`/api/team/metrics?range=${dateRange}`],
+    refetchInterval: 60000,
   });
 
   const { data: analytics, isLoading: analyticsLoading } = useQuery<any>({
     queryKey: [`/api/admin/analytics?range=${dateRange}`],
   });
 
-  const metricCardsData = [
-    { 
-      id: "revenue",
-      title: "Total Revenue", 
-      value: `₨${parseFloat(metrics?.totalEarnings || '0').toLocaleString()}`, 
-      icon: DollarSign, 
-      trend: { direction: 'up' as const, percentage: '+12.5%' }, 
-      subtitle: "Platform wide earnings",
-      variant: "orange" as const
-    },
-    { 
-      id: "users",
-      title: "Active Users", 
-      value: metrics?.activeUsers?.toLocaleString() || "0", 
-      icon: UserCheck, 
-      trend: { direction: 'up' as const, percentage: '+5.2%' }, 
-      subtitle: "Users active in last 24h",
-      variant: "white" as const
-    },
-    { 
-      id: "health",
-      title: "System Health", 
-      value: "99.9%", 
-      icon: Zap, 
-      subtitle: "Network uptime status",
-      variant: "black" as const
-    },
-  ];
+  const isFounder = user?.role === "founder";
 
-  const chartData = analytics?.map((item: any) => {
+  // Extract extended metric values with safe defaults
+  const pendingTotal = parseFloat(metrics?.pendingWithdrawalTotal ?? "0");
+  const pendingCount = metrics?.pendingWithdrawalCount ?? 0;
+  const oldestDays = metrics?.oldestPendingDays ?? null;
+  const unverifiedTotal = parseFloat(metrics?.unverifiedCreditTotal ?? "0");
+  const unverifiedCount = metrics?.unverifiedCreditCount ?? 0;
+  const growthRate = metrics?.userGrowthRate ?? 0;
+  const thisWeek = metrics?.userGrowthThisWeek ?? 0;
+  const lastWeek = metrics?.userGrowthLastWeek ?? 0;
+  const l1 = metrics?.networkL1Total ?? 0;
+  const l2 = metrics?.networkL2Total ?? 0;
+  const networkRatio = metrics?.networkRatio ?? 0;
+  const activity24h = metrics?.teamActivity24h ?? 0;
+  const activityAvg = metrics?.teamActivityAvg7d ?? 0;
+  const mostActive = metrics?.mostActiveTeamMember ?? null;
+  const totalUsers = metrics?.totalUsers ?? 0;
+
+  const chartData = (analytics ?? []).map((item: any) => {
     const date = new Date(item.date);
     return {
-      name: date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        ...(dateRange === '24h' ? { hour: '2-digit' } : {}),
-        ...(dateRange === '7d' ? { weekday: 'short' } : {})
+      name: date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        ...(dateRange === "24h" ? { hour: "2-digit" } : {}),
+        ...(dateRange === "7d" ? { weekday: "short" } : {}),
       }),
       registrations: item.count,
-      revenue: item.amount
+      revenue: parseFloat(item.amount ?? "0"),
     };
-  }) || [];
+  });
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mt-4 mb-4 gap-4">
-        <div className="hidden lg:block"></div>
-        <div className="flex items-center gap-4 w-full lg:w-auto">
-          <ToggleGroup 
-            type="single" 
-            value={dateRange} 
-            onValueChange={(val) => val && setDateRange(val)}
-            className="bg-white border-2 border-black rounded-full p-1 shadow-[2px_2px_0_0_#000]"
-          >
-            {['24h', '7d', '30d', 'all'].map((range) => (
-              <ToggleGroupItem 
-                key={range}
-                value={range} 
-                className="rounded-full px-4 h-8 text-[10px] font-black uppercase tracking-widest data-[state=on]:bg-black data-[state=on]:text-primary transition-all"
-              >
-                {range}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
 
+      {/* Date Range Toggle */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-[#111]">Command Center</h2>
+          <p className="text-sm text-muted-foreground font-bold mt-0.5">Platform-wide operational overview</p>
         </div>
+        <ToggleGroup
+          type="single"
+          value={dateRange}
+          onValueChange={(val) => val && setDateRange(val)}
+          className="bg-white border-2 border-black rounded-full p-1 shadow-[2px_2px_0_0_#000]"
+        >
+          {["24h", "7d", "30d", "all"].map((range) => (
+            <ToggleGroupItem
+              key={range}
+              value={range}
+              className="rounded-full font-black text-[10px] tracking-widest uppercase px-4 h-8 data-[state=on]:bg-black data-[state=on]:text-white"
+            >
+              {range}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </div>
 
-      {/* High-Level Metrics - Matching User Portal card style */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
-        {/* Total Revenue */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          whileHover={{ scale: 1.02, translateY: -4 }}
-          whileTap={{ scale: 0.98 }}
-          className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
-          data-testid="card-total-revenue"
-        >
-          <div className="flex items-start justify-between mb-3">
-            <DollarSign className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-            <TechnicalLabel text="TOTAL REVENUE" className="text-muted-foreground text-xs" />
-          </div>
-          <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors">
-            {`₨${parseFloat(metrics?.totalEarnings || '0').toLocaleString()}`}
-          </p>
-        </motion.div>
+      {/* Section 1: Platform Health — special cards */}
+      <section className="space-y-3">
+        <TechnicalLabel text="PLATFORM HEALTH" />
+        <div className={cn("grid gap-5", isFounder ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1")}>
+          <SystemHealthCard />
+          {isFounder && <FounderProfitCard />}
+        </div>
+      </section>
 
-        {/* Active Users */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
-          whileHover={{ scale: 1.02, translateY: -4 }}
-          whileTap={{ scale: 0.98 }}
-          className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
-          data-testid="card-active-users"
-        >
-          <div className="flex items-start justify-between mb-3">
-            <UserCheck className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
-            <TechnicalLabel text="ACTIVE USERS" className="text-muted-foreground text-xs" />
-          </div>
-          <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors">
-            {metrics?.activeUsers?.toLocaleString() || "0"}
-          </p>
-        </motion.div>
+      {/* Section 2: Core Metrics */}
+      <section className="space-y-3">
+        <TechnicalLabel text="CORE METRICS" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+          <MetricCard
+            title="TOTAL REVENUE"
+            value={`₨${parseFloat(metrics?.totalEarnings ?? "0").toLocaleString()}`}
+            subtitle="Platform-wide earnings"
+            icon={DollarSign}
+            variant="orange"
+            delay={0}
+          />
+          <MetricCard
+            title="ACTIVE USERS"
+            value={String(metrics?.activeUsers ?? "—")}
+            subtitle={`${dateRange} window`}
+            icon={UserCheck}
+            variant="white"
+            delay={0.05}
+          />
+          <MetricCard
+            title="TOTAL MEMBERS"
+            value={metricsLoading ? "…" : totalUsers.toLocaleString()}
+            subtitle="Registered & active accounts"
+            icon={Users}
+            variant="white"
+            delay={0.1}
+          />
+          <MetricCard
+            title="PENDING WITHDRAWALS"
+            value={`₨${pendingTotal.toLocaleString()}`}
+            subtitle={`${pendingCount} requests${oldestDays !== null ? ` · oldest ${oldestDays}d` : ""}`}
+            icon={Clock}
+            variant={oldestDays !== null && oldestDays > 48 ? "warning" : "white"}
+            trend={oldestDays !== null && oldestDays > 72 ? { direction: "down", label: `Oldest: ${oldestDays}d old` } : undefined}
+            delay={0.15}
+          />
+        </div>
+      </section>
 
-        {/* System Health */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.16 }}
-          whileHover={{ scale: 1.02, translateY: -4 }}
-          whileTap={{ scale: 0.98 }}
-          className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
-          data-testid="card-system-health"
-        >
-          <div className="flex items-start justify-between mb-3">
-            <Zap className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-            <TechnicalLabel text="SYSTEM HEALTH" className="text-muted-foreground text-xs" />
-          </div>
-          <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors">
-            99.9%
-          </p>
-        </motion.div>
+      {/* Section 3: Growth & Activity */}
+      <section className="space-y-3">
+        <TechnicalLabel text="GROWTH & ACTIVITY" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* User Growth Rate */}
+          <MetricCard
+            title="USER GROWTH RATE"
+            value={`${growthRate > 0 ? "+" : ""}${growthRate}%`}
+            subtitle={`This week: ${thisWeek} · Last week: ${lastWeek}`}
+            icon={TrendingUp}
+            variant="white"
+            trend={growthRate > 5 ? { direction: "up", label: "Growing" } : growthRate < -5 ? { direction: "down", label: "Declining" } : { direction: "flat", label: "Flat" }}
+            delay={0.05}
+          />
 
-        {/* Total Members */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.24 }}
-          whileHover={{ scale: 1.02, translateY: -4 }}
-          whileTap={{ scale: 0.98 }}
-          className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
-          data-testid="card-total-members"
-        >
-          <div className="flex items-start justify-between mb-3">
-            <Users className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
-            <TechnicalLabel text="TOTAL MEMBERS" className="text-muted-foreground text-xs" />
-          </div>
-          <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors">
-            {metrics?.totalUsers?.toLocaleString() || metrics?.activeUsers?.toLocaleString() || "0"}
-          </p>
-        </motion.div>
-      </div>
-
-      {/* Analytics Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* User Growth Chart */}
-        <motion.div
-           initial={{ opacity: 0, y: 20 }}
-           animate={{ opacity: 1, y: 0 }}
-           transition={{ delay: 0.3 }}
-           className="group bg-card border-3 border-black transition-all duration-300 shadow-[6px_6px_0_0_#000] hover:shadow-[8px_8px_0_0_#000] overflow-hidden"
-        >
-          <div className="border-b-3 border-black transition-colors p-3 md:p-6 bg-white">
-            <div className="flex items-center justify-between">
-              <TechnicalLabel text="GROWTH METRICS" className="text-foreground group-hover:text-primary/90 transition-colors text-xs md:text-sm" />
-              <div className="p-1 md:p-2 bg-primary/10 border-2 border-black group-hover:bg-primary/20 transition-all duration-300">
-                <Users className="w-3 h-3 md:w-4 md:h-4 text-primary" />
+          {/* Referral Network Depth */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="split-card border-2 border-black/10 bg-white p-5 shadow-[4px_4px_0_0_#000] space-y-3"
+          >
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-full border bg-zinc-100 border-zinc-200">
+                <Network className="w-4 h-4 text-foreground" />
+              </div>
+              <TechnicalLabel text="NETWORK DEPTH" className="text-[9px] text-muted-foreground" />
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-2 bg-zinc-50 rounded-xl border border-zinc-100">
+                <p className="text-xs font-black text-foreground">{l1}</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">L1</p>
+              </div>
+              <div className="p-2 bg-zinc-50 rounded-xl border border-zinc-100">
+                <p className="text-xs font-black text-foreground">{l2}</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">L2</p>
+              </div>
+              <div className="p-2 bg-zinc-50 rounded-xl border border-zinc-100">
+                <p className="text-xs font-black text-foreground">{networkRatio}×</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">RATIO</p>
               </div>
             </div>
-          </div>
-          
-          <div className="p-2 md:p-4">
-            <div className="h-[300px] w-full">
+            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Referral network spread (L2÷L1)</p>
+          </motion.div>
+
+          {/* Team Activity Pulse */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className={cn(
+              "split-card border-2 p-5 shadow-[4px_4px_0_0_#000] space-y-3",
+              activity24h === 0 && activityAvg > 2 ? "bg-amber-50 border-amber-300" :
+              activity24h > activityAvg * 3 ? "bg-blue-50 border-blue-300" :
+              "bg-white border-black/10"
+            )}
+          >
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-full border bg-zinc-100 border-zinc-200">
+                <Activity className="w-4 h-4 text-foreground" />
+              </div>
+              <TechnicalLabel text="TEAM ACTIVITY" className="text-[9px] text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-2xl font-black tracking-tight">{activity24h}</p>
+              <p className="text-[10px] font-bold text-muted-foreground mt-0.5">
+                actions today · avg {activityAvg}/day
+              </p>
+            </div>
+            {mostActive && (
+              <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+                Most active: {mostActive}
+              </p>
+            )}
+            {activity24h === 0 && activityAvg > 2 && (
+              <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> No activity today
+              </p>
+            )}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Section 4: Financial Integrity */}
+      <section className="space-y-3">
+        <TechnicalLabel text="FINANCIAL INTEGRITY" />
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-5">
+          <MetricCard
+            title="UNVERIFIED CREDIT EXPOSURE"
+            value={`₨${unverifiedTotal.toLocaleString()}`}
+            subtitle={`${unverifiedCount} admin credits not backed by real deposits`}
+            icon={ShieldAlert}
+            variant={unverifiedTotal > 100000 ? "danger" : unverifiedTotal > 50000 ? "warning" : "white"}
+            trend={unverifiedTotal > 100000 ? { direction: "down", label: "High exposure — review recommended" } : undefined}
+            delay={0}
+          />
+        </div>
+      </section>
+
+      {/* Section 5: Analytics Charts */}
+      <section className="space-y-3">
+        <TechnicalLabel text="ANALYTICS" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Registrations chart */}
+          <div className="bg-card border-2 border-black shadow-[4px_4px_0_0_#000] overflow-hidden">
+            <div className="p-5 border-b-2 border-black bg-white flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              <TechnicalLabel text="NEW REGISTRATIONS" />
+            </div>
+            <div className="p-5 h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorReg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.2} />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={10}
-                    fontFamily="var(--font-sans)"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={10}
-                    fontFamily="var(--font-sans)"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '2px solid hsl(var(--primary))',
-                      borderRadius: '4px',
-                      color: 'hsl(var(--primary))',
-                      fontFamily: 'var(--font-sans)',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
-                    }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="registrations" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={3} 
-                    fillOpacity={1} 
-                    fill="url(#colorReg)" 
-                  />
+                  <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.15} />
+                  <XAxis dataKey="name" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontWeight: 700 }} />
+                  <YAxis fontSize={9} tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontWeight: 700 }} />
+                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--background))", border: "2px solid hsl(var(--primary))", borderRadius: "8px", fontSize: "11px", fontWeight: "bold" }} />
+                  <Area type="monotone" dataKey="registrations" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#colorReg)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
-        </motion.div>
 
-        {/* Revenue Flow Chart */}
-        <motion.div
-           initial={{ opacity: 0, y: 20 }}
-           animate={{ opacity: 1, y: 0 }}
-           transition={{ delay: 0.4 }}
-           className="group bg-card border-3 border-black transition-all duration-300 shadow-[6px_6px_0_0_#000] hover:shadow-[8px_8px_0_0_#000] overflow-hidden"
-        >
-          <div className="border-b-3 border-black transition-colors p-3 md:p-6 bg-white">
-            <div className="flex items-center justify-between">
-              <TechnicalLabel text="REVENUE STREAM" className="text-foreground group-hover:text-primary/90 transition-colors text-xs md:text-sm" />
-              <div className="p-1 md:p-2 bg-primary/10 border-2 border-black group-hover:bg-primary/20 transition-all duration-300">
-                <DollarSign className="w-3 h-3 md:w-4 md:h-4 text-primary" />
-              </div>
+          {/* Revenue chart */}
+          <div className="bg-card border-2 border-black shadow-[4px_4px_0_0_#000] overflow-hidden">
+            <div className="p-5 border-b-2 border-black bg-white flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              <TechnicalLabel text="REVENUE (₨)" />
             </div>
-          </div>
-          
-          <div className="p-2 md:p-4">
-            <div className="h-[300px] w-full">
+            <div className="p-5 h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.2} />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={10}
-                    fontFamily="var(--font-sans)"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={10}
-                    fontFamily="var(--font-sans)"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  />
-                  <Tooltip 
-                    cursor={{fill: 'rgba(255,107,53,0.05)'}}
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '2px solid hsl(var(--primary))',
-                      borderRadius: '4px',
-                      color: 'hsl(var(--primary))',
-                      fontFamily: 'var(--font-sans)',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      boxShadow: '0 4px 12px hsl(var(--primary)/0.25)'
-                    }}
-                  />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={0} animationDuration={2000}>
-                    {chartData.map((entry: any, index: any) => (
-                      <Cell key={`cell-${index}`} fill={index === chartData.length - 1 ? "hsl(var(--primary))" : "hsl(var(--foreground))"} />
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.15} />
+                  <XAxis dataKey="name" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontWeight: 700 }} />
+                  <YAxis fontSize={9} tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontWeight: 700 }} />
+                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--background))", border: "2px solid hsl(var(--primary))", borderRadius: "8px", fontSize: "11px", fontWeight: "bold" }} />
+                  <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
+                    {chartData.map((_: any, i: number) => (
+                      <Cell key={i} fill={i % 2 === 0 ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.6)"} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

@@ -13,7 +13,8 @@ import {
   LogOut,
   Shield,
   Target,
-  Settings
+  Settings,
+  BarChart2
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -48,6 +49,7 @@ export function AdminLayout({ children, activeSection, onSectionChange, title }:
     { id: "users", icon: Users, label: "Users" },
     { id: "inbox", icon: Mail, label: "Inbox" },
     { id: "audit", icon: FileText, label: "Audit" },
+    ...(user?.role === "founder" || user?.role === "admin" ? [{ id: "finance", icon: BarChart2, label: "Finance" }] : []),
     { id: "settings", icon: Settings, label: "Settings" },
   ];
 

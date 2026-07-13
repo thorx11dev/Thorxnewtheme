@@ -7,6 +7,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { isOriginAllowed, runtimeConfig } from "./config/runtime";
 import { csrfProtection } from "./middleware/csrf";
 import { startLeaderboardCleanup } from "./jobs/leaderboard-cleanup";
+import { startHealthSnapshotJob } from "./jobs/health-snapshot";
 
 // Suppress pg v8 SSL deprecation warning (Railway injects sslmode=require in DATABASE_URL)
 const originalEmitWarning = process.emitWarning;
@@ -70,6 +71,12 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
+    // Capture 5xx errors for the health engine's operational health signal
+    if (path.startsWith("/api") && res.statusCode >= 500) {
+      import("./storage").then(({ storage }) => {
+        storage.logErrorEvent(path, res.statusCode, capturedJsonResponse?.message).catch(() => {});
+      });
+    }
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
@@ -113,9 +120,11 @@ app.use((req, res, next) => {
   server.listen(runtimeConfig.port, "0.0.0.0", () => {
     log(`serving on port ${runtimeConfig.port}`);
 
-    // Start background jobs in production
+    // Start background jobs
     if (runtimeConfig.isProd) {
       startLeaderboardCleanup();
     }
+    // Health snapshots run in all environments so development builds have data
+    startHealthSnapshotJob();
   });
 })();

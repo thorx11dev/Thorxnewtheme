@@ -11,6 +11,7 @@ import { TeamKeysManager } from "@/components/admin/TeamKeysManager";
 import { TaskManager } from "@/components/admin/TaskManager";
 import { SystemSettingsManager } from "@/components/admin/SystemSettingsManager";
 import { LeaderboardInsights } from "@/components/admin/LeaderboardInsights";
+import { ReconciliationPanel } from "@/components/admin/ReconciliationPanel";
 import { Shield, Lock } from "lucide-react";
 
 export default function TeamPortal() {
@@ -98,6 +99,8 @@ export default function TeamPortal() {
         return <TeamKeysManager />;
       case "settings":
         return <SystemSettingsManager />;
+      case "finance":
+        return <ReconciliationPanel />;
       default:
         return <AdminDashboard />;
     }
@@ -114,6 +117,7 @@ export default function TeamPortal() {
       case "audit": return "Security Audit";
       case "team": return "Team Access";
       case "settings": return "Global Settings";
+      case "finance": return "Financial Reconciliation";
       default: return "Command Center";
     }
   };
