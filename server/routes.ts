@@ -1712,9 +1712,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Founder Profit Ledger ────────────────────────────────────────────────────
 
-  app.get("/api/admin/founder/profit-summary", async (req, res) => {
+  app.get("/api/admin/founder/profit-summary", requireTeamRole, async (req, res) => {
     try {
-      if (!req.userProfile || req.userProfile.role !== 'founder') {
+      if (req.userProfile!.role !== 'founder') {
         return res.status(403).json({ message: "Founder access required" });
       }
       const summary = await storage.getFounderProfitSummary();
@@ -1725,9 +1725,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/founder/withdrawals", async (req, res) => {
+  app.post("/api/admin/founder/withdrawals", requireTeamRole, async (req, res) => {
     try {
-      if (!req.userProfile || req.userProfile.role !== 'founder') {
+      if (req.userProfile!.role !== 'founder') {
         return res.status(403).json({ message: "Founder access required" });
       }
       const { amount, withdrawalDate, description } = req.body;
@@ -1738,7 +1738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: String(amount),
         withdrawalDate: new Date(withdrawalDate),
         description: description ? String(description) : undefined,
-        createdBy: req.userProfile.id,
+        createdBy: req.userProfile!.id,
       });
       res.json(fw);
     } catch (error) {
@@ -1747,9 +1747,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/founder/withdrawals", async (req, res) => {
+  app.get("/api/admin/founder/withdrawals", requireTeamRole, async (req, res) => {
     try {
-      if (!req.userProfile || req.userProfile.role !== 'founder') {
+      if (req.userProfile!.role !== 'founder') {
         return res.status(403).json({ message: "Founder access required" });
       }
       const limit = Number(req.query.limit ?? 50);
@@ -1814,9 +1814,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/earnings/:earningId/reclassify", async (req, res) => {
+  app.post("/api/admin/earnings/:earningId/reclassify", requireTeamRole, async (req, res) => {
     try {
-      if (!req.userProfile || req.userProfile.role !== 'founder') {
+      if (req.userProfile!.role !== 'founder') {
         return res.status(403).json({ message: "Founder access required" });
       }
       const { earningId } = req.params;
@@ -1824,7 +1824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!['verified_deposit', 'admin_credit'].includes(type)) {
         return res.status(400).json({ message: "Invalid type" });
       }
-      await storage.reclassifyEarning(earningId, type, req.userProfile.id);
+      await storage.reclassifyEarning(earningId, type, req.userProfile!.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Reclassify earning error:", error);

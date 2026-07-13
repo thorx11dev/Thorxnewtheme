@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrendingUp, TrendingDown, Plus, History, AlertTriangle, CheckCircle, DollarSign, X, Calendar } from "lucide-react";
+import { TrendingUp, Plus, History, AlertTriangle, CheckCircle, DollarSign, X, Calendar } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import TechnicalLabel from "@/components/ui/technical-label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -68,14 +67,12 @@ export function FounderProfitCard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/founder/profit-summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/founder/withdrawals"] });
-      toast({ title: "Withdrawal Logged", description: "Personal transfer recorded in profit ledger." });
+      toast({ title: "Withdrawal Logged", description: "Personal transfer recorded." });
       setShowLogModal(false);
       setAmount("");
       setDescription("");
     },
-    onError: () => {
-      toast({ title: "Failed to log withdrawal", variant: "destructive" });
-    },
+    onError: () => toast({ title: "Failed to log withdrawal", variant: "destructive" }),
   });
 
   if (user?.role !== "founder") return null;
@@ -91,107 +88,105 @@ export function FounderProfitCard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className={cn(
-          "group split-card border-2 p-6 text-left transition-all duration-300 cursor-pointer shadow-[4px_4px_0_0_#000] hover:shadow-[6px_6px_0_0_#000]",
+          "border-[1.5px] rounded-[2rem] p-6 transition-all duration-300 cursor-pointer",
+          "hover:shadow-lg hover:-translate-y-0.5",
           isOver
-            ? "bg-gradient-to-br from-red-50 to-red-100/50 border-red-400 hover:border-red-500"
-            : "bg-gradient-to-br from-emerald-50 to-emerald-100/40 border-emerald-400 hover:border-emerald-500"
+            ? "bg-red-50 border-red-200"
+            : "bg-emerald-50 border-emerald-200"
         )}
         data-testid="card-founder-profit"
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-2">
-            <DollarSign className={cn("w-6 h-6", isOver ? "text-red-500" : "text-emerald-600")} />
-            {isOver ? (
-              <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
-            ) : (
-              <CheckCircle className="w-4 h-4 text-emerald-500" />
-            )}
+            <div className={cn("p-2 rounded-full", isOver ? "bg-red-100" : "bg-emerald-100")}>
+              <DollarSign className={cn("w-4 h-4", isOver ? "text-red-500" : "text-emerald-600")} />
+            </div>
+            {isOver
+              ? <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
+              : <CheckCircle className="w-4 h-4 text-emerald-500" />}
           </div>
-          <TechnicalLabel text="FOUNDER PROFIT" className="text-muted-foreground text-xs" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">My Profit</span>
         </div>
 
-        {/* Safe to withdraw */}
-        <div className="mb-4">
-          <p className={cn(
-            "text-2xl md:text-3xl font-black mb-1",
-            isOver ? "text-red-600" : "text-emerald-700"
-          )}>
+        {/* Main number */}
+        <div className="mb-5">
+          <p className={cn("text-3xl font-black mb-1", isOver ? "text-red-600" : "text-emerald-700")}>
             {isLoading ? "..." : isOver
               ? `−₨${parseFloat(summary?.overWithdrawnAmount ?? "0").toLocaleString()}`
               : `₨${safe.toLocaleString()}`
             }
           </p>
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            {isOver ? "⚠ OVER-WITHDRAWN" : "SAFE TO WITHDRAW"}
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+            {isOver ? "Over-withdrawn" : "Available to withdraw"}
           </p>
         </div>
 
-        {/* Two-col metrics */}
-        <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">This Month Profit</p>
-            <p className="font-black text-foreground">₨{parseFloat(summary?.thisMonthProfitEarned ?? "0").toLocaleString()}</p>
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="p-3 bg-white/60 rounded-2xl">
+            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">This Month Profit</p>
+            <p className="font-black text-sm text-foreground">₨{parseFloat(summary?.thisMonthProfitEarned ?? "0").toLocaleString()}</p>
           </div>
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">This Month Withdrawn</p>
-            <p className="font-black text-foreground">₨{parseFloat(summary?.thisMonthWithdrawn ?? "0").toLocaleString()}</p>
+          <div className="p-3 bg-white/60 rounded-2xl">
+            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">This Month Taken</p>
+            <p className="font-black text-sm text-foreground">₨{parseFloat(summary?.thisMonthWithdrawn ?? "0").toLocaleString()}</p>
           </div>
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Monthly Balance</p>
-            <p className={cn("font-black", parseFloat(summary?.monthlyBalance ?? "0") >= 0 ? "text-emerald-600" : "text-red-500")}>
+          <div className="p-3 bg-white/60 rounded-2xl">
+            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Monthly Balance</p>
+            <p className={cn("font-black text-sm", parseFloat(summary?.monthlyBalance ?? "0") >= 0 ? "text-emerald-600" : "text-red-500")}>
               ₨{parseFloat(summary?.monthlyBalance ?? "0").toLocaleString()}
             </p>
           </div>
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Fee Rate</p>
-            <p className="font-black text-foreground">{summary?.currentFeeRate ?? "10"}%</p>
+          <div className="p-3 bg-white/60 rounded-2xl">
+            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Platform Fee Rate</p>
+            <p className="font-black text-sm text-foreground">{summary?.currentFeeRate ?? "10"}%</p>
           </div>
         </div>
 
         {/* Stale warning */}
         {stale && (
-          <div className="mb-3 px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-lg flex items-center gap-2">
+          <div className="mb-4 px-3 py-2 bg-amber-100 border border-amber-200 rounded-xl flex items-center gap-2">
             <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-            <p className="text-[9px] font-black uppercase tracking-widest text-amber-700">
-              Last logged {summary?.daysSinceLastWithdrawal}d ago — update recommended
+            <p className="text-[10px] font-bold text-amber-700">
+              Last logged {summary?.daysSinceLastWithdrawal}d ago — consider updating your ledger
             </p>
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); setShowLogModal(true); }}
-            className="flex-1 flex items-center justify-center gap-1.5 h-9 bg-black text-white text-[9px] font-black uppercase tracking-widest rounded-full hover:bg-black/80 transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 h-10 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-black/80 transition-colors"
           >
             <Plus className="w-3 h-3" /> Log Withdrawal
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
-            className="h-9 px-3 flex items-center gap-1.5 border-2 border-black text-[9px] font-black uppercase tracking-widest rounded-full hover:bg-black/5 transition-colors"
+            className="h-10 px-4 flex items-center gap-1.5 border-[1.5px] border-black text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-black/5 transition-colors"
           >
-            <History className="w-3 h-3" />
+            <History className="w-3.5 h-3.5" />
           </button>
         </div>
       </motion.div>
 
       {/* Log Withdrawal Modal */}
       <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
-        <DialogContent className="border border-black/10 bg-white rounded-[2rem] p-0 max-w-md overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.15)] [&>button]:hidden">
+        <DialogContent className="border border-black/10 bg-white rounded-[2rem] p-0 max-w-md overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] [&>button]:hidden">
           <DialogHeader className="p-8 border-b border-zinc-100">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-2xl font-black tracking-tighter uppercase">Log Withdrawal</DialogTitle>
+              <DialogTitle className="text-2xl font-black tracking-tighter">Log Withdrawal</DialogTitle>
               <button onClick={() => setShowLogModal(false)} className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-zinc-100">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
-              Total earned: ₨{parseFloat(summary?.totalProfitEarned ?? "0").toLocaleString()} · Already withdrawn: ₨{parseFloat(summary?.totalWithdrawnToPersonal ?? "0").toLocaleString()}
+            <p className="text-xs font-bold text-muted-foreground mt-2">
+              Total earned: ₨{parseFloat(summary?.totalProfitEarned ?? "0").toLocaleString()} · Already taken: ₨{parseFloat(summary?.totalWithdrawnToPersonal ?? "0").toLocaleString()}
             </p>
           </DialogHeader>
 
-          <div className="p-8 space-y-6">
+          <div className="p-8 space-y-5">
             <div className="space-y-2">
               <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500">Amount (₨)</Label>
               <Input
@@ -212,7 +207,7 @@ export function FounderProfitCard() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500">Bank Reference / Note (optional)</Label>
+              <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500">Note (optional)</Label>
               <Input
                 placeholder="Transaction ID or note..."
                 className="rounded-2xl border border-zinc-200 focus:border-black focus:ring-0 font-bold h-12 px-4"
@@ -228,7 +223,7 @@ export function FounderProfitCard() {
               onClick={() => { if (!amount || !wdDate) return; logMutation.mutate(); }}
               disabled={!amount || !wdDate || logMutation.isPending}
             >
-              {logMutation.isPending ? "Saving..." : "Confirm Log Entry"}
+              {logMutation.isPending ? "Saving..." : "Save Entry"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -236,24 +231,24 @@ export function FounderProfitCard() {
 
       {/* History Modal */}
       <Dialog open={showHistory} onOpenChange={setShowHistory}>
-        <DialogContent className="border border-black/10 bg-white rounded-[2rem] p-0 max-w-lg overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.15)] [&>button]:hidden">
+        <DialogContent className="border border-black/10 bg-white rounded-[2rem] p-0 max-w-lg overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] [&>button]:hidden">
           <DialogHeader className="p-8 border-b border-zinc-100">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-2xl font-black tracking-tighter uppercase">Personal Withdrawals</DialogTitle>
+              <DialogTitle className="text-2xl font-black tracking-tighter">Withdrawal History</DialogTitle>
               <button onClick={() => setShowHistory(false)} className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-zinc-100">
                 <X className="w-4 h-4" />
               </button>
             </div>
           </DialogHeader>
-          <div className="p-8 space-y-3 max-h-[400px] overflow-y-auto">
+          <div className="p-8 space-y-2 max-h-[400px] overflow-y-auto">
             {!withdrawalsData?.withdrawals?.length ? (
-              <p className="text-center text-sm text-muted-foreground py-8">No personal withdrawals logged yet.</p>
+              <p className="text-center text-sm text-muted-foreground py-8">No withdrawals logged yet.</p>
             ) : (
               withdrawalsData.withdrawals.map((w) => (
-                <div key={w.id} className="flex items-center justify-between p-4 bg-zinc-50 border border-zinc-200 rounded-2xl">
+                <div key={w.id} className="flex items-center justify-between p-4 bg-zinc-50 border border-zinc-100 rounded-2xl">
                   <div>
                     <p className="font-black text-sm text-foreground">₨{parseFloat(w.amount).toLocaleString()}</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">
+                    <p className="text-[10px] text-muted-foreground font-bold mt-0.5">
                       {new Date(w.withdrawalDate).toLocaleDateString()}
                       {w.description && ` · ${w.description}`}
                     </p>
@@ -264,13 +259,13 @@ export function FounderProfitCard() {
             )}
           </div>
           <div className="px-8 pb-8">
-            <div className="p-4 bg-black rounded-2xl grid grid-cols-2 gap-4 text-white">
+            <div className="p-4 bg-zinc-900 rounded-2xl grid grid-cols-2 gap-4 text-white">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/50">Total Profit Earned</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-1">Total Profit Earned</p>
                 <p className="font-black text-lg">₨{parseFloat(summary?.totalProfitEarned ?? "0").toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/50">Total Withdrawn</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-1">Total Withdrawn</p>
                 <p className="font-black text-lg">₨{parseFloat(summary?.totalWithdrawnToPersonal ?? "0").toLocaleString()}</p>
               </div>
             </div>

@@ -1,45 +1,56 @@
 ---
-name: Dashboard Upgrade — Phase 1–5 Implementation
-description: Full spec from THORX_Dashboard_Upgrade_Plan doc — new tables, health engine, founder ledger, reconciliation panel, 7-card dashboard layout.
+name: Dashboard Upgrade
+description: 5-phase dashboard build and subsequent UI/UX redesign — tables, health engine, founder ledger, reconciliation panel, and 7-card AdminDashboard.
 ---
 
-## New Database Tables (created via raw SQL — TTY issue with db:push)
-- `founder_withdrawals` — tracks founder personal transfers; used to compute Safe to Withdraw
-- `health_snapshots` — hourly composite health score snapshots from 5-dimension engine
-- `error_events` — 5xx errors captured by index.ts finish handler; feeds operational health signal
+## What Was Built
 
-## New Server Files
-- `server/modules/health-engine.ts` — 5-dimension scorer (Financial 25%, Operational 25%, User/Growth 20%, Risk 20%, Integrity 10%). 20 individual signals. Exports `computeHealthScore()` and `computeAndSaveHealthSnapshot()`.
-- `server/jobs/health-snapshot.ts` — runs `computeAndSaveHealthSnapshot()` on boot + every 60 min in all environments.
+### Phase 1 — Database tables (via drizzle-kit push)
+- `founderWithdrawals` — tracks personal withdrawals by the founder
+- `healthSnapshots` — hourly system health records (5 dimensions)
+- `errorEvents` — placeholder for future error tracking
 
-## New API Endpoints (server/routes.ts)
-- `GET /api/admin/founder/profit-summary` — founder only
-- `POST /api/admin/founder/withdrawals` — founder only
-- `GET /api/admin/founder/withdrawals` — founder only
-- `GET /api/admin/system-health` — admin+ (returns latest snapshot, adds isStale flag if >90min old)
-- `GET /api/admin/system-health/history` — admin+, supports `?hours=24`
-- `POST /api/admin/system-health/recalculate` — triggers on-demand snapshot
-- `GET /api/admin/reconciliation` — admin+ financial picture
-- `POST /api/admin/earnings/:earningId/reclassify` — founder only, marks admin_credit as verified_deposit
+### Phase 2 — Health Engine
+- `server/modules/health-engine.ts` — 5 dimensions × 4 signals each; fully DB-backed
+- `server/jobs/health-snapshot.ts` — runs on startup + every 60 min
 
-## Extended /api/team/metrics Fields
-Now returns 17 keys: pendingWithdrawalTotal, pendingWithdrawalCount, oldestPendingDays, unverifiedCreditTotal, unverifiedCreditCount, userGrowthThisWeek, userGrowthLastWeek, userGrowthRate, networkL1Total, networkL2Total, networkRatio, teamActivity24h, teamActivityAvg7d, mostActiveTeamMember, totalUsers (plus existing activeUsers, totalEarnings).
+### Phase 3 — Founder Ledger
+- `POST/GET /api/admin/founder/withdrawals`
+- `GET /api/admin/founder/profit-summary`
+- `storage.getFounderProfitSummary()` returns safeToWithdrawNow, isOverWithdrawn, etc.
 
-## Financial Integrity (Phase 1)
-- `adjustUserBalance` now accepts optional `creditIntent: 'verified_deposit' | 'admin_credit'` (default: 'admin_credit')
-- UserManager.tsx balance modal has a mandatory Credit Reason selector when adding credit
-- The earnings record inserted by the credit operation uses the creditIntent type directly
+### Phase 4 — Reconciliation
+- `GET /api/admin/reconciliation`
+- `POST /api/admin/earnings/:earningId/reclassify`
 
-## New Frontend Components
-- `client/src/components/admin/FounderProfitCard.tsx` — founder-only card; shows Safe to Withdraw, log withdrawal modal, history modal
-- `client/src/components/admin/SystemHealthCard.tsx` — health score card with delta vs 24h; opens HealthReportPanel
-- `client/src/components/admin/HealthReportPanel.tsx` — full report: 24h chart, 5 dimension bars (click to expand signals), snapshot history, Recalculate Now button
-- `client/src/components/admin/ReconciliationPanel.tsx` — 5-row financial reconciliation table + admin credit drill-down + Mark Verified button
+### Phase 5 — Frontend
+- `AdminDashboard.tsx` — "Platform Overview", clean rounded cards, sections: System Health, Core Metrics, Growth & Network, Financial Integrity, Analytics
+- `SystemHealthCard.tsx` — tap-to-open HealthReportPanel dialog
+- `HealthReportPanel.tsx` — "Health Breakdown" / "Score History" / "What's Affecting the Score"
+- `FounderProfitCard.tsx` — clean rounded style, log withdrawal + history modals
+- `ReconciliationPanel.tsx` — "Money Overview" / "Money Breakdown" / "Manual Credits"
 
-## Updated Frontend
-- `AdminDashboard.tsx` — full rewrite: 5 sections (Platform Health, Core Metrics, Growth & Activity, Financial Integrity, Analytics)
-- `AdminLayout.tsx` — Finance nav item added for founder/admin roles
-- `TeamPortal.tsx` — "finance" case routes to ReconciliationPanel
+## Security Fix Applied
+Four founder-only routes that had inline `role !== 'founder'` checks but NO `requireTeamRole` middleware were fixed:
+- `GET /api/admin/founder/profit-summary`
+- `POST /api/admin/founder/withdrawals`
+- `GET /api/admin/founder/withdrawals`
+- `POST /api/admin/earnings/:earningId/reclassify`
 
-## Why: TTY issue with db:push
-In non-TTY environments (Replit shell/CodeExecution), `drizzle-kit push` throws an interactive prompt error when it detects schema conflicts requiring user confirmation. Workaround: use `executeSql` with raw CREATE TABLE IF NOT EXISTS SQL directly.
+**Why:** Without `requireTeamRole`, unauthenticated requests bypassed session loading entirely — `req.userProfile` would be undefined and the role check would always throw.
+
+## Design System Applied
+**Clean style** (NOT neo-brutalist):
+- `border-[1.5px] border-zinc-200 rounded-[2rem]`
+- `hover:shadow-lg hover:-translate-y-0.5`
+- Pill buttons: `rounded-full`
+- No heavy `shadow-[4px_4px_0_0_#000]` offsets
+- No `split-card` class
+
+## Terminology Simplified
+- "Command Center" → "Platform Overview"
+- "DIMENSION BREAKDOWN — CLICK TO EXPAND SIGNALS" → "Health Breakdown (tap a row to expand)"
+- "RECENT SNAPSHOTS" → "Score History"
+- "ROOT CAUSE ANALYSIS" → "What's Affecting the Score"
+- "PLATFORM FINANCIAL RECONCILIATION" → "Money Overview"
+- "UNVERIFIED ADMIN CREDITS" → "Manual Credits"
