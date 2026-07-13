@@ -1426,7 +1426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Team dashboard metrics endpoints (protected for team members only)
-  app.get("/api/team/metrics", async (req, res) => {
+  app.get("/api/team/metrics", requireTeamRole, async (req, res) => {
     try {
       const range = (req.query.range as string) || "7d";
       const now = new Date();

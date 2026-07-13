@@ -335,6 +335,8 @@ export interface IStorage {
     networkL1Total: number;
     networkL2Total: number;
     networkRatio: number;
+    totalReferrals: number;
+    totalCommissionsPaid: string;
     teamActivity24h: number;
     teamActivityAvg7d: number;
     mostActiveTeamMember: string | null;
@@ -2570,12 +2572,14 @@ export class DatabaseStorage implements IStorage {
     const pendingLiability = parseFloat(pendRow?.total ?? '0');
     const netLiquidity = realBacking - pendingLiability;
 
+    // Fetch admin credit earnings with recipient user info
     const adminCreditRows = await db
       .select({
         id: earnings.id,
         userId: earnings.userId,
         amount: earnings.amount,
         description: earnings.description,
+        metadata: earnings.metadata,
         createdAt: earnings.createdAt,
         userFirstName: users.firstName,
         userLastName: users.lastName,
@@ -2586,21 +2590,40 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(earnings.createdAt))
       .limit(100);
 
+    // Resolve admin names from metadata.adminId — batch fetch to avoid N+1 queries
+    const adminIds = [...new Set(
+      adminCreditRows
+        .map(c => (c.metadata as any)?.adminId as string | undefined)
+        .filter(Boolean) as string[]
+    )];
+    const adminMap = new Map<string, string>();
+    if (adminIds.length > 0) {
+      const adminUsers = await db
+        .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(inArray(users.id, adminIds));
+      adminUsers.forEach(a => adminMap.set(a.id, `${a.firstName} ${a.lastName}`.trim() || 'Team Member'));
+    }
+
     return {
       totalUserBalances: balRow?.total ?? '0',
       realEarningsBacking: realRow?.total ?? '0',
       unverifiedCreditExposure: unverRow?.total ?? '0',
       pendingWithdrawalLiability: pendRow?.total ?? '0',
       netPlatformLiquidity: netLiquidity.toFixed(2),
-      adminCreditDetails: adminCreditRows.map(c => ({
-        id: c.id,
-        userId: c.userId,
-        userName: `${c.userFirstName ?? ''} ${c.userLastName ?? ''}`.trim() || 'Unknown',
-        adminName: 'Admin',
-        amount: c.amount,
-        description: c.description ?? '',
-        createdAt: c.createdAt?.toISOString() ?? '',
-      })),
+      adminCreditDetails: adminCreditRows.map(c => {
+        const grantedById = (c.metadata as any)?.adminId as string | undefined;
+        const adminName = grantedById ? (adminMap.get(grantedById) ?? 'Team Member') : 'Team Member';
+        return {
+          id: c.id,
+          userId: c.userId ?? '',
+          userName: `${c.userFirstName ?? ''} ${c.userLastName ?? ''}`.trim() || 'Unknown',
+          adminName,
+          amount: c.amount,
+          description: c.description ?? '',
+          createdAt: c.createdAt?.toISOString() ?? '',
+        };
+      }),
     };
   }
 
@@ -2638,18 +2661,24 @@ export class DatabaseStorage implements IStorage {
     // Unverified credits
     const [unverRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text`, cnt: sql<number>`COUNT(*)` }).from(earnings).where(eq(earnings.type, 'admin_credit'));
 
-    // User growth
-    const [thisWeekRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(gte(users.createdAt, ago7d));
-    const [lastWeekRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(and(gte(users.createdAt, ago14d), lt(users.createdAt, ago7d)));
+    // User growth — filter to role='user' only (exclude team/admin/founder accounts)
+    const [thisWeekRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(and(eq(users.role, 'user'), gte(users.createdAt, ago7d)));
+    const [lastWeekRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(and(eq(users.role, 'user'), gte(users.createdAt, ago14d), lt(users.createdAt, ago7d)));
     const thisWeek = Number(thisWeekRow?.cnt ?? 0);
     const lastWeek = Number(lastWeekRow?.cnt ?? 0);
     const growthRate = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 1000) / 10 : (thisWeek > 0 ? 100 : 0);
 
     // Referral network depth
-    const [l1Row] = await db.select({ cnt: sql<number>`COUNT(DISTINCT beneficiary_id)` }).from(commissionLogs).where(and(eq(commissionLogs.level, 1), eq(commissionLogs.status, 'paid')));
-    const [l2Row] = await db.select({ cnt: sql<number>`COUNT(DISTINCT beneficiary_id)` }).from(commissionLogs).where(and(eq(commissionLogs.level, 2), eq(commissionLogs.status, 'paid')));
+    // L1: number of platform users who have earned at least one direct referral commission
+    // L2: number of platform users who have earned at least one second-tier commission
+    // totalReferrals: total user accounts that were referred by someone (referredBy IS NOT NULL)
+    const [l1Row] = await db.select({ cnt: sql<number>`COUNT(DISTINCT ${commissionLogs.beneficiaryId})` }).from(commissionLogs).where(and(eq(commissionLogs.level, 1), eq(commissionLogs.status, 'paid')));
+    const [l2Row] = await db.select({ cnt: sql<number>`COUNT(DISTINCT ${commissionLogs.beneficiaryId})` }).from(commissionLogs).where(and(eq(commissionLogs.level, 2), eq(commissionLogs.status, 'paid')));
+    const [referralRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(and(eq(users.role, 'user'), sql`${users.referredBy} IS NOT NULL`));
+    const [commPaidRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(${commissionLogs.amount} AS DECIMAL)), 0)::text` }).from(commissionLogs).where(eq(commissionLogs.status, 'paid'));
     const l1Total = Number(l1Row?.cnt ?? 0);
     const l2Total = Number(l2Row?.cnt ?? 0);
+    // Depth ratio: for every L1 earner, how many L2 earners does their network produce?
     const networkRatio = l1Total > 0 ? Math.round((l2Total / l1Total) * 100) / 100 : 0;
 
     // Team activity
@@ -2672,8 +2701,8 @@ export class DatabaseStorage implements IStorage {
       mostActiveTeamMember = m ? `${m.firstName} ${m.lastName}` : null;
     }
 
-    // Total users
-    const [totalUsersRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(eq(users.isActive, true));
+    // Total registered platform users (role='user' only, active accounts)
+    const [totalUsersRow] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(users).where(and(eq(users.role, 'user'), eq(users.isActive, true)));
 
     return {
       pendingWithdrawalTotal: pendingTotal.toFixed(2),
@@ -2687,6 +2716,8 @@ export class DatabaseStorage implements IStorage {
       networkL1Total: l1Total,
       networkL2Total: l2Total,
       networkRatio,
+      totalReferrals: Number(referralRow?.cnt ?? 0),
+      totalCommissionsPaid: commPaidRow?.total ?? '0',
       teamActivity24h: activity24h,
       teamActivityAvg7d: Math.round(avg7d * 10) / 10,
       mostActiveTeamMember,

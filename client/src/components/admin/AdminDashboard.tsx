@@ -2,8 +2,8 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Users, Activity, DollarSign, TrendingUp, TrendingDown, Minus,
-  Clock, UserCheck, ArrowUpRight, BarChart3, AlertTriangle,
-  Network, ShieldAlert, GitBranch, Coins
+  Clock, UserCheck, BarChart3, AlertTriangle,
+  Network, ShieldAlert, GitBranch, Coins, UserPlus, Award
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -15,6 +15,36 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SystemHealthCard } from "./SystemHealthCard";
 import { FounderProfitCard } from "./FounderProfitCard";
 import { useAuth } from "@/hooks/useAuth";
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface ExtendedMetrics {
+  activeUsers: number | string;
+  totalEarnings: string;
+  pendingWithdrawalTotal: string;
+  pendingWithdrawalCount: number;
+  oldestPendingDays: number | null;
+  unverifiedCreditTotal: string;
+  unverifiedCreditCount: number;
+  userGrowthThisWeek: number;
+  userGrowthLastWeek: number;
+  userGrowthRate: number;
+  networkL1Total: number;
+  networkL2Total: number;
+  networkRatio: number;
+  totalReferrals: number;
+  totalCommissionsPaid: string;
+  teamActivity24h: number;
+  teamActivityAvg7d: number;
+  mostActiveTeamMember: string | null;
+  totalUsers: number;
+}
+
+interface AnalyticsPoint {
+  date: string;
+  count: number;
+  amount: number;
+}
 
 // ── Metric card ──────────────────────────────────────────────────────────────
 
@@ -51,11 +81,11 @@ function MetricCard({
         <div className={cn("p-2 rounded-full border", isLight ? "bg-zinc-100 border-zinc-200" : "bg-white/10 border-white/20")}>
           <Icon className={cn("w-4 h-4", isLight ? "text-foreground" : "text-white")} />
         </div>
-        <span className={cn("text-[9px] font-black uppercase tracking-widest", isLight ? "text-muted-foreground" : "text-white/60")}>{title}</span>
+        <span className={cn("text-[9px] font-black uppercase tracking-widest text-right max-w-[120px] leading-tight", isLight ? "text-muted-foreground" : "text-white/60")}>{title}</span>
       </div>
       <div>
         <p className={cn("text-2xl font-black tracking-tight", isLight ? "text-foreground" : "text-white")}>{value}</p>
-        {subtitle && <p className={cn("text-[10px] font-bold mt-0.5", isLight ? "text-muted-foreground" : "text-white/60")}>{subtitle}</p>}
+        {subtitle && <p className={cn("text-[10px] font-bold mt-0.5 leading-snug", isLight ? "text-muted-foreground" : "text-white/60")}>{subtitle}</p>}
         {trend && (
           <div className={cn(
             "flex items-center gap-1 text-[10px] font-black mt-1.5",
@@ -94,54 +124,174 @@ function ChartCard({ title, icon: Icon, children }: { title: string; icon: React
   );
 }
 
+// ── Referral Network Mini-Card ────────────────────────────────────────────────
+
+function ReferralNetworkCard({ l1, l2, ratio, totalReferrals, delay }: { l1: number; l2: number; ratio: number; totalReferrals: number; delay: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
+      className="bg-white border-[1.5px] border-zinc-200 rounded-[2rem] p-5 space-y-4"
+    >
+      <div className="flex items-start justify-between">
+        <div className="p-2 rounded-full border bg-zinc-100 border-zinc-200">
+          <Network className="w-4 h-4 text-foreground" />
+        </div>
+        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground text-right">Referral Network</span>
+      </div>
+
+      {/* Total referrals hero */}
+      <div>
+        <p className="text-2xl font-black text-foreground">{totalReferrals.toLocaleString()}</p>
+        <p className="text-[10px] font-bold text-muted-foreground">total referred users</p>
+      </div>
+
+      {/* L1 / L2 / Depth grid */}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="p-2 bg-zinc-50 rounded-xl border border-zinc-100">
+          <p className="text-sm font-black text-foreground">{l1}</p>
+          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">L1 Earners</p>
+          <p className="text-[8px] text-muted-foreground/70 mt-0.5">direct referrers</p>
+        </div>
+        <div className="p-2 bg-zinc-50 rounded-xl border border-zinc-100">
+          <p className="text-sm font-black text-foreground">{l2}</p>
+          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">L2 Earners</p>
+          <p className="text-[8px] text-muted-foreground/70 mt-0.5">network earners</p>
+        </div>
+        <div className="p-2 bg-zinc-50 rounded-xl border border-zinc-100">
+          <p className="text-sm font-black text-foreground">{ratio}×</p>
+          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Depth</p>
+          <p className="text-[8px] text-muted-foreground/70 mt-0.5">L2÷L1 ratio</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Team Activity Card ────────────────────────────────────────────────────────
+
+function TeamActivityCard({ activity24h, activityAvg7d, mostActive, delay }: { activity24h: number; activityAvg7d: number; mostActive: string | null; delay: number }) {
+  const isQuiet = activity24h === 0 && activityAvg7d > 2;
+  const isSurge = activity24h > activityAvg7d * 3 && activityAvg7d > 0;
+  const pctOfAvg = activityAvg7d > 0 ? Math.round((activity24h / activityAvg7d) * 100) : 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
+      className={cn(
+        "border-[1.5px] rounded-[2rem] p-5 space-y-4",
+        isQuiet  ? "bg-amber-50 border-amber-200" :
+        isSurge  ? "bg-blue-50 border-blue-200" :
+                   "bg-white border-zinc-200"
+      )}
+    >
+      <div className="flex items-start justify-between">
+        <div className="p-2 rounded-full border bg-zinc-100 border-zinc-200">
+          <Activity className="w-4 h-4 text-foreground" />
+        </div>
+        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Team Activity</span>
+      </div>
+
+      <div>
+        <p className="text-2xl font-black text-foreground">{activity24h.toLocaleString()}</p>
+        <p className="text-[10px] font-bold text-muted-foreground">
+          actions today
+          {activityAvg7d > 0 && ` · avg ${activityAvg7d}/day`}
+          {pctOfAvg > 0 && ` · ${pctOfAvg}% of avg`}
+        </p>
+      </div>
+
+      {mostActive && (
+        <div className="px-3 py-2 bg-white/70 rounded-xl border border-white/80">
+          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">Most active today</p>
+          <p className="text-sm font-black text-foreground">{mostActive}</p>
+        </div>
+      )}
+
+      {isQuiet && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-100 rounded-xl">
+          <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+          <p className="text-[9px] font-black text-amber-700">No admin activity today</p>
+        </div>
+      )}
+      {isSurge && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-blue-100 rounded-xl">
+          <TrendingUp className="w-3 h-3 text-blue-600 shrink-0" />
+          <p className="text-[9px] font-black text-blue-700">Activity spike — {Math.round(activity24h / Math.max(activityAvg7d, 1))}× above average</p>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 export function AdminDashboard() {
   const { user } = useAuth();
   const [dateRange, setDateRange] = React.useState("7d");
 
-  const { data: metrics, isLoading: metricsLoading } = useQuery<any>({
-    queryKey: [`/api/team/metrics?range=${dateRange}`],
+  // NOTE: `activeUsers` from this endpoint is actually NEW REGISTRATIONS in the
+  // selected date window (getUsersCountInRange counts by createdAt). We label it
+  // as "New Registrations" to be accurate. Extended metrics are always all-time.
+  const { data: metrics, isLoading: metricsLoading } = useQuery<ExtendedMetrics>({
+    queryKey: ["/api/team/metrics", dateRange],
+    queryFn: async () => {
+      const res = await fetch(`/api/team/metrics?range=${dateRange}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch metrics");
+      return res.json();
+    },
     refetchInterval: 60000,
   });
 
-  const { data: analytics, isLoading: analyticsLoading } = useQuery<any>({
-    queryKey: [`/api/admin/analytics?range=${dateRange}`],
+  const { data: analytics } = useQuery<AnalyticsPoint[]>({
+    queryKey: ["/api/admin/analytics", dateRange],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/analytics?range=${dateRange}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch analytics");
+      return res.json();
+    },
   });
 
   const isFounder = user?.role === "founder";
 
-  // Derived values
-  const pendingTotal   = parseFloat(metrics?.pendingWithdrawalTotal ?? "0");
-  const pendingCount   = metrics?.pendingWithdrawalCount ?? 0;
-  const oldestDays     = metrics?.oldestPendingDays ?? null;
-  const unverifiedTotal= parseFloat(metrics?.unverifiedCreditTotal ?? "0");
-  const unverifiedCount= metrics?.unverifiedCreditCount ?? 0;
-  const growthRate     = metrics?.userGrowthRate ?? 0;
-  const thisWeek       = metrics?.userGrowthThisWeek ?? 0;
-  const lastWeek       = metrics?.userGrowthLastWeek ?? 0;
-  const l1             = metrics?.networkL1Total ?? 0;
-  const l2             = metrics?.networkL2Total ?? 0;
-  const networkRatio   = metrics?.networkRatio ?? 0;
-  const activity24h    = metrics?.teamActivity24h ?? 0;
-  const activityAvg    = metrics?.teamActivityAvg7d ?? 0;
-  const mostActive     = metrics?.mostActiveTeamMember ?? null;
-  const totalUsers     = metrics?.totalUsers ?? 0;
-  const totalEarnings  = parseFloat(metrics?.totalEarnings ?? "0");
-  const activeUsers    = metrics?.activeUsers ?? 0;
+  // Derived values — all correctly sourced
+  const newRegistrationsInWindow = Number(metrics?.activeUsers ?? 0);  // count of users registered in selected window
+  const totalEarnings      = parseFloat(metrics?.totalEarnings ?? "0");
+  const pendingTotal       = parseFloat(metrics?.pendingWithdrawalTotal ?? "0");
+  const pendingCount       = metrics?.pendingWithdrawalCount ?? 0;
+  const oldestDays         = metrics?.oldestPendingDays ?? null;
+  const unverifiedTotal    = parseFloat(metrics?.unverifiedCreditTotal ?? "0");
+  const unverifiedCount    = metrics?.unverifiedCreditCount ?? 0;
+  const growthRate         = metrics?.userGrowthRate ?? 0;
+  const thisWeek           = metrics?.userGrowthThisWeek ?? 0;
+  const lastWeek           = metrics?.userGrowthLastWeek ?? 0;
+  const l1                 = metrics?.networkL1Total ?? 0;
+  const l2                 = metrics?.networkL2Total ?? 0;
+  const networkRatio       = metrics?.networkRatio ?? 0;
+  const totalReferrals     = metrics?.totalReferrals ?? 0;
+  const totalCommissions   = parseFloat(metrics?.totalCommissionsPaid ?? "0");
+  const activity24h        = metrics?.teamActivity24h ?? 0;
+  const activityAvg        = metrics?.teamActivityAvg7d ?? 0;
+  const mostActive         = metrics?.mostActiveTeamMember ?? null;
+  const totalUsers         = metrics?.totalUsers ?? 0;   // only role='user', active=true
 
-  const chartData = (analytics ?? []).map((item: any) => {
+  const chartData = (analytics ?? []).map((item) => {
     const date = new Date(item.date);
+    const isHourly = item.date.includes(" ");
     return {
-      name: date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        ...(dateRange === "7d" ? { weekday: "short" } : {}),
-      }),
+      name: date.toLocaleString("en-US", isHourly
+        ? { hour: "2-digit", minute: "2-digit", hour12: false }
+        : { month: "short", day: "numeric" }
+      ),
       registrations: item.count,
-      revenue: parseFloat(item.amount ?? "0"),
+      revenue: typeof item.amount === "number" ? item.amount : parseFloat(String(item.amount ?? "0")),
     };
   });
+
+  const rangeLabel = { "24h": "today", "7d": "this week", "30d": "this month", "all": "all time" }[dateRange] ?? dateRange;
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -181,28 +331,29 @@ export function AdminDashboard() {
 
       {/* Section 2: Core Metrics */}
       <section className="space-y-3">
-        <SectionLabel text="Core Metrics" />
+        <SectionLabel text={`Core Metrics · ${rangeLabel}`} />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
             title="Total Revenue"
             value={`₨${totalEarnings.toLocaleString()}`}
-            subtitle="All-time platform earnings"
+            subtitle={`Completed earnings${dateRange !== "all" ? ` · ${rangeLabel}` : ""}`}
             icon={DollarSign}
             variant="accent"
             delay={0}
           />
           <MetricCard
-            title="Active Users"
-            value={String(activeUsers ?? "—")}
-            subtitle={`In the selected ${dateRange} window`}
-            icon={UserCheck}
+            title="New Registrations"
+            value={metricsLoading ? "…" : String(newRegistrationsInWindow)}
+            subtitle={`Users who joined ${rangeLabel}`}
+            icon={UserPlus}
             variant="white"
             delay={0.05}
+            trend={newRegistrationsInWindow > 0 ? { direction: "up", label: `+${newRegistrationsInWindow} new` } : undefined}
           />
           <MetricCard
             title="Total Members"
             value={metricsLoading ? "…" : totalUsers.toLocaleString()}
-            subtitle="Registered accounts"
+            subtitle="Active registered user accounts"
             icon={Users}
             variant="white"
             delay={0.1}
@@ -210,7 +361,7 @@ export function AdminDashboard() {
           <MetricCard
             title="Pending Payouts"
             value={`₨${pendingTotal.toLocaleString()}`}
-            subtitle={`${pendingCount} request${pendingCount !== 1 ? "s" : ""}${oldestDays !== null ? ` · oldest ${oldestDays}d` : ""}`}
+            subtitle={`${pendingCount} request${pendingCount !== 1 ? "s" : ""}${oldestDays !== null ? ` · oldest ${oldestDays}d ago` : ""}`}
             icon={Clock}
             variant={oldestDays !== null && oldestDays > 48 ? "warning" : "white"}
             trend={oldestDays !== null && oldestDays > 72 ? { direction: "down", label: `Oldest: ${oldestDays}d overdue` } : undefined}
@@ -226,115 +377,72 @@ export function AdminDashboard() {
 
           {/* User Growth */}
           <MetricCard
-            title="User Growth"
+            title="Registration Growth Rate"
             value={`${growthRate > 0 ? "+" : ""}${growthRate}%`}
-            subtitle={`This week: ${thisWeek} new · Last week: ${lastWeek}`}
+            subtitle={`Week-over-week · this: ${thisWeek} · last: ${lastWeek}`}
             icon={TrendingUp}
             variant="white"
-            trend={growthRate > 5 ? { direction: "up", label: "Growing" } : growthRate < -5 ? { direction: "down", label: "Declining" } : { direction: "flat", label: "Stable" }}
+            trend={
+              growthRate > 5  ? { direction: "up",   label: "Growing fast" } :
+              growthRate > 0  ? { direction: "up",   label: "Positive growth" } :
+              growthRate < -5 ? { direction: "down",  label: "Declining" } :
+                                { direction: "flat",  label: "Stable" }
+            }
             delay={0.05}
           />
 
           {/* Referral Network */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-white border-[1.5px] border-zinc-200 rounded-[2rem] p-5 space-y-3"
-          >
-            <div className="flex items-start justify-between">
-              <div className="p-2 rounded-full border bg-zinc-100 border-zinc-200">
-                <Network className="w-4 h-4 text-foreground" />
-              </div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Referral Network</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="p-2 bg-zinc-50 rounded-xl border border-zinc-100">
-                <p className="text-sm font-black text-foreground">{l1}</p>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Direct</p>
-              </div>
-              <div className="p-2 bg-zinc-50 rounded-xl border border-zinc-100">
-                <p className="text-sm font-black text-foreground">{l2}</p>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Network</p>
-              </div>
-              <div className="p-2 bg-zinc-50 rounded-xl border border-zinc-100">
-                <p className="text-sm font-black text-foreground">{networkRatio}×</p>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Ratio</p>
-              </div>
-            </div>
-            <p className="text-[10px] text-muted-foreground font-bold">Network depth (L2 ÷ L1)</p>
-          </motion.div>
+          <ReferralNetworkCard l1={l1} l2={l2} ratio={networkRatio} totalReferrals={totalReferrals} delay={0.1} />
 
           {/* Team Activity */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className={cn(
-              "border-[1.5px] rounded-[2rem] p-5 space-y-3",
-              activity24h === 0 && activityAvg > 2 ? "bg-amber-50 border-amber-200" :
-              activity24h > activityAvg * 3 ? "bg-blue-50 border-blue-200" :
-              "bg-white border-zinc-200"
-            )}
-          >
-            <div className="flex items-start justify-between">
-              <div className="p-2 rounded-full border bg-zinc-100 border-zinc-200">
-                <Activity className="w-4 h-4 text-foreground" />
-              </div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Team Activity</span>
-            </div>
-            <div>
-              <p className="text-2xl font-black tracking-tight">{activity24h}</p>
-              <p className="text-[10px] font-bold text-muted-foreground mt-0.5">
-                actions today · avg {activityAvg}/day
-              </p>
-            </div>
-            {mostActive && (
-              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                Most active: {mostActive}
-              </p>
-            )}
-            {activity24h === 0 && activityAvg > 2 && (
-              <p className="text-[9px] font-black text-amber-700 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> No admin activity today
-              </p>
-            )}
-          </motion.div>
+          <TeamActivityCard activity24h={activity24h} activityAvg7d={activityAvg} mostActive={mostActive} delay={0.15} />
         </div>
       </section>
 
       {/* Section 4: Financial Integrity */}
       <section className="space-y-3">
         <SectionLabel text="Financial Integrity" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          <MetricCard
+            title="Commissions Paid Out"
+            value={`₨${totalCommissions.toLocaleString()}`}
+            subtitle="Total L1+L2 commission payouts ever processed"
+            icon={Award}
+            variant="white"
+            delay={0}
+          />
+
           <MetricCard
             title="Unverified Credit Exposure"
             value={`₨${unverifiedTotal.toLocaleString()}`}
-            subtitle={`${unverifiedCount} manual credits not backed by real deposits`}
+            subtitle={`${unverifiedCount} manual credit${unverifiedCount !== 1 ? "s" : ""} not backed by real deposits`}
             icon={ShieldAlert}
             variant={unverifiedTotal > 100000 ? "danger" : unverifiedTotal > 50000 ? "warning" : "white"}
-            trend={unverifiedTotal > 100000 ? { direction: "down", label: "High exposure — review recommended" } : undefined}
-            delay={0}
+            trend={unverifiedTotal > 100000 ? { direction: "down", label: "High — review recommended" } : undefined}
+            delay={0.05}
           />
+
           <MetricCard
             title="Payout Queue Value"
             value={`₨${pendingTotal.toLocaleString()}`}
-            subtitle={`${pendingCount} pending · real cash obligation`}
+            subtitle={`${pendingCount} pending · real cash obligation to users`}
             icon={Coins}
             variant={pendingTotal > 50000 ? "warning" : "white"}
-            trend={pendingCount > 10 ? { direction: "down", label: `${pendingCount} users waiting` } : { direction: "flat", label: "Queue is manageable" }}
-            delay={0.05}
+            trend={pendingCount > 10 ? { direction: "down", label: `${pendingCount} users waiting` } : { direction: "flat", label: "Queue manageable" }}
+            delay={0.1}
           />
         </div>
       </section>
 
       {/* Section 5: Analytics Charts */}
       <section className="space-y-3">
-        <SectionLabel text="Analytics" />
+        <SectionLabel text={`Analytics · ${rangeLabel}`} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
           <ChartCard title="New Registrations" icon={Users}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
+              <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
                 <defs>
                   <linearGradient id="colorReg" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
@@ -343,20 +451,28 @@ export function AdminDashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.1} />
                 <XAxis dataKey="name" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontWeight: 700 }} />
-                <YAxis fontSize={9} tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontWeight: 700 }} />
-                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #e4e4e7", borderRadius: "12px", fontSize: "11px", fontWeight: "bold" }} />
-                <Area type="monotone" dataKey="registrations" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#colorReg)" dot={false} />
+                <YAxis fontSize={9} tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontWeight: 700 }} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#fff", border: "1px solid #e4e4e7", borderRadius: "12px", fontSize: "11px", fontWeight: "bold" }}
+                  labelStyle={{ fontWeight: 900 }}
+                  formatter={(v: any) => [v, "Registrations"]}
+                />
+                <Area type="monotone" dataKey="registrations" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#colorReg)" dot={false} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="Revenue (₨)" icon={DollarSign}>
+          <ChartCard title="Platform Revenue (₨)" icon={DollarSign}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
+              <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground))" strokeOpacity={0.1} />
                 <XAxis dataKey="name" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontWeight: 700 }} />
                 <YAxis fontSize={9} tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontWeight: 700 }} />
-                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #e4e4e7", borderRadius: "12px", fontSize: "11px", fontWeight: "bold" }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#fff", border: "1px solid #e4e4e7", borderRadius: "12px", fontSize: "11px", fontWeight: "bold" }}
+                  labelStyle={{ fontWeight: 900 }}
+                  formatter={(v: any) => [`₨${Number(v).toLocaleString()}`, "Revenue"]}
+                />
                 <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
                   {chartData.map((_: any, i: number) => (
                     <Cell key={i} fill={i % 2 === 0 ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.55)"} />
