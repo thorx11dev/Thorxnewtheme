@@ -1,1066 +1,1633 @@
-# THORX SYSTEM SPECIFICATION — MASTER IMPLEMENTATION BLUEPRINT
+# THORX — MASTER IMPLEMENTATION BLUEPRINT (DEFINITIVE)
 
-> Cross-reference: attached_assets/Pasted--THORX-SYSTEM-SPECIFICATION-ARCHITECTURE-BLUEPRINT-A-co_1784065659375.txt
-> Codebase state: fully explored — schema, routes, storage, client, admin portal
-> This file is the canonical work order. Every phase must wire into every existing feature.
-
----
-
-## GAP ANALYSIS SUMMARY (Current vs. Spec)
-
-| Area | Current State | Spec Requirement | Gap |
-|---|---|---|---|
-| Referral tiers | Multi-tier (L1/L2) in commission_logs | 1-tier direct only | Remove multi-level logic |
-| Rank system | Custom names (Nawa Aya→Chacha Supreme) based on totalEarnings | E/D/C/B/A/S based on Performance Score (PS) | Full rank overhaul |
-| PS field | In leaderboard_cache only, not on users | Direct column on users, live-updated | Add performanceScore to users table |
-| Thorx Card | Fixed conversion only | ±20% random variance, dual-ledger (points_credited + real_pkr_value) | Build random card engine |
-| User types | Platform roles (user/admin/founder) | Guild-aware types (simple/member/captain) | Add guild_role routing |
-| Engine splits | Single VAULT_HOLD_PCT for all | A/B = 40% Thorx / 60% User; C = 20% Thorx / 35% Pool / 45% User | Per-engine split config |
-| Guild rank (GPS) | E-S schema exists but unused in UI | GPS drives member capacity (10→50) | Implement GPS progression |
-| Captain DM | Missing | Dedicated 1-on-1 captain↔member channel | Build DM system |
-| Nudge system | Missing | Captain triggers mobile push to inactive member | Build nudge endpoint + UI |
-| Weekly reset | Basic cycle, no Sunday trigger, no captain share | Sunday night, captain 30% / members 70% proportional | Rebuild reset logic |
-| Withdrawal math | Uses availableBalance | Must trace real_pkr_value from user_transactions | Rebuild withdrawal ledger |
-| Inactivity penalty | Missing | −10 PS/day after 48h idle, capped at E-Rank floor | Build inactivity cron |
-| Admin profit sliders | Single fee config | Per-engine sliders (A/B/C) + Ref% separately | Add split controls to admin |
-| Ledger Validator | Missing | Admin tool to cross-check points vs. real_pkr_value | Build reconciliation tool |
-| Simulation Sandbox | Missing | Admin tool to simulate Thorx Card outcomes | Build sandbox UI |
-| PS unlock gates | Missing | D-Rank to join guild, B-Rank to create, C-Rank for premium CPA | Add rank gate middleware |
-| MVP badge | Basic pin endpoint exists | Weekly captain designation, pinned badge on profile | Wire to profile display |
-| Application cover letter | Schema exists (guild_applications) | UI must collect and display it with PS + history | Enhance application flow |
+> Sources: All three attached spec files + full codebase exploration (schema, routes, storage, client, admin)
+> Last updated: July 2026 — canonical work order, supersedes all prior drafts
+> Every phase wires into existing features. Nothing is built in isolation.
 
 ---
 
-## PHASE 1 — DATABASE & SCHEMA OVERHAUL
+## PART 0 — WHAT IS BEING REMOVED (Do First)
 
-### 1.1 Users Table — New Columns
+These features exist in the current codebase and **must be fully deleted** before new features are built. Leaving them creates logical conflicts.
 
-**File:** `shared/schema.ts`
-
-Add the following columns to the `users` table:
-
-```
-performanceScore    integer     DEFAULT 0          -- PS: primary rank driver
-userRankTier        text        DEFAULT 'E-Rank'   -- E/D/C/B/A/S (replaces old Nawa Aya system)
-guildRole           text        DEFAULT 'simple'   -- 'simple' | 'member' | 'captain'
-guildId             text        REFERENCES guilds  -- null if not in a guild
-lastActiveAt        timestamp   DEFAULT now()      -- drives inactivity penalty
-streakDays          integer     DEFAULT 0          -- consecutive active days
-inactivityPenaltyAt timestamp   NULLABLE           -- when next -10 PS fires
-```
-
-**Breaking change:** The `rank` column currently stores "Nawa Aya" / "Chota Don" etc. Migrate this to `userRankTier` (E/D/C/B/A/S). Keep `personalRank` for the guild-contribution axis (unchanged). The `guildContributionScore` field stays for guild-internal leaderboard.
-
-**Migration steps:**
-1. Add new columns with defaults
-2. Map old rank names → new E-S tiers (existing users default to E-Rank unless their totalEarnings suggests higher — use a seed migration)
-3. Backfill `guildId` and `guildRole` from existing `guild_members` records
-4. Keep `rank` column temporarily as alias, drop after all code references are updated
-
----
-
-### 1.2 Guilds Table — GPS & Rank
-
-**File:** `shared/schema.ts`
-
-Current `guilds` table already has most fields. Add/verify:
-
-```
-guildPerformanceScore  integer   DEFAULT 0       -- GPS total
-guildRankTier          text      DEFAULT 'E-Rank' -- E/D/C/B/A/S
-memberCapacity         integer   DEFAULT 10       -- driven by guildRankTier
-minRankRequired        text      DEFAULT 'E-Rank' -- captain sets, gates applications
-weeklyBonusPool        decimal(12,4) DEFAULT 0   -- accumulates 35% of Engine C earnings
-currentWeeklyPoints    integer   DEFAULT 0       -- resets Sunday
-weeklyTarget           integer   DEFAULT 50000   -- set by admin per guild rank
-assistantCaptainId     text      NULLABLE        -- unlocked at B-Rank GPS
-```
-
-**GPS Member Capacity table (enforced in code, not DB):**
-
-| GPS Rank | Range | Capacity |
+| What to Remove | Where It Lives | Replacement |
 |---|---|---|
-| E-Rank | 0 – 9,999 | 10 |
-| D-Rank | 10,000 – 29,999 | 15 |
-| C-Rank | 30,000 – 69,999 | 20 |
-| B-Rank | 70,000 – 149,999 | 25 |
-| A-Rank | 150,000 – 299,999 | 30 |
-| S-Rank | 300,000+ | 50 |
+| Multi-level referral (L1 / L2) | `commission_logs.level`, `referrals.tier`, leaderboard `level2Count` | 1-tier `referral_commissions` table |
+| Daily Task System (mandatory daily tasks to unlock payout) | `daily_tasks`, `task_records`, all "complete daily task before withdrawal" gates | Guild Task Panel (Engine C) — no withdrawal gate |
+| Rally system | `POST /api/guilds/:id/rally`, rally cooldown logic | Removed entirely — no replacement |
+| Old "admin fee + platform fee" dual deduction on withdrawal | `server/storage.ts` withdrawal calc, commission_logs deduction | Single 15% platform fee only |
+| Old Vault / Locked Points terminology in any user-facing string | All user-facing components, notifications, labels | "Guild Weekly Bonus Pool" exclusively |
+| Old rank names (Nawa Aya / Chota Don / Bawa Ji / Haji Sab / Chacha Supreme) | `shared/schema.ts`, `server/storage.ts`, all client components, `rankAvatars.ts` | E-Rank / D-Rank / C-Rank / B-Rank / A-Rank / S-Rank |
+| totalEarnings-based rank progression | `checkAndUpdateRank()` in `server/storage.ts` | PS-based `checkAndUpdateRankTier()` |
+| `VAULT_HOLD_PCT` single-config split | `system_config`, `bootstrapConfig()` | Per-engine split keys |
+| Multi-engine-chat confusion (old Engine C = referral layer) | Any code treating Engine C as referral | Engine C = Guild Tasks exclusively |
+
+**String grep targets for removal:**
+```
+"Nawa Aya" "Chota Don" "Bawa Ji" "Haji Sab" "Chacha Supreme"
+"Vault" (user-facing only — keep in backend column names)
+"Locked Points" "locked_points"
+"rally" "RALLY" (routes, storage methods, UI)
+"level2" "L2" "tier_2" (referral context)
+"daily_tasks" gate checks in withdrawal flow
+```
 
 ---
 
-### 1.3 New Table — user_transactions (Bulletproof Ledger)
+## PART 1 — SYSTEM OVERVIEW & LEGAL COMPLIANCE
 
-**File:** `shared/schema.ts`
+THORX is now a fully 1-tier, legally compliant Pakistan earning platform. The three revenue sources are:
+
+1. **15% withdrawal platform fee** — charged on the real PKR value behind user's TX-Points when they withdraw. The user sees "Net Receivable: Rs. X" — the fee is never labelled as "secret" to the user but the math happens transparently in the backend. A portion of this fee (admin-configurable, default 30%) goes to the user's direct referrer.
+
+2. **Indirect organic traffic tasks in Engine C** — Guild task panel includes tasks like "Subscribe to Thorx YouTube", "Watch this video and enter the code", "Follow Thorx TikTok". These generate indirect ad revenue / organic growth for Thorx at zero monetary cost.
+
+3. **40% platform profit cut on all Engine A & B tasks; 20% on Engine C tasks** — automatically deducted before any user payout is calculated. Users only see the points they receive, never the gross network payout.
+
+---
+
+## PART 2 — THREE USER TYPES & PORTAL ROUTING
+
+### 2.1 User Classification
+
+Every authenticated user has a `guildRole` field that determines which portal they see for Engine C:
+
+| Type | guildRole value | Engine C Default View | Can Access |
+|---|---|---|---|
+| Simple User | `'simple'` | Public Guild Discovery Area | Engine A + Engine B only |
+| Guild Member | `'member'` | Guild Member Panel | Engine A + B + C |
+| Guild Captain | `'captain'` | Captain Portal | Engine A + B + C + Captain tools |
+
+**Rule:** Simple users who have a **pending** application show a "Application Pending" waiting screen instead of the Discovery Area.
+
+### 2.2 Dashboard Summary Cards (Three Different Experiences)
+
+**File:** `client/src/pages/UserPortal.tsx`
+
+Each user type sees a different set of summary cards at the top of their dashboard:
+
+**Simple User cards:**
+- Total TX-Points Balance
+- Available Withdrawal (Rs.)
+- Performance Score + Rank badge + progress to next rank
+- Referral count + referral balance (balance_cash_pkr)
+- "Join a Guild" CTA card with teaser of bonus potential
+
+**Guild Member cards:**
+- Total TX-Points Balance
+- This Week's Contribution (personal points contributed to guild this week)
+- Guild Weekly Progress (X / Target points, % bar)
+- "Sunday Bonus Status" — "In Progress" / "Target Hit! Bonus incoming Sunday night"
+- Performance Score + Rank badge
+
+**Guild Captain cards:**
+- Guild GPS Score + Guild Rank badge
+- Total Members / Capacity (e.g., "8 / 10")
+- Pending Join Requests count (with red badge if > 0)
+- Weekly Target Progress (full guild, same as member view but with management context)
+- This week's Inactive Members count (zero-contribution members)
+
+---
+
+## PART 3 — THE THREE EARNING ENGINES
+
+### 3.1 Engine A — Ad Tasks (Video Ads)
+
+**Who can use:** All users (E-Rank+)
+
+**Revenue math (all backend, never shown to user):**
+```
+Network gross revenue = R (e.g., Rs. 10.00)
+Thorx profit cut      = R × ENGINE_A_THORX_CUT_PCT / 100  → Thorx reserve  (e.g., Rs. 4.00)
+User PKR share        = R × ENGINE_A_USER_CUT_PCT / 100   → goes to Thorx Card engine (e.g., Rs. 6.00)
+```
+
+**User sees:** A "Thorx Card" animation showing random TX-Points (e.g., 520 pts or 680 pts)
+
+**PS awarded:** +5 PS per completion
+
+### 3.2 Engine B — CPA Offers (Premium Offers / App Installs)
+
+**Who can use:** C-Rank and above (rank gate enforced at route level)
+
+**Revenue math:** Identical split to Engine A (40% Thorx / 60% user)
+
+**PS awarded:** +25 PS per completion
+
+**Unlock gate:** Users below C-Rank see Engine B section as locked with progress bar showing how much PS needed.
+
+### 3.3 Engine C — Guild Tasks
+
+**Who can use:** Guild Members and Captains only (guildRole = 'member' | 'captain')
+
+**Task types in Engine C panel:**
+1. **CPA Offer tasks** — same type as Engine B but exclusive to guild members, higher payouts. Team portal can toggle which CPA offers appear in Engine C vs public Engine B.
+2. **Indirect tasks** — "Subscribe to Thorx YouTube channel", "Watch this video and submit the code", "Follow Thorx TikTok", etc. These generate 100% indirect revenue for Thorx. Admin creates and manages these in Team Portal.
+
+**Revenue math for Engine C CPA/Offer tasks:**
+```
+Network gross revenue  = R (e.g., Rs. 10.00)
+Thorx direct profit    = R × ENGINE_C_THORX_CUT_PCT / 100       → Thorx reserve (e.g., Rs. 2.00 = 20%)
+Guild Weekly Bonus Pool= R × ENGINE_C_GUILD_POOL_PCT / 100      → guilds.weeklyBonusPool (e.g., Rs. 3.50 = 35%)
+  (internally: 20% bonus pool + 15% vault pool, merged as one)
+User immediate payout  = R × ENGINE_C_USER_CUT_PCT / 100        → Thorx Card engine (e.g., Rs. 4.50 = 45%)
+```
+
+**Revenue math for indirect tasks (YouTube subscribe, etc.):**
+```
+100% indirect organic value → Thorx (no monetary payout to user from these tasks)
+User receives: +15 PS only, plus their standard guild contribution tracking
+```
+
+**Critical UX rule — NEVER show in user UI:**
+- The word "Vault"
+- The word "Locked Points"
+- The exact accumulated pool amount
+- Any breakdown of the 35% pool
+
+**What users DO see:** "If your Guild hits the weekly target, everyone gets a Sunday Bonus! 🎁"
+
+**PS awarded:** +15 PS per Engine C task completion
+
+---
+
+## PART 4 — THE THORX CARD (RANDOM REWARD ENGINE)
+
+### 4.1 Concept
+
+Every time a user completes an Engine A, B, or C task that has a monetary payout, instead of receiving a fixed point amount, they receive a **Thorx Card** — a gamified reveal showing a random point amount. The randomness is visual only. The backend always stores the exact real PKR value.
+
+### 4.2 The Math
+
+```
+Step 1: Calculate target points
+  targetPoints = (userPkrShare / 10.00) × CONVERSION_RATE
+  (e.g., Rs. 6.00 user share, rate = 1000 pts per Rs.10 → targetPoints = 600)
+
+Step 2: Apply rank bonus to variance bounds
+  baseMin = CARD_VARIANCE_MIN  (default 0.80)
+  baseMax = CARD_VARIANCE_MAX  (default 1.20)
+  if userRankTier === 'A-Rank': min -= 0.05, max += 0.05  → (0.75 – 1.25)
+  if userRankTier === 'S-Rank': min -= 0.10, max += 0.10  → (0.70 – 1.30)
+
+Step 3: Generate random card value
+  cardVariance = random float between min and max
+  pointsCredited = Math.round(targetPoints × cardVariance)
+  (e.g., 600 × 1.08 = 648 points shown on card)
+
+Step 4: Store dual-ledger entry
+  INSERT INTO user_transactions:
+    engineType      = 'Engine_A' | 'Engine_B' | 'Engine_C'
+    pointsCredited  = 648           ← shown to user on card
+    realPkrValue    = 6.00          ← NEVER affected by variance, always exact
+    conversionRate  = 1000          ← snapshot
+    cardVariance    = 1.08          ← logged for audit
+    sourceId        = ad_view.id or task_record.id
+```
+
+### 4.3 Why Thorx Cannot Lose Money
+
+- **Thorx profit cut happens before the card is drawn** — the 40%/20% is already deducted from gross before `userPkrShare` is even calculated
+- **Withdrawal uses `realPkrValue`**, not points math — even if a user got 1.5x card variance, withdrawal only pays out Rs. 6.00, not Rs. 9.00
+- **Double profit**: Thorx earns at task completion (Engine cut) AND at withdrawal (15% fee)
+
+### 4.4 Thorx Card UI Component
+
+**File:** `client/src/components/ThorxCard.tsx` (NEW)
+
+Trigger: API response from any earn endpoint includes `thorxCard: { pointsCredited, realPkrValue, cardVariance }` payload.
+
+UI flow:
+1. Card face-down animation (THORX logo, dark background)
+2. User taps → card flips
+3. Large animated point number reveals (e.g., "648 TX-Points")
+4. Subtle sub-text in small muted font: "Locked value: Rs. 6.00"
+5. "Claim" button → dismisses card, updates dashboard balance counters
+
+**Rule:** Never show the word "Vault" on the card. Show "Locked value" or "Saved value".
+
+---
+
+## PART 5 — THE BULLETPROOF WITHDRAWAL LEDGER
+
+### 5.1 How Withdrawal PKR is Calculated
+
+**File:** `server/storage.ts` → new `calculateWithdrawalBreakdown(userId, pointsRequested)`
+
+```typescript
+async function calculateWithdrawalBreakdown(userId: string, pointsRequested: number) {
+  // Step 1: FIFO sum of real_pkr_value from user_transactions
+  // Walk transactions oldest-first until cumulative pointsCredited >= pointsRequested
+  // The sum of realPkrValue for those records = exactPkr
+  
+  const exactPkr = await sumLedgerPkr(userId, pointsRequested); // e.g., Rs. 100.00
+
+  // Step 2: Apply 15% platform fee
+  const feeRate = await getConfig('WITHDRAWAL_FEE_PCT') / 100;  // default 0.15
+  const platformFee = exactPkr × feeRate;                        // e.g., Rs. 15.00
+
+  // Step 3: Referral commission split (from the fee, not from user's payout)
+  const referrer = await getReferrerOf(userId);
+  let referralCommission = 0;
+  if (referrer) {
+    const refRate = await getConfig('REFERRAL_FEE_SHARE_PCT') / 100; // default 0.30
+    referralCommission = platformFee × refRate;  // e.g., Rs. 15.00 × 0.30 = Rs. 4.50
+    // Thorx net from fee = platformFee - referralCommission = Rs. 10.50
+  }
+
+  const userNetPkr = exactPkr - platformFee;  // e.g., Rs. 85.00
+
+  return { exactPkr, platformFee, referralCommission, userNetPkr, referrerId: referrer?.id };
+}
+```
+
+### 5.2 Referral Math (Concrete Example)
+
+User B (invited by User A) withdraws 10,000 TX-Points:
+
+```
+real_pkr_value from ledger  = Rs. 100.00
+15% platform fee             = Rs. 15.00
+User B receives              = Rs. 85.00
+
+Fee split (if REFERRAL_FEE_SHARE_PCT = 30%):
+  User A commission          = Rs. 15.00 × 30% = Rs. 4.50  → credited to users.balanceCashPkr
+  Thorx net profit           = Rs. 15.00 - Rs. 4.50 = Rs. 10.50
+
+INSERT referral_commissions(referrerId=UserA, inviteeId=UserB, withdrawalId, amount=4.50, rate=0.30)
+UPDATE users SET balanceCashPkr = balanceCashPkr + 4.50 WHERE id = UserA
+```
+
+**User A's referral cash (`balanceCashPkr`) is separate from TX-Points** and can be withdrawn independently.
+
+### 5.3 S-Rank Fast Track
+
+If `users.userRankTier === 'S-Rank'`: withdrawal `status` is set to `'approved'` immediately on creation — no admin review required.
+
+### 5.4 Withdrawal Preview Endpoint
+
+**Route:** `GET /api/withdrawals/preview?points=X`
+
+Returns the full breakdown before user confirms:
+```json
+{
+  "pointsRequested": 10000,
+  "realPkrFromLedger": 100.00,
+  "platformFee": 15.00,
+  "feePercent": 15,
+  "referralCommission": 4.50,
+  "referrerName": "Ahmad K.",
+  "userNetPkr": 85.00,
+  "sRankFastTrack": false
+}
+```
+
+### 5.5 User-Facing Withdrawal Summary (UI)
+
+**File:** `client/src/components/WithdrawalModal.tsx`
+
+Show this breakdown before confirm:
+```
+Points Requested:        10,000 TX-Points
+Real Value:              Rs. 100.00
+Platform Fee (15%):    − Rs. 15.00
+You Receive:             Rs. 85.00
+─────────────────────────────────────
+Referral bonus to [Ahmad K.]: Rs. 4.50  (shown only if referrer exists)
+```
+
+Confirm button only activates after user has seen this screen for ≥2 seconds.
+
+---
+
+## PART 6 — PERFORMANCE SCORE (PS) & USER RANK SYSTEM
+
+### 6.1 PS Accrual Rules
+
+| Event | PS Awarded |
+|---|---|
+| Engine A task completed | +5 PS |
+| Engine B task completed | +25 PS |
+| Engine C task completed | +15 PS |
+| Daily streak — Day 1 | +5 PS |
+| Daily streak — Day 2 | +10 PS |
+| Daily streak — Day 3 and every day after (unbroken) | +20 PS |
+| Streak broken (missed a day) | Resets to Day 1 (+5) on next activity |
+| Inactivity ≥ 48 consecutive hours | −10 PS per day (capped at 0, never negative) |
+
+**Streak logic:** A "day" is a calendar day (PKT timezone). If user completes at least 1 task on consecutive calendar days, streak increments. If they miss a calendar day entirely, streak resets to 1 on next login.
+
+### 6.2 User Rank Tiers
+
+| Rank | PS Required | Unlocks / Perks |
+|---|---|---|
+| E-Rank | 0 – 999 | Engine A tasks only. Cannot join/create guilds. |
+| D-Rank | 1,000 – 2,999 | Can apply to join guilds. |
+| C-Rank | 3,000 – 5,999 | Engine B (premium CPA) unlocked. |
+| B-Rank | 6,000 – 9,999 | Can create a guild (become Captain). |
+| A-Rank | 10,000 – 19,999 | Thorx Card variance expands ±5% (wider jackpot range). |
+| S-Rank | 20,000+ | Auto-approved withdrawals (within 2 hours) + exclusive CPA offers. |
+
+### 6.3 Rank Thresholds as Admin-Configurable Values
+
+Store in `system_config` so admin can change without code deploy:
+```
+PS_RANK_E_MAX    = 999
+PS_RANK_D_MIN    = 1000
+PS_RANK_D_MAX    = 2999
+PS_RANK_C_MIN    = 3000
+PS_RANK_C_MAX    = 5999
+PS_RANK_B_MIN    = 6000
+PS_RANK_B_MAX    = 9999
+PS_RANK_A_MIN    = 10000
+PS_RANK_A_MAX    = 19999
+PS_RANK_S_MIN    = 20000
+```
+
+These are editable from the Admin → Ranks Customizer UI.
+
+### 6.4 `checkAndUpdateRankTier()` — Full Rewrite
+
+**File:** `server/storage.ts`
+
+```typescript
+async function checkAndUpdateRankTier(userId: string): Promise<void> {
+  const user = await getUser(userId);
+  if (user.rankLocked) return;
+
+  const ps = user.performanceScore;
+  const thresholds = await getRankThresholds(); // reads from system_config
+  
+  const newRank = computeRankFromPS(ps, thresholds);
+  if (newRank === user.userRankTier) return;
+
+  await db.update(users).set({ userRankTier: newRank }).where(eq(users.id, userId));
+  await db.insert(rank_logs).values({ userId, oldRank: user.userRankTier, newRank, triggerSource: 'ps_engine' });
+  
+  // Auto-assign rank avatar if user still has default
+  await assignRankAvatar(userId, newRank);
+  
+  // Push notification + WS broadcast
+  await createNotification(userId, `You've reached ${newRank}! ${RANK_UNLOCK_DESCRIPTIONS[newRank]}`);
+  await broadcastUserUpdated(userId);
+}
+```
+
+Keep `checkAndUpdateRank()` as deprecated alias pointing to new function.
+
+---
+
+## PART 7 — GUILD SYSTEM
+
+### 7.1 Guild Philosophy (The Job Market Analogy)
+
+Every UX decision in the guild system must reinforce this feeling:
+- **Creating a guild** → feels like registering your own business
+- **Joining a guild** → feels like applying for a job
+- **Cover letter** → feels like writing a job proposal / showcasing your skills
+- **Captain reviewing applications** → feels like an owner reviewing job applications
+- **Captain managing roster** → feels like a business owner managing employees
+- **Being kicked** → feels like being let go from a job
+- **Guild tasks** → feels like daily work assignments from the boss
+- **Sunday bonus** → feels like the company's weekly performance bonus
+
+### 7.2 Guild Discovery (Public Area — All Users See This)
+
+**File:** `client/src/components/guild/GuildDiscoveryPanel.tsx` (NEW)
+
+Visible to: Simple users, guild members, captains — everyone can browse. Guild members and captains see it as a secondary tab, not their default.
+
+**What is displayed per guild card:**
+- Guild name, avatar, description
+- Guild Rank badge (E-S with color)
+- Guild Performance Score (GPS total)
+- Total TX-Points ever earned by guild (shown as points, never PKR)
+- Total Weekly Bonus distributed (shown as points)
+- Current member count / capacity (e.g., "7 / 10")
+- Minimum rank required to apply
+- "Slots Available" indicator
+
+**Ranking:** Sorted by GPS descending (highest GPS = top of leaderboard)
+
+**Application flow:**
+1. User must meet `minRankRequired` set by captain (enforced client + server)
+2. If eligible and slot available: "Apply to Join" button appears
+3. Modal opens with a text area: "Write your application letter — tell the Captain why you'd be a great team member and what you can contribute"
+4. Minimum 50 characters enforced
+5. Submit → `POST /api/guilds/:id/join` with `coverLetter` in body
+6. User sees "Application Submitted" status on that guild card
+
+**Rank gate message (if user rank < minRankRequired):** "This guild requires D-Rank or higher. You are E-Rank. Earn 1,000 PS to qualify." (with progress bar)
+
+### 7.3 Guild Member Panel (Workers Hub)
+
+**File:** `client/src/components/guild/GuildMemberPanel.tsx` (REPLACES GuildVaultPanel.tsx)
+
+**Default view for guildRole = 'member'**
+
+Sections:
+
+**A. Weekly Target Tracker (top of panel)**
+- Full-width progress bar: `currentWeeklyPoints / weeklyTarget × 100%`
+- Color coding: 0-50% = orange, 50-90% = yellow, 90-100% = green, 100%+ = celebration state
+- Status text:
+  - Below target: "Weekly Target: In Progress — Keep going!"
+  - 100%+ hit: "🎉 Target Achieved! Sunday Bonus unlocking this week."
+- Countdown timer to Sunday 11:59 PM PKT
+
+**B. Contribution Board**
+- "My Contribution This Week: 2,500 TX-Points"
+- Top 5 internal leaderboard (guild members ranked by weeklyPointsContributed)
+- User's own position highlighted even if outside top 5
+
+**C. Engine C Task List**
+- CPA offers exclusive to guild (fetched by `GET /api/guilds/weekly-tasks`)
+- Indirect tasks (YouTube/TikTok etc.) — clearly labelled "Indirect Task — No Points, Boosts Guild"
+- Each task shows: payout estimate (in points, randomised display), engine type badge
+- On completion: Thorx Card animation fires
+
+**D. Team Communication**
+- "Guild Chat" tab — WhatsApp-style group chat (`GET/POST /api/guilds/:id/chat`)
+- "Captain Channel" tab — 1-on-1 DM with captain only (`GET/POST /api/guilds/:id/dm/captainId`)
+- Unread message badge on each tab
+
+**E. Guild Info Footer**
+- Guild GPS score + rank badge
+- Captain name with crown icon
+- Guild creation date
+
+### 7.4 Captain Portal (Management Suite)
+
+**File:** `client/src/components/guild/CaptainPortal.tsx` (NEW)
+
+**Default view for guildRole = 'captain'**
+
+**Section A — Join Request Queue**
+- List of pending applications, newest first
+- Per application card:
+  - Applicant name + userRankTier badge + PS score
+  - Performance history: Engine A completed, Engine B completed, Engine C completed, failed/fraudulent attempts (from risk_cases)
+  - Cover letter text (full, scrollable)
+  - "Accept" button → sets guildRole='member', guildId, updates guild member count
+  - "Reject" button → opens required text field "Why are you rejecting?" (min 10 chars enforced) → sends rejection notification to applicant
+- Feels like reviewing a job application
+
+**Section B — Roster Management**
+- Table of all guild members:
+  - Avatar, name, userRankTier badge
+  - "This week's contribution" (weeklyPointsContributed) — highlighted red if 0
+  - Join date
+- Per-member actions:
+  - **[Kick]** button with confirmation dialog: "Are you sure? This member will be removed from the guild."
+  - **[Nudge]** button — only shown if weeklyPointsContributed === 0, disabled for 24h after use. Sends: "Yar, aap ke Captain ne yaad kiya hai! Jaldi se team tasks complete karo taake Sunday ka bonus miss na ho! 🚨"
+  - **[DM]** button → opens captain channel with that member
+  - **[Set as MVP]** button — one use per week, only available if member has contribution > 0
+- Crown icon next to captain's own row
+- "Assign Assistant Captain" option appears if guild GPS ≥ B-Rank (70,000 GPS)
+
+**Section C — Direct Member Channels (DM Hub)**
+- List of all members with:
+  - Unread DM count badge
+  - Last message preview
+- Click to open 1-on-1 thread
+
+**Section D — Weekly Goal Stats**
+- Bar chart: last 8 weeks — green bar = success, red bar = fail
+- Stats: Success rate %, average achieved points, largest bonus pool distributed
+- Current week: live progress + countdown to Sunday
+- (Optional) Target difficulty selector: Captain can choose Low / Medium / High preset (all within admin-configured limits per guild rank tier)
+
+**Section E — Guild Settings**
+- Guild name (editable)
+- Description (editable)
+- Profile photo (editable)
+- Minimum rank to join (dropdown: E-Rank to S-Rank)
+- Weekly target (read-only — set by admin based on guild rank)
+- "Transfer Captain Role" → select any current member → confirm → captain becomes member, selected user becomes captain
+
+### 7.5 Guild Performance Score (GPS) & Guild Ranks
+
+**GPS Accrual:**
+```
+On every Engine C task completion by any member:
+  GPS += pointsCredited × GPS_MEMBER_POINTS_PCT / 100   (default 10%)
+
+On weekly target hit (Sunday reset, success path):
+  GPS += GPS_MILESTONE_BONUS   (default 1,000)
+
+On MVP selection by captain:
+  GPS += GPS_MVP_BONUS         (default 200)
+```
+
+**Guild Rank Tiers:**
+
+| Rank | GPS Required | Member Capacity | Perks |
+|---|---|---|---|
+| E-Rank | 0 – 9,999 | 10 | Standard |
+| D-Rank | 10,000 – 29,999 | 15 | Standard weekly targets |
+| C-Rank | 30,000 – 69,999 | 20 | Custom guild badge colors |
+| B-Rank | 70,000 – 149,999 | 25 | Assistant Captain role unlocked |
+| A-Rank | 150,000 – 299,999 | 30 | Featured in "Recommended Guilds" list |
+| S-Rank | 300,000+ | 50 | Listed on Thorx homepage, Legendary badge |
+
+**GPS thresholds are also admin-configurable** (stored in system_config, editable from Ranks Customizer in admin panel).
+
+### 7.6 Sunday Night Guild Reset
+
+**File:** `server/modules/guild-reset.ts`
+
+**Cron schedule:** Sunday 23:59 PKT = Sunday 18:59 UTC
+```typescript
+cron.schedule('59 18 * * 0', runWeeklyGuildReset, { timezone: 'UTC' });
+```
+
+**Reset logic:**
+```typescript
+async function runWeeklyGuildReset() {
+  const activeGuilds = await getAllActiveGuilds();
+  
+  for (const guild of activeGuilds) {
+    if (guild.currentWeeklyPoints >= guild.weeklyTarget) {
+      // SUCCESS PATH
+      const pool = guild.weeklyBonusPool;
+      const captainPkr = pool × 0.30;
+      const memberPoolPkr = pool × 0.70;
+      
+      // Credit captain
+      await creditUserBalance(guild.captainId, captainPkr);
+      await createNotification(guild.captainId, `Guild bonus credited: Rs. ${captainPkr} (Captain's 30% share)`);
+      
+      // Credit active members proportionally
+      const members = await getGuildMembersWithContribution(guild.id);
+      const totalContrib = sum(members.map(m => m.weeklyPointsContributed));
+      for (const member of members.filter(m => m.weeklyPointsContributed > 0)) {
+        const share = memberPoolPkr × (member.weeklyPointsContributed / totalContrib);
+        await creditUserBalance(member.userId, share);
+        await createNotification(member.userId, `Sunday Guild Bonus credited: Rs. ${share}`);
+      }
+      
+      // GPS milestone award
+      await addGuildGPS(guild.id, GPS_MILESTONE_BONUS);
+      
+      // Snapshot: success
+      await insertGuildWeeklySnapshot(guild.id, { wasSuccessful: true, poolDisposition: 'distributed', bonusPoolPkr: pool });
+
+    } else {
+      // FAIL PATH — pool voided to Thorx reserve
+      await insertGuildWeeklySnapshot(guild.id, { wasSuccessful: false, poolDisposition: 'voided', bonusPoolPkr: guild.weeklyBonusPool });
+    }
+    
+    // ALWAYS reset for new week
+    await db.update(guilds).set({ currentWeeklyPoints: 0, weeklyBonusPool: 0 }).where(eq(guilds.id, guild.id));
+    await db.update(guild_members).set({ weeklyPointsContributed: 0 }).where(eq(guild_members.guildId, guild.id));
+  }
+}
+```
+
+**Important:** User-facing notification says "Sunday Guild Bonus credited" — never "vault released" or "pool distributed".
+
+---
+
+## PART 8 — DATABASE SCHEMA CHANGES
+
+### 8.1 Users Table — New Columns
+
+```sql
+ALTER TABLE users ADD COLUMN performanceScore integer DEFAULT 0;
+ALTER TABLE users ADD COLUMN userRankTier text DEFAULT 'E-Rank';
+ALTER TABLE users ADD COLUMN guildRole text DEFAULT 'simple';
+ALTER TABLE users ADD COLUMN guildId text REFERENCES guilds(id);
+ALTER TABLE users ADD COLUMN lastActiveAt timestamp DEFAULT now();
+ALTER TABLE users ADD COLUMN streakDays integer DEFAULT 0;
+ALTER TABLE users ADD COLUMN lastStreakDate date;
+ALTER TABLE users ADD COLUMN inactivityPenaltyAt timestamp;
+ALTER TABLE users ADD COLUMN balanceCashPkr decimal(10,2) DEFAULT 0.00;
+-- balanceCashPkr: referral commission earnings, withdrawable separately from TX-Points
+```
+
+**Drop / deprecate:**
+- `rank` column → replaced by `userRankTier` (keep temporarily, remove after all references updated)
+- `personalRank` → keep (separate guild-contribution axis, unchanged)
+
+### 8.2 Guilds Table — New Columns
+
+```sql
+ALTER TABLE guilds ADD COLUMN guildPerformanceScore integer DEFAULT 0;
+ALTER TABLE guilds ADD COLUMN guildRankTier text DEFAULT 'E-Rank';
+ALTER TABLE guilds ADD COLUMN memberCapacity integer DEFAULT 10;
+ALTER TABLE guilds ADD COLUMN minRankRequired text DEFAULT 'E-Rank';
+ALTER TABLE guilds ADD COLUMN weeklyBonusPool decimal(12,4) DEFAULT 0;
+ALTER TABLE guilds ADD COLUMN currentWeeklyPoints integer DEFAULT 0;
+ALTER TABLE guilds ADD COLUMN weeklyTarget integer DEFAULT 50000;
+ALTER TABLE guilds ADD COLUMN assistantCaptainId text REFERENCES users(id);
+ALTER TABLE guilds ADD COLUMN targetDifficulty text DEFAULT 'medium'; -- 'low'|'medium'|'high'
+```
+
+### 8.3 Guild Members Table — New Columns
+
+```sql
+ALTER TABLE guild_members ADD COLUMN isMVP boolean DEFAULT false;
+ALTER TABLE guild_members ADD COLUMN mvpSetAt timestamp;
+ALTER TABLE guild_members ADD COLUMN lastNudgedAt timestamp;
+-- weeklyPointsContributed already exists, verify it resets on Sunday
+```
+
+### 8.4 New Table — user_transactions
 
 ```sql
 CREATE TABLE user_transactions (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id              text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   userId          text NOT NULL REFERENCES users(id),
-  engineType      text NOT NULL,          -- 'Engine_A' | 'Engine_B' | 'Engine_C'
-  pointsCredited  integer NOT NULL,        -- random card output (shown to user)
-  realPkrValue    decimal(10,4) NOT NULL,  -- actual backend PKR value
-  conversionRate  integer NOT NULL,        -- snapshot of rate at time of earn
-  cardVariance    decimal(5,4) NOT NULL,   -- the random multiplier used (0.80–1.20)
-  sourceId        text,                    -- ad_view id, task_record id, etc.
+  engineType      text NOT NULL,          -- 'Engine_A' | 'Engine_B' | 'Engine_C' | 'Indirect'
+  pointsCredited  integer NOT NULL,       -- random card output shown to user
+  realPkrValue    decimal(10,4) NOT NULL, -- exact backend PKR value, never changes
+  grossPkr        decimal(10,4),          -- network gross before split (admin reference)
+  thorxProfitPkr  decimal(10,4),          -- Thorx's cut from this transaction
+  guildPoolPkr    decimal(10,4),          -- Engine C pool contribution (0 for A/B)
+  conversionRate  integer NOT NULL,       -- snapshot of CONVERSION_RATE at earn time
+  cardVariance    decimal(5,4) NOT NULL,  -- random multiplier used
+  sourceId        text,                   -- ad_view.id or task_record.id
+  withdrawn       boolean DEFAULT false,  -- true once consumed by a withdrawal
+  withdrawalId    text,                   -- linked after withdrawal processes
+  createdAt       timestamp DEFAULT now()
+);
+
+CREATE INDEX idx_user_transactions_user ON user_transactions(userId, createdAt);
+CREATE INDEX idx_user_transactions_withdrawn ON user_transactions(userId, withdrawn);
+```
+
+### 8.5 New Table — referral_commissions
+
+```sql
+CREATE TABLE referral_commissions (
+  id                  text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  referrerId          text NOT NULL REFERENCES users(id),
+  inviteeId           text NOT NULL REFERENCES users(id),
+  withdrawalId        text REFERENCES withdrawals(id),
+  commissionAmountPkr decimal(10,2) NOT NULL,
+  feeRateUsed         decimal(5,4) NOT NULL,   -- snapshot of WITHDRAWAL_FEE_PCT
+  refShareRateUsed    decimal(5,4) NOT NULL,   -- snapshot of REFERRAL_FEE_SHARE_PCT
+  status              text DEFAULT 'paid',      -- always 'paid' on creation
+  createdAt           timestamp DEFAULT now()
+);
+```
+
+### 8.6 New Table — captain_messages
+
+```sql
+CREATE TABLE captain_messages (
+  id          text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  guildId     text NOT NULL REFERENCES guilds(id),
+  fromUserId  text NOT NULL REFERENCES users(id),
+  toUserId    text NOT NULL REFERENCES users(id),
+  message     text NOT NULL,
+  isRead      boolean DEFAULT false,
+  createdAt   timestamp DEFAULT now()
+);
+
+CREATE INDEX idx_captain_messages_thread ON captain_messages(guildId, fromUserId, toUserId);
+```
+
+### 8.7 New Table — guild_weekly_snapshots
+
+```sql
+CREATE TABLE guild_weekly_snapshots (
+  id              text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  guildId         text NOT NULL REFERENCES guilds(id),
+  weekStart       date NOT NULL,
+  targetPoints    integer NOT NULL,
+  achievedPoints  integer NOT NULL,
+  wasSuccessful   boolean NOT NULL,
+  bonusPoolPkr    decimal(12,4) NOT NULL,
+  poolDisposition text NOT NULL,  -- 'distributed' | 'voided'
+  captainShare    decimal(10,2) DEFAULT 0,
   createdAt       timestamp DEFAULT now()
 );
 ```
 
-**This table is the single source of truth for withdrawal calculations.** The existing `earnings` table continues for user-facing history display. `user_transactions` is backend-only and never exposed raw to users.
-
----
-
-### 1.4 referral_commissions Table
-
-**File:** `shared/schema.ts`
-
-The existing `commission_logs` table has `level` (L1/L2). Spec mandates 1-tier only.
-
-Changes:
-- Add a `referral_commissions` table as the clean new schema (mirrors spec Section 7)
-- Keep `commission_logs` for historical records only (add `deprecated: true` comment)
-- All new commission writes go to `referral_commissions`
-
-```
-referral_commissions:
-  id                uuid PK
-  referrerId        text REFERENCES users(id)
-  inviteeId         text REFERENCES users(id)
-  withdrawalId      text REFERENCES withdrawals(id)
-  commissionAmountPkr decimal(10,2)
-  rate              decimal(5,4)       -- snapshot of REFERRAL_FEE_SHARE_PCT
-  status            text DEFAULT 'pending'  -- 'pending' | 'paid'
-  createdAt         timestamp
-```
-
----
-
-### 1.5 New Table — captain_messages (Direct Captain Channel)
-
-```
-captain_messages:
-  id          uuid PK
-  guildId     text REFERENCES guilds(id)
-  fromUserId  text REFERENCES users(id)
-  toUserId    text REFERENCES users(id)  -- captain↔specific member only
-  message     text NOT NULL
-  isRead      boolean DEFAULT false
-  createdAt   timestamp
-```
-
----
-
-### 1.6 New Table — guild_weekly_snapshots (Captain Portal Charts)
-
-```
-guild_weekly_snapshots:
-  id              uuid PK
-  guildId         text REFERENCES guilds(id)
-  weekStart       date NOT NULL
-  targetPoints    integer
-  achievedPoints  integer
-  wasSuccessful   boolean
-  bonusPoolPkr    decimal(12,4)
-  poolDisposition text  -- 'distributed' | 'voided'
-  createdAt       timestamp
-```
-
----
-
-### 1.7 Config Keys to Add/Update
-
-**File:** `server/storage.ts` → `bootstrapConfig()`
-
-New keys for `system_config`:
-```
-ENGINE_A_THORX_CUT_PCT     = 40    -- % of Engine A revenue kept by platform
-ENGINE_A_USER_CUT_PCT      = 60
-ENGINE_B_THORX_CUT_PCT     = 40
-ENGINE_B_USER_CUT_PCT      = 60
-ENGINE_C_THORX_CUT_PCT     = 20
-ENGINE_C_GUILD_POOL_PCT    = 35    -- combined bonus pool (20% direct + 15% vault)
-ENGINE_C_USER_CUT_PCT      = 45
-CARD_VARIANCE_MIN          = 0.80  -- Thorx Card lower bound
-CARD_VARIANCE_MAX          = 1.20  -- Thorx Card upper bound
-A_RANK_CARD_BONUS_PCT      = 5     -- expands card bounds by this amount at A-Rank
-PS_ENGINE_A_REWARD         = 5
-PS_ENGINE_B_REWARD         = 25
-PS_ENGINE_C_REWARD         = 15
-PS_STREAK_MIN              = 5
-PS_STREAK_MAX              = 20
-PS_INACTIVITY_PENALTY      = 10
-PS_INACTIVITY_HOURS        = 48
-GPS_MILESTONE_BONUS        = 1000
-GPS_MVP_BONUS              = 200
-GPS_MEMBER_POINTS_PCT      = 10    -- % of member weekly points → GPS
-GUILD_CAPTAIN_POOL_SHARE   = 30    -- % of bonus pool to captain on success
-GUILD_MEMBER_POOL_SHARE    = 70    -- remainder, proportional
-```
-
----
-
-## PHASE 2 — CORE BUSINESS LOGIC (Backend)
-
-### 2.1 Thorx Card Random Reward Engine
-
-**File:** `server/modules/thorx-card.ts` (NEW)
+### 8.8 New Config Keys (bootstrapConfig additions)
 
 ```typescript
-// Core function
-function drawThorxCard(realPkrUserShare: number, conversionRate: number, userRank: string): {
-  pointsCredited: number;
-  realPkrValue: number;
-  cardVariance: number;
-}
+// Engine splits
+ENGINE_A_THORX_CUT_PCT    : 40
+ENGINE_A_USER_CUT_PCT     : 60
+ENGINE_B_THORX_CUT_PCT    : 40
+ENGINE_B_USER_CUT_PCT     : 60
+ENGINE_C_THORX_CUT_PCT    : 20
+ENGINE_C_GUILD_POOL_PCT   : 35    // 20% bonus + 15% vault merged
+ENGINE_C_USER_CUT_PCT     : 45
+
+// Thorx Card
+CARD_VARIANCE_MIN          : 0.80
+CARD_VARIANCE_MAX          : 1.20
+A_RANK_CARD_BONUS_PCT      : 5    // expand bounds by this at A-Rank
+S_RANK_CARD_BONUS_PCT      : 10   // expand bounds by this at S-Rank
+
+// PS system
+PS_ENGINE_A_REWARD         : 5
+PS_ENGINE_B_REWARD         : 25
+PS_ENGINE_C_REWARD         : 15
+PS_STREAK_DAY1             : 5
+PS_STREAK_DAY2             : 10
+PS_STREAK_DAY3_PLUS        : 20
+PS_INACTIVITY_PENALTY      : 10
+PS_INACTIVITY_HOURS        : 48
+
+// PS rank thresholds (admin-editable)
+PS_RANK_E_MAX              : 999
+PS_RANK_D_MIN              : 1000
+PS_RANK_D_MAX              : 2999
+PS_RANK_C_MIN              : 3000
+PS_RANK_C_MAX              : 5999
+PS_RANK_B_MIN              : 6000
+PS_RANK_B_MAX              : 9999
+PS_RANK_A_MIN              : 10000
+PS_RANK_A_MAX              : 19999
+PS_RANK_S_MIN              : 20000
+
+// GPS system
+GPS_MILESTONE_BONUS        : 1000
+GPS_MVP_BONUS              : 200
+GPS_MEMBER_POINTS_PCT      : 10
+
+// GPS guild rank thresholds (admin-editable)
+GPS_RANK_E_MAX             : 9999
+GPS_RANK_D_MIN             : 10000
+GPS_RANK_D_MAX             : 29999
+GPS_RANK_C_MIN             : 30000
+GPS_RANK_C_MAX             : 69999
+GPS_RANK_B_MIN             : 70000
+GPS_RANK_B_MAX             : 149999
+GPS_RANK_A_MIN             : 150000
+GPS_RANK_A_MAX             : 299999
+GPS_RANK_S_MIN             : 300000
+
+// Sunday reset pool splits
+GUILD_CAPTAIN_POOL_SHARE   : 30
+GUILD_MEMBER_POOL_SHARE    : 70
+
+// Referral
+REFERRAL_FEE_SHARE_PCT     : 30   // % of the 15% withdrawal fee → referrer
+
+// Withdrawal
+WITHDRAWAL_FEE_PCT         : 15
+MIN_PAYOUT                 : 100  // minimum points to withdraw
+
+// Weekly targets by guild rank (admin sets these)
+WEEKLY_TARGET_E_RANK       : 20000
+WEEKLY_TARGET_D_RANK       : 50000
+WEEKLY_TARGET_C_RANK       : 100000
+WEEKLY_TARGET_B_RANK       : 200000
+WEEKLY_TARGET_A_RANK       : 350000
+WEEKLY_TARGET_S_RANK       : 500000
 ```
-
-**Logic:**
-1. Calculate base target points: `targetPoints = (realPkrUserShare / 10) * conversionRate` (e.g., Rs.10 = 1000 points at rate 100)
-2. Apply rank bonus: If A-Rank, expand bounds by +5% (0.75–1.25). If S-Rank, +10% (0.70–1.30).
-3. Generate variance: `cardVariance = random(CARD_VARIANCE_MIN, CARD_VARIANCE_MAX)`
-4. Final points: `pointsCredited = Math.round(targetPoints * cardVariance)`
-5. Store both in `user_transactions` (pointsCredited shown to user, realPkrValue used for withdrawal math)
-
-**Guarantee:** `realPkrValue` is ALWAYS the exact user PKR share from the split — never affected by the random multiplier. Point inflation is visual only.
 
 ---
 
-### 2.2 Engine A/B/C Revenue Split Engine
+## PART 9 — BACKEND MODULES (New Files)
 
-**File:** `server/storage.ts` → replace `recordEarnEvent()`
-
-**Current:** Single `VAULT_HOLD_PCT` for everything.
-
-**New logic per engine type:**
-
-**Engine A (Ad Views):**
-```
-grossPkr = network payout for the ad
-thorxProfit = grossPkr × ENGINE_A_THORX_CUT_PCT / 100   → Thorx reserve (never touches user)
-userPkr = grossPkr × ENGINE_A_USER_CUT_PCT / 100
-→ drawThorxCard(userPkr, rate, rank) → pointsCredited + realPkrValue
-→ INSERT user_transactions(Engine_A, pointsCredited, realPkrValue)
-→ UPDATE users: txPointsBalance += pointsCredited, availableBalance += userPkr
-→ PS award: +PS_ENGINE_A_REWARD to users.performanceScore
-→ checkAndUpdateRankTier(userId)
-```
-
-**Engine B (CPA Offers):**
-```
-Same as Engine A but uses ENGINE_B cuts.
-PS award: +PS_ENGINE_B_REWARD
-Gate: user must be C-Rank or higher for premium CPA offers (check userRankTier)
-```
-
-**Engine C (Guild Tasks):**
-```
-grossPkr = task payout
-thorxProfit = grossPkr × ENGINE_C_THORX_CUT_PCT / 100   → Thorx reserve
-guildPool = grossPkr × ENGINE_C_GUILD_POOL_PCT / 100    → guilds.weeklyBonusPool
-userPkr = grossPkr × ENGINE_C_USER_CUT_PCT / 100        → immediate user payout
-→ drawThorxCard(userPkr, rate, rank) → pointsCredited + realPkrValue
-→ INSERT user_transactions(Engine_C, ...)
-→ UPDATE guilds: weeklyBonusPool += guildPool, currentWeeklyPoints += pointsCredited, guildScore += GPS contribution
-→ UPDATE guild_members: weeklyPointsContributed += pointsCredited
-→ UPDATE guilds GPS: guildPerformanceScore += (pointsCredited × GPS_MEMBER_POINTS_PCT / 100)
-→ PS award: +PS_ENGINE_C_REWARD
-→ checkAndUpdateRankTier(userId)
-→ checkAndUpdateGuildRankTier(guildId)
-```
-
----
-
-### 2.3 Performance Score (PS) Engine
-
-**File:** `server/modules/ps-engine.ts` (NEW)
+### 9.1 `server/modules/thorx-card.ts` (NEW)
 
 ```typescript
-// Award PS on task completion
-async function awardPS(userId: string, engineType: 'A' | 'B' | 'C'): Promise<void>
+export function drawThorxCard(params: {
+  userPkrShare: number;
+  conversionRate: number;
+  userRankTier: string;
+  varianceMin: number;
+  varianceMax: number;
+  aRankBonus: number;
+  sRankBonus: number;
+}): { pointsCredited: number; realPkrValue: number; cardVariance: number }
 
-// Daily streak bonus (called by daily cron at midnight)
-async function processStreakBonus(userId: string): Promise<void>
-
-// Inactivity penalty (called by hourly cron, checks lastActiveAt)
-async function applyInactivityPenalties(): Promise<void>
+export function simulateThorxCards(params: {
+  grossPkr: number;
+  engineType: string;
+  userRankTier: string;
+  iterations: number;
+  config: CardConfig;
+}): SimulationResult[]
 ```
 
-**PS Accrual Rules:**
-- Engine A complete: +5 PS
-- Engine B complete: +25 PS
-- Engine C complete: +15 PS
-- Daily streak active: +5 to +20 PS (scales with streak length: 1–3 days = +5, 4–7 = +10, 8–14 = +15, 15+ = +20)
-- Inactivity: −10 PS/day after 48 consecutive hours idle (capped at E-Rank floor of 0)
-
-**PS Rank Tiers (replaces old Nawa Aya system):**
-
-| Rank | PS Range | Unlocks |
-|---|---|---|
-| E-Rank | 0 – 999 | Engine A only |
-| D-Rank | 1,000 – 2,999 | Can apply to / join guilds |
-| C-Rank | 3,000 – 5,999 | Premium Engine B CPA offers unlocked |
-| B-Rank | 6,000 – 9,999 | Can create a guild (become captain) |
-| A-Rank | 10,000 – 19,999 | Card variance bounds expand by +5% |
-| S-Rank | 20,000+ | VIP fast-track withdrawals (auto-process) + exclusive CPA |
-
-**Implementation:**
-- `users.performanceScore` is the live PS value
-- `users.userRankTier` is derived from PS and updated by `checkAndUpdateRankTier()`
-- `rank_logs` table continues to log all tier changes (add `triggerSource = 'ps_engine'`)
-- `users.lastActiveAt` is updated on any authenticated API call (middleware touch)
-- Streak: compare `lastLoginDate` to today; if consecutive, increment `streakDays`
-
----
-
-### 2.4 checkAndUpdateRankTier() — Full Rewrite
-
-**File:** `server/storage.ts`
-
-Replace the current `checkAndUpdateRank()` (which uses `totalEarnings` and custom rank names) with a new `checkAndUpdateRankTier()`:
+### 9.2 `server/modules/ps-engine.ts` (NEW)
 
 ```typescript
-async function checkAndUpdateRankTier(userId: string): Promise<void> {
-  // 1. Read users.performanceScore
-  // 2. Determine new rank from PS_RANK_THRESHOLDS constant
-  // 3. If rankLocked === true, skip
-  // 4. If rank changed:
-  //    a. UPDATE users.userRankTier
-  //    b. INSERT rank_logs (oldRank, newRank, triggerSource='ps_engine')
-  //    c. Apply rank-specific perks (auto-avatar assignment from rankAvatars.ts)
-  //    d. broadcastUserUpdated(userId) via WS
-  //    e. Create notification: "You've reached [Rank]! [unlock description]"
-}
+export async function awardPS(userId: string, engineType: 'A' | 'B' | 'C'): Promise<void>
+export async function processStreakBonus(userId: string): Promise<void>
+  // - Read users.lastStreakDate
+  // - If yesterday = last streak date: increment streakDays
+  // - If missed: reset streakDays to 1
+  // - Award PS based on streakDays: 1→+5, 2→+10, 3+→+20
+  // - Update lastStreakDate = today
+export async function applyInactivityPenalties(): Promise<void>
+  // - Find users where lastActiveAt < now - 48h AND performanceScore > 0
+  // - Deduct PS_INACTIVITY_PENALTY, floor at 0
+  // - Call checkAndUpdateRankTier
 ```
 
-**Keep `checkAndUpdateRank()` as a deprecated alias** pointing to the new function during transition.
-
----
-
-### 2.5 Guild GPS Engine
-
-**File:** `server/modules/gps-engine.ts` (NEW)
+### 9.3 `server/modules/gps-engine.ts` (NEW)
 
 ```typescript
-// Called after every Engine C earn event
-async function updateGuildGPS(guildId: string, weeklyPointsEarned: number): Promise<void> {
-  // GPS contribution = weeklyPointsEarned × GPS_MEMBER_POINTS_PCT / 100
-  // UPDATE guilds.guildPerformanceScore += contribution
-  // Check for guild rank tier change → update guildRankTier + memberCapacity
-}
-
-// Called when weekly target is hit
-async function awardMilestoneGPS(guildId: string): Promise<void> {
-  // UPDATE guilds.guildPerformanceScore += GPS_MILESTONE_BONUS
-}
-
-// Called when captain selects MVP
-async function awardMVPGPS(guildId: string): Promise<void> {
-  // UPDATE guilds.guildPerformanceScore += GPS_MVP_BONUS
-}
+export async function updateGuildGPS(guildId: string, pointsEarned: number): Promise<void>
+export async function awardMilestoneGPS(guildId: string): Promise<void>
+export async function awardMVPGPS(guildId: string): Promise<void>
+export async function checkAndUpdateGuildRankTier(guildId: string): Promise<void>
+  // - Read guildPerformanceScore
+  // - Determine guildRankTier from GPS thresholds (from system_config)
+  // - Update memberCapacity per GPS rank table
+  // - Log rank change, broadcast guild update via WS
 ```
 
-**Member capacity enforcement:**
-- `checkAndUpdateGuildRankTier()` updates `guilds.memberCapacity` based on GPS → rank table
-- Any join request must check `current members < memberCapacity` (currently hardcoded to 10)
-
----
-
-### 2.6 Sunday Night Guild Reset
-
-**File:** `server/modules/guild-reset.ts` (replaces/enhances existing weekly resolution)
-
-**Current:** Runs on-demand via `/api/admin/guild-cycles/run-resolution`.
-
-**Spec:** Must also run automatically on Sunday at 23:59 PKT (UTC+5, so Sunday 18:59 UTC).
-
-**New logic:**
-```typescript
-async function runWeeklyGuildReset(): Promise<void> {
-  // For each active guild:
-  const guild = await getGuild(guildId);
-  
-  if (guild.currentWeeklyPoints >= guild.weeklyTarget) {
-    // SUCCESS PATH
-    const pool = guild.weeklyBonusPool;
-    const captainShare = pool × GUILD_CAPTAIN_POOL_SHARE / 100;
-    const memberPool = pool × GUILD_MEMBER_POOL_SHARE / 100;
-    
-    // Captain gets 30%
-    await creditUserPkr(guild.captainId, captainShare, 'guild_pool_captain');
-    
-    // Active members get proportional 70% (based on weeklyPointsContributed ratio)
-    const totalContributed = sum(all member.weeklyPointsContributed);
-    for each member with weeklyPointsContributed > 0:
-      const memberShare = memberPool × (member.weeklyPointsContributed / totalContributed);
-      await creditUserPkr(member.userId, memberShare, 'guild_pool_member');
-    
-    // Award milestone GPS
-    await awardMilestoneGPS(guildId);
-    
-    // Record snapshot: wasSuccessful=true, poolDisposition='distributed'
-  } else {
-    // FAIL PATH: pool voided back to Thorx reserve
-    // Record snapshot: wasSuccessful=false, poolDisposition='voided'
-  }
-  
-  // Reset for next week
-  await resetGuildWeeklyCycle(guildId); // clears weeklyBonusPool, currentWeeklyPoints, member weekly contributions
-}
-```
-
-**Cron schedule:**
-```typescript
-// In server/index.ts — add alongside existing HealthEngine hourly job
-cron.schedule('59 18 * * 0', runWeeklyGuildReset, { timezone: 'UTC' }); // Sunday 23:59 PKT
-```
-
----
-
-### 2.7 Bulletproof Withdrawal Ledger
-
-**File:** `server/routes.ts` → `POST /api/withdrawals` + `server/storage.ts` → `createWithdrawal()`
-
-**Current:** Uses `users.availableBalance` directly.
-
-**New spec calculation:**
-```typescript
-async function calculateWithdrawalPkr(userId: string, pointsRequested: number): Promise<{
-  exactPkrFromLedger: number;
-  platformFee: number;
-  referralCommission: number;
-  userNetPkr: number;
-}> {
-  // 1. Sum real_pkr_value from user_transactions in FIFO order until
-  //    cumulative pointsCredited >= pointsRequested
-  // 2. exactPkrFromLedger = sum of real_pkr_value for those records
-  // 3. platformFee = exactPkrFromLedger × WITHDRAWAL_FEE_PCT / 100
-  // 4. If user has a referrer:
-  //    referralCommission = platformFee × REFERRAL_FEE_SHARE_PCT / 100
-  //    → INSERT referral_commissions(referrerId, inviteeId, withdrawalId, referralCommission)
-  // 5. userNetPkr = exactPkrFromLedger - platformFee
-  // 6. Thorx net profit = platformFee - referralCommission (internal ledger only)
-}
-```
-
-**S-Rank fast-track:** If `users.userRankTier === 'S-Rank'`, set withdrawal `status = 'approved'` immediately without admin review.
-
----
-
-### 2.8 1-Tier Referral Cleanup
-
-**Files:** `server/storage.ts`, `server/routes.ts`
-
-- Remove all references to `tier`, `level2Count`, L2 commission logic
-- `referrals` table: `tier` column → hardcode to 1, remove multi-level join queries
-- `commission_logs` with `level = 2` entries: mark as deprecated in DB, stop writing new ones
-- `leaderboard_cache`: remove `level2Count` from sync logic
-- `GET /api/commissions`: return only L1 records
-- `GET /api/referrals/stats/detailed`: remove L2 stats from response
-- Admin `LeaderboardInsights`: remove L2 column from display
-
----
-
-### 2.9 Nudge System (Captain → Inactive Member)
-
-**File:** `server/routes.ts` (new endpoint) + `server/modules/nudge.ts` (NEW)
-
-```
-POST /api/guilds/:id/members/:userId/nudge
-  - Auth: captain only
-  - Rate limit: once per member per 24h
-  - Action: send notification to member (notifications table)
-  - Message: "Yar, aap ke Captain ne yaad kiya hai! Jaldi se team tasks complete karo..."
-  - Only available if member.weeklyPointsContributed === 0
-  - Broadcast via WebSocket to target user if online
-```
-
----
-
-### 2.10 MVP Selection & Badge
-
-**File:** `server/routes.ts` → existing `POST /api/guilds/:id/pin/:memberId` — enhance
-
-- Rate limit: captain can designate exactly 1 MVP per 7-day window
-- On designation: set `guild_members.isMVP = true` (add column), clear previous MVP
-- Award GPS: `awardMVPGPS(guildId)` → +200 GPS
-- Create notification for the MVP member: "🏆 You've been named MVP of the Week!"
-- Broadcast via WS
-- Profile display: add `isMVP` badge to user profile card in guild context
-
----
-
-### 2.11 Inactivity Penalty Cron
-
-**File:** `server/index.ts` + `server/modules/ps-engine.ts`
+### 9.4 `server/middleware/rankGate.ts` (NEW)
 
 ```typescript
-// Run hourly — find users inactive ≥ 48h with PS > 0
-cron.schedule('0 * * * *', async () => {
-  await applyInactivityPenalties();
-});
+const RANK_ORDER = { 'E-Rank': 0, 'D-Rank': 1, 'C-Rank': 2, 'B-Rank': 3, 'A-Rank': 4, 'S-Rank': 5 };
 
-async function applyInactivityPenalties() {
-  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
-  const inactiveUsers = await db
-    .select()
-    .from(users)
-    .where(and(
-      lt(users.lastActiveAt, cutoff),
-      gt(users.performanceScore, 0)
-    ));
-  
-  for (const user of inactiveUsers) {
-    const newPS = Math.max(0, user.performanceScore - PS_INACTIVITY_PENALTY);
-    await db.update(users).set({
-      performanceScore: newPS,
-      inactivityPenaltyAt: new Date()
-    }).where(eq(users.id, user.id));
-    await checkAndUpdateRankTier(user.id);
-  }
-}
-```
-
----
-
-## PHASE 3 — API ROUTES (New & Modified)
-
-### 3.1 New Routes Required
-
-```
-# Performance Score
-GET  /api/user/ps-history          — PS change log for current user (from rank_logs + annotation)
-GET  /api/user/rank-unlocks        — What the user's current rank unlocks (gates)
-
-# Guild Public Discovery (enhanced)
-GET  /api/guilds/discovery         — GPS-sorted guild list with transparency info for Simple users
-                                     Returns: name, description, avatar, guildRankTier, gps, slots available
-
-# Captain Direct Channel
-GET  /api/guilds/:id/dm/:memberId  — Fetch DM thread between captain and specific member (requireSessionAuth)
-POST /api/guilds/:id/dm/:memberId  — Send DM (captain or the specific member only)
-
-# Nudge System
-POST /api/guilds/:id/members/:userId/nudge  — Captain triggers nudge notification
-
-# Guild Weekly Snapshots
-GET  /api/guilds/:id/weekly-history         — Historical weekly success/fail data (for captain charts)
-
-# Withdrawal Ledger Preview
-GET  /api/withdrawals/preview?points=X      — Returns PKR breakdown before user confirms
-
-# Admin: Thorx Card Simulator
-POST /api/admin/simulate/thorx-card         — Input: grossPkr, engineType, rank → simulate N draws
-GET  /api/admin/simulate/thorx-card/history — Past simulation runs
-
-# Admin: Ledger Validator
-GET  /api/admin/ledger/validate/:userId     — Cross-check user points vs real_pkr_value
-GET  /api/admin/ledger/validate/all         — System-wide reconciliation report
-
-# Admin: Guild Moderation (extended)
-PATCH /api/admin/guilds/:id/target          — Override weekly target
-PATCH /api/admin/guilds/:id/captain        — Replace captain (admin override)
-PATCH /api/admin/guilds/:id/gps            — Manual GPS adjustment with reason
-POST  /api/admin/guilds/:id/kick/:userId   — Admin force-kick member
-
-# Admin: PS Override
-PATCH /api/admin/users/:userId/ps          — Manual PS adjustment with reason (logged in audit_logs)
-```
-
-### 3.2 Modified Routes
-
-```
-POST /api/ad-view               — Now calls Engine A split + Thorx Card + PS award
-POST /api/tasks/:id/verify      — Engine B or Engine C split based on task type; PS award per engine
-POST /api/withdrawals           — New bulletproof ledger math; S-Rank auto-approve
-POST /api/guilds                — Gate: userRankTier must be B-Rank or higher
-POST /api/guilds/:id/join       — Gate: userRankTier must be D-Rank or higher; check minRankRequired
-GET  /api/guilds                — Simple users see discovery view; members see their guild
-GET  /api/referrals             — Return only L1 data
-GET  /api/commissions           — Return only from referral_commissions table (new)
-GET  /api/dashboard/stats       — Add performanceScore, userRankTier, streakDays to response
-GET  /api/user                  — Add performanceScore, userRankTier, guildRole, guildId
-```
-
-### 3.3 Rank-Gate Middleware
-
-**File:** `server/middleware/rankGate.ts` (NEW)
-
-```typescript
-function requireMinRank(minRank: string) {
+export function requireMinRank(minRank: string) {
   return (req, res, next) => {
     const userRank = req.session.user?.userRankTier ?? 'E-Rank';
     if (RANK_ORDER[userRank] < RANK_ORDER[minRank]) {
       return res.status(403).json({
-        message: `This action requires ${minRank} or higher. You are ${userRank}.`,
         error: 'RANK_GATE',
+        message: `Requires ${minRank} or higher.`,
         currentRank: userRank,
-        requiredRank: minRank
+        requiredRank: minRank,
+        currentPS: req.session.user?.performanceScore
       });
     }
     next();
   };
 }
-
-const RANK_ORDER = { 'E-Rank': 0, 'D-Rank': 1, 'C-Rank': 2, 'B-Rank': 3, 'A-Rank': 4, 'S-Rank': 5 };
 ```
 
----
+### 9.5 `server/modules/live-feed.ts` (NEW)
 
-## PHASE 4 — USER PORTAL OVERHAUL (Frontend)
-
-### 4.1 Three-Portal Routing System
-
-**File:** `client/src/pages/UserPortal.tsx`
-
-The Engine C section must dynamically render based on `users.guildRole`:
+Powers the admin Live Activity Feed:
 
 ```typescript
-// Current: single GuildVaultPanel for everyone
-// New: conditional portal
-const engineCPanel = () => {
-  if (user.guildRole === 'captain') return <CaptainPortal />;
-  if (user.guildRole === 'member') return <GuildMemberPanel />;
-  return <GuildDiscoveryPanel />;  // 'simple' users and applicants waiting
-};
+export interface FeedEvent {
+  type: 'earn' | 'rank_up' | 'guild_target' | 'withdrawal' | 'registration';
+  timestamp: Date;
+  userId?: string;
+  username?: string;
+  data: Record<string, any>;
+  displayMessage: string;  // Pre-formatted admin-readable string
+}
+
+export async function emitFeedEvent(event: FeedEvent): Promise<void>
+  // Inserts to activity_feed table + broadcasts via WS to admin connections
 ```
 
-**Navigation label:** "Engine C" tab (or equivalent current label) must also change its badge to show guild name if member, "Captain" crown icon if captain, or "Join a Guild" if simple.
+Example feed messages:
+- `"User 'Ali99' completed Engine A task. Real Revenue: Rs. 1.20 | Card Points: 82 | Thorx Profit: Rs. 0.48"`
+- `"Guild 'Alpha_Warriors' hit 100% Weekly Target! Sunday Bonus Pool: Rs. 4,500 unlocked."`
+- `"User 'Zain_Pro' reached C-Rank! Engine B tasks now unlocked."`
+- `"Withdrawal approved: User 'Sara22' received Rs. 85.00. Fee: Rs. 15.00. Referral to 'Ahmed11': Rs. 4.50."`
+
+### 9.6 New Table — activity_feed (for Live Feed)
+
+```sql
+CREATE TABLE activity_feed (
+  id           text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  eventType    text NOT NULL,
+  userId       text REFERENCES users(id),
+  displayMessage text NOT NULL,
+  data         jsonb,
+  createdAt    timestamp DEFAULT now()
+);
+
+CREATE INDEX idx_feed_created ON activity_feed(createdAt DESC);
+```
 
 ---
 
-### 4.2 E-Rank Display System
+## PART 10 — API ROUTES
 
-**Files:** `client/src/lib/rankAvatars.ts`, any rank badge components
-
-- Replace all occurrences of "Nawa Aya", "Chota Don", "Bawa Ji", "Haji Sab", "Chacha Supreme" with E/D/C/B/A/S rank labels throughout the UI
-- Add rank badge component with color system:
-
-| Rank | Color | Icon |
-|---|---|---|
-| E-Rank | Gray / Zinc | Basic shield |
-| D-Rank | Green | Bronze shield |
-| C-Rank | Blue | Silver shield |
-| B-Rank | Purple | Gold shield |
-| A-Rank | Orange | Platinum crown |
-| S-Rank | Red/Gold gradient | Legendary crown |
-
-- Update `rankAvatars.ts` to map E/D/C/B/A/S → avatar sets
-- Every place the user's rank is displayed (profile, leaderboard, guild roster, application card) must show the new badge
-
----
-
-### 4.3 PS Progress Bar & Rank Display
-
-**File:** `client/src/components/UserStats.tsx` (or equivalent stats card)
-
-Add a PS progress section showing:
-- Current PS number
-- Current rank badge
-- Progress bar to next rank threshold
-- Streak counter (fire emoji + streak days)
-- Small tooltip: "What does my rank unlock?"
-
----
-
-### 4.4 Thorx Card Reveal UI
-
-**File:** `client/src/components/ThorxCard.tsx` (NEW)
-
-When a user completes Engine A/B/C task:
-1. Show a card flip animation (front: THORX logo, back: point amount)
-2. Large point number with glow effect and ± indicator vs. base
-3. Sub-text: "Real value locked: Rs. [realPkrValue]" (shown in small gray text)
-4. Dismiss button returns to dashboard with updated balance
-
-**Trigger:** Any endpoint that creates a `user_transactions` record should return a `thorxCard: { pointsCredited, realPkrValue, cardVariance }` payload in the response for the UI to display.
-
----
-
-### 4.5 Guild Public Discovery Panel
-
-**File:** `client/src/components/guild/GuildDiscoveryPanel.tsx` (NEW — replaces simple guild list for Simple users)
-
-Features:
-- **GPS Leaderboard:** Guilds sorted by `guildPerformanceScore` descending
-- **Guild cards:** Name, description, avatar, guildRankTier badge (E-S), GPS score, member count / capacity, min rank required
-- **Available slots indicator:** "3 slots open" / "Full"
-- **Apply button:** Only if user.userRankTier ≥ guild.minRankRequired AND guild has capacity
-- **Application modal:** Text area for cover letter (required, min 50 chars), submit → `POST /api/guilds/:id/join`
-- **Pending state:** If user has pending application, show "Application Pending" card with guild name
-- **Rank gate UI:** If user doesn't meet minRankRequired, show "You need D-Rank to apply. You are E-Rank." with PS progress
-
----
-
-### 4.6 Guild Member Panel
-
-**File:** `client/src/components/guild/GuildMemberPanel.tsx` (ENHANCE existing GuildVaultPanel.tsx)
-
-New sections to add:
-1. **Weekly Target Progress Bar:** `currentWeeklyPoints / weeklyTarget × 100%` with color (green approaching, red failing)
-2. **Contribution Board:** My points this week vs. top 5 members (mini leaderboard within guild)
-3. **Guild Chat:** Already exists — keep, wire to new `chat_messages` with guildId scope
-4. **Captain Direct Channel:** New tab/section — `GET /api/guilds/:id/dm/captainId` — WhatsApp-style 1-on-1 view
-5. **Engine C Tasks:** Exclusive task list (currently basic) — filter by `type = 'Engine_C'` from daily_tasks
-6. **GPS Badge:** Show guild's current GPS rank (E-S) and total GPS score
-
----
-
-### 4.7 Captain Portal
-
-**File:** `client/src/components/guild/CaptainPortal.tsx` (NEW — replaces current captain view in GuildVaultPanel)
-
-Sections:
-1. **Roster Controller:**
-   - Table: member avatar, name, userRankTier badge, weekly points contributed, joined date
-   - Actions per member: "Kick" button (with confirmation dialog), "Nudge" button (only if weeklyPoints === 0, disabled after use for 24h), "DM" button
-   - Crown icon on captain row
-   - Assistant Captain slot (if B-Rank GPS) with "Assign" dropdown
-
-2. **Application Review Board:**
-   - Pending applications list with: applicant name, userRankTier badge, PS score, cover letter text
-   - Performance history: tasks completed (Engine A/B/C counts), fraudulent attempts from `risk_cases`
-   - Accept / Reject buttons; Reject requires a reason text field (enforced, min 10 chars)
-
-3. **Direct Member Channels:**
-   - List of all members with unread DM count badge
-   - Click to open 1-on-1 thread
-
-4. **Weekly Goal Metrics:**
-   - Bar chart: last 8 weeks of success/fail from `guild_weekly_snapshots`
-   - Stats: Win rate %, average achieved points, biggest pool distributed
-   - Current week progress with countdown timer to Sunday reset
-
-5. **MVP Selection:**
-   - "Select MVP" section — list of active members (contributed > 0 this week)
-   - One member can be designated per week (button disabled after use until next reset)
-   - Selected MVP gets a trophy badge on their guild profile card
-
-6. **Guild Settings:**
-   - Min rank required (dropdown: E-Rank to S-Rank)
-   - Weekly target (read-only, set by admin)
-   - Guild description / avatar update
-
----
-
-### 4.8 Withdrawal Flow — Ledger Preview
-
-**File:** `client/src/components/WithdrawalModal.tsx` (ENHANCE)
-
-Before confirming withdrawal:
-1. User enters point amount
-2. UI calls `GET /api/withdrawals/preview?points=X`
-3. Show breakdown:
-   ```
-   Points Requested:      10,000 pts
-   Real PKR Value:        Rs. 100.00     ← from bulletproof ledger
-   Platform Fee (15%):   - Rs. 15.00
-   You Receive:           Rs. 85.00
-   [If referrer exists]: Referral fee sent to [referrer name]: Rs. X.XX
-   ```
-4. Confirm button only enabled after user sees the breakdown
-
----
-
-### 4.9 Profile Page Updates
-
-**File:** wherever user profile is displayed (UserPortal, profile modal)
-
-- Replace old rank badge with new E-S badge
-- Add PS score prominently
-- Add streak indicator
-- Add guild name + guildRole badge (Captain crown / Member icon)
-- Add MVP badge if `isMVP === true` in current week
-
----
-
-## PHASE 5 — ADMIN & TEAM PORTAL UPDATES
-
-### 5.1 Engine Profit Split Controls
-
-**File:** `client/src/components/admin/SystemSettingsManager.tsx` (ENHANCE)
-
-Add a new "Revenue Splits" section with labeled sliders/inputs:
+### 10.1 New Routes
 
 ```
-Engine A (Ad Views):
-  Thorx Cut: [40%] ← slider
-  User Payout: [60%] ← auto-calculated, read-only
+# Performance Score
+GET  /api/user/ps-history             — PS log (rank_logs with annotations)
+GET  /api/user/rank-unlocks           — What current rank unlocks
 
-Engine B (CPA Offers):
-  Thorx Cut: [40%] ← slider
-  User Payout: [60%] ← auto-calculated, read-only
+# Guilds - Public Discovery
+GET  /api/guilds/discovery            — GPS-sorted list with transparency fields
 
-Engine C (Guild Tasks):
-  Thorx Cut: [20%] ← slider
-  Guild Bonus Pool: [35%] ← slider
-  User Payout: [45%] ← auto-calculated, read-only
+# Captain DM Channel
+GET  /api/guilds/:id/dm/:memberId     — Fetch thread (captain or that member only)
+POST /api/guilds/:id/dm/:memberId     — Send message
+
+# Nudge
+POST /api/guilds/:id/members/:userId/nudge   — Captain triggers nudge (24h rate limit)
+
+# Guild weekly history
+GET  /api/guilds/:id/weekly-history   — guild_weekly_snapshots for captain portal chart
+
+# Withdrawal preview
+GET  /api/withdrawals/preview?points=X   — Full ledger breakdown before confirm
+
+# Referral cash balance
+GET  /api/user/referral-balance       — Current balanceCashPkr
+POST /api/withdrawals/referral        — Withdraw referral cash (separate from TX-Points)
+
+# Admin: Live Activity Feed
+GET  /api/admin/live-feed?limit=50&type=all   — Recent feed events (SSE or polling)
+GET  /api/admin/live-feed/stream              — Server-Sent Events stream for real-time
+
+# Admin: Thorx Card Simulator
+POST /api/admin/simulate/thorx-card           — Run N simulations
+GET  /api/admin/simulate/thorx-card/history   — Past simulation runs saved by admin
+
+# Admin: Ledger Validator
+GET  /api/admin/ledger/validate/:userId       — Single user check
+GET  /api/admin/ledger/validate/all           — Full system scan (paginated)
+
+# Admin: GPS & Rank overrides
+PATCH /api/admin/users/:userId/ps             — Manual PS adjustment + reason
+PATCH /api/admin/guilds/:id/gps              — Manual GPS adjustment + reason
+PATCH /api/admin/guilds/:id/target           — Override weekly target
+PATCH /api/admin/guilds/:id/captain          — Replace captain
+POST  /api/admin/guilds/:id/kick/:userId     — Admin force-kick
+
+# Admin: Referral analytics
+GET  /api/admin/referrals/stats              — Total payouts, top promoters
+GET  /api/admin/referrals/leaderboard        — Top referrers by total commission earned
+
+# Admin: Inactive Captain alerts
+GET  /api/admin/guilds/inactive-captains     — Guilds where captain lastActiveAt > 7 days ago
+```
+
+### 10.2 Modified Routes
+
+```
+POST /api/ad-view             — Engine A split + Thorx Card draw + PS award + feed event
+POST /api/tasks/:id/verify    — Engine B or C split based on task.engineType; PS award; feed event
+POST /api/withdrawals         — Bulletproof ledger calc; S-Rank auto-approve; referral commission
+POST /api/guilds              — Rank gate: requireMinRank('B-Rank')
+POST /api/guilds/:id/join     — Rank gate: requireMinRank('D-Rank'); check minRankRequired; cover letter required
+GET  /api/user                — Add performanceScore, userRankTier, guildRole, guildId, balanceCashPkr, streakDays
+GET  /api/dashboard/stats     — Add performanceScore, userRankTier, streakDays, weeklyContribution, guildWeeklyProgress
+GET  /api/referrals           — L1 only, from referral_commissions table
+GET  /api/commissions         — From referral_commissions only (commission_logs = read-only historical)
+```
+
+### 10.3 Removed Routes
+
+```
+DELETE POST /api/guilds/:id/rally        — Rally removed entirely
+```
+
+---
+
+## PART 11 — CRON JOBS
+
+**File:** `server/index.ts` — add alongside existing HealthEngine job
+
+```typescript
+import cron from 'node-cron';
+
+// Job 1: Daily midnight PKT (19:00 UTC) — Inactivity penalty + streak processing
+cron.schedule('0 19 * * *', async () => {
+  await applyInactivityPenalties();    // -10 PS to inactive users
+  // Note: streak bonus is awarded at task completion time, not by cron
+}, { timezone: 'UTC' });
+
+// Job 2: Sunday 11:59 PM PKT (18:59 UTC Sunday)
+cron.schedule('59 18 * * 0', async () => {
+  await runWeeklyGuildReset();         // pool distribution + GPS + reset
+}, { timezone: 'UTC' });
+```
+
+---
+
+## PART 12 — ADMIN PANEL (Team Portal) — COMPLETE GOD-MODE REBUILD
+
+The admin panel is not a boring data table. Every section gives the team full live visibility and control over the system. Add these as new sections to `TeamPortal.tsx`.
+
+---
+
+### 12.1 Dynamic Financial & Profit Control Center
+
+**File:** `client/src/components/admin/FinancialControlCenter.tsx` (NEW)
+
+**Engine Multi-Controller (Profit Knobs):**
+```
+Engine A — Ad Tasks
+  Thorx Cut %:  [████░░░░░░] 40%  ← live slider (20–60 range)
+  User Gets %:  60%               ← auto-calculated, read-only
+
+Engine B — CPA Offers  
+  Thorx Cut %:  [████░░░░░░] 40%  ← live slider
+  User Gets %:  60%               ← read-only
+
+Engine C — Guild Tasks
+  Thorx Cut %:  [██░░░░░░░░] 20%  ← live slider
+  Guild Pool %: [███░░░░░░░] 35%  ← live slider
+  User Gets %:  45%               ← read-only (100 - Thorx - Pool)
+  Validation: Must sum to 100%
+```
+
+**Global Conversion Rate Configurator:**
+```
+1,000 TX-Points = Rs. [10.00] ← editable input
+(i.e., 1 Point = Rs. 0.01)
+[Save Rate] → updates CONVERSION_RATE in system_config instantly
+```
+
+**Withdrawal Fee Controller:**
+```
+Platform Fee on Withdrawal: [15%] ← editable input (5–25 range)
+[Save] → next withdrawal calculation uses new rate
+```
+
+**Referral Share Controller:**
+```
+Referrer's share of withdrawal fee: [30%] ← editable input (0–100)
+Example preview: "On a Rs.100 withdrawal → Fee = Rs.15 → Referrer gets Rs.4.50"
+[Save]
+```
+
+**Implementation:** All sliders call `PATCH /api/admin/config/:key` on save. Changes take effect on next earn/withdrawal event — no restart required.
+
+---
+
+### 12.2 Thorx Card Sandbox (Illusion Engine Manager)
+
+**File:** `client/src/components/admin/ThorxCardSandbox.tsx` (NEW)
+
+**Deviation Range Slider:**
+```
+Card Randomness Range:
+  Min Multiplier: [0.80×] ← slider (0.50 – 1.00)
+  Max Multiplier: [1.20×] ← slider (1.00 – 1.50)
+
+Presets:
+  [Stable — 0.90×–1.10×]   ← minimal variance, predictable cards
+  [Standard — 0.80×–1.20×] ← default
+  [Jackpot — 0.50×–1.50×]  ← high excitement, wide range
+```
+
+**Simulation Tool:**
+```
+Inputs:
+  CPA/Ad Network payout: Rs. [10.00]
+  Engine Type: [A ▼]
+  User Rank: [E-Rank ▼]
+  Run [100] simulations
+
+[Run Simulation]
+
+Output:
+  Card 1: 520 TX-Points    Real value: Rs. 6.00
+  Card 2: 648 TX-Points    Real value: Rs. 6.00
+  Card 3: 591 TX-Points    Real value: Rs. 6.00
+  ...
   
-Referral Fee:
-  Fee Share to Referrer (of 15% platform fee): [20%] ← slider
-  
-Thorx Card Variance:
-  Min Multiplier: [0.80] ← input
-  Max Multiplier: [1.20] ← input
-  A-Rank Bonus: [5%] ← input
+  Statistics:
+  Min: 480 pts  Max: 720 pts  Average: 600 pts  Median: 597 pts
+  Thorx profit per transaction: Rs. 4.00
+  If user withdraws average output: Net to user = Rs. 5.10 (after 15% fee)
 ```
 
-**Validation:** Engine C sliders must sum to 100% (enforce in UI + API).
+**API:** `POST /api/admin/simulate/thorx-card` — returns array of simulation results.
 
 ---
 
-### 5.2 Ledger Validator Tool
+### 12.3 Payouts Approvals & Security Desk (Anti-Fraud Hub)
 
-**File:** `client/src/components/admin/LedgerValidator.tsx` (NEW) → add to TeamPortal.tsx sections
+**File:** `client/src/components/admin/PayoutControl.tsx` (ENHANCE existing)
 
-Features:
-- Search user by email/ID
-- Show: Total pointsCredited from user_transactions vs. users.txPointsBalance (should match)
-- Show: Sum of realPkrValue from user_transactions vs. users.totalEarnings (should match within rounding)
-- Flag discrepancies with severity levels (red = critical mismatch, yellow = minor rounding)
-- "Run Full System Check" button: calls `GET /api/admin/ledger/validate/all` — returns list of mismatched users
-- Export to CSV
+**Double-Entry Audit Table per withdrawal request:**
+
+Each withdrawal card in the approval queue shows:
+```
+┌─────────────────────────────────────────────────┐
+│  User: Ahmed Khan (@ahmed_k)    Rank: C-Rank    │
+│  Requested: 10,000 TX-Points                    │
+│                                                  │
+│  SYSTEM CALCULATION:                            │
+│  Real PKR from ledger:     Rs. 100.00           │
+│  Platform fee (15%):     − Rs. 15.00            │
+│  Referral to @zaini:     − Rs.  4.50            │
+│  User receives:            Rs. 85.00            │
+│                                                  │
+│  Payment Details:                               │
+│  JazzCash: 0300-1234567 — Ahmed Khan            │
+│  [📋 Copy Account]                              │
+│                                                  │
+│  [✅ Approve]    [❌ Reject]                    │
+└─────────────────────────────────────────────────┘
+```
+
+**Fraud Warning System (RED ALERT):**
+
+Before showing the approval card, run ledger validation:
+```typescript
+// Validate: sum of user_transactions.pointsCredited should equal users.txPointsBalance
+// Validate: sum of user_transactions.realPkrValue should equal users.totalEarnings (within 0.01 tolerance)
+const mismatch = await validateUserLedger(userId);
+```
+
+If mismatch detected, show:
+```
+⚠️ RED ALERT — Points Mismatch Detected!
+Expected: 10,000 pts from ledger  |  Actual on account: 12,500 pts
+Possible exploit or manual balance adjustment.
+[Flag for Review]  [Block Withdrawal]  [Override & Approve]
+```
+
+**One-Click Copy:** The `[📋 Copy Account]` button copies `"0300-1234567 — Ahmed Khan"` to clipboard so admin can paste directly into JazzCash/EasyPaisa app.
 
 ---
 
-### 5.3 Thorx Card Simulation Sandbox
-
-**File:** `client/src/components/admin/ThorxCardSandbox.tsx` (NEW) → add to TeamPortal.tsx
-
-Features:
-- Inputs: Gross PKR from network, Engine type (A/B/C), User rank (E-S), Number of simulations (1–1000)
-- Shows:
-  - Distribution histogram of point outcomes
-  - Min / Max / Average / Median points
-  - Corresponding realPkrValue that would be stored
-  - "What withdrawal would yield" preview for the average outcome
-- "Run Simulation" → calls `POST /api/admin/simulate/thorx-card`
-
----
-
-### 5.4 Guild Moderation Panel (Extended)
+### 12.4 Guild & Captain Super-Moderator Suite
 
 **File:** `client/src/components/admin/GuildManager.tsx` (ENHANCE)
 
-Add:
-- **Weekly Target Override:** Input to set custom weeklyTarget for a specific guild (bypasses rank-based default)
-- **Captain Replacement:** Search user → assign as new captain (existing captain demoted to member). Requires audit log entry.
-- **GPS Manual Adjustment:** Input ± GPS amount + reason → logged in `audit_logs`
-- **Force-Kick Member:** Admin can remove any member from any guild with reason
-- **Guild Weekly History:** Show guild_weekly_snapshots table (success/fail history)
+**Weekly Target Assigner:**
+```
+Set Weekly Targets by Guild Rank:
+  E-Rank Guilds: [20,000] pts/week
+  D-Rank Guilds: [50,000] pts/week
+  C-Rank Guilds: [100,000] pts/week
+  B-Rank Guilds: [200,000] pts/week
+  A-Rank Guilds: [350,000] pts/week
+  S-Rank Guilds: [500,000] pts/week
+[Apply to All Active Guilds]  [Apply to New Guilds Only]
+```
+
+**Active GPS Modifier:**
+- Search guild by name
+- Input: `± GPS amount` + reason field (required)
+- Preview: "Alpha Warriors: 45,230 GPS → 45,730 GPS"
+- Confirm → logged in audit_logs with admin name + reason
+
+**⚠️ Inactive Captain Alert (Red List):**
+```
+INACTIVE CAPTAINS (7+ days without login):
+─────────────────────────────────────────────
+Guild: "Alpha Warriors"   Captain: @ali_cap
+Last Login: 14 days ago   Members: 8/10   Pending Requests: 3
+[⚠️ Warn Captain]  [Replace Captain]  [Dissolve Guild]
+
+Guild: "Pro Team"   Captain: @zara_k
+Last Login: 9 days ago   Members: 5/10   Pending Requests: 1
+[⚠️ Warn Captain]  [Replace Captain]  [Dissolve Guild]
+```
+
+API: `GET /api/admin/guilds/inactive-captains` — guilds where captain's `lastActiveAt` > 7 days ago.
+
+**[Replace Captain]** → opens user search to select new captain from current members → `PATCH /api/admin/guilds/:id/captain` → logged to audit_logs.
 
 ---
 
-### 5.5 PS & Rank Admin Tools
+### 12.5 Gamification Rules & Ranks Customizer
+
+**File:** `client/src/components/admin/RanksCustomizer.tsx` (NEW) → add to TeamPortal sections
+
+**User Rank PS Threshold Editor:**
+```
+User Performance Score (PS) Rank Thresholds:
+  E-Rank: 0 – [999]       ← editable
+  D-Rank: [1,000] – [2,999]
+  C-Rank: [3,000] – [5,999]
+  B-Rank: [6,000] – [9,999]
+  A-Rank: [10,000] – [19,999]
+  S-Rank: [20,000]+ ← minimum only, no max
+[Save Thresholds]
+```
+
+**Guild GPS Rank Threshold Editor:**
+```
+Guild GPS Rank Thresholds:
+  E-Rank: 0 – [9,999]
+  D-Rank: [10,000] – [29,999]
+  C-Rank: [30,000] – [69,999]
+  B-Rank: [70,000] – [149,999]
+  A-Rank: [150,000] – [299,999]
+  S-Rank: [300,000]+
+[Save GPS Thresholds]
+```
+
+**Inactivity Penalty Configurator:**
+```
+Inactivity Settings:
+  Trigger after: [48] hours of no activity
+  Daily PS deduction: [10] PS
+  PS floor (never below): 0 (fixed — always E-Rank floor)
+[Save]
+```
+
+**All values stored in `system_config` and read dynamically — no code redeploy needed.**
+
+---
+
+### 12.6 Live Activity Feed & Logger
+
+**File:** `client/src/components/admin/LiveActivityFeed.tsx` (NEW)
+
+A real-time scrolling feed showing every significant platform event with full transparent math.
+
+**UI:**
+```
+🟢 LIVE FEED                              [Pause]  [Filter ▼]  [Export]
+─────────────────────────────────────────────────────────────────────────
+⚡ 14:32:01  User 'Ali99' completed Engine A task
+             Real Revenue: Rs. 1.20 | Card Points Issued: 82 | Thorx Profit: Rs. 0.48
+
+🏆 14:31:45  User 'Zain_Pro' reached C-Rank!
+             Engine B tasks now unlocked. PS: 3,021
+
+💰 14:30:22  Withdrawal approved: User 'Sara22' received Rs. 85.00
+             Fee collected: Rs. 15.00 | Referral to 'Ahmed11': Rs. 4.50 | Thorx net: Rs. 10.50
+
+🎯 14:28:11  Guild 'Alpha_Warriors' hit 100% Weekly Target!
+             Combined Bonus Pool: Rs. 4,500 — distributes Sunday night
+
+📋 14:27:55  User 'New_User7' registered via referral link of 'Ali99'
+
+⚡ 14:27:30  User 'Maria_K' completed Engine B task
+             Real Revenue: Rs. 25.00 | Card Points: 1,480 | Thorx Profit: Rs. 10.00
+```
+
+**Filter options:** All / Earn Events / Rank Changes / Guild Events / Withdrawals / Registrations
+
+**Implementation:**
+- Server: `GET /api/admin/live-feed/stream` → Server-Sent Events (SSE) endpoint
+- OR: Polling `GET /api/admin/live-feed?limit=50` every 5 seconds
+- `emitFeedEvent()` called from earn routes, withdrawal processing, rank changes, registrations
+- Feed stored in `activity_feed` table (keep last 30 days, then auto-purge)
+
+---
+
+### 12.7 Referral Analytics Dashboard
+
+**File:** Add section to `client/src/components/admin/LeaderboardInsights.tsx` OR new file
+
+```
+REFERRAL PROGRAM ANALYTICS
+──────────────────────────────────────────────────────
+Total Referral Commissions Paid:     Rs. 12,450.00
+This Month:                          Rs.  3,200.00
+Active Referral Relationships:       847 pairs
+Average Commission per Payout:       Rs. 4.20
+
+TOP PROMOTERS LEADERBOARD:
+# | Username    | Referrals | Total Commission Earned
+1 | @ali_99     | 234       | Rs. 1,847.50
+2 | @zain_pro   | 189       | Rs. 1,203.00
+3 | @sara_k     | 156       | Rs.   980.25
+...
+
+[Export CSV]
+```
+
+**Custom Referral Rate Setter:** Already in Financial Control Center (Section 12.1). Link/reference it here.
+
+---
+
+### 12.8 PS Override & Rank Admin Tools
 
 **File:** `client/src/components/admin/UserManager.tsx` (ENHANCE)
 
-Per user card/detail, add:
-- Current PS value + rank badge
-- "Adjust PS" button: input ±value + reason → `PATCH /api/admin/users/:userId/ps` → logged in audit_logs
-- "Override Rank Tier" button: manual set → sets `rankLocked = true`, logs in rank_logs
-- "Release Rank Lock" button: sets `rankLocked = false`, triggers re-evaluation
+Per user detail panel:
+- Display current PS + rank badge + progress bar to next rank
+- **[Adjust PS]** → input field `± value` + required reason → `PATCH /api/admin/users/:userId/ps` → logged to audit_logs
+- **[Lock Rank]** → sets `rankLocked = true`, input which rank to lock at → manual override
+- **[Unlock Rank]** → sets `rankLocked = false`, triggers re-evaluation of current PS
+- All changes show in user's rank_logs history
 
 ---
 
-### 5.6 Admin Dashboard — Fix NaN Scores
+### 12.9 Engine C Task Manager (Guild Task Admin)
+
+**File:** Enhance existing `TaskManager` component or new `EngineCTaskManager.tsx`
+
+Admin can:
+- Create new CPA offer tasks → toggle: "Show in Engine B (public)" / "Show in Engine C (guild only)" / "Both"
+- Create indirect tasks (YouTube, TikTok, etc.) → set as Engine C only, no monetary payout
+- Set payout per task (gross PKR — system auto-splits per engine rule)
+- Activate / deactivate tasks
+- See completion stats per task: completions today / this week, total Thorx profit generated
+
+---
+
+### 12.10 System Health — Fix NaN Scores
 
 **File:** `server/modules/health-engine.ts`
 
-- Guard all division operations against zero denominators:
-  ```typescript
-  const ratio = totalUsers > 0 ? (flaggedUsers / totalUsers) * 100 : 0;
-  ```
-- Replace any `NaN` result with `0` before saving to health_snapshots
-- Add `?? 0` fallback to all score aggregations
-- Frontend: if score is null/undefined/NaN, display "–" not "NaN"
+- Guard every division: `const ratio = totalUsers > 0 ? (flaggedUsers / totalUsers) * 100 : 0`
+- Replace `NaN` with `0` before saving to health_snapshots
+- Add `?? 0` to all score aggregations
+- Frontend: display `"–"` instead of `"NaN"` for null/undefined scores
 
 ---
 
-### 5.7 Updated Admin Dashboard Metrics
+## PART 13 — USER PORTAL FRONTEND CHANGES
 
-**File:** `client/src/components/admin/AdminDashboard.tsx` (ENHANCE)
+### 13.1 Engine C Tab Routing
 
-Add:
-- **Engine Revenue Breakdown card:** Engine A profit / Engine B profit / Engine C profit (separated by engineType from user_transactions)
-- **Active Guild Count + GPS distribution** (how many E/D/C/B/A/S guilds)
-- **PS Distribution** histogram (how many users at each rank tier)
+**File:** `client/src/pages/UserPortal.tsx`
 
----
-
-## PHASE 6 — WEBSOCKET & REAL-TIME SYNC
-
-**File:** `server/ws.ts` (or wherever WS is handled — identified as using express-session middleware on upgrade)
-
-Add broadcast events for:
-- `user.ps_updated` — fire when PS changes (rank progression, penalty)
-- `user.rank_changed` — fire on rank tier change
-- `guild.weekly_points` — fire when guild's currentWeeklyPoints updates (members see progress bar update live)
-- `guild.pool_credited` — fire when Sunday reset distributes pool
-- `guild.nudge_received` — fire when captain nudges a member
-- `captain_dm.new_message` — fire when a DM is sent in a captain channel
-- `guild.mvp_selected` — fire when MVP is designated
-
-Client-side: add listeners in GuildMemberPanel and CaptainPortal to update state without polling.
-
----
-
-## PHASE 7 — DATA INTEGRITY & MIGRATION
-
-### 7.1 Migration Script
-
-**File:** `scripts/migrate-to-spec.ts` (NEW)
-
-Run order:
-1. Add new columns to users (performanceScore, userRankTier, guildRole, guildId, lastActiveAt, etc.)
-2. Backfill `userRankTier` from existing `rank` column (map old names → E-S via earnings proxy)
-3. Backfill `guildId` + `guildRole` from guild_members + guilds.captainId
-4. Create `user_transactions` table
-5. Create `captain_messages` table
-6. Create `guild_weekly_snapshots` table
-7. Create `referral_commissions` table
-8. Add `isMVP` + `weeklyPointsContributed` to guild_members (already has weeklyPoints)
-9. Add `guildRankTier`, `memberCapacity`, `guildPerformanceScore`, `weeklyBonusPool` to guilds
-10. Add `assistantCaptainId` to guilds
-11. Seed `user_transactions` from existing `earnings` records (best-effort: use amount as realPkrValue, generate synthetic pointsCredited using current conversion rate, variance = 1.0)
-12. Run `npx drizzle-kit push --force` equivalent via executeSql
-
-### 7.2 Rank Name Sunset
-
-All these strings must be replaced across the entire codebase (grep and replace):
-```
-"Nawa Aya"       → "E-Rank"
-"Chota Don"      → "D-Rank"  
-"Bawa Ji"        → "C-Rank"
-"Haji Sab"       → "B-Rank"
-"Chacha Supreme" → "S-Rank"
+```typescript
+const EngineCContent = () => {
+  if (user.guildRole === 'captain') return <CaptainPortal />;
+  if (user.guildRole === 'member') return <GuildMemberPanel />;
+  if (user.pendingGuildApplication) return <ApplicationPendingScreen />;
+  return <GuildDiscoveryPanel />;
+};
 ```
 
-Search paths: `shared/schema.ts`, `server/storage.ts`, `server/routes.ts`, `client/src/**`, `server/modules/**`
+Engine C tab label adapts:
+- Simple: "Guild — Join a Team"
+- Pending: "Guild — Application Pending"
+- Member: "Guild — [Guild Name]"
+- Captain: "Guild — [Guild Name] 👑"
+
+### 13.2 E/D/C/B/A/S Rank Badge Component
+
+**File:** `client/src/components/RankBadge.tsx` (NEW)
+
+```typescript
+const RANK_CONFIG = {
+  'E-Rank': { color: '#71717a', bg: '#f4f4f5', icon: 'shield', label: 'E' },
+  'D-Rank': { color: '#16a34a', bg: '#f0fdf4', icon: 'shield', label: 'D' },
+  'C-Rank': { color: '#2563eb', bg: '#eff6ff', icon: 'shield', label: 'C' },
+  'B-Rank': { color: '#7c3aed', bg: '#f5f3ff', icon: 'shield-star', label: 'B' },
+  'A-Rank': { color: '#ea580c', bg: '#fff7ed', icon: 'crown', label: 'A' },
+  'S-Rank': { color: '#dc2626', bg: 'linear-gradient(135deg, #fef3c7, #fca5a5)', icon: 'crown', label: 'S' },
+};
+```
+
+Every user-facing surface that shows rank (profile, leaderboard, guild roster, application card, discovery panel) uses this component.
+
+### 13.3 PS Progress Display
+
+**File:** `client/src/components/PSProgressCard.tsx` (NEW)
+
+Shows:
+- Current rank badge (large)
+- PS score (e.g., "4,230 PS")
+- Progress bar to next rank (e.g., "4,230 / 6,000 to B-Rank — 70.5%")
+- Streak counter: "🔥 5-day streak (+20 PS/day bonus)"
+- Small "What does my rank unlock?" expandable tooltip
+
+### 13.4 Profile Page Additions
+
+- Replace old rank badge → new E-S badge
+- Add PS score + progress bar
+- Add streak indicator
+- Add guild name + guildRole (member/captain icon)
+- Add MVP trophy badge if `guild_members.isMVP = true` this week
+- Add referral cash balance (separate from TX-Points, shows as Rs. amount)
+
+### 13.5 Engine A/B Locked State (E-Rank Gate for Engine B)
+
+If user is below C-Rank and navigates to Engine B section:
+```
+🔒 Engine B — Unlocks at C-Rank
+Premium CPA offers with higher payouts.
+You are E-Rank (120 PS). Need 2,880 more PS to unlock.
+[Progress bar: 120/3000]
+Complete more Engine A tasks to rank up!
+```
 
 ---
 
-## PHASE 8 — TESTING CHECKLIST
+## PART 14 — WEBSOCKET REAL-TIME EVENTS
 
-After implementation, verify each of the following manually:
+**File:** `server/ws.ts`
 
-### Auth & PS Engine
-- [ ] Register new user → lands at E-Rank, PS = 0
-- [ ] Complete Engine A ad → PS +5, txPointsBalance increases, user_transactions record created
-- [ ] Complete Engine B CPA → PS +25; E-Rank user cannot access premium CPA (403 with rank message)
-- [ ] PS reaches 1000 → auto-upgrade to D-Rank, notification fires, WS broadcast
-- [ ] PS reaches 6000 → B-Rank unlocked, can now create guild
-- [ ] User inactive 48h → PS drops 10, capped at 0
+New broadcast event types:
+```typescript
+'user.ps_updated'          // PS changed (award or penalty)
+'user.rank_changed'        // Rank tier changed
+'user.balance_updated'     // Balance changed (earn, withdrawal)
+'guild.weekly_points'      // Guild currentWeeklyPoints updated
+'guild.pool_credited'      // Sunday reset distributed bonus
+'guild.nudge_received'     // Captain nudged this member
+'guild.dm_new_message'     // New DM in captain channel
+'guild.mvp_selected'       // Captain named MVP
+'guild.rank_changed'       // Guild GPS rank upgraded
+'admin.feed_event'         // Live feed event (admin connections only)
+```
 
-### Thorx Card
-- [ ] Ad completion returns `thorxCard` payload in response
-- [ ] Points credited ≠ base target (variance is applied)
-- [ ] `realPkrValue` in user_transactions is exact user PKR share (no variance)
-- [ ] A-Rank user has wider variance range
+Client listeners:
+- `GuildMemberPanel` — listens to `guild.weekly_points` to update progress bar live
+- `CaptainPortal` — listens to `guild.weekly_points`, `guild.mvp_selected`
+- `ThorxCard` component — no WS needed, triggered by API response payload
+- Admin `LiveActivityFeed` — listens to `admin.feed_event`
 
-### Guild System
-- [ ] E-Rank user tries to join guild → 403 "need D-Rank"
-- [ ] D-Rank user can apply with cover letter
-- [ ] E-Rank user tries to create guild → 403 "need B-Rank"
-- [ ] Captain sees application with PS score + cover letter + Engine history
-- [ ] Captain rejects with required reason → applicant notified
-- [ ] Captain accepts → user.guildRole = 'member', guildId set, portal switches to Member view
-- [ ] Captain nudges zero-contribution member → notification delivered, nudge button disabled 24h
-- [ ] Captain selects MVP → GPS +200, member gets trophy badge, button locked for 7 days
-- [ ] Engine C task completed → user gets 45% as PKR, guild pool gets 35%, Thorx gets 20%
+---
+
+## PART 15 — MIGRATION & CLEANUP
+
+### 15.1 Migration Script
+
+**File:** `scripts/migrate-to-spec.ts`
+
+Execute in this order:
+1. Add new columns to `users` (performanceScore, userRankTier, guildRole, guildId, lastActiveAt, streakDays, lastStreakDate, inactivityPenaltyAt, balanceCashPkr)
+2. Add new columns to `guilds` (guildPerformanceScore, guildRankTier, memberCapacity, minRankRequired, weeklyBonusPool, currentWeeklyPoints, weeklyTarget, assistantCaptainId, targetDifficulty)
+3. Add new columns to `guild_members` (isMVP, mvpSetAt, lastNudgedAt)
+4. Create `user_transactions` table + indexes
+5. Create `referral_commissions` table
+6. Create `captain_messages` table
+7. Create `guild_weekly_snapshots` table
+8. Create `activity_feed` table
+9. Backfill `userRankTier` from existing `rank` column (map: "Nawa Aya"→"E-Rank", "Chota Don"→"D-Rank", "Bawa Ji"→"C-Rank", "Haji Sab"→"B-Rank", "Chacha Supreme"→"S-Rank")
+10. Backfill `guildId` + `guildRole` from guild_members + guilds.captainId
+11. Backfill `lastActiveAt` = `updatedAt` for existing users
+12. Seed `user_transactions` from existing `earnings` records (realPkrValue = amount, pointsCredited = amount × CONVERSION_RATE, cardVariance = 1.0, engineType = 'Engine_A' default)
+13. Seed new `system_config` keys from Part 8.8
+14. Mark `commission_logs` as deprecated (add DB comment)
+15. Remove `daily_tasks` route references from withdrawal gate logic
+
+### 15.2 Complete String Replacement Map
+
+Run `grep -r` and replace across entire codebase:
+
+```
+"Nawa Aya"        → "E-Rank"
+"Chota Don"       → "D-Rank"
+"Bawa Ji"         → "C-Rank"
+"Haji Sab"        → "B-Rank"
+"Chacha Supreme"  → "S-Rank"
+"Vault"           → (user-facing only) "Bonus Pool" or remove entirely
+"Locked Points"   → remove entirely from user UI
+"locked_balance"  → "weeklyBonusPool" (backend rename)
+"rally"           → remove all references
+"L2 commission"   → remove
+"level2Count"     → remove from leaderboard
+"daily task"      → replace with "Guild task" where applicable
+```
+
+---
+
+## PART 16 — TESTING CHECKLIST
+
+### Engine & Card
+- [ ] Engine A ad completion → user_transactions created with correct split (40/60)
+- [ ] Engine B CPA completion → same split; E-Rank user blocked with rank gate message
+- [ ] Engine C guild task → 20/35/45 split; user_transactions.guildPoolPkr populated
+- [ ] Thorx Card variance is within configured bounds
+- [ ] A-Rank user gets wider variance range on card
+- [ ] realPkrValue in user_transactions is never affected by cardVariance
+
+### PS & Ranks
+- [ ] New user = E-Rank, PS = 0
+- [ ] Engine A completion → +5 PS
+- [ ] Engine B completion → +25 PS (only if C-Rank+)
+- [ ] Engine C completion → +15 PS
+- [ ] Day 1 streak → +5 PS
+- [ ] Day 2 streak (next day) → +10 PS
+- [ ] Day 3 (next day, unbroken) → +20 PS
+- [ ] Missed day → streak resets to Day 1 next task
+- [ ] 48h inactivity → −10 PS; capped at 0
+- [ ] PS hits 1,000 → auto-upgrade to D-Rank, notification + WS broadcast
+- [ ] PS hits 3,000 → C-Rank, Engine B now accessible
+- [ ] PS hits 6,000 → B-Rank, guild creation now accessible
+- [ ] rankLocked = true → no automatic rank change even if PS qualifies
+
+### Guild Flow
+- [ ] E-Rank user tries to apply to guild → 403 rank gate
+- [ ] D-Rank user applies with cover letter → application queued
+- [ ] E-Rank user tries to create guild → 403 rank gate
+- [ ] Captain sees application with PS, cover letter, Engine history, fraud count
+- [ ] Captain reject requires reason (min 10 chars, enforced)
+- [ ] Captain accept → user.guildRole = 'member', guildId set, portal switches
+- [ ] Guild Member Panel shows correct weekly progress bar
+- [ ] Captain nudge to zero-contribution member → notification delivered; nudge disabled 24h
+- [ ] MVP selection → GPS +200; MVP badge on member; button disabled until next Sunday reset
+- [ ] Captain DM thread works both directions (captain → member, member → captain)
 
 ### Sunday Reset
-- [ ] Guild hits weekly target → captain gets 30% of pool, active members share 70% proportional
-- [ ] Guild misses target → pool voided, guild_weekly_snapshots records wasSuccessful=false
-- [ ] After reset: weeklyBonusPool = 0, currentWeeklyPoints = 0, member weeklyPointsContributed = 0
+- [ ] Guild hits target → captain gets 30%, active members proportional 70%
+- [ ] Guild misses target → pool voided, snapshot records wasSuccessful=false
+- [ ] After reset: weeklyBonusPool=0, currentWeeklyPoints=0, all member weeklyPointsContributed=0
+- [ ] GPS milestone +1,000 added only on successful reset
+- [ ] GPS rank upgrade fires if threshold crossed
 
-### Withdrawal Ledger
-- [ ] Preview endpoint returns exact PKR from user_transactions (not just balance conversion)
-- [ ] S-Rank user withdrawal auto-approved (status = 'approved' immediately)
-- [ ] Referral commission written to referral_commissions table (not commission_logs)
-- [ ] No L2 referral commission ever created
+### Withdrawal
+- [ ] Preview endpoint returns correct PKR from ledger (not point math)
+- [ ] 15% fee deducted from ledger PKR value
+- [ ] Referral commission = 30% of fee → credited to referrer.balanceCashPkr
+- [ ] referral_commissions table record created
+- [ ] commission_logs NOT written for new commissions
+- [ ] S-Rank withdrawal auto-approved immediately
+- [ ] Non-S-Rank withdrawal status = 'pending' for admin review
 
 ### Admin
-- [ ] Engine split sliders save correctly, next earn event uses new percentages
+- [ ] Engine split sliders save; next earn event uses updated percentages
+- [ ] Conversion rate change takes effect immediately on next card draw
+- [ ] Withdrawal fee change takes effect on next withdrawal request
+- [ ] Referral share % change takes effect on next withdrawal
+- [ ] Card sandbox simulates correct distribution with correct Thorx profit shown
 - [ ] Ledger validator detects synthetic mismatch in test user
-- [ ] Thorx Card sandbox generates realistic distribution
-- [ ] Captain replacement via admin logs to audit_logs
-- [ ] NaN scores no longer appear in System Health dashboard
+- [ ] RED ALERT fires on withdrawal with points/PKR mismatch
+- [ ] Copy button copies JazzCash/EasyPaisa details to clipboard
+- [ ] Inactive Captain alert shows guilds with captain offline > 7 days
+- [ ] Captain replacement via admin → logged in audit_logs
+- [ ] PS threshold change (e.g., S-Rank from 20,000 → 30,000) → checkAndUpdateRankTier honors new value
+- [ ] Live Activity Feed shows correct math for each earn event
+- [ ] NaN scores gone from System Health dashboard
+- [ ] GPS manual adjustment logged in audit_logs
 
 ---
 
-## FILE CHANGE MAP
+## PART 17 — FILE CHANGE MAP
 
 ```
 NEW FILES:
   server/modules/thorx-card.ts
   server/modules/ps-engine.ts
   server/modules/gps-engine.ts
+  server/modules/live-feed.ts
   server/middleware/rankGate.ts
-  server/modules/nudge.ts
   scripts/migrate-to-spec.ts
-  client/src/components/guild/GuildDiscoveryPanel.tsx
-  client/src/components/guild/GuildMemberPanel.tsx       ← replaces/extends GuildVaultPanel
-  client/src/components/guild/CaptainPortal.tsx
   client/src/components/ThorxCard.tsx
-  client/src/components/admin/LedgerValidator.tsx
+  client/src/components/RankBadge.tsx
+  client/src/components/PSProgressCard.tsx
+  client/src/components/guild/GuildDiscoveryPanel.tsx
+  client/src/components/guild/GuildMemberPanel.tsx
+  client/src/components/guild/CaptainPortal.tsx
+  client/src/components/admin/FinancialControlCenter.tsx
   client/src/components/admin/ThorxCardSandbox.tsx
+  client/src/components/admin/LedgerValidator.tsx
+  client/src/components/admin/RanksCustomizer.tsx
+  client/src/components/admin/LiveActivityFeed.tsx
 
 HEAVILY MODIFIED:
-  shared/schema.ts                        ← new tables, new columns
-  server/storage.ts                       ← recordEarnEvent rewrite, rank rewrite
-  server/routes.ts                        ← new routes, modified withdrawal/guild/ad routes
-  server/index.ts                         ← new cron jobs
-  server/modules/guild-reset.ts           ← Sunday night logic
-  server/modules/health-engine.ts         ← NaN fixes
-  client/src/pages/UserPortal.tsx         ← three-portal routing
-  client/src/lib/rankAvatars.ts           ← E-S rank mapping
-  client/src/components/admin/SystemSettingsManager.tsx  ← engine split sliders
-  client/src/components/admin/GuildManager.tsx           ← extended moderation
-  client/src/components/admin/UserManager.tsx            ← PS override tools
-  client/src/components/admin/AdminDashboard.tsx         ← engine revenue breakdown, NaN fix
+  shared/schema.ts                               ← 5 new tables, many new columns
+  server/storage.ts                              ← recordEarnEvent rewrite, rank rewrite, withdrawal rewrite
+  server/routes.ts                               ← 14 new routes, 10 modified routes, rally deleted
+  server/index.ts                                ← 2 new cron jobs, feed init
+  server/modules/guild-reset.ts                  ← Sunday pool split, GPS awards, snapshots
+  server/modules/health-engine.ts                ← NaN guard fixes
+  client/src/pages/UserPortal.tsx               ← three-portal routing, dashboard card variants
+  client/src/lib/rankAvatars.ts                  ← E-S rank mapping
+  client/src/components/guild/GuildVaultPanel.tsx ← absorbed into GuildMemberPanel (keep as re-export shim)
+  client/src/components/WithdrawalModal.tsx      ← ledger preview UI
+  client/src/components/admin/SystemSettingsManager.tsx  ← merged into FinancialControlCenter or linked
+  client/src/components/admin/GuildManager.tsx   ← inactive captain alert, GPS modifier, target assigner
+  client/src/components/admin/UserManager.tsx    ← PS override, rank tools
+  client/src/components/admin/AdminDashboard.tsx ← engine revenue breakdown, NaN fix
+  client/src/components/admin/PayoutControl.tsx  ← double-entry audit, RED ALERT, copy button
+  client/src/pages/TeamPortal.tsx               ← new sections registered: FinancialControlCenter, ThorxCardSandbox, LedgerValidator, RanksCustomizer, LiveActivityFeed
+  server/middleware/auth.ts                      ← touch lastActiveAt on every authenticated request
 
-LIGHT MODIFICATIONS:
-  client/src/components/WithdrawalModal.tsx  ← ledger preview
-  client/src/components/guild/GuildVaultPanel.tsx  ← absorbed into GuildMemberPanel
-  server/middleware/csrf.ts               ← no change
-  server/middleware/auth.ts              ← add lastActiveAt touch
+DELETED / DEPRECATED:
+  Rally routes and storage methods              ← fully removed
+  Daily task withdrawal gate logic              ← removed (no task required to withdraw)
+  commission_logs write paths                   ← read-only, no new writes
+  Multi-level referral logic everywhere         ← removed
 ```
 
 ---
 
-## EXECUTION ORDER (Dependency Chain)
+## PART 18 — EXECUTION ORDER
 
 ```
-1. Phase 7.1 (Migration Script + DB schema) — everything depends on this
-2. Phase 1 (shared/schema.ts) — required before any server changes
-3. Phase 2.1 (thorx-card.ts) — required before 2.2
-4. Phase 2.2 (Engine splits) — required before 2.7 (withdrawal)
-5. Phase 2.3 (PS engine) — required before 2.4 (rank rewrite)
-6. Phase 2.4 (rank rewrite) — required before 3.3 (rank gate middleware)
-7. Phase 2.5 (GPS engine) — can parallel with 2.3/2.4
-8. Phase 2.6 (Sunday reset) — requires 2.5
-9. Phase 2.7 (Withdrawal) — requires 2.2 + user_transactions table
-10. Phase 2.8 (1-tier cleanup) — independent, can run anytime after schema
-11. Phase 3 (Routes) — requires all Phase 2 modules
-12. Phase 6 (WebSocket events) — requires Phase 2 + 3
-13. Phase 4 (User Portal) — requires Phase 3 APIs to exist
-14. Phase 5 (Admin Portal) — requires Phase 3 APIs to exist
-15. Phase 8 (Testing) — final
+Step 1   scripts/migrate-to-spec.ts          — DB schema first, everything else depends on it
+Step 2   shared/schema.ts                    — Add Drizzle definitions for new tables/columns
+Step 3   server/modules/thorx-card.ts        — Card engine (needed by all earn routes)
+Step 4   server/modules/ps-engine.ts         — PS logic (needed by earn routes + cron)
+Step 5   server/modules/gps-engine.ts        — GPS logic (needed by Engine C earn + Sunday reset)
+Step 6   server/middleware/rankGate.ts        — Rank gates (needed by routes)
+Step 7   server/storage.ts (recordEarnEvent) — Core earn logic rewrite using modules from 3-6
+Step 8   server/storage.ts (withdrawal)      — Bulletproof ledger + referral commission
+Step 9   server/modules/guild-reset.ts       — Sunday reset using GPS engine
+Step 10  server/modules/live-feed.ts         — Feed emitter (used by routes)
+Step 11  server/index.ts                     — Wire cron jobs + feed init
+Step 12  server/routes.ts                    — All new + modified routes
+Step 13  client/src/lib/rankAvatars.ts       — E-S rank name + avatar mapping
+Step 14  client/src/components/RankBadge.tsx — Reusable rank badge
+Step 15  client/src/components/ThorxCard.tsx — Card reveal animation
+Step 16  client/src/components/PSProgressCard.tsx
+Step 17  client/src/components/guild/*       — All three portals
+Step 18  client/src/pages/UserPortal.tsx     — Portal routing + dashboard cards
+Step 19  client/src/components/admin/*       — All new admin components
+Step 20  client/src/pages/TeamPortal.tsx     — Register new admin sections
+Step 21  Part 0 deletions                    — Remove rally, multi-level, old gates
+Step 22  Part 15.2 string replacement        — Global rank name purge
+Step 23  Part 16 testing                     — Full checklist verification
 ```
 
 ---
 
-## KEY ARCHITECTURAL DECISIONS
+## PART 19 — KEY INVARIANTS (Must Never Break)
 
-1. **Dual-ledger design is non-negotiable.** `user_transactions.realPkrValue` is the financial ground truth. `txPointsBalance` is display-only. Withdrawal math must ALWAYS trace from the ledger, never from point balance arithmetic.
+1. **`realPkrValue` is immutable after creation.** No code path should ever update a `user_transactions.realPkrValue` after insert. It is the financial source of truth.
 
-2. **PS is the single rank driver.** `users.performanceScore` is the only input to `checkAndUpdateRankTier()`. Old totalEarnings-based ranking is retired. Old rank name strings are fully purged.
+2. **Withdrawal math ALWAYS reads `user_transactions`, never converts points directly.** `availableBalance` is a display convenience; the ledger is the contract.
 
-3. **Engine type determines the profit split.** The `engineType` field in `user_transactions` and `ad_views` / `task_records` must be correctly set at earn time — it drives revenue accounting.
+3. **"Vault" and "Locked Points" never appear in any user-facing string.** Only "Guild Weekly Bonus Pool" or "Sunday Bonus". Backend column names (`weeklyBonusPool`, `vaultBalancePkr`) are fine.
 
-4. **Guild role is derived from DB state, not a flag.** `users.guildRole` is set by the guild join/leave/kick system, not manually. The portal routing reads this field authoritatively.
+4. **1-tier referral only.** No code may create a referral commission for anyone other than the direct inviter. `commission_logs` is read-only legacy data.
 
-5. **All new commission writes go to `referral_commissions`.** The `commission_logs` table is preserved for historical display only (read-only going forward).
+5. **PS is the only input to `checkAndUpdateRankTier()`.** `totalEarnings` does not affect rank. `rankLocked = true` bypasses automatic updates entirely.
 
-6. **Sunday reset is the only pool distribution path.** No mid-week payouts from the guild pool. Admin can trigger it early via the existing `/api/admin/guild-cycles/run-resolution` endpoint, which must be updated to use the new reset logic.
+6. **Engine type must be set at earn time and never changed.** The `engineType` in `user_transactions` drives all revenue accounting and reporting.
+
+7. **Sunday pool distribution is the only path for weeklyBonusPool credits.** No mid-week pool payouts. Admin can trigger the reset early via `/api/admin/guild-cycles/run-resolution` but the same `runWeeklyGuildReset()` function runs — no special admin-only payout path.
+
+8. **Admin config changes are live immediately.** No restart required. All engine splits, fee rates, rank thresholds, and card variance settings are read from `system_config` on each request, never cached beyond the request lifecycle.
