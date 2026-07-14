@@ -912,19 +912,26 @@ export class DatabaseStorage implements IStorage {
   async createAdView(insertAdView: InsertAdView): Promise<AdView & { pointsBreakdown?: EarnEventBreakdown }> {
     const [adView] = await db.insert(adViews).values(insertAdView).returning();
 
-    // Create corresponding earning record + points ledger entry (with guild vault split)
+    // Create corresponding earning record + points ledger entry (with guild vault split).
+    // If recordEarnEvent throws (e.g. constraint violation, config error), roll back the
+    // adView row so the caller gets a clean error and no orphaned ad_views row exists.
     if (insertAdView.completed && insertAdView.earnedAmount) {
-      // Ad views always go to pending first
-      const { breakdown } = await this.recordEarnEvent({
-        userId: insertAdView.userId,
-        sourceType: "ad_view",
-        sourceRefId: adView.id,
-        totalPkrAmount: insertAdView.earnedAmount,
-        earningType: "ad_view",
-        earningDescription: `Watched ${insertAdView.adType} ad`,
-        earningStatus: "pending",
-      });
-      return { ...adView, pointsBreakdown: breakdown };
+      try {
+        const { breakdown } = await this.recordEarnEvent({
+          userId: insertAdView.userId,
+          sourceType: "ad_view",
+          sourceRefId: adView.id,
+          totalPkrAmount: insertAdView.earnedAmount,
+          earningType: "ad_view",
+          earningDescription: `Watched ${insertAdView.adType} ad`,
+          earningStatus: "pending",
+        });
+        return { ...adView, pointsBreakdown: breakdown };
+      } catch (err) {
+        // Best-effort rollback — suppress secondary errors so the original propagates.
+        await db.delete(adViews).where(eq(adViews.id, adView.id)).catch(() => {});
+        throw err;
+      }
     }
 
     return adView;
@@ -3290,11 +3297,11 @@ export class DatabaseStorage implements IStorage {
       .limit(100);
 
     // Resolve admin names from metadata.adminId — batch fetch to avoid N+1 queries
-    const adminIds = [...new Set(
+    const adminIds = Array.from(new Set(
       adminCreditRows
         .map(c => (c.metadata as any)?.adminId as string | undefined)
         .filter(Boolean) as string[]
-    )];
+    ));
     const adminMap = new Map<string, string>();
     if (adminIds.length > 0) {
       const adminUsers = await db

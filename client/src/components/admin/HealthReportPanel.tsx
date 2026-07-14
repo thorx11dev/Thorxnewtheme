@@ -27,7 +27,7 @@ interface HealthSnapshotData {
     userHealth?: HealthSignal[];
     risk?: HealthSignal[];
     integrity?: HealthSignal[];
-  };
+  } | null;
   topReason: string;
   delta1h: string | null;
   delta24h: string | null;

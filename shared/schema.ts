@@ -1060,7 +1060,9 @@ export const guildWeeklyCycles = pgTable("guild_weekly_cycles", {
   index("guild_weekly_cycles_guild_id_idx").on(table.guildId),
   index("guild_weekly_cycles_resolved_idx").on(table.resolved),
   index("guild_weekly_cycles_week_start_idx").on(table.weekStart),
-  sql`CONSTRAINT guild_weekly_cycles_guild_week_unique UNIQUE (guild_id, week_start)`,
+  // Unique (guildId, weekStart) makes the resolution job idempotent and is the ON CONFLICT target
+  // in recordEarnEvent. Must match the constraint created in the DB migration.
+  unique("guild_weekly_cycles_guild_week_unique").on(table.guildId, table.weekStart),
 ]);
 
 export const insertGuildWeeklyCycleSchema = createInsertSchema(guildWeeklyCycles).omit({
@@ -1096,7 +1098,9 @@ export const guildVaultLedger = pgTable("guild_vault_ledger", {
   index("guild_vault_ledger_user_id_idx").on(table.userId),
   index("guild_vault_ledger_status_idx").on(table.status),
   index("guild_vault_ledger_week_start_idx").on(table.weekStart),
-  sql`CONSTRAINT guild_vault_ledger_bucket_unique UNIQUE (guild_id, user_id, week_start)`,
+  // Unique (guildId, userId, weekStart) is the ON CONFLICT target in recordEarnEvent's upsert.
+  // Must match the constraint created in the DB migration.
+  unique("guild_vault_ledger_bucket_unique").on(table.guildId, table.userId, table.weekStart),
 ]);
 
 export const insertGuildVaultLedgerSchema = createInsertSchema(guildVaultLedger).omit({

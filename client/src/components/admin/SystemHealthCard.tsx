@@ -8,6 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HealthReportPanel } from "./HealthReportPanel";
 
+interface HealthSignal {
+  name: string;
+  score: number;
+  rawValue: string;
+  detail: string;
+}
+
 interface HealthSnapshotData {
   id: string;
   overallScore: string;
@@ -16,7 +23,13 @@ interface HealthSnapshotData {
   userHealthScore: string;
   riskHealthScore: string;
   integrityScore: string;
-  signalsJson: Record<string, any> | null;
+  signalsJson: {
+    financial?: HealthSignal[];
+    operational?: HealthSignal[];
+    userHealth?: HealthSignal[];
+    risk?: HealthSignal[];
+    integrity?: HealthSignal[];
+  } | null;
   topReason: string;
   delta1h: string | null;
   delta24h: string | null;
@@ -100,7 +113,11 @@ export function SystemHealthCard() {
             <div className={cn("p-2 rounded-full", isLoading ? "bg-zinc-200" : scoreIconBg(overall))}>
               <Zap className={cn("w-4 h-4", isLoading ? "text-zinc-400" : scoreColor(overall))} />
             </div>
-            {isStale && <AlertCircle className="w-3.5 h-3.5 text-amber-500" title="Snapshot is outdated" />}
+            {isStale && (
+              <span title="Snapshot is outdated">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-500" aria-label="Snapshot is outdated" />
+              </span>
+            )}
           </div>
           <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">System Health</span>
         </div>
