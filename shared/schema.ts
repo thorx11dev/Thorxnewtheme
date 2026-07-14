@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, integer, boolean, index, jsonb, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, integer, boolean, index, jsonb, unique, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -72,7 +72,7 @@ export const users = pgTable("users", {
   // ── THORX v3: Activity tracking (inactivity penalty cron) ───────────────
   lastActiveAt: timestamp("last_active_at").notNull().defaultNow(),
   streakDays: integer("streak_days").notNull().default(0),
-  lastStreakDate: text("last_streak_date"), // YYYY-MM-DD (PKT)
+  lastStreakDate: date("last_streak_date"), // PKT calendar date
   inactivityPenaltyAt: timestamp("inactivity_penalty_at"),
   // ── THORX v3: Referral cash wallet — separate from txPointsBalance ──────
   balanceCashPkr: decimal("balance_cash_pkr", { precision: 10, scale: 2 }).notNull().default("0.00"),
@@ -1007,9 +1007,8 @@ export const guilds = pgTable("guilds", {
   updatedAt: timestamp("updated_at").defaultNow(),
   // Engine C — Captain controls (Blueprint v2026)
   pinnedMemberId: varchar("pinned_member_id").references(() => users.id, { onDelete: "set null" }),
-  minRankRequired: varchar("min_rank_required", { length: 1 }).default("E"),
+  minRankRequired: text("min_rank_required").notNull().default("E-Rank"),
   recruitmentOpen: boolean("recruitment_open").notNull().default(true),
-  lastRallyAt: timestamp("last_rally_at"), // deprecated (rally system removed in v3); kept for backward compat, unused
   avatarUrl: text("avatar_url"),
   // ── THORX v3: GPS & rank ─────────────────────────────────────────────────
   guildPerformanceScore: integer("guild_performance_score").notNull().default(0),
@@ -1386,7 +1385,7 @@ export type InsertCaptainMessage = typeof captainMessages.$inferInsert;
 export const guildWeeklySnapshots = pgTable("guild_weekly_snapshots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   guildId: varchar("guild_id").notNull().references(() => guilds.id),
-  weekStart: timestamp("week_start").notNull(),
+  weekStart: date("week_start").notNull(),
   targetPoints: integer("target_points").notNull(),
   achievedPoints: integer("achieved_points").notNull(),
   wasSuccessful: boolean("was_successful").notNull(),

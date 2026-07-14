@@ -4121,34 +4121,14 @@ export class DatabaseStorage implements IStorage {
 
   // ── Engine C: Captain Rally ──────────────────────────────────────────────────
 
-  async triggerCaptainRally(guildId: string, captainId: string): Promise<any> {
-    const membership = await this.getUserGuildMembership(captainId);
-    if (!membership || membership.guildId !== guildId || membership.role !== "captain") {
-      throw new Error("Only the guild captain can trigger a rally.");
-    }
-    const [guild] = await db.select().from(guilds).where(eq(guilds.id, guildId));
-    if (!guild) throw new Error("Guild not found.");
-    if ((guild as any).lastRallyAt) {
-      const hoursSinceLast = (Date.now() - new Date((guild as any).lastRallyAt).getTime()) / 3600000;
-      if (hoursSinceLast < 24) {
-        throw new Error(`Rally on cooldown. Available again in ${Math.ceil(24 - hoursSinceLast)} hour(s).`);
-      }
-    }
-    await db.update(guilds).set({ lastRallyAt: new Date() } as any).where(eq(guilds.id, guildId));
-    const members = await this.getGuildMembers(guildId);
-    const captain = await this.getUserById(captainId);
-    const captainName = captain ? `${captain.firstName} ${captain.lastName}` : "The Captain";
-    const active = members.filter((m: any) => m.userId !== captainId && m.status === "active");
-    for (const m of active) {
-      await this.createNotification({
-        userId: m.userId,
-        title: "⚡ Captain's Rally!",
-        message: `${captainName} is calling you to arms! Watch 5 ads in the next hour for extra TX-Points!`,
-        type: "system",
-        isRead: false,
-      });
-    }
-    return { success: true, membersNotified: active.length };
+  // NOTE: THORX v3 spec (Appendix B) removes the guild rally system entirely
+  // (guilds.last_rally_at was dropped in the Phase 1 migration). This function
+  // is intentionally disabled rather than deleted outright — full route/UI
+  // removal happens in Phase 6 cleanup. Left in place so the endpoint below
+  // fails loudly and clearly instead of throwing a raw "column does not
+  // exist" Postgres error.
+  async triggerCaptainRally(_guildId: string, _captainId: string): Promise<any> {
+    throw new Error("The Captain's Rally feature has been retired in THORX v3.");
   }
 
   // ── Engine C: Guild Settings (Captain only) ──────────────────────────────────

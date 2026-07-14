@@ -1101,17 +1101,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ── Engine C: Captain Rally ───────────────────────────────────────────────────
+  // ── Engine C: Captain Rally — retired in THORX v3 (Appendix B) ───────────────
   app.post("/api/guilds/:id/rally", requireSessionAuth, async (req, res) => {
-    try {
-      const userId = getThorxPrincipalId(req) as string;
-      const result = await storage.triggerCaptainRally(req.params.id, userId);
-      res.json(result);
-    } catch (error) {
-      console.error("Rally error:", error);
-      const msg = error instanceof Error ? error.message : "Failed to trigger rally";
-      res.status(400).json({ message: msg });
-    }
+    res.status(410).json({ message: "The Captain's Rally feature has been retired in THORX v3.", error: "FEATURE_REMOVED" });
   });
 
   // ── Engine C: Guild Settings (Captain only) ────────────────────────────────────
