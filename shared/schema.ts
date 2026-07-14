@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, integer, boolean, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, integer, boolean, index, jsonb, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -106,7 +106,7 @@ export const deviceFingerprints = pgTable("device_fingerprints", {
 }, (table) => [
   index("idx_device_fp_hash").on(table.fingerprintHash),
   index("idx_device_fp_user").on(table.userId),
-  sql`CONSTRAINT uq_device_fp_user_hash UNIQUE (user_id, fingerprint_hash)`,
+  unique("uq_device_fp_user_hash").on(table.userId, table.fingerprintHash),
 ]);
 
 export const insertDeviceFingerprintSchema = createInsertSchema(deviceFingerprints).omit({

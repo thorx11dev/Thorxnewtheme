@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save, Settings, DollarSign, Network, Trash2, Plus, ArrowUp, ArrowDown, ShieldAlert } from "lucide-react";
+import { Save, Settings, DollarSign, Network, Trash2, Plus, ArrowUp, ArrowDown, ShieldAlert, Vault } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AdNetwork {
@@ -42,6 +42,11 @@ export function SystemSettingsManager() {
     RISK_BOT_EARNINGS_PER_REF: 100,
     RISK_TASK_SPEED_SECONDS: 3,
   };
+
+  // Must mirror server/storage.ts DEFAULT_WEEKLY_GOAL_TARGETS_BY_RANK / DEFAULT_VAULT_RELEASE_MULTIPLIER_BY_RANK
+  const GUILD_RANKS = ["E", "D", "C", "B", "A", "S"];
+  const WEEKLY_GOAL_DEFAULTS: Record<string, number> = { E: 5000, D: 10000, C: 20000, B: 35000, A: 55000, S: 80000 };
+  const VAULT_MULTIPLIER_DEFAULTS: Record<string, number> = { E: 1.0, D: 1.05, C: 1.10, B: 1.15, A: 1.20, S: 1.30 };
   
   const { data: dbConfigs, isLoading } = useQuery<{ key: string; value: any }[]>({
     queryKey: ["/api/admin/config/bulk"],
@@ -230,6 +235,19 @@ export function SystemSettingsManager() {
           />
         </div>
 
+        {/* Guild Vault Rank Tiers - Full Width */}
+        <div className="lg:col-span-2">
+          <GuildRankTiersSection
+            localConfigs={localConfigs}
+            ranks={GUILD_RANKS}
+            weeklyGoalDefaults={WEEKLY_GOAL_DEFAULTS}
+            vaultMultiplierDefaults={VAULT_MULTIPLIER_DEFAULTS}
+            updateValue={updateValue}
+            handleSave={handleSave}
+            saveMutation={saveMutation}
+          />
+        </div>
+
         {/* Risk & Scoring Weights - Full Width */}
         <div className="lg:col-span-2">
           <RiskWeightsSection
@@ -300,6 +318,88 @@ function RiskWeightsSection({ localConfigs, defaults, updateValue, handleSave, s
           <p className="text-[9px] font-bold text-zinc-400 mt-3 uppercase tracking-widest">Accounts younger than this get a 30% Health Score discount to prevent day-1 gaming.</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function GuildRankTiersSection({ localConfigs, ranks, weeklyGoalDefaults, vaultMultiplierDefaults, updateValue, handleSave, saveMutation }: any) {
+  const weeklyGoals: Record<string, number> = { ...weeklyGoalDefaults, ...(localConfigs["WEEKLY_GOAL_TARGETS_BY_RANK"] || {}) };
+  const multipliers: Record<string, number> = { ...vaultMultiplierDefaults, ...(localConfigs["VAULT_RELEASE_MULTIPLIER_BY_RANK"] || {}) };
+
+  const setGoal = (rank: string, v: number) => {
+    updateValue("WEEKLY_GOAL_TARGETS_BY_RANK", { ...weeklyGoals, [rank]: v });
+  };
+  const setMultiplier = (rank: string, v: number) => {
+    updateValue("VAULT_RELEASE_MULTIPLIER_BY_RANK", { ...multipliers, [rank]: v });
+  };
+
+  return (
+    <div className="bg-background border-[1.5px] border-[#111] rounded-[2rem] p-8 overflow-hidden shadow-sm hover:shadow-md transition-shadow relative group">
+      <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-white border-[1.5px] border-[#111]/20 flex items-center justify-center rounded-full shadow-sm group-hover:border-primary transition-colors">
+            <Vault className="w-5 h-5 text-zinc-500 group-hover:text-primary transition-colors" />
+          </div>
+          <div>
+            <h3 className="font-black text-xl uppercase text-[#111] tracking-tight">Guild Rank Tiers</h3>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-tight">
+              Weekly point goals & vault release multiplier, per Guild Rank
+            </p>
+          </div>
+        </div>
+        <Button
+          onClick={() => { handleSave("WEEKLY_GOAL_TARGETS_BY_RANK"); handleSave("VAULT_RELEASE_MULTIPLIER_BY_RANK"); }}
+          disabled={saveMutation.isPending}
+          className="h-10 bg-[#111] hover:bg-primary text-white border-[1.5px] border-[#111] rounded-full font-black text-[10px] uppercase transition-all shadow-sm px-6 flex items-center gap-1.5"
+        >
+          <Save size={14} />
+          {saveMutation.isPending ? "Saving..." : "Save Tiers"}
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[560px]">
+          <thead>
+            <tr className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+              <th className="pb-3 pl-1">Guild Rank</th>
+              <th className="pb-3">Weekly Goal (points)</th>
+              <th className="pb-3">Release Multiplier</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y-[1.5px] divide-[#111]/10">
+            {ranks.map((rank: string) => (
+              <tr key={rank}>
+                <td className="py-3 pl-1">
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full border-[1.5px] border-[#111] font-black text-sm bg-white">
+                    {rank}
+                  </span>
+                </td>
+                <td className="py-3 pr-4">
+                  <Input
+                    type="number"
+                    step={100}
+                    value={weeklyGoals[rank] ?? 0}
+                    onChange={(e) => setGoal(rank, parseFloat(e.target.value) || 0)}
+                    className="h-10 w-40 bg-white border-[1.5px] border-[#111] rounded-full focus-visible:ring-primary shadow-sm font-bold text-sm text-[#111]"
+                  />
+                </td>
+                <td className="py-3 pr-4">
+                  <Input
+                    type="number"
+                    step={0.01}
+                    value={multipliers[rank] ?? 1}
+                    onChange={(e) => setMultiplier(rank, parseFloat(e.target.value) || 0)}
+                    className="h-10 w-32 bg-white border-[1.5px] border-[#111] rounded-full focus-visible:ring-primary shadow-sm font-bold text-sm text-[#111]"
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[9px] font-bold text-zinc-400 mt-4 uppercase tracking-widest">
+        Multiplier only applies when a guild's held vault points meet or exceed its weekly goal that week; missed goals apply a 1.00x release and add a strike.
+      </p>
     </div>
   );
 }

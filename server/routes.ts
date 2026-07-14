@@ -3075,7 +3075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedKeys = [
         "AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT",
         "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT",
-        "CONVERSION_RATE", "VAULT_HOLD_PCT", "WEEKLY_GOAL_TARGETS_BY_RANK",
+        "CONVERSION_RATE", "VAULT_HOLD_PCT", "WEEKLY_GOAL_TARGETS_BY_RANK", "VAULT_RELEASE_MULTIPLIER_BY_RANK",
       ];
       
       if (!allowedKeys.includes(key)) {
@@ -3111,7 +3111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedKeys = [
         "AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT",
         "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT",
-        "CONVERSION_RATE", "VAULT_HOLD_PCT", "WEEKLY_GOAL_TARGETS_BY_RANK",
+        "CONVERSION_RATE", "VAULT_HOLD_PCT", "WEEKLY_GOAL_TARGETS_BY_RANK", "VAULT_RELEASE_MULTIPLIER_BY_RANK",
       ];
 
       if (!allowedKeys.includes(key)) {

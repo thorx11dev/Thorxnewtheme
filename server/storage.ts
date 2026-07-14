@@ -113,6 +113,9 @@ const DEFAULT_VAULT_HOLD_PCT = 15; // 15% of every earn event is held in the gui
 const DEFAULT_WEEKLY_GOAL_TARGETS_BY_RANK: Record<string, number> = {
   E: 5000, D: 10000, C: 20000, B: 35000, A: 55000, S: 80000,
 };
+const DEFAULT_VAULT_RELEASE_MULTIPLIER_BY_RANK: Record<string, number> = {
+  E: 1.0, D: 1.05, C: 1.10, B: 1.15, A: 1.20, S: 1.30,
+};
 
 // Fixed UTC week boundary: Monday 00:00:00 UTC through Sunday 23:59:59.999 UTC.
 // Not user-configurable in v1 (see design notes in shared/schema.ts).
@@ -475,6 +478,11 @@ export class DatabaseStorage implements IStorage {
         key: "WEEKLY_GOAL_TARGETS_BY_RANK",
         value: { E: 5000, D: 10000, C: 20000, B: 35000, A: 55000, S: 80000 },
         description: "Weekly points target a guild must hit at each Guild Rank to earn the release multiplier"
+      },
+      {
+        key: "VAULT_RELEASE_MULTIPLIER_BY_RANK",
+        value: { E: 1.0, D: 1.05, C: 1.10, B: 1.15, A: 1.20, S: 1.30 },
+        description: "PKR multiplier applied to a guild's held vault when its weekly points goal is met, scaled by Guild Rank"
       },
       { 
         key: "AD_NETWORKS", 
@@ -1907,7 +1915,7 @@ export class DatabaseStorage implements IStorage {
 
       const multiplierTable = await this.getSystemConfigValue<Record<string, number>>(
         "VAULT_RELEASE_MULTIPLIER_BY_RANK",
-        { E: 1.0, D: 1.05, C: 1.10, B: 1.15, A: 1.20, S: 1.30 }
+        DEFAULT_VAULT_RELEASE_MULTIPLIER_BY_RANK
       );
       const multiplier = goalMet ? (multiplierTable[guild.guildRank] ?? 1.0) : 1.0;
       const conversionRate = await this.getSystemConfigValue<number>("CONVERSION_RATE", DEFAULT_CONVERSION_RATE);

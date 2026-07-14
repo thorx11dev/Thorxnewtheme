@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
 import { GuildVaultPanel } from "@/components/guild/GuildVaultPanel";
+import { ScratchCardModal, type ScratchCardBreakdown } from "@/components/guild/ScratchCardModal";
 import { useLocation } from "wouter";
 import {
   LogOut,
@@ -588,13 +589,6 @@ export default function UserPortal() {
       earnedAmount: webPanelData.reward
     });
 
-    toast({
-      title: "Task Completed!",
-      description: `You earned $${webPanelData.reward} for your attention.`,
-      variant: "default",
-      className: "bg-green-600 text-white border-none"
-    });
-
     setIsWebPanelOpen(false);
   };
 
@@ -815,6 +809,10 @@ export default function UserPortal() {
     enabled: !!user,
   });
 
+  // Scratch card reveal state — shown after an ad-view earn event resolves
+  const [scratchCardBreakdown, setScratchCardBreakdown] = useState<ScratchCardBreakdown | null>(null);
+  const [showScratchCard, setShowScratchCard] = useState(false);
+
   // Record ad view mutation
   const recordAdViewMutation = useMutation({
     mutationFn: async (data: {
@@ -827,9 +825,14 @@ export default function UserPortal() {
       const response = await apiRequest("POST", "/api/ad-view", data);
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["ad-views"] });
       queryClient.invalidateQueries({ queryKey: ["session-auth"] });
+      const breakdown = data?.adView?.pointsBreakdown;
+      if (breakdown) {
+        setScratchCardBreakdown(breakdown);
+        setShowScratchCard(true);
+      }
     },
   });
 
@@ -1104,12 +1107,6 @@ export default function UserPortal() {
             });
 
             setCompletedAds(prev => new Set(Array.from(prev).concat(selectedAd.id)));
-
-            toast({
-              title: "Ad Completed! 🎉",
-              description: `You earned ${formatCurrency(selectedAd.reward)}`,
-              variant: "default",
-            });
 
             return 100;
           }
@@ -1494,6 +1491,12 @@ export default function UserPortal() {
         reward={webPanelData.reward}
         onComplete={handleWebPanelComplete}
         onClose={() => setIsWebPanelOpen(false)}
+      />
+
+      <ScratchCardModal
+        open={showScratchCard}
+        breakdown={scratchCardBreakdown}
+        onClose={() => setShowScratchCard(false)}
       />
     </div >
   );
