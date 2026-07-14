@@ -107,7 +107,18 @@ import {
   weeklyTaskRecords,
   type WeeklyTaskRecord,
   type InsertWeeklyTaskRecord,
+  userTransactions,
+  type UserTransaction,
+  type InsertUserTransaction,
+  referralCommissions,
+  type ReferralCommission,
+  type InsertReferralCommission,
 } from "@shared/schema";
+import { drawThorxCard } from "./modules/thorx-card";
+import { awardTaskPS, processStreak } from "./modules/ps-engine";
+import { checkAndUpdateRankTier } from "./modules/ps-engine";
+import { awardMemberGPS } from "./modules/gps-engine";
+import { emitFeedEvent } from "./modules/live-feed";
 import { db } from "./db";
 import { eq, desc, and, or, sql, inArray, ilike, gte, lte, lt, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
