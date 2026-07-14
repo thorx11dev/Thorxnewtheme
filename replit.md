@@ -48,6 +48,7 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 - Ran `npm install`, then `npx drizzle-kit push --force` to create all tables from `shared/schema.ts`.
 - If `db:push` fails with a TTY-prompt error on a fresh database, a leftover `session` table (auto-created by connect-pg-simple at server start) can confuse drizzle-kit's conflict resolver. Drop it (`DROP TABLE IF EXISTS session;`) and rerun `npx drizzle-kit push --force`.
 - `npm run dev` verified working on port 5000 (landing page renders correctly).
+- Re-verified again on a later re-import (2026-07-14): same steps (`npm install`, `npx drizzle-kit push --force`, restart workflow) got it running cleanly with no schema issues.
 
 ## User preferences
 
