@@ -28,6 +28,7 @@ import { CommissionCalculator } from "@/components/ui/commission-calculator";
 import { cn } from "@/lib/utils";
 import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
+import { GuildVaultPanel } from "@/components/guild/GuildVaultPanel";
 import { useLocation } from "wouter";
 import {
   LogOut,
@@ -633,7 +634,7 @@ export default function UserPortal() {
   const { data: sysConfig, isLoading: isConfigLoading } = useQuery({
     queryKey: ["/api/config/bulk"],
     queryFn: async () => {
-      const keys = ["MIN_PAYOUT", "SYSTEM_FEE", "L1_BONUS", "L2_BONUS"];
+      const keys = ["MIN_PAYOUT", "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT"];
       const results = await Promise.all(
         keys.map(k => apiRequest("GET", `/api/config/${k}`).then(r => r.json()))
       );
@@ -642,9 +643,8 @@ export default function UserPortal() {
   });
 
   const MIN_PAYOUT = parseFloat(sysConfig?.["MIN_PAYOUT"] ?? "100");
-  const SYSTEM_FEE_PERCENT = parseFloat(sysConfig?.["SYSTEM_FEE"] ?? "10");
-  const L1_BONUS_PERCENT = parseFloat(sysConfig?.["L1_BONUS"] ?? "15");
-  const L2_BONUS_PERCENT = parseFloat(sysConfig?.["L2_BONUS"] ?? "7.5");
+  const WITHDRAWAL_FEE_PERCENT = parseFloat(sysConfig?.["WITHDRAWAL_FEE_PCT"] ?? "15");
+  const REFERRAL_FEE_SHARE_PERCENT = parseFloat(sysConfig?.["REFERRAL_FEE_SHARE_PCT"] ?? "50");
 
 
   const { data: payoutRules } = useQuery({
@@ -3008,31 +3008,28 @@ export default function UserPortal() {
 
                           <div className="flex justify-between items-center text-sm md:text-base">
                             <span className="font-bold text-muted-foreground flex items-center gap-2">
-                              Platform Fee
-                              <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">{SYSTEM_FEE_PERCENT}%</span>
+                              Withdrawal Fee
+                              <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">{WITHDRAWAL_FEE_PERCENT}%</span>
                             </span>
-                            <span className="font-black text-red-500">-{formatCurrency((parseFloat(withdrawAmount || "0") * (SYSTEM_FEE_PERCENT / 100)).toFixed(2))}</span>
+                            <span className="font-black text-red-500">-{formatCurrency((parseFloat(withdrawAmount || "0") * (WITHDRAWAL_FEE_PERCENT / 100)).toFixed(2))}</span>
                           </div>
 
-                          <div className="my-2 border-t border-dashed border-black/20" />
-
-                          <div className="space-y-1">
-                            <div className="flex justify-between items-center text-xs md:text-sm">
-                              <span className="text-white font-bold opacity-60">Level 1 Bonus Applied</span>
-                              <span className="text-white font-black">{L1_BONUS_PERCENT}% Distribution</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs md:text-sm">
-                              <span className="text-white font-bold opacity-60">Level 2 Bonus Applied</span>
-                              <span className="text-white font-black">{L2_BONUS_PERCENT}% Distribution</span>
-                            </div>
-                          </div>
+                          {user?.referredBy && (
+                            <>
+                              <div className="my-2 border-t border-dashed border-black/20" />
+                              <div className="flex justify-between items-center text-xs md:text-sm">
+                                <span className="text-white font-bold opacity-60">Referrer Share (of fee above)</span>
+                                <span className="text-white font-black">{REFERRAL_FEE_SHARE_PERCENT}%</span>
+                              </div>
+                            </>
+                          )}
 
                           <div className="my-2 border-t-2 border-black" />
 
                           <div className="flex justify-between items-center text-base md:text-lg lg:text-xl">
                             <span className="font-black text-amber-500 uppercase tracking-tighter">Net to Receive</span>
                             <span className="font-black text-primary bg-black px-3 py-2 text-2xl">
-                              {formatCurrency((parseFloat(withdrawAmount || "0") * (1 - SYSTEM_FEE_PERCENT / 100)).toFixed(2))}
+                              {formatCurrency((parseFloat(withdrawAmount || "0") * (1 - WITHDRAWAL_FEE_PERCENT / 100)).toFixed(2))}
                             </span>
                           </div>
                         </div>
@@ -3269,6 +3266,8 @@ export default function UserPortal() {
             </AnimatePresence>
           </div>
         </motion.div>
+
+        {user?.id && <GuildVaultPanel currentUserId={user.id} />}
       </motion.div>
     );
   }

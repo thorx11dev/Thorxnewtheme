@@ -21,6 +21,7 @@ export interface User {
   rank?: string;
   profilePicture?: string;
   permissions?: string[];
+  referredBy?: string | null;
 }
 
 export function useAuth() {

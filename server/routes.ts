@@ -983,6 +983,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Guild Vault & Points Ledger: user-facing guild routes ──────────────────
+  app.get("/api/guilds", requireSessionAuth, async (req, res) => {
+    try {
+      const search = typeof req.query.search === "string" ? req.query.search : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+      const result = await storage.listGuilds({ search, limit, offset });
+      res.json(result);
+    } catch (error) {
+      console.error("List guilds error:", error);
+      res.status(500).json({ message: "Failed to fetch guilds" });
+    }
+  });
+
+  app.get("/api/guilds/mine", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const membership = await storage.getUserGuildMembership(userId);
+      res.json({ membership: membership ?? null });
+    } catch (error) {
+      console.error("Get my guild membership error:", error);
+      res.status(500).json({ message: "Failed to fetch guild membership" });
+    }
+  });
+
+  app.post("/api/guilds", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const { name, description } = req.body;
+      if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ message: "Guild name is required." });
+      }
+      const guild = await storage.createGuild({ name: name.trim(), description, captainId: userId });
+      res.status(201).json({ guild });
+    } catch (error) {
+      console.error("Create guild error:", error);
+      const message = error instanceof Error ? error.message : "Failed to create guild";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.get("/api/guilds/:id", requireSessionAuth, async (req, res) => {
+    try {
+      const guild = await storage.getGuildById(req.params.id);
+      if (!guild) return res.status(404).json({ message: "Guild not found" });
+      const members = await storage.getGuildMembers(req.params.id);
+      res.json({ guild, members });
+    } catch (error) {
+      console.error("Get guild error:", error);
+      res.status(500).json({ message: "Failed to fetch guild" });
+    }
+  });
+
+  app.get("/api/guilds/:id/vault", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const membership = await storage.getUserGuildMembership(userId);
+      if (!membership || membership.guildId !== req.params.id || membership.status !== "active") {
+        return res.status(403).json({ message: "You must be an active member of this guild to view its vault." });
+      }
+      const status = await storage.getGuildVaultStatus(req.params.id);
+      res.json(status);
+    } catch (error) {
+      console.error("Get guild vault error:", error);
+      res.status(500).json({ message: "Failed to fetch guild vault" });
+    }
+  });
+
+  app.post("/api/guilds/:id/join", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const membership = await storage.requestToJoinGuild(req.params.id, userId);
+      res.status(201).json({ membership });
+    } catch (error) {
+      console.error("Join guild error:", error);
+      const message = error instanceof Error ? error.message : "Failed to request guild join";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.post("/api/guilds/:id/members/:userId/approve", requireSessionAuth, async (req, res) => {
+    try {
+      const captainId = getThorxPrincipalId(req) as string;
+      const membership = await storage.decideGuildJoinRequest(req.params.id, req.params.userId, captainId, true);
+      res.json({ membership });
+    } catch (error) {
+      console.error("Approve guild join error:", error);
+      const message = error instanceof Error ? error.message : "Failed to approve join request";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.post("/api/guilds/:id/members/:userId/reject", requireSessionAuth, async (req, res) => {
+    try {
+      const captainId = getThorxPrincipalId(req) as string;
+      const membership = await storage.decideGuildJoinRequest(req.params.id, req.params.userId, captainId, false);
+      res.json({ membership });
+    } catch (error) {
+      console.error("Reject guild join error:", error);
+      const message = error instanceof Error ? error.message : "Failed to reject join request";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.post("/api/guilds/:id/leave", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      await storage.leaveGuild(req.params.id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Leave guild error:", error);
+      const message = error instanceof Error ? error.message : "Failed to leave guild";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.delete("/api/guilds/:id/members/:userId", requireSessionAuth, async (req, res) => {
+    try {
+      const captainId = getThorxPrincipalId(req) as string;
+      await storage.removeGuildMember(req.params.id, req.params.userId, captainId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Remove guild member error:", error);
+      const message = error instanceof Error ? error.message : "Failed to remove member";
+      res.status(400).json({ message });
+    }
+  });
+
+  // Points ledger — user's own earn/release history (feeds Scratch Card + Ledger view)
+  app.get("/api/points-ledger/me", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+      const result = await storage.getPointsLedgerForUser(userId, limit, offset);
+      res.json(result);
+    } catch (error) {
+      console.error("Get points ledger error:", error);
+      res.status(500).json({ message: "Failed to fetch points ledger" });
+    }
+  });
+
+  // ── Admin/team guild moderation ─────────────────────────────────────────────
+  app.get("/api/admin/guilds", requireTeamRole, async (req, res) => {
+    try {
+      const status = typeof req.query.status === "string" ? req.query.status : undefined;
+      const search = typeof req.query.search === "string" ? req.query.search : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+      const result = await storage.listGuildsAdmin({ status, search, limit, offset });
+      res.json(result);
+    } catch (error) {
+      console.error("Admin list guilds error:", error);
+      res.status(500).json({ message: "Failed to fetch guilds" });
+    }
+  });
+
+  app.post("/api/admin/guilds/:id/status", requireTeamRole, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!["active", "frozen", "disbanded"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be active, frozen, or disbanded." });
+      }
+      const guild = await storage.setGuildStatus(req.params.id, status);
+      res.json({ guild });
+    } catch (error) {
+      console.error("Admin set guild status error:", error);
+      const message = error instanceof Error ? error.message : "Failed to update guild status";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.post("/api/admin/guilds/:id/strikes", requireTeamRole, async (req, res) => {
+    try {
+      const adminId = getThorxPrincipalId(req) as string;
+      const { reason } = req.body;
+      if (!reason || typeof reason !== "string" || !reason.trim()) {
+        return res.status(400).json({ message: "A reason is required to add a strike." });
+      }
+      const result = await storage.addManualGuildStrike(req.params.id, reason.trim(), adminId);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Admin add guild strike error:", error);
+      res.status(500).json({ message: "Failed to add guild strike" });
+    }
+  });
+
+  app.post("/api/admin/guilds/:id/strikes/clear", requireTeamRole, async (req, res) => {
+    try {
+      const adminId = getThorxPrincipalId(req) as string;
+      const guild = await storage.clearGuildStrikes(req.params.id, adminId);
+      res.json({ guild });
+    } catch (error) {
+      console.error("Admin clear guild strikes error:", error);
+      res.status(500).json({ message: "Failed to clear guild strikes" });
+    }
+  });
+
+  app.post("/api/admin/guild-cycles/run-resolution", requireTeamRole, async (req, res) => {
+    try {
+      const result = await storage.runGuildWeeklyResolution();
+      res.json(result);
+    } catch (error) {
+      console.error("Admin run guild resolution error:", error);
+      res.status(500).json({ message: "Failed to run guild weekly resolution" });
+    }
+  });
+
   // Create ad view endpoint (no auth required)
   app.post("/api/ad-view", async (req, res) => {
     try {
@@ -2280,10 +2488,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Device fingerprint abuse check (max 2 accounts per device, team/founder/admin exempt)
+      // Device fingerprint abuse check: max 1 user-role account per device.
+      // team/founder/admin roles remain exempt (a person may hold one personal
+      // account plus one team/founder/admin account on the same device).
       if (deviceFingerprint && typeof deviceFingerprint === "string" && !['team', 'founder', 'admin'].includes(role || 'user')) {
         const existingCount = await storage.getAccountCountByFingerprint(deviceFingerprint);
-        if (existingCount >= 2) {
+        if (existingCount >= 1) {
           return res.status(429).json({
             message: "Maximum number of accounts reached for this device. Contact support if you believe this is an error.",
             error: "DEVICE_LIMIT_EXCEEDED"
@@ -2862,7 +3072,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/config/:key", async (req, res) => {
     try {
       const { key } = req.params;
-      const allowedKeys = ["AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT", "L1_BONUS", "L2_BONUS", "SYSTEM_FEE"];
+      const allowedKeys = [
+        "AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT",
+        "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT",
+        "CONVERSION_RATE", "VAULT_HOLD_PCT", "WEEKLY_GOAL_TARGETS_BY_RANK",
+      ];
       
       if (!allowedKeys.includes(key)) {
         return res.status(403).json({ 
@@ -2894,7 +3108,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { key } = req.params;
       const { value } = req.body;
-      const allowedKeys = ["AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT", "L1_BONUS", "L2_BONUS", "SYSTEM_FEE"];
+      const allowedKeys = [
+        "AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT",
+        "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT",
+        "CONVERSION_RATE", "VAULT_HOLD_PCT", "WEEKLY_GOAL_TARGETS_BY_RANK",
+      ];
 
       if (!allowedKeys.includes(key)) {
         return res.status(403).json({ message: "Access to this configuration key is restricted." });

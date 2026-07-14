@@ -11,7 +11,8 @@ import {
   LogOut,
   Target,
   Trophy,
-  Settings
+  Settings,
+  Vault
 } from "lucide-react";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ const adminSections = [
   { id: "inbox",       name: "INBOX",        icon: Mail          },
   { id: "audit",       name: "AUDIT LOGS",   icon: ScrollText    },
   { id: "team",        name: "TEAM KEYS",    icon: ShieldCheck   },
+  { id: "guilds",      name: "GUILD VAULT",  icon: Vault         },
   { id: "settings",    name: "SETTINGS",     icon: Settings      },
 ];
 

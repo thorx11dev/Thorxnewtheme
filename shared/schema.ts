@@ -52,6 +52,15 @@ export const users = pgTable("users", {
   profilePicture: text("profile_picture"),
   permissions: jsonb("permissions").default('[]'),
   emailVerifiedAt: timestamp("email_verified_at"),
+  // ── Guild System fields (Engine C) ──────────────────────────────────────
+  // Separate axis from the existing named `rank` (Nawa Aya → Chacha Supreme).
+  // personalRank is the individual Guild-context tier, E (lowest) → S (highest).
+  personalRank: text("personal_rank").default("E"),
+  // Cumulative score driving personalRank progression; distinct from guild.guildScore.
+  guildContributionScore: integer("guild_contribution_score").default(0),
+  // Cumulative "TX-Points" ever earned (display/illusion counter, monotonically
+  // increasing — never decremented by withdrawals, which spend availableBalance).
+  txPointsBalance: integer("tx_points_balance").default(0),
 }, (table) => [
   index("users_email_idx").on(table.email),
   index("users_referral_code_idx").on(table.referralCode),
@@ -672,6 +681,9 @@ export const insertUserSchema = createInsertSchema(users).omit({
   lastLoginDate: true,
   createdAt: true,
   updatedAt: true,
+  personalRank: true,
+  guildContributionScore: true,
+  txPointsBalance: true,
 }).extend({
   name: z.string().min(2),
   email: z.string().email(),
@@ -933,3 +945,259 @@ export const errorEvents = pgTable("error_events", {
 ]);
 
 export type ErrorEvent = typeof errorEvents.$inferSelect;
+
+// ── Feature 3: Guild, Escrow Vault & Points Ledger System ─────────────────────
+// Implements thorx_master_plan.md Engine C (Guilds), the 15% Hold & Release
+// Escrow Vault, and the bulletproof points-first valuation ledger.
+//
+// Design notes (read before modifying):
+//  - `points_ledger` is an append-only audit trail. A row's `lockedPkrValue`
+//    and `conversionRateUsed` must NEVER be mutated after insert — that is the
+//    entire point of the "bulletproof" guarantee (admin rate changes must not
+//    retroactively alter value already earned). Corrections are new rows.
+//  - The 15% guild-vault share of an earn event is recorded on the SAME
+//    points_ledger row (via vaultShareLockedPkr + metadata breakdown) rather
+//    than a second row, since it's one earn event / one Scratch Card reveal.
+//  - `guild_vault_ledger` is the per-guild-per-member-per-week accrual bucket
+//    used by the weekly resolution job; it is separate from points_ledger and
+//    IS mutated (status/released fields) exactly once, by the resolution job.
+//  - Weekly boundaries are fixed UTC weeks: Monday 00:00:00 UTC through
+//    Sunday 23:59:59 UTC. This is intentionally not configurable in v1.
+
+// Guilds (Teams) — Engine C
+export const guilds = pgTable("guilds", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  captainId: varchar("captain_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  guildRank: text("guild_rank").notNull().default("E"), // E (lowest) .. S (highest)
+  guildScore: integer("guild_score").notNull().default(0),
+  strikes: integer("strikes").notNull().default(0),
+  status: text("status").notNull().default("active"), // active | frozen | disbanded
+  isPublic: boolean("is_public").notNull().default(true), // discoverable in guild search
+  memberCount: integer("member_count").notNull().default(1), // denormalized, kept in sync in-transaction
+  vaultBalancePkr: decimal("vault_balance_pkr", { precision: 12, scale: 4 }).notNull().default("0.0000"), // denormalized sum of currently-held vault PKR
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("guilds_captain_id_idx").on(table.captainId),
+  index("guilds_status_idx").on(table.status),
+  index("guilds_guild_rank_idx").on(table.guildRank),
+  index("guilds_is_public_idx").on(table.isPublic),
+  sql`CONSTRAINT check_guild_strikes_range CHECK (strikes >= 0)`,
+]);
+
+export type Guild = typeof guilds.$inferSelect;
+export type InsertGuild = typeof guilds.$inferInsert;
+
+// Guild membership — one active guild per user, enforced by unique(userId) below.
+export const guildMembers = pgTable("guild_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"), // captain | member
+  status: text("status").notNull().default("pending"), // pending | active | left | rejected
+  requestedAt: timestamp("requested_at").defaultNow(),
+  joinedAt: timestamp("joined_at"),
+  leftAt: timestamp("left_at"),
+}, (table) => [
+  index("guild_members_guild_id_idx").on(table.guildId),
+  index("guild_members_user_id_idx").on(table.userId),
+  index("guild_members_status_idx").on(table.status),
+  // A user can only hold one non-terminal (pending/active) membership at a time;
+  // enforced at the application layer inside the join transaction (see storage.ts) —
+  // Postgres partial unique indexes are avoided here to keep Drizzle's push flow simple.
+]);
+
+export const insertGuildMemberSchema = createInsertSchema(guildMembers).omit({
+  id: true,
+  requestedAt: true,
+  joinedAt: true,
+  leftAt: true,
+});
+export type InsertGuildMember = z.infer<typeof insertGuildMemberSchema>;
+export type GuildMember = typeof guildMembers.$inferSelect;
+
+// Guild strike log — audit trail behind guilds.strikes; 3 active (uncleared) strikes freezes the guild.
+export const guildStrikes = pgTable("guild_strikes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "cascade" }),
+  reason: text("reason").notNull(),
+  source: text("source").notNull().default("admin"), // admin | system_inactivity | system_fraud
+  addedBy: varchar("added_by").references(() => users.id, { onDelete: "set null" }),
+  clearedBy: varchar("cleared_by").references(() => users.id, { onDelete: "set null" }),
+  clearedAt: timestamp("cleared_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("guild_strikes_guild_id_idx").on(table.guildId),
+  index("guild_strikes_cleared_at_idx").on(table.clearedAt),
+]);
+
+export const insertGuildStrikeSchema = createInsertSchema(guildStrikes).omit({
+  id: true,
+  clearedBy: true,
+  clearedAt: true,
+  createdAt: true,
+});
+export type InsertGuildStrike = z.infer<typeof insertGuildStrikeSchema>;
+export type GuildStrike = typeof guildStrikes.$inferSelect;
+
+// Weekly cycle per guild — tracks the target/actual/resolved state that makes
+// the resolution job idempotent (unique guildId+weekStart below).
+export const guildWeeklyCycles = pgTable("guild_weekly_cycles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "cascade" }),
+  weekStart: timestamp("week_start").notNull(), // Monday 00:00:00 UTC
+  weekEnd: timestamp("week_end").notNull(),     // Sunday 23:59:59 UTC
+  targetPoints: integer("target_points").notNull(), // snapshot of WEEKLY_GOAL_TARGETS_BY_RANK at cycle creation
+  actualPoints: integer("actual_points"), // filled in at resolution time
+  goalMet: boolean("goal_met"), // null until resolved
+  multiplierApplied: decimal("multiplier_applied", { precision: 4, scale: 2 }), // e.g. 1.20, or 1.00 if goal failed
+  resolved: boolean("resolved").notNull().default(false),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("guild_weekly_cycles_guild_id_idx").on(table.guildId),
+  index("guild_weekly_cycles_resolved_idx").on(table.resolved),
+  index("guild_weekly_cycles_week_start_idx").on(table.weekStart),
+  sql`CONSTRAINT guild_weekly_cycles_guild_week_unique UNIQUE (guild_id, week_start)`,
+]);
+
+export const insertGuildWeeklyCycleSchema = createInsertSchema(guildWeeklyCycles).omit({
+  id: true,
+  actualPoints: true,
+  goalMet: true,
+  multiplierApplied: true,
+  resolved: true,
+  resolvedAt: true,
+  createdAt: true,
+});
+export type InsertGuildWeeklyCycle = z.infer<typeof insertGuildWeeklyCycleSchema>;
+export type GuildWeeklyCycle = typeof guildWeeklyCycles.$inferSelect;
+
+// Per-guild-per-member-per-week vault accrual bucket. One row per (guild, user,
+// week), upserted (incremented) on every qualifying earn event, then mutated
+// exactly once by the weekly resolution job when released or forfeited-to-flat.
+export const guildVaultLedger = pgTable("guild_vault_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  weekStart: timestamp("week_start").notNull(),
+  pointsHeld: integer("points_held").notNull().default(0),
+  pkrHeld: decimal("pkr_held", { precision: 12, scale: 4 }).notNull().default("0.0000"),
+  status: text("status").notNull().default("held"), // held | released | forfeited
+  releasedMultiplier: decimal("released_multiplier", { precision: 4, scale: 2 }),
+  releasedPkrValue: decimal("released_pkr_value", { precision: 12, scale: 4 }),
+  releasedAt: timestamp("released_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("guild_vault_ledger_guild_id_idx").on(table.guildId),
+  index("guild_vault_ledger_user_id_idx").on(table.userId),
+  index("guild_vault_ledger_status_idx").on(table.status),
+  index("guild_vault_ledger_week_start_idx").on(table.weekStart),
+  sql`CONSTRAINT guild_vault_ledger_bucket_unique UNIQUE (guild_id, user_id, week_start)`,
+]);
+
+export const insertGuildVaultLedgerSchema = createInsertSchema(guildVaultLedger).omit({
+  id: true,
+  status: true,
+  releasedMultiplier: true,
+  releasedPkrValue: true,
+  releasedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertGuildVaultLedger = z.infer<typeof insertGuildVaultLedgerSchema>;
+export type GuildVaultLedger = typeof guildVaultLedger.$inferSelect;
+
+// The bulletproof points/PKR valuation ledger — append-only, see design notes above.
+export const pointsLedger = pgTable("points_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  guildId: varchar("guild_id").references(() => guilds.id, { onDelete: "set null" }), // guild active at earn time, if any
+  sourceType: text("source_type").notNull(), // ad_view | cpa_offer | daily_task | referral | guild_release
+  sourceRefId: varchar("source_ref_id"), // e.g. the adViews.id / taskRecords.id / guildWeeklyCycles.id this row is derived from
+  pointsDisplayed: integer("points_displayed").notNull(), // total illusion points shown on the Scratch Card
+  lockedPkrValue: decimal("locked_pkr_value", { precision: 12, scale: 4 }).notNull(), // IMMUTABLE once written
+  conversionRateUsed: decimal("conversion_rate_used", { precision: 12, scale: 4 }).notNull(), // IMMUTABLE once written
+  vaultShareLockedPkr: decimal("vault_share_locked_pkr", { precision: 12, scale: 4 }).notNull().default("0.0000"), // portion of lockedPkrValue held in the guild vault (0 if no guild)
+  weekStart: timestamp("week_start"), // set only for guild_release rows, ties back to the resolved week
+  isConverted: boolean("is_converted").notNull().default(true), // false only transiently for held-vault bookkeeping views
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`), // e.g. {basePoints, guildBonusPoints, cycleId, goalMet}
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("points_ledger_user_id_idx").on(table.userId),
+  index("points_ledger_guild_id_idx").on(table.guildId),
+  index("points_ledger_source_type_idx").on(table.sourceType),
+  index("points_ledger_created_at_idx").on(table.createdAt),
+  index("points_ledger_week_start_idx").on(table.weekStart),
+]);
+
+export const insertPointsLedgerSchema = createInsertSchema(pointsLedger).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPointsLedger = z.infer<typeof insertPointsLedgerSchema>;
+export type PointsLedger = typeof pointsLedger.$inferSelect;
+
+// Relations
+export const guildsRelations = relations(guilds, ({ one, many }) => ({
+  captain: one(users, {
+    fields: [guilds.captainId],
+    references: [users.id],
+  }),
+  members: many(guildMembers),
+  strikeLog: many(guildStrikes),
+  weeklyCycles: many(guildWeeklyCycles),
+  vaultLedger: many(guildVaultLedger),
+  pointsLedgerEntries: many(pointsLedger),
+}));
+
+export const guildMembersRelations = relations(guildMembers, ({ one }) => ({
+  guild: one(guilds, {
+    fields: [guildMembers.guildId],
+    references: [guilds.id],
+  }),
+  user: one(users, {
+    fields: [guildMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const guildStrikesRelations = relations(guildStrikes, ({ one }) => ({
+  guild: one(guilds, {
+    fields: [guildStrikes.guildId],
+    references: [guilds.id],
+  }),
+}));
+
+export const guildWeeklyCyclesRelations = relations(guildWeeklyCycles, ({ one, many }) => ({
+  guild: one(guilds, {
+    fields: [guildWeeklyCycles.guildId],
+    references: [guilds.id],
+  }),
+  vaultBuckets: many(guildVaultLedger),
+}));
+
+export const guildVaultLedgerRelations = relations(guildVaultLedger, ({ one }) => ({
+  guild: one(guilds, {
+    fields: [guildVaultLedger.guildId],
+    references: [guilds.id],
+  }),
+  user: one(users, {
+    fields: [guildVaultLedger.userId],
+    references: [users.id],
+  }),
+}));
+
+export const pointsLedgerRelations = relations(pointsLedger, ({ one }) => ({
+  user: one(users, {
+    fields: [pointsLedger.userId],
+    references: [users.id],
+  }),
+  guild: one(guilds, {
+    fields: [pointsLedger.guildId],
+    references: [guilds.id],
+  }),
+}));

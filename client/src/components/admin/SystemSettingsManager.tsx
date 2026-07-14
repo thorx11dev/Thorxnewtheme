@@ -22,7 +22,11 @@ export function SystemSettingsManager() {
   const [localConfigs, setLocalConfigs] = useState<Record<string, any>>({});
   
   // Fetch specific configuration keys
-  const configKeys = ["MIN_PAYOUT", "SYSTEM_FEE", "L1_BONUS", "L2_BONUS", "AD_NETWORKS", "CPA_NETWORKS"];
+  const configKeys = [
+    "MIN_PAYOUT", "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT",
+    "CONVERSION_RATE", "VAULT_HOLD_PCT",
+    "AD_NETWORKS", "CPA_NETWORKS",
+  ];
 
   // Admin-tunable Performance Score weights and Risk Engine thresholds.
   // Defaults here must match the fallback defaults read server-side
@@ -131,27 +135,36 @@ export function SystemSettingsManager() {
             />
             
             <EconomicControl 
-              label="System Fee (%)" 
-              value={localConfigs["SYSTEM_FEE"] || 0} 
-              onChange={(val: number) => updateValue("SYSTEM_FEE", val)}
-              onSave={() => handleSave("SYSTEM_FEE")}
-              isLoading={saveMutation.isPending && saveMutation.variables?.key === "SYSTEM_FEE"}
+              label="Withdrawal Fee (%)" 
+              value={localConfigs["WITHDRAWAL_FEE_PCT"] || 0} 
+              onChange={(val: number) => updateValue("WITHDRAWAL_FEE_PCT", val)}
+              onSave={() => handleSave("WITHDRAWAL_FEE_PCT")}
+              isLoading={saveMutation.isPending && saveMutation.variables?.key === "WITHDRAWAL_FEE_PCT"}
             />
+
+            <EconomicControl 
+              label="Referral Share of Fee (%)" 
+              value={localConfigs["REFERRAL_FEE_SHARE_PCT"] || 0} 
+              onChange={(val: number) => updateValue("REFERRAL_FEE_SHARE_PCT", val)}
+              onSave={() => handleSave("REFERRAL_FEE_SHARE_PCT")}
+              isLoading={saveMutation.isPending && saveMutation.variables?.key === "REFERRAL_FEE_SHARE_PCT"}
+            />
+            <p className="text-[10px] font-bold text-zinc-400 -mt-3">Portion of the withdrawal fee carved out to the withdrawing user's direct referrer. The rest stays with the platform. The user's total deduction is always exactly the Withdrawal Fee — this share does not add on top.</p>
 
             <div className="grid grid-cols-2 gap-6">
               <EconomicControl 
-                label="L1 Bonus (%)" 
-                value={localConfigs["L1_BONUS"] || 0} 
-                onChange={(val: number) => updateValue("L1_BONUS", val)}
-                onSave={() => handleSave("L1_BONUS")}
-                isLoading={saveMutation.isPending && saveMutation.variables?.key === "L1_BONUS"}
+                label="Points per PKR" 
+                value={localConfigs["CONVERSION_RATE"] || 0} 
+                onChange={(val: number) => updateValue("CONVERSION_RATE", val)}
+                onSave={() => handleSave("CONVERSION_RATE")}
+                isLoading={saveMutation.isPending && saveMutation.variables?.key === "CONVERSION_RATE"}
               />
               <EconomicControl 
-                label="L2 Bonus (%)" 
-                value={localConfigs["L2_BONUS"] || 0} 
-                onChange={(val: number) => updateValue("L2_BONUS", val)}
-                onSave={() => handleSave("L2_BONUS")}
-                isLoading={saveMutation.isPending && saveMutation.variables?.key === "L2_BONUS"}
+                label="Guild Vault Hold (%)" 
+                value={localConfigs["VAULT_HOLD_PCT"] || 0} 
+                onChange={(val: number) => updateValue("VAULT_HOLD_PCT", val)}
+                onSave={() => handleSave("VAULT_HOLD_PCT")}
+                isLoading={saveMutation.isPending && saveMutation.variables?.key === "VAULT_HOLD_PCT"}
               />
             </div>
           </div>

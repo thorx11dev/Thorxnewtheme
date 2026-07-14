@@ -82,12 +82,61 @@ import {
   scoreHistory,
   type ScoreHistory,
   type InsertScoreHistory,
+  guilds,
+  type Guild,
+  type InsertGuild,
+  guildMembers,
+  type GuildMember,
+  type InsertGuildMember,
+  guildStrikes,
+  type GuildStrike,
+  type InsertGuildStrike,
+  guildWeeklyCycles,
+  type GuildWeeklyCycle,
+  guildVaultLedger,
+  type GuildVaultLedger,
+  pointsLedger,
+  type PointsLedger,
+  type InsertPointsLedger,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, inArray, ilike, gte, lte, lt, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { encryptCredential, decryptCredential, isEncrypted } from "./utils/credential-crypto";
+
+// ── Guild Vault & Points Ledger config defaults ──────────────────────────────
+// Real values are read via getSystemConfigValue() from system_config at runtime
+// (team/admin editable); these are only the fallback if a key was never set.
+const DEFAULT_CONVERSION_RATE = 100; // 100 points == 1.00 PKR
+const DEFAULT_VAULT_HOLD_PCT = 15; // 15% of every earn event is held in the guild vault
+const DEFAULT_WEEKLY_GOAL_TARGETS_BY_RANK: Record<string, number> = {
+  E: 5000, D: 10000, C: 20000, B: 35000, A: 55000, S: 80000,
+};
+
+// Fixed UTC week boundary: Monday 00:00:00 UTC through Sunday 23:59:59.999 UTC.
+// Not user-configurable in v1 (see design notes in shared/schema.ts).
+function getUtcWeekBounds(reference: Date): { weekStart: Date; weekEnd: Date } {
+  const d = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate()));
+  const day = d.getUTCDay(); // 0 = Sunday .. 6 = Saturday
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const weekStart = new Date(d);
+  weekStart.setUTCDate(d.getUTCDate() + diffToMonday);
+  weekStart.setUTCHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+  weekEnd.setUTCHours(23, 59, 59, 999);
+  return { weekStart, weekEnd };
+}
+
+export interface EarnEventBreakdown {
+  basePoints: number;
+  guildBonusPoints: number;
+  totalPoints: number;
+  vaultPkr: string;
+  walletPkr: string;
+  guildId: string | null;
+}
 
 export interface IStorage {
   // Legacy registration methods (keeping for backward compatibility)
@@ -115,7 +164,7 @@ export interface IStorage {
   getUserTotalEarnings(userId: string): Promise<string>;
 
   // Ad views methods
-  createAdView(adView: InsertAdView): Promise<AdView>;
+  createAdView(adView: InsertAdView): Promise<AdView & { pointsBreakdown?: EarnEventBreakdown }>;
   getUserAdViews(userId: string, limit?: number): Promise<AdView[]>;
   getTodayAdViews(userId: string): Promise<number>;
 
@@ -418,9 +467,15 @@ export class DatabaseStorage implements IStorage {
   private async bootstrapConfig() {
     const defaults = [
       { key: "MIN_PAYOUT", value: 100, description: "Minimum PKR required for withdrawal" },
-      { key: "SYSTEM_FEE", value: 10, description: "Platform percentage fee per payout" },
-      { key: "L1_BONUS", value: 15, description: "Direct referral commission percentage" },
-      { key: "L2_BONUS", value: 7.5, description: "Network (L2) referral commission percentage" },
+      { key: "WITHDRAWAL_FEE_PCT", value: 15, description: "Total percentage fee deducted from every payout" },
+      { key: "REFERRAL_FEE_SHARE_PCT", value: 50, description: "Share of the withdrawal fee (above) carved out to the withdrawing user's direct referrer; the rest stays with the platform" },
+      { key: "CONVERSION_RATE", value: 100, description: "Points shown per 1.00 PKR earned (Guild Vault & Points Ledger)" },
+      { key: "VAULT_HOLD_PCT", value: 15, description: "Percentage of every earn event held in a member's Guild Vault, released weekly" },
+      {
+        key: "WEEKLY_GOAL_TARGETS_BY_RANK",
+        value: { E: 5000, D: 10000, C: 20000, B: 35000, A: 55000, S: 80000 },
+        description: "Weekly points target a guild must hit at each Guild Rank to earn the release multiplier"
+      },
       { 
         key: "AD_NETWORKS", 
         value: [
@@ -692,20 +747,176 @@ export class DatabaseStorage implements IStorage {
     return result?.total || "0.00";
   }
 
+  // ── Guild Vault & Points Ledger: shared earn-event pipeline ────────────────
+  // Every PKR-earning action (ad views today; CPA/daily-task payouts if they
+  // ever pay PKR directly in future) must flow through here rather than
+  // calling createEarning() directly, so the points ledger and guild vault
+  // split stay in sync with the user's spendable balance. See design notes
+  // in shared/schema.ts above the guilds/pointsLedger tables.
+  private async getActiveGuildMembershipTx(
+    tx: any,
+    userId: string
+  ): Promise<{ membership: GuildMember; guild: Guild } | undefined> {
+    const [row] = await tx
+      .select({ membership: guildMembers, guild: guilds })
+      .from(guildMembers)
+      .innerJoin(guilds, eq(guildMembers.guildId, guilds.id))
+      .where(and(eq(guildMembers.userId, userId), eq(guildMembers.status, "active")))
+      .limit(1);
+    return row;
+  }
+
+  async recordEarnEvent(params: {
+    userId: string;
+    sourceType: string; // ad_view | cpa_offer | daily_task
+    sourceRefId?: string;
+    totalPkrAmount: string; // the FULL value of this earn event, before any guild vault split
+    earningType: string; // stored on the `earnings` row's `type` column
+    earningDescription: string;
+    earningStatus: "pending" | "completed";
+  }): Promise<{ earning: Earning; pointsLedgerEntry: PointsLedger; breakdown: EarnEventBreakdown }> {
+    const result = await db.transaction(async (tx) => {
+      const conversionRate = await this.getSystemConfigValue<number>("CONVERSION_RATE", DEFAULT_CONVERSION_RATE);
+      const vaultHoldPct = await this.getSystemConfigValue<number>("VAULT_HOLD_PCT", DEFAULT_VAULT_HOLD_PCT);
+
+      const membershipRow = await this.getActiveGuildMembershipTx(tx, params.userId);
+      const inGuild = !!(membershipRow && membershipRow.guild.status === "active");
+
+      const totalPkr = parseFloat(params.totalPkrAmount);
+      const vaultPkr = inGuild ? Math.round(totalPkr * (vaultHoldPct / 100) * 10000) / 10000 : 0;
+      const walletPkr = Math.round((totalPkr - vaultPkr) * 10000) / 10000;
+
+      const totalPoints = Math.round(totalPkr * conversionRate);
+      const basePoints = Math.round(walletPkr * conversionRate);
+      const guildBonusPoints = totalPoints - basePoints;
+
+      // Same pending/available + totalEarnings bookkeeping createEarning() has always
+      // done, just scoped to the wallet share — the vault share is tracked separately
+      // below and is not part of the user's spendable balance until weekly release.
+      const [earning] = await tx
+        .insert(earnings)
+        .values({
+          userId: params.userId,
+          type: params.earningType,
+          amount: walletPkr.toFixed(2),
+          description: params.earningDescription,
+          status: params.earningStatus,
+        })
+        .returning();
+
+      const toPending = params.earningStatus === "pending";
+      const balanceUpdate: Record<string, any> = {
+        totalEarnings: sql`${users.totalEarnings} + ${walletPkr.toFixed(2)}`,
+        txPointsBalance: sql`${users.txPointsBalance} + ${totalPoints}`,
+        updatedAt: new Date(),
+      };
+      if (toPending) {
+        balanceUpdate.pendingBalance = sql`${users.pendingBalance} + ${walletPkr.toFixed(2)}`;
+      } else {
+        balanceUpdate.availableBalance = sql`${users.availableBalance} + ${walletPkr.toFixed(2)}`;
+      }
+      await tx.update(users).set(balanceUpdate).where(eq(users.id, params.userId));
+
+      const guildId = inGuild ? membershipRow!.guild.id : null;
+      const [pointsLedgerEntry] = await tx
+        .insert(pointsLedger)
+        .values({
+          userId: params.userId,
+          guildId,
+          sourceType: params.sourceType,
+          sourceRefId: params.sourceRefId,
+          pointsDisplayed: totalPoints,
+          lockedPkrValue: totalPkr.toFixed(4),
+          conversionRateUsed: conversionRate.toFixed(4),
+          vaultShareLockedPkr: vaultPkr.toFixed(4),
+          metadata: {
+            basePoints,
+            guildBonusPoints,
+            walletPkr: walletPkr.toFixed(4),
+            vaultPkr: vaultPkr.toFixed(4),
+            guildId,
+          },
+        })
+        .returning();
+
+      if (inGuild && vaultPkr > 0) {
+        const guild = membershipRow!.guild;
+        const { weekStart, weekEnd } = getUtcWeekBounds(new Date());
+
+        const weeklyTargets = await this.getSystemConfigValue<Record<string, number>>(
+          "WEEKLY_GOAL_TARGETS_BY_RANK",
+          DEFAULT_WEEKLY_GOAL_TARGETS_BY_RANK
+        );
+        const targetPoints = weeklyTargets[guild.guildRank] ?? DEFAULT_WEEKLY_GOAL_TARGETS_BY_RANK.E;
+
+        // Idempotent: unique(guildId, weekStart) means a concurrent earn event for
+        // any member of this guild this week has already created the cycle row.
+        await tx
+          .insert(guildWeeklyCycles)
+          .values({ guildId: guild.id, weekStart, weekEnd, targetPoints })
+          .onConflictDoNothing({ target: [guildWeeklyCycles.guildId, guildWeeklyCycles.weekStart] });
+
+        await tx
+          .insert(guildVaultLedger)
+          .values({
+            guildId: guild.id,
+            userId: params.userId,
+            weekStart,
+            pointsHeld: guildBonusPoints,
+            pkrHeld: vaultPkr.toFixed(4),
+          })
+          .onConflictDoUpdate({
+            target: [guildVaultLedger.guildId, guildVaultLedger.userId, guildVaultLedger.weekStart],
+            set: {
+              pointsHeld: sql`${guildVaultLedger.pointsHeld} + ${guildBonusPoints}`,
+              pkrHeld: sql`${guildVaultLedger.pkrHeld} + ${vaultPkr.toFixed(4)}`,
+              updatedAt: new Date(),
+            },
+          });
+
+        await tx
+          .update(guilds)
+          .set({
+            vaultBalancePkr: sql`${guilds.vaultBalancePkr} + ${vaultPkr.toFixed(4)}`,
+            guildScore: sql`${guilds.guildScore} + ${guildBonusPoints}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(guilds.id, guild.id));
+      }
+
+      const breakdown: EarnEventBreakdown = {
+        basePoints,
+        guildBonusPoints,
+        totalPoints,
+        vaultPkr: vaultPkr.toFixed(4),
+        walletPkr: walletPkr.toFixed(2),
+        guildId,
+      };
+
+      return { earning, pointsLedgerEntry, breakdown };
+    });
+
+    await this.checkAndUpdateRank(params.userId);
+    return result;
+  }
+
   // Ad views methods
-  async createAdView(insertAdView: InsertAdView): Promise<AdView> {
+  async createAdView(insertAdView: InsertAdView): Promise<AdView & { pointsBreakdown?: EarnEventBreakdown }> {
     const [adView] = await db.insert(adViews).values(insertAdView).returning();
 
-    // Create corresponding earning record
+    // Create corresponding earning record + points ledger entry (with guild vault split)
     if (insertAdView.completed && insertAdView.earnedAmount) {
       // Ad views always go to pending first
-      await this.createEarning({
+      const { breakdown } = await this.recordEarnEvent({
         userId: insertAdView.userId,
-        type: "ad_view",
-        amount: insertAdView.earnedAmount,
-        description: `Watched ${insertAdView.adType} ad`,
-        status: "pending",
+        sourceType: "ad_view",
+        sourceRefId: adView.id,
+        totalPkrAmount: insertAdView.earnedAmount,
+        earningType: "ad_view",
+        earningDescription: `Watched ${insertAdView.adType} ad`,
+        earningStatus: "pending",
       });
+      return { ...adView, pointsBreakdown: breakdown };
     }
 
     return adView;
@@ -992,6 +1203,9 @@ export class DatabaseStorage implements IStorage {
         trustReason: users.trustReason,
         profilePicture: users.profilePicture,
         permissions: users.permissions,
+        personalRank: users.personalRank,
+        guildContributionScore: users.guildContributionScore,
+        txPointsBalance: users.txPointsBalance,
         teamKey: teamKeys,
       })
       .from(users)
@@ -1081,7 +1295,10 @@ export class DatabaseStorage implements IStorage {
           trustStatus: users.trustStatus,
           trustReason: users.trustReason,
           profilePicture: users.profilePicture,
-          permissions: users.permissions
+          permissions: users.permissions,
+          personalRank: users.personalRank,
+          guildContributionScore: users.guildContributionScore,
+          txPointsBalance: users.txPointsBalance
         })
         .from(users)
         .orderBy(desc(users.createdAt));
@@ -1414,12 +1631,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Withdrawals with Commission Logic
+  //
+  // Fee model (single-level referral, per thorx_master_plan.md): every withdrawal
+  // pays a single total fee of WITHDRAWAL_FEE_PCT (default 15%) of the requested
+  // amount. REFERRAL_FEE_SHARE_PCT (default 50%) carves a portion of THAT fee out
+  // to the withdrawing user's direct (L1) referrer — the platform keeps the rest.
+  // The user's total deduction is always exactly WITHDRAWAL_FEE_PCT; the referral
+  // share does not add on top of it. There is no Level-2 referral commission —
+  // that code path was retired (see thorx_master_plan.md and memory topic
+  // "referral-simplification"); any pending L2 rows were settled once via a
+  // one-time migration at that time.
   async createWithdrawal(insertWithdrawal: InsertWithdrawal): Promise<Withdrawal> {
     // 0. Fetch Dynamic Configuration
     const minPayout = await this.getSystemConfigValue("MIN_PAYOUT", 100);
-    const systemFeeRate = await this.getSystemConfigValue("SYSTEM_FEE", 10) / 100;
-    const l1Rate = await this.getSystemConfigValue("L1_BONUS", 15) / 100;
-    const l2Rate = await this.getSystemConfigValue("L2_BONUS", 7.5) / 100;
+    const withdrawalFeeRate = await this.getSystemConfigValue("WITHDRAWAL_FEE_PCT", 15) / 100;
+    const referralFeeSharePct = await this.getSystemConfigValue("REFERRAL_FEE_SHARE_PCT", 50) / 100;
 
     // Validate minimum withdrawal amount
     const amount = parseFloat(insertWithdrawal.amount);
@@ -1456,21 +1682,13 @@ export class DatabaseStorage implements IStorage {
       }
 
       // 4. Calculate Fee and Net Amount
-      // Net = Total - SystemFee - L1Bonus - L2Bonus (Referral bonuses are carved out of the requested amount)
-      const feeAmount = (amount * systemFeeRate).toFixed(2);
-      const l1BonusAmount = user.referredBy ? (amount * l1Rate) : 0;
-      
-      // Determine L2 beneficiary
-      let l2BeneficiaryId: string | null = null;
-      if (user.referredBy) {
-        const [referrerL1] = await tx.select().from(users).where(eq(users.id, user.referredBy));
-        if (referrerL1 && referrerL1.referredBy) {
-          l2BeneficiaryId = referrerL1.referredBy;
-        }
-      }
-      const l2BonusAmount = l2BeneficiaryId ? (amount * l2Rate) : 0;
+      // Net = Total - WithdrawalFee. The referral share is carved OUT of that fee,
+      // not deducted additionally — the user's total deduction is always exactly
+      // withdrawalFeeRate (default 15%), regardless of whether they were referred.
+      const feeAmount = (amount * withdrawalFeeRate).toFixed(2);
+      const l1BonusAmount = user.referredBy ? (parseFloat(feeAmount) * referralFeeSharePct) : 0;
 
-      const netAmount = (amount - parseFloat(feeAmount) - l1BonusAmount - l2BonusAmount).toFixed(2);
+      const netAmount = (amount - parseFloat(feeAmount)).toFixed(2);
 
       // 5. Create Withdrawal Record
       const [withdrawal] = await tx.insert(withdrawals).values({
@@ -1486,43 +1704,22 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       }).where(eq(users.id, insertWithdrawal.userId));
 
-      // 7. Determine Commissions
-      if (user.referredBy) {
-        // Level 1 Referrer
-        if (l1BonusAmount > 0) {
-          await tx.insert(commissionLogs).values({
-            beneficiaryId: user.referredBy,
-            sourceUserId: user.id,
-            triggerWithdrawalId: withdrawal.id,
-            amount: l1BonusAmount.toFixed(2),
-            rate: l1Rate.toFixed(4),
-            level: 1,
-            status: "pending", 
-            metadata: {
-              withdrawalAmount: insertWithdrawal.amount,
-              calculatedAt: new Date().toISOString(),
-              configUsed: { l1Rate, systemFeeRate }
-            }
-          });
-        }
-
-        // Level 2 Referrer
-        if (l2BeneficiaryId && l2BonusAmount > 0) {
-          await tx.insert(commissionLogs).values({
-            beneficiaryId: l2BeneficiaryId,
-            sourceUserId: user.id,
-            triggerWithdrawalId: withdrawal.id,
-            amount: l2BonusAmount.toFixed(2),
-            rate: l2Rate.toFixed(4),
-            level: 2,
-            status: "pending",
-            metadata: {
-              withdrawalAmount: insertWithdrawal.amount,
-              calculatedAt: new Date().toISOString(),
-              configUsed: { l2Rate, systemFeeRate }
-            }
-          });
-        }
+      // 7. Determine Commission (single-level referral only — see fee model notes above)
+      if (user.referredBy && l1BonusAmount > 0) {
+        await tx.insert(commissionLogs).values({
+          beneficiaryId: user.referredBy,
+          sourceUserId: user.id,
+          triggerWithdrawalId: withdrawal.id,
+          amount: l1BonusAmount.toFixed(2),
+          rate: (withdrawalFeeRate * referralFeeSharePct).toFixed(4),
+          level: 1,
+          status: "pending",
+          metadata: {
+            withdrawalAmount: insertWithdrawal.amount,
+            calculatedAt: new Date().toISOString(),
+            configUsed: { withdrawalFeeRate, referralFeeSharePct }
+          }
+        });
       }
 
       return withdrawal;
@@ -1650,6 +1847,448 @@ export class DatabaseStorage implements IStorage {
         .where(eq(users.id, withdrawal.userId));
 
       return updatedWithdrawal;
+    });
+  }
+
+  // ── Guild Weekly Vault Resolution ────────────────────────────────────────────
+  // Design decisions made here (agent's call, documented per task instructions,
+  // since the master plan did not specify exact resolution mechanics):
+  //  - Held vault PKR is NEVER destructively forfeited by this automated job.
+  //    The user's principal is always released back to them; only the BONUS
+  //    multiplier is at stake. This is deliberately conservative — an automated
+  //    job should never be the one to delete real money from a user's balance.
+  //    guild_vault_ledger.status only ever transitions held -> released here;
+  //    'forfeited' is reserved for a possible future admin-only action (e.g.
+  //    disbanding a fraud guild) and is never set automatically.
+  //  - Goal met -> release principal x VAULT_RELEASE_MULTIPLIER_BY_RANK[guildRank].
+  //    Goal missed -> release principal x 1.0 (no bonus) AND add one guild strike.
+  //  - 3 uncleared strikes (clearedAt IS NULL) freezes the guild. A frozen guild's
+  //    members stop accruing new vault holds (recordEarnEvent only splits for
+  //    status: 'active' guilds) until an admin unfreezes/clears strikes.
+  //  - "Actual points" for a week = SUM(pointsHeld) across every member's vault
+  //    bucket for that (guild, weekStart) — i.e. the guild's collective bonus
+  //    points earned that week, compared against the snapshot target.
+  async getResolvableGuildWeeklyCycles(asOf: Date = new Date()): Promise<GuildWeeklyCycle[]> {
+    return await db
+      .select()
+      .from(guildWeeklyCycles)
+      .where(and(eq(guildWeeklyCycles.resolved, false), lt(guildWeeklyCycles.weekEnd, asOf)));
+  }
+
+  async resolveGuildWeeklyCycle(cycleId: string): Promise<{
+    cycle: GuildWeeklyCycle;
+    goalMet: boolean;
+    multiplierApplied: number;
+    membersReleased: number;
+    totalReleasedPkr: string;
+    guildFrozen: boolean;
+  }> {
+    return await db.transaction(async (tx) => {
+      const [cycle] = await tx.select().from(guildWeeklyCycles).where(eq(guildWeeklyCycles.id, cycleId));
+      if (!cycle) throw new Error("Guild weekly cycle not found");
+      if (cycle.resolved) {
+        throw new Error("Guild weekly cycle already resolved");
+      }
+
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, cycle.guildId));
+      if (!guild) throw new Error("Guild not found for weekly cycle");
+
+      const buckets = await tx
+        .select()
+        .from(guildVaultLedger)
+        .where(and(
+          eq(guildVaultLedger.guildId, cycle.guildId),
+          eq(guildVaultLedger.weekStart, cycle.weekStart),
+          eq(guildVaultLedger.status, "held")
+        ));
+
+      const actualPoints = buckets.reduce((sum, b) => sum + b.pointsHeld, 0);
+      const goalMet = actualPoints >= cycle.targetPoints;
+
+      const multiplierTable = await this.getSystemConfigValue<Record<string, number>>(
+        "VAULT_RELEASE_MULTIPLIER_BY_RANK",
+        { E: 1.0, D: 1.05, C: 1.10, B: 1.15, A: 1.20, S: 1.30 }
+      );
+      const multiplier = goalMet ? (multiplierTable[guild.guildRank] ?? 1.0) : 1.0;
+      const conversionRate = await this.getSystemConfigValue<number>("CONVERSION_RATE", DEFAULT_CONVERSION_RATE);
+
+      let totalReleasedPkr = 0;
+      for (const bucket of buckets) {
+        const heldPkr = parseFloat(bucket.pkrHeld);
+        const releasedPkr = Math.round(heldPkr * multiplier * 10000) / 10000;
+        const bonusPkr = Math.round((releasedPkr - heldPkr) * 10000) / 10000;
+        totalReleasedPkr += releasedPkr;
+
+        await tx.update(guildVaultLedger).set({
+          status: "released",
+          releasedMultiplier: multiplier.toFixed(2),
+          releasedPkrValue: releasedPkr.toFixed(4),
+          releasedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(guildVaultLedger.id, bucket.id));
+
+        await tx.update(users).set({
+          availableBalance: sql`${users.availableBalance} + ${releasedPkr.toFixed(2)}`,
+          totalEarnings: sql`${users.totalEarnings} + ${releasedPkr.toFixed(2)}`,
+          updatedAt: new Date(),
+        }).where(eq(users.id, bucket.userId));
+
+        await tx.insert(pointsLedger).values({
+          userId: bucket.userId,
+          guildId: cycle.guildId,
+          sourceType: "guild_release",
+          sourceRefId: cycle.id,
+          pointsDisplayed: Math.max(0, Math.round(bonusPkr * conversionRate)),
+          lockedPkrValue: releasedPkr.toFixed(4),
+          conversionRateUsed: conversionRate.toFixed(4),
+          vaultShareLockedPkr: "0.0000",
+          weekStart: cycle.weekStart,
+          metadata: {
+            originalPkrHeld: heldPkr.toFixed(4),
+            multiplierApplied: multiplier,
+            goalMet,
+            actualPoints,
+            targetPoints: cycle.targetPoints,
+            guildId: cycle.guildId,
+            cycleId: cycle.id,
+          },
+        });
+      }
+
+      await tx.update(guilds).set({
+        vaultBalancePkr: sql`GREATEST(${guilds.vaultBalancePkr} - ${totalReleasedPkr.toFixed(4)}, 0)`,
+        updatedAt: new Date(),
+      }).where(eq(guilds.id, cycle.guildId));
+
+      await tx.update(guildWeeklyCycles).set({
+        actualPoints,
+        goalMet,
+        multiplierApplied: multiplier.toFixed(2),
+        resolved: true,
+        resolvedAt: new Date(),
+      }).where(eq(guildWeeklyCycles.id, cycle.id));
+
+      let guildFrozen = false;
+      if (!goalMet) {
+        await tx.insert(guildStrikes).values({
+          guildId: cycle.guildId,
+          reason: `Weekly goal missed: ${actualPoints}/${cycle.targetPoints} points (week of ${cycle.weekStart.toISOString().slice(0, 10)})`,
+          source: "system_goal_missed",
+        });
+
+        const [{ count: activeStrikes }] = await tx
+          .select({ count: sql<number>`count(*)` })
+          .from(guildStrikes)
+          .where(and(eq(guildStrikes.guildId, cycle.guildId), sql`${guildStrikes.clearedAt} IS NULL`));
+
+        const newStrikeCount = Number(activeStrikes) || 0;
+        await tx.update(guilds).set({ strikes: newStrikeCount, updatedAt: new Date() }).where(eq(guilds.id, cycle.guildId));
+
+        if (newStrikeCount >= 3 && guild.status === "active") {
+          await tx.update(guilds).set({ status: "frozen", updatedAt: new Date() }).where(eq(guilds.id, cycle.guildId));
+          guildFrozen = true;
+        }
+      }
+
+      return {
+        cycle: { ...cycle, actualPoints, goalMet, multiplierApplied: multiplier.toFixed(2), resolved: true, resolvedAt: new Date() },
+        goalMet,
+        multiplierApplied: multiplier,
+        membersReleased: buckets.length,
+        totalReleasedPkr: totalReleasedPkr.toFixed(4),
+        guildFrozen,
+      };
+    });
+  }
+
+  async runGuildWeeklyResolution(): Promise<{ resolvedCycles: number; frozenGuilds: number }> {
+    const resolvable = await this.getResolvableGuildWeeklyCycles();
+    let frozenGuilds = 0;
+    for (const cycle of resolvable) {
+      try {
+        const result = await this.resolveGuildWeeklyCycle(cycle.id);
+        if (result.guildFrozen) frozenGuilds++;
+      } catch (error) {
+        console.error(`[GuildVault] Failed to resolve weekly cycle ${cycle.id}:`, error);
+      }
+    }
+    return { resolvedCycles: resolvable.length, frozenGuilds };
+  }
+
+  // ── Guilds: CRUD, join/approve flow, vault & ledger reads ────────────────────
+  // Join flow is request-then-captain-approval (not instant) per master plan.
+  async createGuild(params: { name: string; description?: string; captainId: string }): Promise<Guild> {
+    return await db.transaction(async (tx) => {
+      const existing = await this.getActiveGuildMembershipTx(tx, params.captainId);
+      if (existing) {
+        throw new Error("You are already in a guild. Leave your current guild before creating a new one.");
+      }
+      const [guild] = await tx.insert(guilds).values({
+        name: params.name,
+        description: params.description,
+        captainId: params.captainId,
+      }).returning();
+
+      await tx.insert(guildMembers).values({
+        guildId: guild.id,
+        userId: params.captainId,
+        role: "captain",
+        status: "active",
+        joinedAt: new Date(),
+      });
+
+      return guild;
+    });
+  }
+
+  async listGuilds(filters?: { search?: string; limit?: number; offset?: number }): Promise<{ guilds: Guild[]; total: number }> {
+    const limit = filters?.limit ?? 20;
+    const offset = filters?.offset ?? 0;
+    const conditions = [eq(guilds.isPublic, true), sql`${guilds.status} != 'disbanded'`];
+    if (filters?.search) {
+      conditions.push(sql`${guilds.name} ILIKE ${'%' + filters.search + '%'}`);
+    }
+    const rows = await db.select().from(guilds).where(and(...conditions)).orderBy(desc(guilds.guildScore)).limit(limit).offset(offset);
+    const [{ total }] = await db.select({ total: sql<number>`count(*)` }).from(guilds).where(and(...conditions));
+    return { guilds: rows, total: Number(total) };
+  }
+
+  async getGuildById(guildId: string): Promise<Guild | undefined> {
+    const [guild] = await db.select().from(guilds).where(eq(guilds.id, guildId));
+    return guild;
+  }
+
+  async getGuildMembers(guildId: string): Promise<Array<GuildMember & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'avatar' | 'rank' | 'profilePicture'> }>> {
+    return await db
+      .select({
+        id: guildMembers.id,
+        guildId: guildMembers.guildId,
+        userId: guildMembers.userId,
+        role: guildMembers.role,
+        status: guildMembers.status,
+        requestedAt: guildMembers.requestedAt,
+        joinedAt: guildMembers.joinedAt,
+        leftAt: guildMembers.leftAt,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          avatar: users.avatar,
+          rank: users.rank,
+          profilePicture: users.profilePicture,
+        },
+      })
+      .from(guildMembers)
+      .innerJoin(users, eq(users.id, guildMembers.userId))
+      .where(eq(guildMembers.guildId, guildId))
+      .orderBy(desc(guildMembers.status), guildMembers.requestedAt);
+  }
+
+  async getUserGuildMembership(userId: string): Promise<(GuildMember & { guild: Guild }) | undefined> {
+    const [row] = await db
+      .select({ membership: guildMembers, guild: guilds })
+      .from(guildMembers)
+      .innerJoin(guilds, eq(guildMembers.guildId, guilds.id))
+      .where(and(eq(guildMembers.userId, userId), sql`${guildMembers.status} IN ('pending', 'active')`))
+      .orderBy(desc(guildMembers.requestedAt))
+      .limit(1);
+    if (!row) return undefined;
+    return { ...row.membership, guild: row.guild };
+  }
+
+  async requestToJoinGuild(guildId: string, userId: string): Promise<GuildMember> {
+    return await db.transaction(async (tx) => {
+      const existing = await this.getActiveGuildMembershipTx(tx, userId);
+      if (existing) {
+        throw new Error("You are already in a guild.");
+      }
+      const [pendingExisting] = await tx
+        .select()
+        .from(guildMembers)
+        .where(and(eq(guildMembers.userId, userId), eq(guildMembers.status, "pending")))
+        .limit(1);
+      if (pendingExisting) {
+        throw new Error("You already have a pending join request.");
+      }
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, guildId));
+      if (!guild) throw new Error("Guild not found");
+      if (guild.status !== "active") throw new Error("This guild is not accepting new members right now.");
+
+      const [membership] = await tx.insert(guildMembers).values({
+        guildId,
+        userId,
+        role: "member",
+        status: "pending",
+      }).returning();
+      return membership;
+    });
+  }
+
+  async decideGuildJoinRequest(guildId: string, memberUserId: string, captainId: string, approve: boolean): Promise<GuildMember> {
+    return await db.transaction(async (tx) => {
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, guildId));
+      if (!guild) throw new Error("Guild not found");
+      if (guild.captainId !== captainId) throw new Error("Only the guild captain can decide join requests.");
+
+      const [membership] = await tx
+        .select()
+        .from(guildMembers)
+        .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.userId, memberUserId), eq(guildMembers.status, "pending")))
+        .limit(1);
+      if (!membership) throw new Error("No pending join request found for this user.");
+
+      const [updated] = await tx
+        .update(guildMembers)
+        .set({
+          status: approve ? "active" : "rejected",
+          joinedAt: approve ? new Date() : null,
+        })
+        .where(eq(guildMembers.id, membership.id))
+        .returning();
+
+      if (approve) {
+        await tx.update(guilds).set({
+          memberCount: sql`${guilds.memberCount} + 1`,
+          updatedAt: new Date(),
+        }).where(eq(guilds.id, guildId));
+      }
+
+      return updated;
+    });
+  }
+
+  async leaveGuild(guildId: string, userId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, guildId));
+      if (!guild) throw new Error("Guild not found");
+      if (guild.captainId === userId) {
+        throw new Error("The captain cannot leave the guild. Transfer captaincy or disband the guild instead.");
+      }
+      const result = await tx
+        .update(guildMembers)
+        .set({ status: "left", leftAt: new Date() })
+        .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.userId, userId), eq(guildMembers.status, "active")))
+        .returning();
+      if (result.length === 0) throw new Error("You are not an active member of this guild.");
+
+      await tx.update(guilds).set({
+        memberCount: sql`GREATEST(${guilds.memberCount} - 1, 0)`,
+        updatedAt: new Date(),
+      }).where(eq(guilds.id, guildId));
+    });
+  }
+
+  async removeGuildMember(guildId: string, targetUserId: string, captainId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, guildId));
+      if (!guild) throw new Error("Guild not found");
+      if (guild.captainId !== captainId) throw new Error("Only the guild captain can remove members.");
+      if (targetUserId === captainId) throw new Error("The captain cannot remove themselves.");
+
+      const result = await tx
+        .update(guildMembers)
+        .set({ status: "left", leftAt: new Date() })
+        .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.userId, targetUserId), eq(guildMembers.status, "active")))
+        .returning();
+      if (result.length === 0) throw new Error("This user is not an active member of this guild.");
+
+      await tx.update(guilds).set({
+        memberCount: sql`GREATEST(${guilds.memberCount} - 1, 0)`,
+        updatedAt: new Date(),
+      }).where(eq(guilds.id, guildId));
+    });
+  }
+
+  async getGuildVaultStatus(guildId: string): Promise<{
+    guild: Guild;
+    currentCycle: GuildWeeklyCycle | null;
+    memberBuckets: Array<GuildVaultLedger & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'avatar'> }>;
+  }> {
+    const [guild] = await db.select().from(guilds).where(eq(guilds.id, guildId));
+    if (!guild) throw new Error("Guild not found");
+
+    const { weekStart } = getUtcWeekBounds(new Date());
+    const [currentCycle] = await db
+      .select()
+      .from(guildWeeklyCycles)
+      .where(and(eq(guildWeeklyCycles.guildId, guildId), eq(guildWeeklyCycles.weekStart, weekStart)))
+      .limit(1);
+
+    const memberBuckets = await db
+      .select({
+        id: guildVaultLedger.id,
+        guildId: guildVaultLedger.guildId,
+        userId: guildVaultLedger.userId,
+        weekStart: guildVaultLedger.weekStart,
+        pointsHeld: guildVaultLedger.pointsHeld,
+        pkrHeld: guildVaultLedger.pkrHeld,
+        status: guildVaultLedger.status,
+        releasedMultiplier: guildVaultLedger.releasedMultiplier,
+        releasedPkrValue: guildVaultLedger.releasedPkrValue,
+        releasedAt: guildVaultLedger.releasedAt,
+        createdAt: guildVaultLedger.createdAt,
+        updatedAt: guildVaultLedger.updatedAt,
+        user: { id: users.id, firstName: users.firstName, lastName: users.lastName, avatar: users.avatar },
+      })
+      .from(guildVaultLedger)
+      .innerJoin(users, eq(users.id, guildVaultLedger.userId))
+      .where(and(eq(guildVaultLedger.guildId, guildId), eq(guildVaultLedger.weekStart, weekStart)))
+      .orderBy(desc(guildVaultLedger.pointsHeld));
+
+    return { guild, currentCycle: currentCycle ?? null, memberBuckets };
+  }
+
+  async getPointsLedgerForUser(userId: string, limit = 50, offset = 0): Promise<{ entries: PointsLedger[]; total: number }> {
+    const entries = await db
+      .select()
+      .from(pointsLedger)
+      .where(eq(pointsLedger.userId, userId))
+      .orderBy(desc(pointsLedger.createdAt))
+      .limit(limit)
+      .offset(offset);
+    const [{ total }] = await db.select({ total: sql<number>`count(*)` }).from(pointsLedger).where(eq(pointsLedger.userId, userId));
+    return { entries, total: Number(total) };
+  }
+
+  // ── Admin/team guild moderation ──────────────────────────────────────────────
+  async listGuildsAdmin(filters?: { status?: string; search?: string; limit?: number; offset?: number }): Promise<{ guilds: Guild[]; total: number }> {
+    const limit = filters?.limit ?? 20;
+    const offset = filters?.offset ?? 0;
+    const conditions = [];
+    if (filters?.status) conditions.push(eq(guilds.status, filters.status));
+    if (filters?.search) conditions.push(sql`${guilds.name} ILIKE ${'%' + filters.search + '%'}`);
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const rows = await db.select().from(guilds).where(where).orderBy(desc(guilds.createdAt)).limit(limit).offset(offset);
+    const [{ total }] = await db.select({ total: sql<number>`count(*)` }).from(guilds).where(where);
+    return { guilds: rows, total: Number(total) };
+  }
+
+  async setGuildStatus(guildId: string, status: "active" | "frozen" | "disbanded"): Promise<Guild> {
+    const [guild] = await db.update(guilds).set({ status, updatedAt: new Date() }).where(eq(guilds.id, guildId)).returning();
+    if (!guild) throw new Error("Guild not found");
+    return guild;
+  }
+
+  async addManualGuildStrike(guildId: string, reason: string, addedBy: string): Promise<{ guild: Guild; strike: GuildStrike }> {
+    return await db.transaction(async (tx) => {
+      const [strike] = await tx.insert(guildStrikes).values({ guildId, reason, source: "admin", addedBy }).returning();
+      const [{ count }] = await tx
+        .select({ count: sql<number>`count(*)` })
+        .from(guildStrikes)
+        .where(and(eq(guildStrikes.guildId, guildId), sql`${guildStrikes.clearedAt} IS NULL`));
+      const strikeCount = Number(count) || 0;
+      const updates: Record<string, any> = { strikes: strikeCount, updatedAt: new Date() };
+      if (strikeCount >= 3) updates.status = "frozen";
+      const [guild] = await tx.update(guilds).set(updates).where(eq(guilds.id, guildId)).returning();
+      return { guild, strike };
+    });
+  }
+
+  async clearGuildStrikes(guildId: string, clearedBy: string): Promise<Guild> {
+    return await db.transaction(async (tx) => {
+      await tx.update(guildStrikes).set({ clearedAt: new Date(), clearedBy }).where(and(eq(guildStrikes.guildId, guildId), sql`${guildStrikes.clearedAt} IS NULL`));
+      const [guild] = await tx.update(guilds).set({ strikes: 0, updatedAt: new Date() }).where(eq(guilds.id, guildId)).returning();
+      return guild;
     });
   }
 
@@ -2569,8 +3208,8 @@ export class DatabaseStorage implements IStorage {
     const [totalOutRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(founderWithdrawals);
     const [monthOutRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(founderWithdrawals).where(gte(founderWithdrawals.createdAt, monthStart));
     const [lastWd] = await db.select().from(founderWithdrawals).orderBy(desc(founderWithdrawals.createdAt)).limit(1);
-    const feeConfigs = await db.select().from(systemConfig).where(eq(systemConfig.key, 'SYSTEM_FEE'));
-    const feeRate = feeConfigs[0]?.value ?? 10;
+    const feeConfigs = await db.select().from(systemConfig).where(eq(systemConfig.key, 'WITHDRAWAL_FEE_PCT'));
+    const feeRate = feeConfigs[0]?.value ?? 15;
 
     const totalIn = parseFloat(totalProfitRow?.total ?? '0');
     const monthIn = parseFloat(monthProfitRow?.total ?? '0');
@@ -3106,11 +3745,17 @@ export class DatabaseStorage implements IStorage {
     return fp;
   }
 
+  // Counts only role='user' accounts bound to this device fingerprint. team/founder/admin
+  // accounts on the same device are deliberately excluded so that the "max 1 personal
+  // account per device" cap doesn't get consumed by a team/founder/admin account sharing
+  // the same device — a person is allowed exactly one personal (role='user') account plus
+  // one team/founder/admin account on the same device.
   async getAccountCountByFingerprint(fingerprintHash: string): Promise<number> {
     const result = await db
       .select({ count: sql<number>`COUNT(DISTINCT ${deviceFingerprints.userId})` })
       .from(deviceFingerprints)
-      .where(eq(deviceFingerprints.fingerprintHash, fingerprintHash));
+      .innerJoin(users, eq(users.id, deviceFingerprints.userId))
+      .where(and(eq(deviceFingerprints.fingerprintHash, fingerprintHash), eq(users.role, 'user')));
     return Number(result[0]?.count ?? 0);
   }
 
