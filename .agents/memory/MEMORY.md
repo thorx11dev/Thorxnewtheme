@@ -9,3 +9,4 @@
 - [Testing session auth locally](session-cookie-testing.md) — curl to 127.0.0.1/localhost never gets the `thorx.sid` cookie (secure+SameSite=None cookie silently dropped by express-session); always test auth via the https `$REPLIT_DEV_DOMAIN`.
 - [Re-import setup](reimport-setup.md) — on a fresh re-import of THORX, DATABASE_URL/SESSION_SECRET were already present as env secrets; only `npm install` + `npx drizzle-kit push --force` were needed to get it running.
 - [Guild schema unique constraints](guild-schema-constraints.md) — raw `sql\`CONSTRAINT...\`` extras are NOT applied by drizzle-kit push on existing tables; use native `unique()` + manual ALTER TABLE for live DBs.
+- [THORX v3 rebuild](thorx-v3-rebuild.md) — full rank/engine/guild rebuild in progress; Phase 1 (schema+modules) done; drizzle-kit push TTY workaround; circular FK pattern.

@@ -61,17 +61,35 @@ export const users = pgTable("users", {
   // Cumulative "TX-Points" ever earned (display/illusion counter, monotonically
   // increasing — never decremented by withdrawals, which spend availableBalance).
   txPointsBalance: integer("tx_points_balance").default(0),
+  // ── THORX v3: Performance Score (PS) rank system ────────────────────────
+  // Sole input to checkAndUpdateRankTier(); totalEarnings does NOT affect rank.
+  performanceScore: integer("performance_score").notNull().default(0),
+  userRankTier: text("user_rank_tier").notNull().default("E-Rank"),
+  // Valid: 'E-Rank' | 'D-Rank' | 'C-Rank' | 'B-Rank' | 'A-Rank' | 'S-Rank'
+  // ── THORX v3: Guild membership (replaces implicit lookup via guild_members) ─
+  guildRole: text("guild_role").notNull().default("simple"), // simple | member | captain
+  guildId: varchar("guild_id").references((): any => guilds.id, { onDelete: "set null" }),
+  // ── THORX v3: Activity tracking (inactivity penalty cron) ───────────────
+  lastActiveAt: timestamp("last_active_at").notNull().defaultNow(),
+  streakDays: integer("streak_days").notNull().default(0),
+  lastStreakDate: text("last_streak_date"), // YYYY-MM-DD (PKT)
+  inactivityPenaltyAt: timestamp("inactivity_penalty_at"),
+  // ── THORX v3: Referral cash wallet — separate from txPointsBalance ──────
+  balanceCashPkr: decimal("balance_cash_pkr", { precision: 10, scale: 2 }).notNull().default("0.00"),
 }, (table) => [
   index("users_email_idx").on(table.email),
   index("users_referral_code_idx").on(table.referralCode),
   index("users_role_idx").on(table.role),
   index("users_is_active_idx").on(table.isActive),
+  index("users_guild_id_idx").on(table.guildId),
+  index("users_user_rank_tier_idx").on(table.userRankTier),
   // Financial integrity constraints
   sql`CONSTRAINT check_positive_earnings CHECK (total_earnings >= 0)`,
   sql`CONSTRAINT check_positive_balance CHECK (available_balance >= 0)`,
   sql`CONSTRAINT check_positive_pending CHECK (pending_balance >= 0)`,
   // Prevent self-referral
   sql`CONSTRAINT check_no_self_referral CHECK (id != referred_by)`,
+  sql`CONSTRAINT check_positive_balance_cash_pkr CHECK (balance_cash_pkr >= 0)`,
 ]);
 
 // Team invitations table for secure onboarding
@@ -451,8 +469,12 @@ export const rankLogs = pgTable("rank_logs", {
   newRank: text("new_rank").notNull(),
   triggerSource: text("trigger_source").notNull(), // e.g., 'earning_update', 'payout', 'admin'
   createdAt: timestamp("created_at").defaultNow(),
+  // ── THORX v3: also used to log guild (GPS) rank changes ─────────────────
+  targetType: text("target_type").notNull().default("user"), // 'user' | 'guild'
+  guildId: varchar("guild_id_ref"),
 }, (table) => [
   index("rank_logs_user_idx").on(table.userId),
+  index("rank_logs_target_type_idx").on(table.targetType),
 ]);
 
 // Notifications table for system and administrative alerts
@@ -513,6 +535,10 @@ export const scoreHistory = pgTable("score_history", {
   activeScore: decimal("active_score", { precision: 10, scale: 2 }).notNull(),
   healthScore: decimal("health_score", { precision: 10, scale: 2 }).notNull(),
   snapshotAt: timestamp("snapshot_at").defaultNow(),
+  // ── THORX v3 ──────────────────────────────────────────────────────────────
+  userRankTier: text("user_rank_tier"),
+  guildRole: text("guild_role"),
+  streakDays: integer("streak_days"),
 }, (table) => [
   index("score_history_user_id_idx").on(table.userId),
   index("score_history_snapshot_at_idx").on(table.snapshotAt),
@@ -983,13 +1009,26 @@ export const guilds = pgTable("guilds", {
   pinnedMemberId: varchar("pinned_member_id").references(() => users.id, { onDelete: "set null" }),
   minRankRequired: varchar("min_rank_required", { length: 1 }).default("E"),
   recruitmentOpen: boolean("recruitment_open").notNull().default(true),
-  lastRallyAt: timestamp("last_rally_at"),
+  lastRallyAt: timestamp("last_rally_at"), // deprecated (rally system removed in v3); kept for backward compat, unused
   avatarUrl: text("avatar_url"),
+  // ── THORX v3: GPS & rank ─────────────────────────────────────────────────
+  guildPerformanceScore: integer("guild_performance_score").notNull().default(0),
+  guildRankTier: text("guild_rank_tier").notNull().default("E-Rank"),
+  memberCapacity: integer("member_capacity").notNull().default(10),
+  // ── THORX v3: Weekly mechanics (replaces vault-language columns) ────────
+  // Internal name only — user-facing label is "Guild Weekly Bonus Pool"/"Sunday Bonus".
+  weeklyBonusPool: decimal("weekly_bonus_pool", { precision: 12, scale: 4 }).notNull().default("0.0000"),
+  currentWeeklyPoints: integer("current_weekly_points").notNull().default(0),
+  weeklyTarget: integer("weekly_target").notNull().default(50000),
+  targetDifficulty: text("target_difficulty").notNull().default("medium"), // low | medium | high
+  // ── THORX v3: Governance ─────────────────────────────────────────────────
+  assistantCaptainId: varchar("assistant_captain_id").references((): any => users.id, { onDelete: "set null" }),
 }, (table) => [
   index("guilds_captain_id_idx").on(table.captainId),
   index("guilds_status_idx").on(table.status),
   index("guilds_guild_rank_idx").on(table.guildRank),
   index("guilds_is_public_idx").on(table.isPublic),
+  index("guilds_guild_rank_tier_idx").on(table.guildRankTier),
   sql`CONSTRAINT check_guild_strikes_range CHECK (strikes >= 0)`,
 ]);
 
@@ -1006,6 +1045,12 @@ export const guildMembers = pgTable("guild_members", {
   requestedAt: timestamp("requested_at").defaultNow(),
   joinedAt: timestamp("joined_at"),
   leftAt: timestamp("left_at"),
+  // ── THORX v3 ──────────────────────────────────────────────────────────────
+  weeklyPointsContributed: integer("weekly_points_contributed").notNull().default(0), // resets every Sunday
+  isMvp: boolean("is_mvp").notNull().default(false),
+  mvpSetAt: timestamp("mvp_set_at"),
+  lastNudgedAt: timestamp("last_nudged_at"),
+  coverLetter: text("cover_letter"),
 }, (table) => [
   index("guild_members_guild_id_idx").on(table.guildId),
   index("guild_members_user_id_idx").on(table.userId),
@@ -1062,6 +1107,11 @@ export const guildWeeklyCycles = pgTable("guild_weekly_cycles", {
   resolved: boolean("resolved").notNull().default(false),
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  // ── THORX v3: Bonus pool disposition ─────────────────────────────────────
+  bonusPoolPkr: decimal("bonus_pool_pkr", { precision: 12, scale: 4 }).notNull().default("0.0000"),
+  poolDisposition: text("pool_disposition"), // 'distributed' | 'voided'
+  captainSharePkr: decimal("captain_share_pkr", { precision: 10, scale: 2 }),
+  membersSharePkr: decimal("members_share_pkr", { precision: 10, scale: 2 }),
 }, (table) => [
   index("guild_weekly_cycles_guild_id_idx").on(table.guildId),
   index("guild_weekly_cycles_resolved_idx").on(table.resolved),
@@ -1239,6 +1289,10 @@ export const weeklyTasks = pgTable("weekly_tasks", {
   isActive: boolean("is_active").default(true),
   createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
+  // ── THORX v3 ──────────────────────────────────────────────────────────────
+  taskCategory: text("task_category").notNull().default("cpa_offer"), // cpa_offer | indirect | platform
+  visibility: text("visibility").notNull().default("engine_c"), // engine_b | engine_c | both
+  grossPkrPerCompletion: decimal("gross_pkr_per_completion", { precision: 10, scale: 4 }),
 }, (table) => [
   index("weekly_tasks_week_start_idx").on(table.weekStart),
   index("weekly_tasks_is_active_idx").on(table.isActive),
@@ -1261,3 +1315,110 @@ export const weeklyTaskRecords = pgTable("weekly_task_records", {
 ]);
 export type WeeklyTaskRecord = typeof weeklyTaskRecords.$inferSelect;
 export type InsertWeeklyTaskRecord = typeof weeklyTaskRecords.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THORX v3 — New tables (Part D.7–D.11 of the v3 spec)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// D.7 — Immutable exact-PKR ledger. Source of truth for withdrawal math.
+// INVARIANT: real_pkr_value is write-once; never UPDATE it after insert.
+export const userTransactions = pgTable("user_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  engineType: text("engine_type").notNull(), // Engine_A | Engine_B | Engine_C | Indirect
+  pointsCredited: integer("points_credited").notNull(), // randomized display value (Thorx Card)
+  realPkrValue: decimal("real_pkr_value", { precision: 10, scale: 4 }).notNull(), // IMMUTABLE
+  grossPkr: decimal("gross_pkr", { precision: 10, scale: 4 }),
+  thorxProfitPkr: decimal("thorx_profit_pkr", { precision: 10, scale: 4 }),
+  guildPoolPkr: decimal("guild_pool_pkr", { precision: 10, scale: 4 }),
+  conversionRate: integer("conversion_rate").notNull(),
+  cardVariance: decimal("card_variance", { precision: 5, scale: 4 }).notNull(),
+  sourceId: varchar("source_id"),
+  sourceType: text("source_type"), // ad_view | weekly_task | daily_task
+  withdrawn: boolean("withdrawn").notNull().default(false),
+  withdrawalId: varchar("withdrawal_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_user_transactions_user_created").on(table.userId, table.createdAt),
+  index("idx_user_transactions_user_withdrawn").on(table.userId, table.withdrawn),
+  index("idx_user_transactions_withdrawal").on(table.withdrawalId),
+]);
+export type UserTransaction = typeof userTransactions.$inferSelect;
+export type InsertUserTransaction = typeof userTransactions.$inferInsert;
+
+// D.8 — 1-tier referral commissions, paid from the withdrawal fee.
+export const referralCommissions = pgTable("referral_commissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referrerId: varchar("referrer_id").notNull().references(() => users.id),
+  inviteeId: varchar("invitee_id").notNull().references(() => users.id),
+  withdrawalId: varchar("withdrawal_id").notNull().references(() => withdrawals.id),
+  commissionAmountPkr: decimal("commission_amount_pkr", { precision: 10, scale: 2 }).notNull(),
+  inviteeNetPkr: decimal("invitee_net_pkr", { precision: 10, scale: 2 }).notNull(),
+  platformFeePkr: decimal("platform_fee_pkr", { precision: 10, scale: 2 }).notNull(),
+  feeRateUsed: decimal("fee_rate_used", { precision: 5, scale: 4 }).notNull(),
+  refShareRateUsed: decimal("ref_share_rate_used", { precision: 5, scale: 4 }).notNull(),
+  status: text("status").notNull().default("paid"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_referral_commissions_referrer").on(table.referrerId, table.createdAt),
+  index("idx_referral_commissions_withdrawal").on(table.withdrawalId),
+]);
+export type ReferralCommission = typeof referralCommissions.$inferSelect;
+export type InsertReferralCommission = typeof referralCommissions.$inferInsert;
+
+// D.9 — Captain <-> member direct message channel.
+export const captainMessages = pgTable("captain_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "cascade" }),
+  fromUserId: varchar("from_user_id").notNull().references(() => users.id),
+  toUserId: varchar("to_user_id").notNull().references(() => users.id),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_captain_messages_thread").on(table.guildId, table.fromUserId, table.toUserId, table.createdAt),
+  index("idx_captain_messages_unread").on(table.toUserId, table.isRead),
+]);
+export type CaptainMessage = typeof captainMessages.$inferSelect;
+export type InsertCaptainMessage = typeof captainMessages.$inferInsert;
+
+// D.10 — One row per guild per week, written once by the Sunday reset job.
+export const guildWeeklySnapshots = pgTable("guild_weekly_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id),
+  weekStart: timestamp("week_start").notNull(),
+  targetPoints: integer("target_points").notNull(),
+  achievedPoints: integer("achieved_points").notNull(),
+  wasSuccessful: boolean("was_successful").notNull(),
+  bonusPoolPkr: decimal("bonus_pool_pkr", { precision: 12, scale: 4 }).notNull(),
+  poolDisposition: text("pool_disposition").notNull(), // distributed | voided
+  captainShare: decimal("captain_share", { precision: 10, scale: 2 }).notNull().default("0"),
+  membersShare: decimal("members_share", { precision: 10, scale: 2 }).notNull().default("0"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  unique("idx_guild_snapshots_unique").on(table.guildId, table.weekStart),
+]);
+export type GuildWeeklySnapshot = typeof guildWeeklySnapshots.$inferSelect;
+export type InsertGuildWeeklySnapshot = typeof guildWeeklySnapshots.$inferInsert;
+
+// D.11 — Admin Live Activity Feed source table.
+export const activityFeed = pgTable("activity_feed", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: text("event_type").notNull(), // earn | rank_up | guild_target | withdrawal | registration | guild_event | inactivity
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  guildId: varchar("guild_id").references(() => guilds.id, { onDelete: "set null" }),
+  displayMessage: text("display_message").notNull(),
+  data: jsonb("data").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_activity_feed_created").on(table.createdAt),
+  index("idx_activity_feed_type").on(table.eventType, table.createdAt),
+]);
+export type ActivityFeed = typeof activityFeed.$inferSelect;
+export type InsertActivityFeed = typeof activityFeed.$inferInsert;
+
+export const insertUserTransactionSchema = createInsertSchema(userTransactions).omit({ id: true, createdAt: true });
+export const insertReferralCommissionSchema = createInsertSchema(referralCommissions).omit({ id: true, createdAt: true });
+export const insertCaptainMessageSchema = createInsertSchema(captainMessages).omit({ id: true, createdAt: true, isRead: true });
+export const insertGuildWeeklySnapshotSchema = createInsertSchema(guildWeeklySnapshots).omit({ id: true, createdAt: true });
+export const insertActivityFeedSchema = createInsertSchema(activityFeed).omit({ id: true, createdAt: true });

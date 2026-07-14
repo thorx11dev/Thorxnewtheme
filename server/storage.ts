@@ -505,7 +505,65 @@ export class DatabaseStorage implements IStorage {
           { id: "cpalead-1", name: "CPALead", apiKey: "default", type: "cpa", priority: 1, isActive: true }
         ], 
         description: "Waterfall priority list for CPA Task Providers" 
-      }
+      },
+      // ── THORX v3 — Engine Splits (Part J) ────────────────────────────────
+      { key: "ENGINE_A_THORX_CUT_PCT", value: 40, description: "Engine A (video ads): Thorx profit cut %" },
+      { key: "ENGINE_A_USER_CUT_PCT", value: 60, description: "Engine A: user payout % (100 - cut)" },
+      { key: "ENGINE_B_THORX_CUT_PCT", value: 40, description: "Engine B (CPA offers): Thorx profit cut %" },
+      { key: "ENGINE_B_USER_CUT_PCT", value: 60, description: "Engine B: user payout %" },
+      { key: "ENGINE_C_THORX_CUT_PCT", value: 20, description: "Engine C (guild tasks): Thorx profit cut %" },
+      { key: "ENGINE_C_GUILD_POOL_PCT", value: 35, description: "Engine C: % contributed to the guild weekly bonus pool" },
+      { key: "ENGINE_C_USER_CUT_PCT", value: 45, description: "Engine C: user payout %" },
+      // ── Thorx Card ────────────────────────────────────────────────────────
+      { key: "CARD_VARIANCE_MIN", value: 0.80, description: "Thorx Card random variance lower bound" },
+      { key: "CARD_VARIANCE_MAX", value: 1.20, description: "Thorx Card random variance upper bound" },
+      { key: "A_RANK_CARD_BONUS_PCT", value: 5, description: "A-Rank: expand card variance bounds by ±N%" },
+      { key: "S_RANK_CARD_BONUS_PCT", value: 10, description: "S-Rank: expand card variance bounds by ±N%" },
+      // ── PS System ─────────────────────────────────────────────────────────
+      { key: "PS_ENGINE_A_REWARD", value: 5, description: "PS awarded per Engine A task" },
+      { key: "PS_ENGINE_B_REWARD", value: 25, description: "PS awarded per Engine B task" },
+      { key: "PS_ENGINE_C_REWARD", value: 15, description: "PS awarded per Engine C task" },
+      { key: "PS_STREAK_DAY1", value: 5, description: "PS streak bonus, day 1" },
+      { key: "PS_STREAK_DAY2", value: 10, description: "PS streak bonus, day 2" },
+      { key: "PS_STREAK_DAY3_PLUS", value: 20, description: "PS streak bonus, day 3+" },
+      { key: "PS_INACTIVITY_PENALTY", value: 10, description: "Daily PS deduction when a user is inactive" },
+      { key: "PS_INACTIVITY_HOURS", value: 48, description: "Hours of inactivity before the penalty starts" },
+      { key: "PS_RANK_E_MAX", value: 999, description: "PS upper bound for E-Rank" },
+      { key: "PS_RANK_D_MIN", value: 1000, description: "PS lower bound for D-Rank" },
+      { key: "PS_RANK_D_MAX", value: 2999, description: "PS upper bound for D-Rank" },
+      { key: "PS_RANK_C_MIN", value: 3000, description: "PS lower bound for C-Rank" },
+      { key: "PS_RANK_C_MAX", value: 5999, description: "PS upper bound for C-Rank" },
+      { key: "PS_RANK_B_MIN", value: 6000, description: "PS lower bound for B-Rank" },
+      { key: "PS_RANK_B_MAX", value: 9999, description: "PS upper bound for B-Rank" },
+      { key: "PS_RANK_A_MIN", value: 10000, description: "PS lower bound for A-Rank" },
+      { key: "PS_RANK_A_MAX", value: 19999, description: "PS upper bound for A-Rank" },
+      { key: "PS_RANK_S_MIN", value: 20000, description: "PS lower bound for S-Rank" },
+      // ── GPS System ────────────────────────────────────────────────────────
+      { key: "GPS_MEMBER_POINTS_PCT", value: 10, description: "% of a member's earned points that also count toward guild GPS" },
+      { key: "GPS_MILESTONE_BONUS", value: 1000, description: "GPS bonus on a successful weekly target" },
+      { key: "GPS_MVP_BONUS", value: 200, description: "GPS bonus when a captain sets a weekly MVP" },
+      { key: "GPS_RANK_E_MAX", value: 9999, description: "GPS upper bound for E-Rank guilds" },
+      { key: "GPS_RANK_D_MIN", value: 10000, description: "GPS lower bound for D-Rank guilds" },
+      { key: "GPS_RANK_D_MAX", value: 29999, description: "GPS upper bound for D-Rank guilds" },
+      { key: "GPS_RANK_C_MIN", value: 30000, description: "GPS lower bound for C-Rank guilds" },
+      { key: "GPS_RANK_C_MAX", value: 69999, description: "GPS upper bound for C-Rank guilds" },
+      { key: "GPS_RANK_B_MIN", value: 70000, description: "GPS lower bound for B-Rank guilds" },
+      { key: "GPS_RANK_B_MAX", value: 149999, description: "GPS upper bound for B-Rank guilds" },
+      { key: "GPS_RANK_A_MIN", value: 150000, description: "GPS lower bound for A-Rank guilds" },
+      { key: "GPS_RANK_A_MAX", value: 299999, description: "GPS upper bound for A-Rank guilds" },
+      { key: "GPS_RANK_S_MIN", value: 300000, description: "GPS lower bound for S-Rank guilds" },
+      // ── Guild Weekly Targets (by rank) ───────────────────────────────────
+      { key: "WEEKLY_TARGET_E_RANK", value: 20000, description: "Default weekly points target, E-Rank guilds" },
+      { key: "WEEKLY_TARGET_D_RANK", value: 50000, description: "Default weekly points target, D-Rank guilds" },
+      { key: "WEEKLY_TARGET_C_RANK", value: 100000, description: "Default weekly points target, C-Rank guilds" },
+      { key: "WEEKLY_TARGET_B_RANK", value: 200000, description: "Default weekly points target, B-Rank guilds" },
+      { key: "WEEKLY_TARGET_A_RANK", value: 350000, description: "Default weekly points target, A-Rank guilds" },
+      { key: "WEEKLY_TARGET_S_RANK", value: 500000, description: "Default weekly points target, S-Rank guilds" },
+      // ── Guild Reset ───────────────────────────────────────────────────────
+      { key: "GUILD_CAPTAIN_POOL_SHARE", value: 30, description: "% of the Sunday bonus pool paid to the captain" },
+      { key: "GUILD_MEMBER_POOL_SHARE", value: 70, description: "% of the Sunday bonus pool split among members proportionally" },
+      // ── Activity Feed ─────────────────────────────────────────────────────
+      { key: "FEED_RETENTION_DAYS", value: 30, description: "Days to retain activity_feed rows" },
     ];
 
     for (const def of defaults) {
@@ -1186,6 +1244,15 @@ export class DatabaseStorage implements IStorage {
         personalRank: users.personalRank,
         guildContributionScore: users.guildContributionScore,
         txPointsBalance: users.txPointsBalance,
+        performanceScore: users.performanceScore,
+        userRankTier: users.userRankTier,
+        guildRole: users.guildRole,
+        guildId: users.guildId,
+        lastActiveAt: users.lastActiveAt,
+        streakDays: users.streakDays,
+        lastStreakDate: users.lastStreakDate,
+        inactivityPenaltyAt: users.inactivityPenaltyAt,
+        balanceCashPkr: users.balanceCashPkr,
         teamKey: teamKeys,
       })
       .from(users)
@@ -1278,7 +1345,16 @@ export class DatabaseStorage implements IStorage {
           permissions: users.permissions,
           personalRank: users.personalRank,
           guildContributionScore: users.guildContributionScore,
-          txPointsBalance: users.txPointsBalance
+          txPointsBalance: users.txPointsBalance,
+          performanceScore: users.performanceScore,
+          userRankTier: users.userRankTier,
+          guildRole: users.guildRole,
+          guildId: users.guildId,
+          lastActiveAt: users.lastActiveAt,
+          streakDays: users.streakDays,
+          lastStreakDate: users.lastStreakDate,
+          inactivityPenaltyAt: users.inactivityPenaltyAt,
+          balanceCashPkr: users.balanceCashPkr,
         })
         .from(users)
         .orderBy(desc(users.createdAt));
@@ -2049,6 +2125,11 @@ export class DatabaseStorage implements IStorage {
         requestedAt: guildMembers.requestedAt,
         joinedAt: guildMembers.joinedAt,
         leftAt: guildMembers.leftAt,
+        weeklyPointsContributed: guildMembers.weeklyPointsContributed,
+        isMvp: guildMembers.isMvp,
+        mvpSetAt: guildMembers.mvpSetAt,
+        lastNudgedAt: guildMembers.lastNudgedAt,
+        coverLetter: guildMembers.coverLetter,
         user: {
           id: users.id,
           firstName: users.firstName,

@@ -128,3 +128,21 @@ export function broadcastRiskAlert(data: {
     if (meta.canSeeUserActivity) send(ws, payload);
   });
 }
+
+/**
+ * THORX v3 — push a Live Activity Feed event to all admin/founder/authorized
+ * team sessions. See server/modules/live-feed.ts (emitFeedEvent), which
+ * persists the event to activity_feed and then calls this.
+ */
+export function broadcastAdminFeedEvent(event: {
+  type: string;
+  userId?: string;
+  guildId?: string;
+  displayMessage: string;
+  data: Record<string, unknown>;
+}) {
+  const payload = { type: "feed:event", event, at: Date.now() };
+  sockets.forEach((meta, ws) => {
+    if (meta.canSeeUserActivity) send(ws, payload);
+  });
+}

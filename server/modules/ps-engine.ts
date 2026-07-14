@@ -1,0 +1,165 @@
+// THORX v3 — Performance Score (PS) engine (Part E.2 of the v3 spec).
+//
+// PS is the SOLE input to a user's rank tier (Appendix A, invariant #6).
+// totalEarnings never affects rank. rankLocked=true freezes all automatic
+// rank changes. E-Rank is a hard floor (invariant #7) — inactivity penalties
+// can drop performanceScore to 0 but never demote a user below E-Rank.
+
+import { db } from "../db";
+import { eq, lt, sql as drizzleSql } from "drizzle-orm";
+import { users, rankLogs } from "@shared/schema";
+import { storage } from "../storage";
+
+const RANK_TIERS = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"] as const;
+export type RankTier = (typeof RANK_TIERS)[number];
+
+async function cfg<T>(key: string, fallback: T): Promise<T> {
+  return storage.getSystemConfigValue<T>(key, fallback);
+}
+
+function todayPKT(): string {
+  // Pakistan Standard Time is UTC+5, no DST.
+  const now = new Date();
+  const pkt = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+  return pkt.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function yesterdayOf(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+// Award PS after a task completion (call from recordEarnEvent).
+export async function awardTaskPS(userId: string, engineType: "A" | "B" | "C"): Promise<void> {
+  const rewardKey = `PS_ENGINE_${engineType}_REWARD`;
+  const defaultReward = engineType === "A" ? 5 : engineType === "B" ? 25 : 15;
+  const reward = await cfg<number>(rewardKey, defaultReward);
+  await db.update(users)
+    .set({ performanceScore: drizzleSql`${users.performanceScore} + ${reward}` })
+    .where(eq(users.id, userId));
+  await checkAndUpdateRankTier(userId);
+}
+
+// Process the daily login/activity streak. Safe to call multiple times a day
+// (idempotent per PKT calendar day).
+export async function processStreak(userId: string): Promise<{ streakDays: number; psAwarded: number }> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  if (!user) return { streakDays: 0, psAwarded: 0 };
+
+  const today = todayPKT();
+  if (user.lastStreakDate === today) {
+    // Already processed today.
+    return { streakDays: user.streakDays, psAwarded: 0 };
+  }
+
+  const yesterday = yesterdayOf(today);
+  const newStreakDays = user.lastStreakDate === yesterday ? user.streakDays + 1 : 1;
+
+  const day1 = await cfg<number>("PS_STREAK_DAY1", 5);
+  const day2 = await cfg<number>("PS_STREAK_DAY2", 10);
+  const day3Plus = await cfg<number>("PS_STREAK_DAY3_PLUS", 20);
+  const psAwarded = newStreakDays === 1 ? day1 : newStreakDays === 2 ? day2 : day3Plus;
+
+  await db.update(users)
+    .set({
+      streakDays: newStreakDays,
+      lastStreakDate: today,
+      performanceScore: drizzleSql`${users.performanceScore} + ${psAwarded}`,
+    })
+    .where(eq(users.id, userId));
+
+  await checkAndUpdateRankTier(userId);
+  return { streakDays: newStreakDays, psAwarded };
+}
+
+// Batch inactivity penalty — called by the daily midnight cron.
+export async function applyInactivityPenalties(): Promise<number> {
+  const hours = await cfg<number>("PS_INACTIVITY_HOURS", 48);
+  const penalty = await cfg<number>("PS_INACTIVITY_PENALTY", 10);
+  const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+  const stale = await db.select({ id: users.id, identity: users.identity, performanceScore: users.performanceScore })
+    .from(users)
+    .where(lt(users.lastActiveAt, cutoff));
+
+  const { emitFeedEvent } = await import("./live-feed");
+
+  for (const u of stale) {
+    await db.update(users)
+      .set({
+        performanceScore: drizzleSql`GREATEST(0, ${users.performanceScore} - ${penalty})`,
+        inactivityPenaltyAt: new Date(),
+      })
+      .where(eq(users.id, u.id));
+    await checkAndUpdateRankTier(u.id);
+    await emitFeedEvent({
+      type: "inactivity",
+      userId: u.id,
+      displayMessage: `User '${u.identity}' inactivity penalty: -${penalty} PS`,
+      data: { penalty, hoursInactive: hours },
+    });
+  }
+  return stale.length;
+}
+
+function computeRankTier(ps: number, thresholds: Record<string, number>): RankTier {
+  if (ps >= thresholds.PS_RANK_S_MIN) return "S-Rank";
+  if (ps >= thresholds.PS_RANK_A_MIN) return "A-Rank";
+  if (ps >= thresholds.PS_RANK_B_MIN) return "B-Rank";
+  if (ps >= thresholds.PS_RANK_C_MIN) return "C-Rank";
+  if (ps >= thresholds.PS_RANK_D_MIN) return "D-Rank";
+  return "E-Rank";
+}
+
+// Called after every PS change. PS is the sole input to rank (invariant #6);
+// rankLocked bypasses automatic changes; E-Rank is a hard floor (invariant #7).
+export async function checkAndUpdateRankTier(userId: string): Promise<void> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  if (!user || user.rankLocked) return;
+
+  const thresholds: Record<string, number> = {
+    PS_RANK_D_MIN: await cfg("PS_RANK_D_MIN", 1000),
+    PS_RANK_C_MIN: await cfg("PS_RANK_C_MIN", 3000),
+    PS_RANK_B_MIN: await cfg("PS_RANK_B_MIN", 6000),
+    PS_RANK_A_MIN: await cfg("PS_RANK_A_MIN", 10000),
+    PS_RANK_S_MIN: await cfg("PS_RANK_S_MIN", 20000),
+  };
+
+  const newRank = computeRankTier(user.performanceScore, thresholds);
+  if (newRank === user.userRankTier) return;
+
+  await db.update(users).set({ userRankTier: newRank }).where(eq(users.id, userId));
+  await db.insert(rankLogs).values({
+    userId,
+    oldRank: user.userRankTier,
+    newRank,
+    triggerSource: "ps_engine",
+    targetType: "user",
+  });
+
+  await storage.createNotification({
+    userId,
+    title: "Rank Up!",
+    message: `You've reached ${newRank}!`,
+    type: "system",
+  });
+
+  try {
+    const { broadcastUserUpdated } = await import("../realtime");
+    broadcastUserUpdated(userId, "rank_tier_updated", { oldRank: user.userRankTier, newRank });
+  } catch (e) {
+    console.error("Failed to broadcast rank tier update:", e);
+  }
+
+  const { emitFeedEvent } = await import("./live-feed");
+  const rankOrder = RANK_TIERS.indexOf(newRank) > RANK_TIERS.indexOf(user.userRankTier as RankTier);
+  await emitFeedEvent({
+    type: "rank_up",
+    userId,
+    displayMessage: rankOrder
+      ? `User '${user.identity}' reached ${newRank}!${newRank === "C-Rank" ? " Engine B now unlocked." : ""}`
+      : `User '${user.identity}' rank adjusted to ${newRank}.`,
+    data: { oldRank: user.userRankTier, newRank, performanceScore: user.performanceScore },
+  });
+}
