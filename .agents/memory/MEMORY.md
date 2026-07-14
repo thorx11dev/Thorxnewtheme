@@ -7,3 +7,4 @@
 - [Risk Scoring System](risk-scoring-system.md) — 5-signal engine in `server/modules/risk-engine.ts`; persistent cases in `risk_cases` table (unique per user); score snapshots in `score_history`; db:push needs raw SQL in non-TTY env (use executeSql instead).
 - [Dashboard Upgrade](dashboard-upgrade.md) — 5-phase build: 3 new tables, health engine (5 dimensions), founder ledger, reconciliation panel, 7-card AdminDashboard, credit intent selector on balance modal.
 - [Testing session auth locally](session-cookie-testing.md) — curl to 127.0.0.1/localhost never gets the `thorx.sid` cookie (secure+SameSite=None cookie silently dropped by express-session); always test auth via the https `$REPLIT_DEV_DOMAIN`.
+- [Re-import setup](reimport-setup.md) — on a fresh re-import of THORX, DATABASE_URL/SESSION_SECRET were already present as env secrets; only `npm install` + `npx drizzle-kit push --force` were needed to get it running.
