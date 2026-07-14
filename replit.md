@@ -40,7 +40,7 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - Role: `founder` (full access to team portal)
 - Created via `POST /api/bootstrap-founder` (one-time; blocked once any team member exists)
-- No founder account exists yet in this environment's database. Create one by POSTing `{ email, password, firstName, lastName }` to `/api/bootstrap-founder`, then log in normally.
+- A founder account exists in this environment's database: `thorx11dev@gmail.com` (password set by the user, not stored here). Log in via the normal `/login` flow.
 
 ## Setup notes (this import)
 
@@ -49,6 +49,7 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 - If `db:push` fails with a TTY-prompt error on a fresh database, a leftover `session` table (auto-created by connect-pg-simple at server start) can confuse drizzle-kit's conflict resolver. Drop it (`DROP TABLE IF EXISTS session;`) and rerun `npx drizzle-kit push --force`.
 - `npm run dev` verified working on port 5000 (landing page renders correctly).
 - Re-verified again on a later re-import (2026-07-14): same steps (`npm install`, `npx drizzle-kit push --force`, restart workflow) got it running cleanly with no schema issues.
+- 2026-07-14: verified end-to-end auth flow (register → login → profile → logout, session cookie cleared and subsequent requests correctly 401) against the live dev domain, and provisioned the founder account above. All `/api` POST routes require CSRF: `GET` any `/api/*` route first to receive the `thorx.csrf.v2` cookie, then echo its value back as the `x-csrf-token` header on the POST.
 
 ## User preferences
 
