@@ -519,6 +519,7 @@ const sections = [
   { id: "dashboard", name: "Dashboard", icon: Home },
   { id: "work", name: "Work", icon: Briefcase },
   { id: "referrals", name: "Referrals", icon: Network },
+  { id: "guild", name: "Guild", icon: Shield },
   { id: "payout", name: "Payout", icon: Landmark },
   { id: "help", name: "Help", icon: Headphones },
 ];
@@ -795,7 +796,7 @@ export default function UserPortal() {
       }
       return await response.json();
     },
-    enabled: currentSection === 3 && !!user && user.id !== 'guest',
+    enabled: currentSection === 4 && !!user && user.id !== 'guest',
     retry: false,
   });
 
@@ -1425,6 +1426,19 @@ export default function UserPortal() {
           )}
           {currentSection === 3 && (
             <motion.section
+              key="section-guild"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="cinematic-section active"
+              data-testid="section-guild"
+            >
+              {renderGuildSection()}
+            </motion.section>
+          )}
+          {currentSection === 4 && (
+            <motion.section
               key="section-payout"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1436,7 +1450,7 @@ export default function UserPortal() {
               {renderPayoutSection()}
             </motion.section>
           )}
-          {currentSection === 4 && (
+          {currentSection === 5 && (
             <motion.section
               key="section-help"
               initial={{ opacity: 0, y: 10 }}
@@ -2240,7 +2254,7 @@ export default function UserPortal() {
             <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-referral-earnings">{formatCurrency(referralsData?.stats.totalEarned || '0.00')}</p>
           </motion.div>
 
-          {/* Commission Rate */}
+          {/* Direct Referrals */}
           <motion.div
             variants={{
               initial: { opacity: 0, y: 15 },
@@ -2254,12 +2268,12 @@ export default function UserPortal() {
           >
             <div className="flex items-start justify-between mb-3">
               <UserCheck className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
-              <TechnicalLabel text="Referral LVL 1" className="text-muted-foreground text-xs" />
+              <TechnicalLabel text="Direct Referrals" className="text-muted-foreground text-xs" />
             </div>
             <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-commission-rate">{referralLevel1Count}</p>
           </motion.div>
 
-          {/* Network Potential */}
+          {/* Commission Rate */}
           <motion.div
             variants={{
               initial: { opacity: 0, y: 15 },
@@ -2273,9 +2287,11 @@ export default function UserPortal() {
           >
             <div className="flex items-start justify-between mb-3">
               <Network className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="Referral LVL 2" className="text-muted-foreground text-xs" />
+              <TechnicalLabel text="Your Commission Rate" className="text-muted-foreground text-xs" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-network-potential">{referralLevel2Count}</p>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-network-potential">
+              {((WITHDRAWAL_FEE_PERCENT * REFERRAL_FEE_SHARE_PERCENT) / 100).toFixed(1)}%
+            </p>
           </motion.div>
         </div>
 
@@ -2356,30 +2372,32 @@ export default function UserPortal() {
                 </div>
               </div>
 
-              {/* Right Column: L1/L2 Rates */}
+              {/* Right Column: Referral Commission */}
               <div className="flex flex-col">
                 <div className="bg-white border-4 border-black p-5 md:p-10 relative overflow-hidden group h-full flex flex-col justify-center transition-all duration-300">
                   <div className="space-y-6 md:space-y-8 relative z-10 w-full px-1">
+                    {/* Withdrawal fee breakdown */}
                     <div className="flex justify-between items-end border-b-4 border-black pb-4">
                       <div className="flex flex-col">
-                        <span className="text-[10px] md:text-[11px] font-black uppercase text-black tracking-[0.2em] mb-1">Level 1</span>
-                        <span className="text-base md:text-lg font-black text-black uppercase leading-tight">Direct<br />Referrals</span>
+                        <span className="text-[10px] md:text-[11px] font-black uppercase text-black tracking-[0.2em] mb-1">Withdrawal Fee</span>
+                        <span className="text-base md:text-lg font-black text-black uppercase leading-tight">Paid by<br />Your Referral</span>
                       </div>
                       <span className="text-4xl md:text-5xl font-black text-black italic tracking-tighter leading-none">15%</span>
                     </div>
 
+                    {/* Your commission share */}
                     <div className="flex justify-between items-end pb-2">
                       <div className="flex flex-col">
-                        <span className="text-[10px] md:text-[11px] font-black uppercase text-black/40 tracking-[0.2em] mb-1">Level 2</span>
-                        <span className="text-base md:text-lg font-black text-black/60 uppercase leading-tight">Network<br />Referrals</span>
+                        <span className="text-[10px] md:text-[11px] font-black uppercase text-black tracking-[0.2em] mb-1">Your Share</span>
+                        <span className="text-base md:text-lg font-black text-black uppercase leading-tight">Referral<br />Commission</span>
                       </div>
-                      <span className="text-4xl md:text-5xl font-black text-black italic tracking-tighter leading-none">7.5%</span>
+                      <span className="text-4xl md:text-5xl font-black text-black italic tracking-tighter leading-none">~50%</span>
                     </div>
                   </div>
 
                   <div className="mt-8 md:mt-10 pt-4 border-t-2 border-black/10 relative z-10">
                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.3em] text-center">
-                      CREDITED UPON PAYOUT
+                      CREDITED UPON YOUR REFERRAL'S PAYOUT
                     </p>
                   </div>
                 </div>
@@ -3270,6 +3288,33 @@ export default function UserPortal() {
           </div>
         </motion.div>
 
+      </motion.div>
+    );
+  }
+
+  // Guild Section
+  function renderGuildSection() {
+    return (
+      <motion.div
+        key="guild-section"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.4 }}
+        className="min-h-screen px-4 md:px-8 py-8"
+      >
+        {/* Section header */}
+        <div className="mb-8">
+          <TechnicalLabel text="ENGINE C — GUILD SYSTEM" className="text-xs text-muted-foreground mb-2" />
+          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight">Guild & Vault</h1>
+          <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+            Create or join a Guild. Earn bonus multipliers on your weekly vault release. 85% of every ad earn
+            goes to your wallet instantly — the remaining 15% is held in the guild vault and released weekly
+            with a rank-based multiplier if your guild hits its goal.
+          </p>
+        </div>
+
+        {/* Guild vault panel */}
         {user?.id && <GuildVaultPanel currentUserId={user.id} />}
       </motion.div>
     );
@@ -3436,25 +3481,25 @@ export default function UserPortal() {
                             id: "001",
                             protocol: "PLATFORM-OVERVIEW",
                             question: "What is THORX?",
-                            answer: "THORX is an AI-powered digital engagement platform that connects businesses with verified human attention while enabling users to earn real money through meaningful online activities. We operate Engine A (Attention Marketplace), Engine B (AI-Driven CPA Offers), and Engine C (3-Division Referral Matrix) — all backed by multi-layer AI fraud prevention."
+                            answer: "THORX is an AI-powered digital engagement platform that connects businesses with verified human attention while enabling users to earn real money through meaningful online activities. We operate Engine A (Attention Marketplace), Engine B (AI-Driven CPA Offers), and Engine C (Guild System & Referral Commissions) — all backed by multi-layer AI fraud prevention."
                           },
                           {
                             id: "002",
                             protocol: "EARNING-MODEL",
                             question: "How do I earn on THORX?",
-                            answer: "Three earning streams: 1) Engine A — Watch 15–25 second video ads, then actively explore the advertiser's page for 15 seconds inside our secure AI sandbox. 2) Engine B — Complete curated CPA tasks (app downloads, reviews, registrations) and submit proof for AI-verified payout. 3) Engine C — Earn 15% when your Level 1 referral withdraws, and 7.5% when their referrals withdraw."
+                            answer: "Three earning streams: 1) Engine A — Watch 15–25 second video ads, then actively explore the advertiser's page for 15 seconds inside our secure AI sandbox. 2) Engine B — Complete curated CPA tasks (app downloads, reviews, registrations) and submit proof for AI-verified payout. 3) Engine C — Join a Guild to earn weekly vault bonuses with rank-based multipliers, plus earn a passive referral commission whenever your direct referral withdraws their earnings."
                           },
                           {
                             id: "003",
                             protocol: "WALLET-DEDUCTIONS",
                             question: "What fees are deducted at withdrawal?",
-                            answer: "THORX uses a Net-First UI — your wallet always shows exactly what you can withdraw, with all fees already calculated in the background. Total deductions at withdrawal: Referred users: 34.5% (12% platform fee + 15% Level 1 + 7.5% Level 2 referral share). Solo/organic users: 27% (12% platform fee + 15% admin charge). What you see is what you get — no surprises."
+                            answer: "THORX uses a Net-First UI — your wallet always shows exactly what you can withdraw, with all fees already calculated in the background. A flat 15% withdrawal fee is deducted from every payout request — this is the same whether you were referred or not. If you joined via a referral link, a portion of that 15% is shared with your referrer at no extra cost to you. What you see in your wallet balance is exactly what you receive."
                           },
                           {
                             id: "004",
                             protocol: "REFERRAL-SYSTEM",
-                            question: "How does the 3-Division Referral Matrix work?",
-                            answer: "When your Level 1 referral (User B) requests a withdrawal, you receive 15% of their gross earnings. When their referral (User C) withdraws, you receive 7.5% and User B receives 15%. Users who join without a referral link pay a flat 15% Admin Charge at withdrawal. Commissions are deducted from the withdrawing user's gross earnings and distributed to referrers automatically."
+                            question: "How does the referral commission system work?",
+                            answer: "When your direct referral requests a payout, a 15% withdrawal fee is deducted from their earnings. A share of that fee is credited to you as a lifetime referral commission — automatically, at no extra cost to the withdrawing user. You earn this passive income for every payout your referral makes, forever."
                           },
                           {
                             id: "005",
@@ -3466,7 +3511,7 @@ export default function UserPortal() {
                             id: "006",
                             protocol: "PAYOUT-METHODS",
                             question: "How do I withdraw my earnings?",
-                            answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page — it is mathematically locked until tasks are complete. Higher-ranked users (Chacha Supreme, Haji Sab) have payouts processed first. The 12% platform fee plus any applicable referral/admin charges are already reflected in your displayed wallet balance."
+                            answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page — it is mathematically locked until tasks are complete. Higher-ranked users (Chacha Supreme, Haji Sab) have payouts processed first. A flat 15% withdrawal fee is deducted from every payout; this is already reflected in your displayed wallet balance so there are no surprises at withdrawal time."
                           },
                           {
                             id: "007",

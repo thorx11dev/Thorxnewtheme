@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -7,7 +7,7 @@ import TechnicalLabel from "@/components/ui/technical-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Users, Shield, Vault, Search, Crown, Check, X, LogOut, Coins } from "lucide-react";
+import { Users, Shield, Vault, Search, Crown, Check, X, LogOut, Coins, Clock, TrendingUp, AlertTriangle } from "lucide-react";
 
 interface GuildSummary {
   id: string;
@@ -33,12 +33,27 @@ interface GuildMemberRow {
   user: { id: string; firstName: string; lastName: string; avatar: string; rank: string; profilePicture?: string };
 }
 
+interface GuildWeeklyCycle {
+  id: string;
+  guildId: string;
+  weekStart: string;
+  weekEnd: string;
+  targetPoints: number;
+  actualPoints: number | null;
+  goalMet: boolean | null;
+  multiplierApplied: string | null;
+  resolved: boolean;
+  resolvedAt: string | null;
+}
+
 interface VaultBucket {
   id: string;
   userId: string;
   pointsHeld: number;
   pkrHeld: string;
   status: string;
+  releasedMultiplier: string | null;
+  releasedPkrValue: string | null;
   user: { id: string; firstName: string; lastName: string; avatar: string };
 }
 
@@ -80,7 +95,7 @@ export function GuildVaultPanel({ currentUserId }: { currentUserId: string }) {
     enabled: !!guildId,
   });
 
-  const { data: vaultStatus } = useQuery<{ guild: GuildSummary; currentCycle: any; memberBuckets: VaultBucket[] }>({
+  const { data: vaultStatus } = useQuery<{ guild: GuildSummary; currentCycle: GuildWeeklyCycle | null; memberBuckets: VaultBucket[] }>({
     queryKey: ["/api/guilds", guildId, "vault"],
     queryFn: async () => (await apiRequest("GET", `/api/guilds/${guildId}/vault`)).json(),
     enabled: !!guildId && inActiveGuild,
@@ -141,6 +156,24 @@ export function GuildVaultPanel({ currentUserId }: { currentUserId: string }) {
   const isCaptain = guildDetail?.guild?.captainId === currentUserId;
   const pendingRequests = (guildDetail?.members || []).filter(m => m.status === "pending");
   const activeMembers = (guildDetail?.members || []).filter(m => m.status === "active");
+
+  // Weekly countdown state
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number } | null>(null);
+  useEffect(() => {
+    const cycle = vaultStatus?.currentCycle;
+    if (!cycle?.weekEnd) { setTimeLeft(null); return; }
+    const tick = () => {
+      const diff = new Date(cycle.weekEnd).getTime() - Date.now();
+      if (diff <= 0) { setTimeLeft({ days: 0, hours: 0, minutes: 0 }); return; }
+      const days = Math.floor(diff / 86_400_000);
+      const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+      const minutes = Math.floor((diff % 3_600_000) / 60_000);
+      setTimeLeft({ days, hours, minutes });
+    };
+    tick();
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, [vaultStatus?.currentCycle]);
 
   return (
     <motion.div
@@ -237,20 +270,72 @@ export function GuildVaultPanel({ currentUserId }: { currentUserId: string }) {
               </Button>
             </div>
 
-            {vaultStatus?.currentCycle && (
-              <div className="mb-4 p-3 bg-black text-white">
-                <div className="flex justify-between text-xs font-black uppercase tracking-widest mb-1">
-                  <span>This Week's Goal</span>
-                  <span>{vaultStatus.memberBuckets.reduce((s, b) => s + b.pointsHeld, 0)} / {vaultStatus.currentCycle.targetPoints} pts</span>
+            {vaultStatus?.currentCycle && (() => {
+              const cycle = vaultStatus.currentCycle!;
+              const totalHeld = vaultStatus.memberBuckets.reduce((s, b) => s + b.pointsHeld, 0);
+              const totalPkrHeld = vaultStatus.memberBuckets.reduce((s, b) => s + parseFloat(b.pkrHeld), 0);
+              const progress = Math.min(100, (totalHeld / Math.max(1, cycle.targetPoints)) * 100);
+              const goalOnTrack = totalHeld >= cycle.targetPoints * 0.6; // ≥60% threshold shown in amber
+              return (
+                <div className="mb-4 space-y-2">
+                  {/* Progress bar */}
+                  <div className="p-3 bg-black text-white">
+                    <div className="flex justify-between text-xs font-black uppercase tracking-widest mb-1">
+                      <span>Weekly Goal</span>
+                      <span className={cn(progress >= 100 ? "text-green-400" : progress >= 60 ? "text-amber-400" : "text-red-400")}>
+                        {totalHeld} / {cycle.targetPoints} pts
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+                      <div
+                        className={cn("h-full transition-all duration-500", progress >= 100 ? "bg-green-400" : goalOnTrack ? "bg-amber-400" : "bg-red-500")}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1.5 text-[9px] font-bold text-white/60 uppercase tracking-widest">
+                      <span>{totalPkrHeld.toFixed(4)} PKR held in vault</span>
+                      <span>{progress.toFixed(0)}% complete</span>
+                    </div>
+                  </div>
+
+                  {/* Multiplier & Countdown row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2.5 border-2 border-black bg-white">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <TrendingUp className="w-3 h-3 text-green-600" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Release Multiplier</span>
+                      </div>
+                      <p className="text-lg font-black text-green-700">
+                        {progress >= 100 ? `${guildDetail?.guild?.guildRank === "S" ? "1.50" : guildDetail?.guild?.guildRank === "A" ? "1.35" : guildDetail?.guild?.guildRank === "B" ? "1.25" : guildDetail?.guild?.guildRank === "C" ? "1.15" : "1.10"}×` : "1.00×"}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">{progress >= 100 ? "Goal met — bonus active" : "Hit goal to unlock bonus"}</p>
+                    </div>
+                    <div className="p-2.5 border-2 border-black bg-white">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Clock className="w-3 h-3 text-blue-600" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Vault Resets In</span>
+                      </div>
+                      {timeLeft ? (
+                        <p className="text-lg font-black text-blue-700">
+                          {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m
+                        </p>
+                      ) : (
+                        <p className="text-lg font-black text-muted-foreground">—</p>
+                      )}
+                      <p className="text-[9px] text-muted-foreground">Every Monday 00:00 UTC</p>
+                    </div>
+                  </div>
+
+                  {/* Frozen warning */}
+                  {guildDetail?.guild?.strikes && guildDetail.guild.strikes >= 3 && (
+                    <div className="p-2.5 border-2 border-red-500 bg-red-50 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                      <p className="text-xs font-black text-red-700">Guild frozen — 3 strikes. Vault releases suspended until strikes are cleared by admin.</p>
+                    </div>
+                  )}
                 </div>
-                <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-amber-400"
-                    style={{ width: `${Math.min(100, (vaultStatus.memberBuckets.reduce((s, b) => s + b.pointsHeld, 0) / Math.max(1, vaultStatus.currentCycle.targetPoints)) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="space-y-1.5">
               {activeMembers.map((m) => {
