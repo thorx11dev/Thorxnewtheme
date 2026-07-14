@@ -519,7 +519,7 @@ const sections = [
   { id: "dashboard", name: "Dashboard", icon: Home },
   { id: "work", name: "Work", icon: Briefcase },
   { id: "referrals", name: "Referrals", icon: Network },
-  { id: "guild", name: "Guild", icon: Shield },
+  { id: "guild", name: "Engine C", icon: Shield },
   { id: "payout", name: "Payout", icon: Landmark },
   { id: "help", name: "Help", icon: Headphones },
 ];
@@ -756,35 +756,9 @@ export default function UserPortal() {
 
   const userRank = (user?.rank || "Nawa Aya").toLowerCase();
 
-  const incompleteMandatory = (tasksWithRecords || []).filter((tr) => {
-    if (!tr || !tr.task) return false;
-    const isTargeted = tr.task.targetRank.toLowerCase() === "nawa aya" || tr.task.targetRank.toLowerCase() === userRank;
-    const isCompleted = tr.record?.status === 'completed';
-    return tr.task.isActive && tr.task.isMandatory && isTargeted && !isCompleted;
-  });
-  
-  // Fetch rank requirements from system config
-  const rankReqs = useMemo(() => {
-    if (payoutRules?.value && payoutRules.value[userRank]) {
-      return payoutRules.value[userRank] as { minAds: number; minTasks: number };
-    }
-    // Default fallbacks if no config is set yet
-    const defaults: Record<string, { minAds: number; minTasks: number }> = {
-      "nawa aya":       { minAds: 5,  minTasks: 0 },
-      "munna":          { minAds: 10, minTasks: 1 },
-      "bawa ji":        { minAds: 15, minTasks: 2 },
-      "haji saab":      { minAds: 20, minTasks: 3 },
-      "chacha supreme": { minAds: 30, minTasks: 5 }
-    };
-    return defaults[userRank] || { minAds: 5, minTasks: 0 };
-  }, [payoutRules, userRank]);
-  
+  // Payout is always open — no task gate (Blueprint v2026)
   const adsWatchedTodayCount = todayAdViews?.count || 0;
   const cpaCompletedCount = cpaTasksCompletedToday?.count || 0;
-
-  const isPayoutLocked = incompleteMandatory.length > 0 || 
-                         adsWatchedTodayCount < rankReqs.minAds || 
-                         cpaCompletedCount < rankReqs.minTasks;
 
   const { data: withdrawalsHistory, error: withdrawalsError } = useQuery<any>({
     queryKey: ["/api/withdrawals"],
@@ -1133,10 +1107,20 @@ export default function UserPortal() {
     });
   };
 
-  const formatCurrency = (amount: string | number) => {
+  const formatPoints = (amount: string | number) => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    const points = Math.round(numAmount * 100);
+    return `${points.toLocaleString()} TX-Points`;
+  };
+
+  // Only used inside Conversion Room — never on regular screens
+  const formatPKR = (amount: string | number) => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     return `PKR ${numAmount.toFixed(2)}`;
   };
+
+  // Keep formatCurrency as alias so all existing calls continue to show TX-Points
+  const formatCurrency = formatPoints;
 
   const copyReferralCode = () => {
     navigator.clipboard.writeText(displayUser?.referralCode || 'GUEST-CODE');
@@ -1214,10 +1198,10 @@ export default function UserPortal() {
 
     // Calculate remaining from other sources
     const otherEarnings = totalEarnings - adViewsEarnings - referralEarnings;
-    const dailyTasksEarnings = Math.max(0, otherEarnings * 0.7);
+    const guildVaultEarnings = Math.max(0, otherEarnings * 0.7);
     const bonusesEarnings = Math.max(0, otherEarnings * 0.3);
 
-    const total = adViewsEarnings + referralEarnings + dailyTasksEarnings + bonusesEarnings;
+    const total = adViewsEarnings + referralEarnings + guildVaultEarnings + bonusesEarnings;
 
     // Theme-consistent color palette: Primary orange, black, beige accents, white
     const chartColors = {
@@ -1232,7 +1216,7 @@ export default function UserPortal() {
       return [
         { name: 'Ad Views', value: 65, color: chartColors.primary },
         { name: 'Referrals', value: 25, color: chartColors.secondary },
-        { name: 'Daily Tasks', value: 7, color: chartColors.tertiary },
+        { name: 'Guild Vault', value: 7, color: chartColors.tertiary },
         { name: 'Bonuses', value: 3, color: chartColors.quaternary }
       ];
     }
@@ -1249,8 +1233,8 @@ export default function UserPortal() {
         color: chartColors.secondary
       },
       {
-        name: 'Daily Tasks',
-        value: Math.round((dailyTasksEarnings / total) * 100),
+        name: 'Guild Vault',
+        value: Math.round((guildVaultEarnings / total) * 100),
         color: chartColors.tertiary
       },
       {
@@ -1266,8 +1250,7 @@ export default function UserPortal() {
   const dailyGoal = 50;
   const currentProgress = parseFloat(displayUser?.totalEarnings || '0.00');
   const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
-  const dailyLimit = rankReqs.minAds;
-  const remainingAds = Math.max(0, dailyLimit - (todayAdViews?.count || 0));
+  const remainingAds = Math.max(0, 5 - adsWatchedTodayCount);
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -1493,9 +1476,9 @@ export default function UserPortal() {
         isOpen={showDailyGoalModal}
         onClose={() => setShowDailyGoalModal(false)}
         adsWatched={todayAdViews?.count || 0}
-        adsTarget={rankReqs.minAds}
+        adsTarget={5}
         cpaCount={cpaCompletedCount}
-        cpaTarget={rankReqs.minTasks}
+        cpaTarget={0}
       />
 
       <AdWebPanel
@@ -1600,84 +1583,82 @@ export default function UserPortal() {
 
         <InteractiveDivider className="mb-12" />
 
-        {/* Key Metrics Cards */}
+        {/* ── Blueprint 2026: 4 Dashboard Cards ──────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
-          {/* Total Earnings */}
+          {/* Card 1: TX-Points Balance */}
           <motion.div
-            variants={{
-              initial: { opacity: 0, y: 15 },
-              animate: { opacity: 1, y: 0 }
-            }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ scale: 1.02, translateY: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
-            data-testid="card-total-earnings"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <Wallet className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="TOTAL EARNINGS" className="text-muted-foreground text-xs" />
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-total-earnings">{formatCurrency(dashboardStats?.totalEarnings || displayUser?.totalEarnings || '0.00')}</p>
-          </motion.div>
-
-          {/* Available Balance */}
-          <motion.div
-            variants={{
-              initial: { opacity: 0, y: 15 },
-              animate: { opacity: 1, y: 0 }
-            }}
+            variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             whileHover={{ scale: 1.02, translateY: -4 }}
             whileTap={{ scale: 0.98 }}
             className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
-            data-testid="card-available-balance"
+            data-testid="card-tx-points"
           >
             <div className="flex items-start justify-between mb-3">
-              <DollarSign className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="AVAILABLE BALANCE" className="text-muted-foreground text-xs" />
+              <Zap className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="TX-POINTS" className="text-muted-foreground text-xs" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-available-balance">{formatCurrency(dashboardStats?.availableBalance || displayUser?.availableBalance || '0.00')}</p>
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-tx-points">
+              {((displayUser as any)?.txPointsBalance || 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Available Points</p>
           </motion.div>
 
-          {/* Active Referrals */}
+          {/* Card 2: Engine C Vault */}
           <motion.div
-            variants={{
-              initial: { opacity: 0, y: 15 },
-              animate: { opacity: 1, y: 0 }
-            }}
+            variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             whileHover={{ scale: 1.02, translateY: -4 }}
             whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
-            data-testid="card-active-referrals"
+            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
+            data-testid="card-engine-c-vault"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Award className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="ENGINE C VAULT" className="text-muted-foreground text-xs" />
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-vault-points">
+              {Math.round(parseFloat(dashboardStats?.vaultBalance || (displayUser as any)?.pendingBalance || '0') * 100).toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Locked in Guild Vault</p>
+          </motion.div>
+
+          {/* Card 3: Direct Referrals */}
+          <motion.div
+            variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            whileHover={{ scale: 1.02, translateY: -4 }}
+            whileTap={{ scale: 0.98 }}
+            className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+            data-testid="card-direct-referrals"
           >
             <div className="flex items-start justify-between mb-3">
               <Users className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
-              <TechnicalLabel text="ACTIVE REFERRALS" className="text-muted-foreground text-xs" />
+              <TechnicalLabel text="DIRECT REFERRALS" className="text-muted-foreground text-xs" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-referrals-count">{dashboardStats?.referralCount || referralsData?.stats.count || 0}</p>
+            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-referrals-count">
+              {referralsData?.stats?.count || dashboardStats?.referralCount || 0}
+            </p>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Level 1 Invited</p>
           </motion.div>
 
-          {/* Daily Progress */}
+          {/* Card 4: Referral Points Earned */}
           <motion.div
-            variants={{
-              initial: { opacity: 0, y: 15 },
-              animate: { opacity: 1, y: 0 }
-            }}
+            variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             whileHover={{ scale: 1.02, translateY: -4 }}
             whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-muted-foreground/10"
-            data-testid="card-daily-goal"
-            onClick={() => setShowDailyGoalModal(true)}
+            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+            data-testid="card-referral-points"
           >
             <div className="flex items-start justify-between mb-3">
-              <Target className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs" />
+              <Gift className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
+              <TechnicalLabel text="REFERRAL POINTS" className="text-muted-foreground text-xs" />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-daily-progress">{Math.round(dashboardStats?.dailyGoalProgress || progressPercentage)}%</p>
-            <Progress value={dashboardStats?.dailyGoalProgress || progressPercentage} className="progress-enhanced h-2 mb-3" />
+            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-referral-points">
+              {Math.round(parseFloat(referralsData?.stats?.totalEarned || '0') * 100).toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">From Direct Referrals</p>
           </motion.div>
         </div>
 
@@ -2070,9 +2051,9 @@ export default function UserPortal() {
                       <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs" />
                     </div>
                     <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-work-daily-goal">
-                      {Math.round((completedAds.size / dailyLimit) * 100)}%
+                      {Math.round((completedAds.size / 5) * 100)}%
                     </p>
-                    <Progress value={Math.round((completedAds.size / dailyLimit) * 100)} className="progress-enhanced h-2 mb-3" />
+                    <Progress value={Math.round((completedAds.size / 5) * 100)} className="progress-enhanced h-2 mb-3" />
                   </motion.div>
                 </div>
 
@@ -2527,118 +2508,6 @@ export default function UserPortal() {
 
   // Progressive Payout Section - Dashboard Style
   function renderPayoutSection() {
-    if (isPayoutLocked) {
-      return (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-5xl mx-auto px-4 py-8 md:py-12"
-        >
-          <div className="wireframe-border bg-white p-8 md:p-12 relative overflow-hidden shadow-[12px_12px_0px_rgba(0,0,0,0.05)]">
-            {/* Background Decoration */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-zinc-100 -mr-16 -mt-16 rotate-45 z-0" />
-            
-            <div className="relative z-10">
-              {/* Header Optimized for Desktop and Mobile */}
-              <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 mb-12 border-b-2 border-zinc-100 pb-12">
-                <div className="flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left">
-                  <div className="w-20 h-20 bg-zinc-400 border-4 border-black flex items-center justify-center shadow-[6px_6px_0px_#000] shrink-0">
-                    <Lock className="text-black w-10 h-10" />
-                  </div>
-                  <div>
-                    <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-black mb-2">Payout locked</h2>
-                    <p className="text-zinc-500 font-bold text-xs md:text-sm uppercase tracking-widest leading-relaxed max-w-md">
-                      you need to complete your daily tasks to unlock the payout
-                    </p>
-                  </div>
-                </div>
-                
-                <Button 
-                  onClick={() => setShowDailyGoalModal(true)}
-                  className="bg-zinc-400 hover:bg-black hover:text-white text-black font-black text-xs tracking-widest uppercase h-14 md:h-16 px-8 md:px-12 rounded-none border-4 border-black shadow-[6px_6px_0px_#000] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all shrink-0"
-                >
-                  View details
-                </Button>
-              </div>
-
-              {/* Minimalist "tasks list" Container */}
-              <div className="border-4 border-black bg-zinc-50 overflow-hidden shadow-[8px_8px_0px_#000]">
-                {/* Protocol Header */}
-                <div className="bg-black p-4 flex justify-between items-center">
-                  <span className="text-white font-black text-[10px] md:text-xs uppercase tracking-[0.3em]">tasks list</span>
-                  <span className="bg-white text-black px-3 py-1 font-black text-[10px] uppercase tracking-widest">
-                    {(adsWatchedTodayCount < rankReqs.minAds ? 1 : 0) + (cpaCompletedCount < rankReqs.minTasks ? 1 : 0) + incompleteMandatory.length} Items
-                  </span>
-                </div>
-
-                {/* Scrollable list with max-height of ~3 items */}
-                <div className="divide-y-2 divide-black/5 max-h-[300px] overflow-y-auto custom-scrollbar touch-pan-y">
-                  {/* Engine A Requirement */}
-                  {adsWatchedTodayCount < rankReqs.minAds && (
-                    <div className="p-4 md:p-6 flex items-center justify-between hover:bg-white transition-colors group">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-black text-white flex items-center justify-center shrink-0 font-black text-xs md:text-sm">
-                          1
-                        </div>
-                        <div>
-                          <p className="font-black text-xs md:text-sm uppercase tracking-tight text-black">Complete {rankReqs.minAds} Engine A Tasks</p>
-                          <p className="text-[10px] font-black text-zinc-400">{adsWatchedTodayCount} / {rankReqs.minAds}</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-black transition-colors shrink-0 ml-4">Required</span>
-                    </div>
-                  )}
-
-                  {/* Engine B Requirement */}
-                  {cpaCompletedCount < rankReqs.minTasks && (
-                    <div className="p-4 md:p-6 flex items-center justify-between hover:bg-white transition-colors group">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-black text-white flex items-center justify-center shrink-0 font-black text-xs md:text-sm">
-                          {(adsWatchedTodayCount < rankReqs.minAds ? 1 : 0) + 1}
-                        </div>
-                        <div>
-                          <p className="font-black text-xs md:text-sm uppercase tracking-tight text-black">Complete {rankReqs.minTasks} Engine B Tasks</p>
-                          <p className="text-[10px] font-black text-zinc-400">{cpaCompletedCount} / {rankReqs.minTasks}</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-black transition-colors shrink-0 ml-4">Required</span>
-                    </div>
-                  )}
-
-                  {/* Dynamic Mandatory Tasks */}
-                  {incompleteMandatory.map((tr: any, idx: number) => {
-                    const baseIndex = (adsWatchedTodayCount < rankReqs.minAds ? 1 : 0) + (cpaCompletedCount < rankReqs.minTasks ? 1 : 0);
-                    return (
-                      <div key={tr.task.id} className="p-4 md:p-6 flex items-center justify-between hover:bg-white transition-colors group">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-black text-white flex items-center justify-center shrink-0 font-black text-xs md:text-sm">
-                            {baseIndex + idx + 1}
-                          </div>
-                          <div>
-                            <p className="font-black text-xs md:text-sm uppercase tracking-tight text-black">{tr.task.title}</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-black transition-colors shrink-0 ml-4">Required</span>
-                      </div>
-                    );
-                  })}
-                  
-                  {/* Success State if somehow locked but no list (backup) */}
-                  {incompleteMandatory.length === 0 && adsWatchedTodayCount >= rankReqs.minAds && cpaCompletedCount >= rankReqs.minTasks && (
-                    <div className="p-12 text-center">
-                      <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-4" />
-                      <p className="font-black text-sm uppercase tracking-widest text-black">All Requirements Met</p>
-                      <p className="text-xs font-bold uppercase text-zinc-400 mt-2">Payout is becoming available...</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      );
-    }
-
     // Static transaction history data
     const historyItems = withdrawalsHistory || [];
 
@@ -3306,11 +3175,10 @@ export default function UserPortal() {
         {/* Section header */}
         <div className="mb-8">
           <TechnicalLabel text="ENGINE C — GUILD SYSTEM" className="text-xs text-muted-foreground mb-2" />
-          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight">Guild & Vault</h1>
+          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight">Engine C</h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-            Create or join a Guild. Earn bonus multipliers on your weekly vault release. 85% of every ad earn
-            goes to your wallet instantly — the remaining 15% is held in the guild vault and released weekly
-            with a rank-based multiplier if your guild hits its goal.
+            The Social Gaming Hub. Create or join a Guild, complete weekly tasks exclusive to members,
+            coordinate via real-time team chat, and earn multiplied vault bonuses every week.
           </p>
         </div>
 

@@ -20,6 +20,8 @@ interface SocketMeta {
   userId: string;
   /** True only for sessions allowed to see cross-user activity (founder/admin, or team with a users/dashboard section grant). */
   canSeeUserActivity: boolean;
+  /** Active guild ID for Engine C chat routing (set on join, cleared on leave). */
+  guildId?: string;
 }
 
 const sockets = new Map<WebSocket, SocketMeta>();
@@ -94,6 +96,18 @@ export function broadcastTeamRefresh(reason?: string) {
   const payload = { type: "team:refresh", reason, at: Date.now() };
   sockets.forEach((meta, ws) => {
     if (meta.canSeeUserActivity) send(ws, payload);
+  });
+}
+
+/**
+ * Broadcast a message to all connected WebSocket clients.
+ * Used for Engine C real-time guild chat — clients filter by guildId.
+ */
+export function broadcastGuildMessage(guildId: string, payload: unknown) {
+  if (!wss) return;
+  const message = JSON.stringify({ ...(payload as object), guildId });
+  sockets.forEach((_meta, ws) => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(message);
   });
 }
 

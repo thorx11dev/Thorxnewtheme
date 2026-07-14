@@ -98,6 +98,15 @@ import {
   pointsLedger,
   type PointsLedger,
   type InsertPointsLedger,
+  engineCMessages,
+  type EngineCMessage,
+  type InsertEngineCMessage,
+  weeklyTasks,
+  type WeeklyTask,
+  type InsertWeeklyTask,
+  weeklyTaskRecords,
+  type WeeklyTaskRecord,
+  type InsertWeeklyTaskRecord,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, sql, inArray, ilike, gte, lte, lt, ne } from "drizzle-orm";
@@ -178,10 +187,8 @@ export interface IStorage {
   getReferralStatsDetailed(userId: string): Promise<{
     totalReferrals: number;
     level1Count: number;
-    level2Count: number;
     totalCommissionEarnings: string;
     level1Earnings: string;
-    level2Earnings: string;
     pendingCommissions: string;
     paidCommissions: string;
   }>;
@@ -1003,85 +1010,43 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Enhanced referral stats with L1/L2 breakdown
+  // Referral stats — L1 direct referrals only (Blueprint v2026: single-tier)
   async getReferralStatsDetailed(userId: string): Promise<{
     totalReferrals: number;
     level1Count: number;
-    level2Count: number;
     totalCommissionEarnings: string;
     level1Earnings: string;
-    level2Earnings: string;
     pendingCommissions: string;
     paidCommissions: string;
   }> {
-    // Get L1 referrals count
     const [l1Result] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(referrals)
-      .where(and(
-        eq(referrals.referrerId, userId),
-        eq(referrals.tier, 1)
-      ));
+      .where(and(eq(referrals.referrerId, userId), eq(referrals.tier, 1)));
 
-    // Get L2 referrals count (referrals of referrals)
-    const [l2Result] = await db
-      .select({ count: sql<number>`COUNT(DISTINCT ${referrals.referredId})` })
-      .from(referrals)
-      .innerJoin(
-        sql`${referrals} as r2`,
-        sql`${referrals}.referred_id = r2.referrer_id`
-      )
-      .where(eq(referrals.referrerId, userId));
-
-    // Get L1 commission earnings
     const [l1Earnings] = await db
       .select({ total: sql<string>`COALESCE(SUM(${commissionLogs.amount}), '0.00')` })
       .from(commissionLogs)
-      .where(and(
-        eq(commissionLogs.beneficiaryId, userId),
-        eq(commissionLogs.level, 1)
-      ));
+      .where(and(eq(commissionLogs.beneficiaryId, userId), eq(commissionLogs.level, 1)));
 
-    // Get L2 commission earnings
-    const [l2Earnings] = await db
-      .select({ total: sql<string>`COALESCE(SUM(${commissionLogs.amount}), '0.00')` })
-      .from(commissionLogs)
-      .where(and(
-        eq(commissionLogs.beneficiaryId, userId),
-        eq(commissionLogs.level, 2)
-      ));
-
-    // Get pending commissions
     const [pendingResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(${commissionLogs.amount}), '0.00')` })
       .from(commissionLogs)
-      .where(and(
-        eq(commissionLogs.beneficiaryId, userId),
-        eq(commissionLogs.status, "pending")
-      ));
+      .where(and(eq(commissionLogs.beneficiaryId, userId), eq(commissionLogs.status, "pending")));
 
-    // Get paid commissions
     const [paidResult] = await db
       .select({ total: sql<string>`COALESCE(SUM(${commissionLogs.amount}), '0.00')` })
       .from(commissionLogs)
-      .where(and(
-        eq(commissionLogs.beneficiaryId, userId),
-        eq(commissionLogs.status, "paid")
-      ));
+      .where(and(eq(commissionLogs.beneficiaryId, userId), eq(commissionLogs.status, "paid")));
 
-    const level1Count = l1Result?.count || 0;
-    const level2Count = l2Result?.count || 0;
+    const level1Count = Number(l1Result?.count || 0);
     const level1EarningsAmount = l1Earnings?.total || "0.00";
-    const level2EarningsAmount = l2Earnings?.total || "0.00";
-    const totalCommission = (parseFloat(level1EarningsAmount) + parseFloat(level2EarningsAmount)).toFixed(2);
 
     return {
-      totalReferrals: level1Count + level2Count,
+      totalReferrals: level1Count,
       level1Count,
-      level2Count,
-      totalCommissionEarnings: totalCommission,
+      totalCommissionEarnings: level1EarningsAmount,
       level1Earnings: level1EarningsAmount,
-      level2Earnings: level2EarningsAmount,
       pendingCommissions: pendingResult?.total || "0.00",
       paidCommissions: paidResult?.total || "0.00",
     };
@@ -3965,6 +3930,166 @@ export class DatabaseStorage implements IStorage {
       }))
       .sort((a, b) => (b.precision ?? 0) - (a.precision ?? 0));
   }
+
+  // ── Engine C: Group Chat ─────────────────────────────────────────────────────
+
+  async createEngineCMessage(data: { guildId: string; senderId: string; message: string }): Promise<any> {
+    const [msg] = await db
+      .insert(engineCMessages)
+      .values({ guildId: data.guildId, senderId: data.senderId, message: data.message })
+      .returning();
+    const sender = await this.getUserById(data.senderId);
+    return {
+      ...msg,
+      sender: sender ? {
+        id: sender.id, firstName: sender.firstName, lastName: sender.lastName,
+        avatar: sender.avatar, rank: sender.rank, personalRank: sender.personalRank,
+      } : null,
+    };
+  }
+
+  async getEngineCMessages(guildId: string, limit = 50, before?: string): Promise<any[]> {
+    const rows = await db
+      .select({
+        id: engineCMessages.id,
+        guildId: engineCMessages.guildId,
+        senderId: engineCMessages.senderId,
+        message: engineCMessages.message,
+        createdAt: engineCMessages.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        avatar: users.avatar,
+        rank: users.rank,
+        personalRank: users.personalRank,
+      })
+      .from(engineCMessages)
+      .innerJoin(users, eq(engineCMessages.senderId, users.id))
+      .where(
+        before
+          ? and(eq(engineCMessages.guildId, guildId), sql`${engineCMessages.createdAt} < ${before}::timestamptz`)
+          : eq(engineCMessages.guildId, guildId)
+      )
+      .orderBy(sql`${engineCMessages.createdAt} DESC`)
+      .limit(limit);
+    return rows.reverse();
+  }
+
+  async deleteEngineCMessage(messageId: string): Promise<void> {
+    await db.delete(engineCMessages).where(eq(engineCMessages.id, messageId));
+  }
+
+  // ── Engine C: Weekly Tasks ───────────────────────────────────────────────────
+
+  async getActiveWeeklyTasks(userId: string, guildId: string): Promise<any[]> {
+    const now = new Date();
+    const tasks = await db
+      .select()
+      .from(weeklyTasks)
+      .where(
+        and(
+          eq(weeklyTasks.isActive, true),
+          sql`${weeklyTasks.weekStart} <= ${now}`,
+          sql`${weeklyTasks.weekEnd} >= ${now}`
+        )
+      )
+      .orderBy(weeklyTasks.weekStart);
+
+    const records = await db
+      .select()
+      .from(weeklyTaskRecords)
+      .where(and(eq(weeklyTaskRecords.userId, userId), eq(weeklyTaskRecords.guildId, guildId)));
+
+    const recordMap = new Map(records.map(r => [r.taskId, r]));
+    return tasks.map(t => ({
+      ...t,
+      completedByUser: recordMap.has(t.id),
+      completionRecord: recordMap.get(t.id) ?? null,
+    }));
+  }
+
+  async getAllWeeklyTasks(): Promise<any[]> {
+    return db.select().from(weeklyTasks).orderBy(sql`${weeklyTasks.weekStart} DESC`);
+  }
+
+  async createWeeklyTask(data: Omit<InsertWeeklyTask, "id" | "createdAt">): Promise<any> {
+    const [task] = await db.insert(weeklyTasks).values(data as any).returning();
+    return task;
+  }
+
+  async updateWeeklyTask(taskId: string, updates: Partial<InsertWeeklyTask>): Promise<any> {
+    const [task] = await db.update(weeklyTasks).set(updates as any).where(eq(weeklyTasks.id, taskId)).returning();
+    return task;
+  }
+
+  async completeWeeklyTask(userId: string, guildId: string, taskId: string): Promise<any> {
+    const [task] = await db.select().from(weeklyTasks).where(eq(weeklyTasks.id, taskId));
+    if (!task || !task.isActive) throw new Error("Task not found or inactive.");
+    const now = new Date();
+    if (now < task.weekStart || now > task.weekEnd) throw new Error("Task is not available this week.");
+    const [existing] = await db
+      .select()
+      .from(weeklyTaskRecords)
+      .where(and(eq(weeklyTaskRecords.userId, userId), eq(weeklyTaskRecords.taskId, taskId)));
+    if (existing) throw new Error("Task already completed.");
+    const [record] = await db.insert(weeklyTaskRecords).values({ userId, guildId, taskId }).returning();
+    await db.update(users)
+      .set({ txPointsBalance: sql`${users.txPointsBalance} + ${task.pointReward}`, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+    return record;
+  }
+
+  // ── Engine C: Captain Rally ──────────────────────────────────────────────────
+
+  async triggerCaptainRally(guildId: string, captainId: string): Promise<any> {
+    const membership = await this.getUserGuildMembership(captainId);
+    if (!membership || membership.guildId !== guildId || membership.role !== "captain") {
+      throw new Error("Only the guild captain can trigger a rally.");
+    }
+    const [guild] = await db.select().from(guilds).where(eq(guilds.id, guildId));
+    if (!guild) throw new Error("Guild not found.");
+    if ((guild as any).lastRallyAt) {
+      const hoursSinceLast = (Date.now() - new Date((guild as any).lastRallyAt).getTime()) / 3600000;
+      if (hoursSinceLast < 24) {
+        throw new Error(`Rally on cooldown. Available again in ${Math.ceil(24 - hoursSinceLast)} hour(s).`);
+      }
+    }
+    await db.update(guilds).set({ lastRallyAt: new Date() } as any).where(eq(guilds.id, guildId));
+    const members = await this.getGuildMembers(guildId);
+    const captain = await this.getUserById(captainId);
+    const captainName = captain ? `${captain.firstName} ${captain.lastName}` : "The Captain";
+    const active = members.filter((m: any) => m.userId !== captainId && m.status === "active");
+    for (const m of active) {
+      await this.createNotification({
+        userId: m.userId,
+        title: "⚡ Captain's Rally!",
+        message: `${captainName} is calling you to arms! Watch 5 ads in the next hour for extra TX-Points!`,
+        type: "system",
+        isRead: false,
+      });
+    }
+    return { success: true, membersNotified: active.length };
+  }
+
+  // ── Engine C: Guild Settings (Captain only) ──────────────────────────────────
+
+  async updateGuildSettings(guildId: string, captainId: string, settings: {
+    name?: string; description?: string; minRankRequired?: string;
+    recruitmentOpen?: boolean; pinnedMemberId?: string | null; avatarUrl?: string;
+  }): Promise<any> {
+    const membership = await this.getUserGuildMembership(captainId);
+    if (!membership || membership.guildId !== guildId || membership.role !== "captain") {
+      throw new Error("Only the guild captain can update guild settings.");
+    }
+    const updates: any = {};
+    if (settings.name !== undefined) updates.name = settings.name.trim();
+    if (settings.description !== undefined) updates.description = settings.description;
+    if (settings.minRankRequired !== undefined) updates.minRankRequired = settings.minRankRequired;
+    if (settings.recruitmentOpen !== undefined) updates.recruitmentOpen = settings.recruitmentOpen;
+    if ("pinnedMemberId" in settings) updates.pinnedMemberId = settings.pinnedMemberId;
+    if (settings.avatarUrl !== undefined) updates.avatarUrl = settings.avatarUrl;
+    const [guild] = await db.update(guilds).set(updates).where(eq(guilds.id, guildId)).returning();
+    return guild;
+  }
 }
 
 export class MemStorage {
@@ -4034,10 +4159,8 @@ export class MemStorage {
   async getReferralStatsDetailed(userId: string): Promise<{
     totalReferrals: number;
     level1Count: number;
-    level2Count: number;
     totalCommissionEarnings: string;
     level1Earnings: string;
-    level2Earnings: string;
     pendingCommissions: string;
     paidCommissions: string;
   }> { throw new Error("Not implemented in MemStorage"); }

@@ -12,8 +12,8 @@ const cardContents = [
         icon: <Play className="size-6 text-black dark:text-white" />,
     },
     {
-        title: "3-Division Referral Matrix",
-        description: "Build a self-sustaining income stream across 3 tiers. Earn 15% when your Level 1 referral withdraws, and 7.5% when their referrals withdraw. Commissions are triggered by real payouts — making your network genuinely valuable.",
+        title: "Direct Referral Commission",
+        description: "Invite others and earn 15% in TX-Points every time your direct referral converts their earnings. No tiers, no complexity — just pure, transparent direct-referral rewards that grow with your network.",
         icon: <Users className="size-6 text-black dark:text-white" />,
     },
     {

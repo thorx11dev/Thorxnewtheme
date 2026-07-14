@@ -77,91 +77,91 @@ const allFaqData = [
     id: "001",
     protocol: "PLATFORM-OVERVIEW",
     question: "What is THORX?",
-    answer: "THORX is an AI-powered digital engagement platform that connects businesses with verified human attention while enabling users to earn real money through meaningful online activities. We operate a dual-engine architecture: Engine A (Attention Marketplace) and Engine B (AI-Driven CPA Offers), backed by a 3-tier referral system."
+    answer: "THORX is an AI-powered digital engagement platform that connects businesses with verified human attention while enabling users to earn TX-Points through meaningful online activities. Our three-engine architecture: Engine A (Attention Marketplace), Engine B (AI-Driven CPA Offers), and Engine C (Guild Social Hub) — all backed by multi-layer AI fraud prevention."
   },
   {
     id: "002",
     protocol: "EARNING-MODEL",
-    question: "How do I earn on THORX?",
-    answer: "You earn through three systems: 1) Engine A — watch 15–25 second video ads then actively explore the advertiser's page for 15 seconds inside our AI sandbox. 2) Engine B — complete curated CPA tasks (app downloads, reviews, registrations) with AI-verified proof submission. 3) Engine C — earn 15% / 7.5% referral commissions when your invited users withdraw earnings."
+    question: "How do I earn TX-Points on THORX?",
+    answer: "Three earning streams: 1) Engine A — Watch 15–25 second video ads then actively explore the advertiser's page for 15 seconds inside our AI sandbox. 2) Engine B — Complete curated CPA tasks (app downloads, reviews, registrations) with AI-verified proof submission. 3) Engine C — Join a Guild to earn bonus TX-Points from weekly tasks and vault multipliers, plus earn direct referral commissions."
   },
   {
     id: "003",
-    protocol: "ATTENTION-REQUIREMENT",
-    question: "What does 'Turn Attention into Currency' mean?",
-    answer: "THORX's hidden AI Attention Detector tracks three real behavioral signals: Tab Visibility (pauses if you switch tabs), Micro-Movement Delta (detects cursor or touch activity), and Scroll Vector (confirms you've scrolled at least 10–20% of the page). All three must pass before a payout is issued. Genuine attention is the product — no shortcuts allowed."
+    protocol: "POINTS-SYSTEM",
+    question: "What are TX-Points and how do they work?",
+    answer: "TX-Points are THORX's universal earning unit — they represent your real value on the platform without exposing raw currency figures. Every ad view, task completion, and referral commission is credited as TX-Points in real time. When you're ready to cash out, you enter the Conversion Room to convert TX-Points into real PKR, which is then sent to your JazzCash or EasyPaisa account."
   },
   {
     id: "004",
-    protocol: "HALAL-ECOSYSTEM",
-    question: "Is THORX earning Halal?",
-    answer: "Yes. THORX operates within a strict halal-based earning model. All video advertisements and CPA offers undergo content filtering — no haram or inappropriate material is promoted. Earnings are based on genuine work (verified human attention and engagement), not passive income, interest, or gambling."
+    protocol: "CONVERSION-ROOM",
+    question: "How do I convert TX-Points to real money?",
+    answer: "Navigate to the Payout section and enter the Conversion Room. You'll see exactly how many TX-Points you hold and the current conversion rate to PKR. Select an amount to convert, review the platform fee (deducted in TX-Points based on your rank), confirm — and your PKR balance is queued for transfer to JazzCash or EasyPaisa. This is the only screen where PKR amounts are shown."
   },
   {
     id: "005",
-    protocol: "REFERRAL-SYSTEM",
-    question: "How does the 3-Division Referral Matrix work?",
-    answer: "THORX uses a 3-tier referral structure: When your Level 1 referral (User B) withdraws, you receive 15% of their gross earnings. When their Level 1 referral (User C) withdraws, you receive 7.5% and User B receives 15%. Users who join without a referral link pay a flat 15% Admin Charge at withdrawal instead. Commissions are triggered by payout requests — not by earnings."
+    protocol: "ENGINE-C",
+    question: "What is Engine C — the Guild Social Hub?",
+    answer: "Engine C is THORX's social gaming hub. It has two spaces: 1) The Public Space (open to all) — browse guild profiles, rankings, and performance boards, then send a recruitment request to join one. 2) The Private Member Dashboard — exclusive to guild members: real-time team chat, weekly task panels with bonus TX-Point rewards, a live vault viewer, and guild roster with contribution stats."
   },
   {
     id: "006",
-    protocol: "WALLET-DEDUCTIONS",
-    question: "What fees are deducted at withdrawal?",
-    answer: "THORX uses a Net-First UI — your wallet always shows your exact withdrawable balance with all fees already calculated in the background. At withdrawal: Referred users have 34.5% deducted total (12% platform fee + 15% Level 1 referral + 7.5% Level 2 referral). Solo/organic users have 27% deducted (12% platform fee + 15% admin charge). What you see is exactly what you get."
+    protocol: "GUILD-VAULT",
+    question: "How does the Guild Vault work?",
+    answer: "When you earn TX-Points while a Guild member, 15% is automatically held in your Guild Vault escrow. At the end of each week, if your Guild hits its collective point target, those held points are released with a rank-based multiplier (up to 1.30× at Guild Rank S). If the target is missed, the held points roll over with a partial release. The Vault incentivizes coordinated teamwork."
   },
   {
     id: "007",
-    protocol: "ENGINE-A",
-    question: "What is Engine A — the Attention Marketplace?",
-    answer: "Engine A is the core earning engine. Phase 1: You watch a 15–25 second video ad via our Waterfall Video Player (if one ad network is empty, the next loads instantly — zero downtime). Phase 2: The advertiser's landing page loads inside a secure Thorx sandbox. You must actively explore it for 15 seconds. A hidden AI behavioral tracker verifies genuine attention before crediting your wallet."
+    protocol: "WEEKLY-TASKS",
+    question: "What are Weekly Tasks?",
+    answer: "Weekly Tasks are exclusive high-reward missions available only to active Guild members in Engine C. Each week, a fresh set of tasks appears in your Member Dashboard. Completing them earns bonus TX-Points credited directly to your wallet, separate from your ad or referral earnings. Solo users (not in any Guild) cannot access Weekly Tasks — another strong incentive to join one."
   },
   {
     id: "008",
-    protocol: "ENGINE-B",
-    question: "What is Engine B — AI-Driven CPA Offers?",
-    answer: "Engine B is the high-yield task system. The THORX team curates reliable offers from top CPA networks (app downloads, reviews, registrations). You complete the task and upload proof. Our AI Agent then runs a multi-tier fraud check: Tier 1 checks metadata/hash for duplicates, Tier 2 uses OCR + LLM to verify screenshot content, Tier 3 moves approved tasks to escrow before admin final release."
+    protocol: "REFERRAL-SYSTEM",
+    question: "How does the Referral Commission work?",
+    answer: "THORX operates a direct (single-level) referral system. Share your referral link — when someone registers and converts their TX-Points, you receive 15% of their platform fee as TX-Points credited to your wallet instantly. It's simple, transparent, and scales with how active your referred users are. There are no multi-level tiers or hidden splits."
   },
   {
     id: "009",
-    protocol: "LEADX-SYSTEM",
-    question: "What is the LeadX System?",
-    answer: "LeadX is THORX's proprietary lead generation system for advertisers. It combines Engine A's attention verification and Engine B's offer infrastructure to deliver verified, high-quality leads — not just impressions or clicks. Advertisers can opt into LeadX for best results or choose to launch their own campaigns directly through the Advertiser Portal."
+    protocol: "RANKING-SYSTEM",
+    question: "What are the user ranks and how do they work?",
+    answer: "THORX has five personal ranks: Nawa Aya (E) → Chota Don (D) → Bawa Ji (C) → Haji Sab (B) → Chacha Supreme (A/S). Ranks unlock lower platform fees at conversion, faster payout priority, and higher Guild Vault release multipliers. Guild Ranks (E through S) are separate — they track your Guild's collective weekly performance."
   },
   {
     id: "010",
-    protocol: "USER-PORTAL",
-    question: "What is inside the User Portal?",
-    answer: "The User Portal has 5 sections: 1) Dashboard — earnings overview, rank, and analytics. 2) Work — Engine A video players + Engine B CPA Offerwall. 3) Referral — team tracking and referral link. 4) Payout — withdraw to JazzCash or EasyPaisa. 5) Help — Area Guide (FAQs), Area Help (AI chatbot), Area Contact (direct support)."
+    protocol: "PAYOUT-METHODS",
+    question: "How do I withdraw my earnings?",
+    answer: "Access is always open in the Payout section — no daily task completion required. Enter the Conversion Room, convert the TX-Points you want, then select JazzCash or EasyPaisa and enter your account details. Higher-ranked users (Chacha Supreme, Haji Sab) have their payouts processed first. The minimum conversion threshold is shown in your Wallet section."
   },
   {
     id: "011",
-    protocol: "RANKING-SYSTEM",
-    question: "What are the user ranks and how do they work?",
-    answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks and withdrawal priorities: 1) Nawa Aya (Priority 5 — new users), 2) Chota Don (5 refs + 2,500 PKR — Priority 4), 3) Bawa Ji (10 refs + 5,000 PKR — Priority 3), 4) Haji Sab (15 refs + 10,000 PKR — Priority 2), 5) Chacha Supreme (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
+    protocol: "ATTENTION-REQUIREMENT",
+    question: "What does 'Turn Attention into Currency' mean?",
+    answer: "THORX's hidden AI Attention Detector tracks three real behavioral signals: Tab Visibility (pauses if you switch tabs), Micro-Movement Delta (detects cursor or touch activity), and Scroll Vector (confirms you've scrolled at least 10–20% of the page). All three must pass before TX-Points are credited. Genuine attention is the product — no shortcuts allowed."
   },
   {
     id: "012",
-    protocol: "PAYOUT-METHODS",
-    question: "How do I withdraw my earnings?",
-    answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page. Higher-ranked users (Chacha Supreme, Haji Sab) have their payouts processed first. The minimum withdrawal amount is shown in your Wallet section. Deductions are calculated before display — there are no surprise cuts at checkout."
+    protocol: "HALAL-ECOSYSTEM",
+    question: "Is THORX earning Halal?",
+    answer: "Yes. THORX operates within a strict halal-based earning model. All video advertisements and CPA offers undergo content filtering — no haram or inappropriate material is promoted. Earnings are based on genuine work (verified human attention and engagement), not passive income, interest, or gambling. TX-Points are earned, not speculated."
   },
   {
     id: "013",
-    protocol: "AD-BLOCKER",
-    question: "Why does THORX ask me to disable my ad-blocker?",
-    answer: "Thorx delivers real ad content as the core earning mechanism. If an ad-blocker or ad-blocking browser (like Brave) is detected, THORX serves a gateway modal that blocks access to the earning area until you whitelist THORX. Ads must load for the earning loop to function — blocking them means no earning is possible."
+    protocol: "ENGINE-A",
+    question: "What is Engine A — the Attention Marketplace?",
+    answer: "Engine A is the core earning engine. Phase 1: You watch a 15–25 second video ad via our Waterfall Video Player (if one ad network is empty, the next loads instantly). Phase 2: The advertiser's landing page loads inside a secure THORX sandbox. You must actively explore it for 15 seconds. A hidden AI behavioral tracker verifies genuine attention before crediting TX-Points."
   },
   {
     id: "014",
-    protocol: "SECURITY",
-    question: "Is THORX secure and my data safe?",
-    answer: "Yes. THORX uses secure authentication, encrypted data handling, and AI-powered fraud prevention on every interaction. The platform is web-first by design — no app download needed — which allows immediate security patches and hot-fixes to be deployed without app store delays."
+    protocol: "ENGINE-B",
+    question: "What is Engine B — AI-Driven CPA Offers?",
+    answer: "Engine B is the high-yield task system. The THORX team curates reliable offers from top CPA networks (app downloads, reviews, registrations). You complete the task and upload proof. Our AI Agent runs a multi-tier fraud check: metadata/hash duplicate detection, OCR + LLM screenshot verification, and escrow release — ensuring fair, fast TX-Points for real work."
   },
   {
     id: "015",
-    protocol: "VALUE-PROPOSITION",
-    question: "How does THORX create value for all sides?",
-    answer: "For Users: Convert genuine attention into real PKR earnings via JazzCash/EasyPaisa with full fee transparency. For Advertisers: Verified human attention — not bot traffic — with AI behavioral proof on every impression, delivering higher conversion rates than traditional social media ads. For the Ecosystem: A self-sustaining viral growth engine powered by the 3-tier referral matrix."
+    protocol: "SECURITY",
+    question: "Is THORX secure and my data safe?",
+    answer: "Yes. THORX uses secure session-based authentication, encrypted data handling, CSRF protection, rate limiting, and AI-powered fraud prevention on every interaction. The platform is web-first by design — no app download needed — which allows immediate security patches to be deployed without app store delays. Your account data is never sold or shared."
   }
 ];
 

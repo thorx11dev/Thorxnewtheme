@@ -979,6 +979,12 @@ export const guilds = pgTable("guilds", {
   vaultBalancePkr: decimal("vault_balance_pkr", { precision: 12, scale: 4 }).notNull().default("0.0000"), // denormalized sum of currently-held vault PKR
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // Engine C — Captain controls (Blueprint v2026)
+  pinnedMemberId: varchar("pinned_member_id").references(() => users.id, { onDelete: "set null" }),
+  minRankRequired: varchar("min_rank_required", { length: 1 }).default("E"),
+  recruitmentOpen: boolean("recruitment_open").notNull().default(true),
+  lastRallyAt: timestamp("last_rally_at"),
+  avatarUrl: text("avatar_url"),
 }, (table) => [
   index("guilds_captain_id_idx").on(table.captainId),
   index("guilds_status_idx").on(table.status),
@@ -1205,3 +1211,53 @@ export const pointsLedgerRelations = relations(pointsLedger, ({ one }) => ({
     references: [guilds.id],
   }),
 }));
+
+// ── Engine C: Group Chat Messages ─────────────────────────────────────────────
+export const engineCMessages = pgTable("engine_c_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "cascade" }),
+  senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("engine_c_messages_guild_id_idx").on(table.guildId),
+  index("engine_c_messages_sender_id_idx").on(table.senderId),
+  index("engine_c_messages_created_at_idx").on(table.createdAt),
+]);
+export type EngineCMessage = typeof engineCMessages.$inferSelect;
+export type InsertEngineCMessage = typeof engineCMessages.$inferInsert;
+
+// ── Engine C: Weekly Tasks (Guild-exclusive, admin-injected) ──────────────────
+export const weeklyTasks = pgTable("weekly_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  pointReward: integer("point_reward").notNull(),
+  weekStart: timestamp("week_start").notNull(),
+  weekEnd: timestamp("week_end").notNull(),
+  targetGuildRank: varchar("target_guild_rank", { length: 1 }).default("E"),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("weekly_tasks_week_start_idx").on(table.weekStart),
+  index("weekly_tasks_is_active_idx").on(table.isActive),
+]);
+export type WeeklyTask = typeof weeklyTasks.$inferSelect;
+export type InsertWeeklyTask = typeof weeklyTasks.$inferInsert;
+
+// ── Engine C: Weekly Task Completion Records ──────────────────────────────────
+export const weeklyTaskRecords = pgTable("weekly_task_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "cascade" }),
+  taskId: varchar("task_id").notNull().references(() => weeklyTasks.id, { onDelete: "cascade" }),
+  status: text("status").default("completed"),
+  completedAt: timestamp("completed_at").defaultNow(),
+}, (table) => [
+  index("weekly_task_records_user_id_idx").on(table.userId),
+  index("weekly_task_records_task_id_idx").on(table.taskId),
+  unique("weekly_task_records_unique").on(table.userId, table.taskId),
+]);
+export type WeeklyTaskRecord = typeof weeklyTaskRecords.$inferSelect;
+export type InsertWeeklyTaskRecord = typeof weeklyTaskRecords.$inferInsert;

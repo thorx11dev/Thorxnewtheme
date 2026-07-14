@@ -1,103 +1,95 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { DollarSign } from "lucide-react";
+import { Zap, Users } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import TechnicalLabel from "@/components/ui/technical-label";
 
 export function CommissionCalculator() {
-    const [l1Count, setL1Count] = useState(10);
-    const [l2Count, setL2Count] = useState(25);
-    const [avgEarning, setAvgEarning] = useState(5000);
+    const [referralCount, setReferralCount] = useState(10);
+    const [avgPoints, setAvgPoints] = useState(50000); // TX-Points per member
+    const [guildMembers, setGuildMembers] = useState(8);
 
-    const l1Rate = 0.15; // 15%
-    const l2Rate = 0.075; // 7.5%
+    const REFERRAL_RATE = 0.15; // 15% direct commission
+    const VAULT_BONUS_RATE = 1.15; // 15% vault bonus at Rank B+
 
-    const l1Earnings = l1Count * avgEarning * l1Rate;
-    const l2Earnings = l2Count * avgEarning * l2Rate;
-    const totalPotential = l1Earnings + l2Earnings;
+    const referralPoints = referralCount * avgPoints * REFERRAL_RATE;
+    const guildVaultBonus = guildMembers * avgPoints * 0.15 * (VAULT_BONUS_RATE - 1);
+    const totalPotential = referralPoints + guildVaultBonus;
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-PK', {
-            style: 'currency',
-            currency: 'PKR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(amount);
-    };
+    const formatPoints = (pts: number) =>
+        `${Math.round(pts).toLocaleString()} TX-Pts`;
 
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white border-2 border-black p-8 shadow-[8px_8px_0px_#000] h-full"
+            className="bg-white dark:bg-zinc-950 border-2 border-black dark:border-white/10 p-8 shadow-[8px_8px_0px_#000] dark:shadow-[8px_8px_0px_rgba(255,255,255,0.05)] h-full"
         >
             <div className="flex items-center gap-2 mb-8 opacity-40">
-                <DollarSign className="w-4 h-4" />
-                <TechnicalLabel text="EARNINGS ESTIMATOR" className="text-[10px] font-black tracking-widest" />
+                <Zap className="w-4 h-4" />
+                <TechnicalLabel text="TX-POINTS ESTIMATOR" className="text-[10px] font-black tracking-widest" />
             </div>
 
             <div className="space-y-10">
-                {/* L1 Input */}
+                {/* Direct Referrals */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-end">
-                        <span className="text-xs font-bold uppercase tracking-tight text-black/60">Level 1 Size</span>
-                        <span className="text-sm font-black text-black">{l1Count} People</span>
+                        <span className="text-xs font-bold uppercase tracking-tight text-black/60 dark:text-white/60">Direct Referrals</span>
+                        <span className="text-sm font-black text-black dark:text-white">{referralCount} People</span>
                     </div>
                     <Slider
-                        value={[l1Count]}
+                        value={[referralCount]}
                         max={100}
                         step={1}
-                        onValueChange={(val) => setL1Count(val[0])}
+                        onValueChange={(val) => setReferralCount(val[0])}
                         className="py-1"
                     />
                 </div>
 
-                {/* L2 Input */}
+                {/* Avg Points per Member */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-end">
-                        <span className="text-xs font-bold uppercase tracking-tight text-black/60">Level 2 Size</span>
-                        <span className="text-sm font-black text-black">{l2Count} People</span>
+                        <span className="text-xs font-bold uppercase tracking-tight text-black/60 dark:text-white/60">Avg Member Points</span>
+                        <span className="text-sm font-black text-black dark:text-white">{avgPoints.toLocaleString()} TX-Pts</span>
                     </div>
                     <Slider
-                        value={[l2Count]}
-                        max={500}
-                        step={5}
-                        onValueChange={(val) => setL2Count(val[0])}
+                        value={[avgPoints]}
+                        max={500000}
+                        step={5000}
+                        onValueChange={(val) => setAvgPoints(val[0])}
                         className="py-1"
                     />
                 </div>
 
-                {/* Avg Earning Input */}
+                {/* Guild Size */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-end">
-                        <span className="text-xs font-bold uppercase tracking-tight text-black/60">Avg Member Earning</span>
-                        <span className="text-sm font-black text-black">{formatCurrency(avgEarning)}</span>
+                        <span className="text-xs font-bold uppercase tracking-tight text-black/60 dark:text-white/60">Guild Size (Engine C)</span>
+                        <span className="text-sm font-black text-black dark:text-white">{guildMembers} Members</span>
                     </div>
                     <Slider
-                        value={[avgEarning]}
-                        max={50000}
-                        step={500}
-                        onValueChange={(val) => setAvgEarning(val[0])}
+                        value={[guildMembers]}
+                        max={50}
+                        step={1}
+                        onValueChange={(val) => setGuildMembers(val[0])}
                         className="py-1"
                     />
                 </div>
 
-                {/* Simplified Results */}
-                <div className="pt-8 border-t-2 border-black/5 space-y-4">
+                {/* Results */}
+                <div className="pt-8 border-t-2 border-black/5 dark:border-white/5 space-y-4">
                     <div className="flex justify-between items-center text-sm">
-                        <span className="font-bold text-black/50">Level 1 Earnings</span>
-                        <span className="font-black text-black">{formatCurrency(l1Earnings)}</span>
+                        <span className="font-bold text-black/50 dark:text-white/50">Referral Commission</span>
+                        <span className="font-black text-black dark:text-white">{formatPoints(referralPoints)}</span>
                     </div>
-
                     <div className="flex justify-between items-center text-sm">
-                        <span className="font-bold text-black/50">Level 2 Earnings</span>
-                        <span className="font-black text-black">{formatCurrency(l2Earnings)}</span>
+                        <span className="font-bold text-black/50 dark:text-white/50">Guild Vault Bonus</span>
+                        <span className="font-black text-black dark:text-white">{formatPoints(guildVaultBonus)}</span>
                     </div>
-
-                    <div className="mt-8 bg-black text-white p-6 shadow-[4px_4px_0px_var(--primary)]">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-primary/80 mb-1">Your Earnings</div>
+                    <div className="mt-8 bg-black dark:bg-white text-white dark:text-black p-6 shadow-[4px_4px_0px_#ff6b35]">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-[#ff6b35] mb-1">Your Potential</div>
                         <div className="text-4xl font-black tracking-tighter">
-                            {formatCurrency(totalPotential)}
+                            {formatPoints(totalPotential)}
                         </div>
                     </div>
                 </div>

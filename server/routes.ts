@@ -5,8 +5,8 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage, RANK_NAMES } from "./storage";
 import { pool, db } from "./db";
-import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh } from "./realtime";
-import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, dailyTasks, systemConfig } from "@shared/schema";
+import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh, broadcastGuildMessage } from "./realtime";
+import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, dailyTasks, systemConfig, weeklyTasks } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "./validation";
@@ -857,60 +857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getThorxPrincipalId(req);
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
-      // --- PAYOUT LOCK LOGIC ---
-      // Check if user has completed all mandatory tasks
-      const tasksWithRecords = await storage.getDailyTasksForUser(userId);
-      const user = await storage.getUserById(userId);
-      const userRank = (user?.rank || "Nawa Aya").toLowerCase();
-
-      // 1. Check Mandatory Individual Tasks (status must be 'completed')
-      const incompleteMandatory = tasksWithRecords.filter(({ task, record }) => {
-        const isTargeted = (task.targetRank || "nawa aya").toLowerCase() === "nawa aya" || (task.targetRank || "nawa aya").toLowerCase() === userRank;
-        const isCompleted = record?.status === 'completed';
-        return task.isActive && task.isMandatory && isTargeted && !isCompleted;
-      });
-
-      // 2. Check Rank-Based Numeric Requirements (Ads & CPA Tasks)
-      const configRes = await storage.getSystemConfig("rank_payout_requirements");
-      const requirementsMap = configRes?.value as any || {
-        "nawa aya": { minAds: 5, minTasks: 0 },
-        "munna": { minAds: 10, minTasks: 1 },
-        "bawa ji": { minAds: 15, minTasks: 2 },
-        "haji saab": { minAds: 20, minTasks: 3 },
-        "chacha supreme": { minAds: 30, minTasks: 5 }
-      };
-
-      const rankReqs = (requirementsMap[userRank] || requirementsMap["nawa aya"]) as { minAds: number, minTasks: number };
-      
-      const adsWatchedToday = await storage.getTodayAdViews(userId);
-      const cpaTasksCompletedToday = await storage.getTodayCompletedTasksByType(userId, "internal");
-
-      const adsRequirementMet = adsWatchedToday >= rankReqs.minAds;
-      const cpaRequirementMet = cpaTasksCompletedToday >= rankReqs.minTasks;
-
-      if (incompleteMandatory.length > 0 || !adsRequirementMet || !cpaRequirementMet) {
-        return res.status(403).json({
-          message: "PAYOUT_LOCKED",
-          details: "Financial Protocol Violation: Mandatory daily requirements not met.",
-          requirements: {
-            mandatoryTasks: {
-              completed: incompleteMandatory.length === 0,
-              pending: incompleteMandatory.map(t => t.task.title)
-            },
-            ads: {
-              required: rankReqs.minAds,
-              completed: adsWatchedToday,
-              met: adsRequirementMet
-            },
-            cpa: {
-              required: rankReqs.minTasks,
-              completed: cpaTasksCompletedToday,
-              met: cpaRequirementMet
-            }
-          }
-        });
-      }
-
+      // Payout access always open — no task gate (Blueprint v2026)
       const userWithdrawals = await storage.getWithdrawalsByUserId(userId);
       res.json(userWithdrawals);
     } catch (error) {
@@ -926,34 +873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
 
-      // --- PAYOUT LOCK LOGIC (Repeated for POST to ensure security) ---
-      const tasksWithRecords = await storage.getDailyTasksForUser(userId);
-      const user = await storage.getUserById(userId);
-      const userRank = (user?.rank || "Nawa Aya").toLowerCase();
-
-      const incompleteMandatory = tasksWithRecords.filter(({ task, record }) => {
-        const isTargeted = (task.targetRank || "nawa aya").toLowerCase() === "nawa aya" || (task.targetRank || "nawa aya").toLowerCase() === userRank;
-        const isCompleted = record?.status === 'completed';
-        return task.isActive && task.isMandatory && isTargeted && !isCompleted;
-      });
-
-      const configRes = await storage.getSystemConfig("rank_payout_requirements");
-      const requirementsMap = configRes?.value as any || {
-        "nawa aya": { minAds: 5, minTasks: 0 },
-        "munna": { minAds: 10, minTasks: 1 },
-        "bawa ji": { minAds: 15, minTasks: 2 },
-        "haji saab": { minAds: 20, minTasks: 3 },
-        "chacha supreme": { minAds: 30, minTasks: 5 }
-      };
-      const rankReqs = (requirementsMap[userRank] || requirementsMap["nawa aya"]) as { minAds: number; minTasks: number };
-      
-      const adsWatchedToday = await storage.getTodayAdViews(userId);
-      const cpaTasksCompletedToday = await storage.getTodayCompletedTasksByType(userId, "internal");
-
-      if (incompleteMandatory.length > 0 || adsWatchedToday < rankReqs.minAds || cpaTasksCompletedToday < rankReqs.minTasks) {
-        return res.status(403).json({ message: "PAYOUT_LOCKED" });
-      }
-
+      // Payout always open — minimum balance enforced in storage layer (Blueprint v2026)
       const withdrawalData = insertWithdrawalSchema.parse({
         ...req.body,
         userId
@@ -1108,6 +1028,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Remove guild member error:", error);
       const message = error instanceof Error ? error.message : "Failed to remove member";
       res.status(400).json({ message });
+    }
+  });
+
+  // ── Engine C: Guild Chat ─────────────────────────────────────────────────────
+  app.get("/api/guilds/:id/chat", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const membership = await storage.getUserGuildMembership(userId);
+      if (!membership || membership.guildId !== req.params.id || membership.status !== "active") {
+        return res.status(403).json({ message: "You must be an active member of this guild to view chat." });
+      }
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+      const before = req.query.before as string | undefined;
+      const messages = await storage.getEngineCMessages(req.params.id, limit, before);
+      res.json({ messages });
+    } catch (error) {
+      console.error("Get guild chat error:", error);
+      res.status(500).json({ message: "Failed to fetch chat messages" });
+    }
+  });
+
+  app.post("/api/guilds/:id/chat", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const membership = await storage.getUserGuildMembership(userId);
+      if (!membership || membership.guildId !== req.params.id || membership.status !== "active") {
+        return res.status(403).json({ message: "You must be an active member of this guild to send messages." });
+      }
+      const { message } = req.body;
+      if (!message || typeof message !== "string" || !message.trim() || message.length > 500) {
+        return res.status(400).json({ message: "Message must be 1–500 characters." });
+      }
+      const saved = await storage.createEngineCMessage({ guildId: req.params.id, senderId: userId, message: message.trim() });
+      broadcastGuildMessage(req.params.id, { type: "engine_c:message", payload: saved });
+      res.status(201).json({ message: saved });
+    } catch (error) {
+      console.error("Send guild chat error:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // ── Engine C: Weekly Tasks ────────────────────────────────────────────────────
+  app.get("/api/guilds/weekly-tasks", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const membership = await storage.getUserGuildMembership(userId);
+      if (!membership || membership.status !== "active") {
+        return res.status(403).json({ message: "Weekly tasks are only available to active guild members." });
+      }
+      const tasks = await storage.getActiveWeeklyTasks(userId, membership.guildId);
+      res.json({ tasks });
+    } catch (error) {
+      console.error("Get weekly tasks error:", error);
+      res.status(500).json({ message: "Failed to fetch weekly tasks" });
+    }
+  });
+
+  app.post("/api/guilds/weekly-tasks/:taskId/complete", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const membership = await storage.getUserGuildMembership(userId);
+      if (!membership || membership.status !== "active") {
+        return res.status(403).json({ message: "Only active guild members can complete weekly tasks." });
+      }
+      const record = await storage.completeWeeklyTask(userId, membership.guildId, req.params.taskId);
+      res.status(201).json({ record });
+    } catch (error) {
+      console.error("Complete weekly task error:", error);
+      const msg = error instanceof Error ? error.message : "Failed to complete task";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── Engine C: Captain Rally ───────────────────────────────────────────────────
+  app.post("/api/guilds/:id/rally", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const result = await storage.triggerCaptainRally(req.params.id, userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Rally error:", error);
+      const msg = error instanceof Error ? error.message : "Failed to trigger rally";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── Engine C: Guild Settings (Captain only) ────────────────────────────────────
+  app.patch("/api/guilds/:id/settings", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const { name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl } = req.body;
+      const guild = await storage.updateGuildSettings(req.params.id, userId, {
+        name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl,
+      });
+      res.json({ guild });
+    } catch (error) {
+      console.error("Update guild settings error:", error);
+      const msg = error instanceof Error ? error.message : "Failed to update guild settings";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── Engine C: MVP Pin ─────────────────────────────────────────────────────────
+  app.post("/api/guilds/:id/pin/:memberId", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const guild = await storage.updateGuildSettings(req.params.id, userId, {
+        pinnedMemberId: req.params.memberId === "unpin" ? null : req.params.memberId,
+      });
+      res.json({ guild });
+    } catch (error) {
+      console.error("Pin member error:", error);
+      const msg = error instanceof Error ? error.message : "Failed to pin member";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── Admin: Weekly Task Manager ────────────────────────────────────────────────
+  app.get("/api/admin/weekly-tasks", requireTeamRole, async (req, res) => {
+    try {
+      const tasks = await storage.getAllWeeklyTasks();
+      res.json({ tasks });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch weekly tasks" });
+    }
+  });
+
+  app.post("/api/admin/weekly-tasks", requireTeamRole, async (req, res) => {
+    try {
+      const { title, description, pointReward, weekStart, weekEnd, targetGuildRank } = req.body;
+      if (!title || !pointReward || !weekStart || !weekEnd) {
+        return res.status(400).json({ message: "title, pointReward, weekStart, weekEnd are required." });
+      }
+      const task = await storage.createWeeklyTask({
+        title, description, pointReward: parseInt(pointReward),
+        weekStart: new Date(weekStart), weekEnd: new Date(weekEnd),
+        targetGuildRank: targetGuildRank || "E",
+        createdBy: getThorxPrincipalId(req) as string,
+        isActive: true,
+      });
+      res.status(201).json({ task });
+    } catch (error) {
+      console.error("Create weekly task error:", error);
+      res.status(500).json({ message: "Failed to create weekly task" });
+    }
+  });
+
+  app.patch("/api/admin/weekly-tasks/:id", requireTeamRole, async (req, res) => {
+    try {
+      const task = await storage.updateWeeklyTask(req.params.id, req.body);
+      res.json({ task });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update weekly task" });
+    }
+  });
+
+  // ── Admin: Engine C Chat Moderation ───────────────────────────────────────────
+  app.get("/api/admin/guilds/:id/chat", requireTeamRole, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
+      const messages = await storage.getEngineCMessages(req.params.id, limit);
+      res.json({ messages });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch chat logs" });
+    }
+  });
+
+  app.delete("/api/admin/guilds/:id/chat/:messageId", requireTeamRole, async (req, res) => {
+    try {
+      await storage.deleteEngineCMessage(req.params.messageId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete message" });
     }
   });
 
