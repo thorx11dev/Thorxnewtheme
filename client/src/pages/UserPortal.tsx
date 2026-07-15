@@ -878,7 +878,7 @@ export default function UserPortal() {
 
   // Payout section states
   const [currentStep, setCurrentStep] = useState(1);
-  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState(""); // TX-Points requested (not PKR)
   const [selectedMethod, setSelectedMethod] = useState("");
   const [paymentDetails, setPaymentDetails] = useState({
     name: "",
@@ -888,6 +888,28 @@ export default function UserPortal() {
   });
   const [isProcessing, setIsProcessing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  // THORX v3: live withdrawal preview — the amount the user types is a count
+  // of TX-Points; the real PKR value is computed server-side from the FIFO
+  // ledger walk (never guessed/converted client-side), so we fetch the exact
+  // breakdown before letting the user confirm.
+  const withdrawPointsRequested = parseInt(withdrawAmount || "0", 10);
+  const { data: withdrawalPreview, isLoading: isPreviewLoading, error: withdrawalPreviewError } = useQuery<{
+    exactPkr: number; platformFee: number; feePercent: number; referralCommission: number;
+    referrerName: string | null; userNetPkr: number; sRankFastTrack: boolean;
+  }>({
+    queryKey: ["/api/withdrawals/preview", withdrawPointsRequested],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/withdrawals/preview?points=${withdrawPointsRequested}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to preview withdrawal");
+      }
+      return res.json();
+    },
+    enabled: currentStep >= 2 && Number.isFinite(withdrawPointsRequested) && withdrawPointsRequested > 0,
+    retry: false,
+  });
 
   // Hero section interactive states (30s toggle)
   const [isWorkHeroToggled, setIsWorkHeroToggled] = useState(false);
@@ -2564,7 +2586,9 @@ export default function UserPortal() {
         if (response.ok) {
           toast({
             title: "Payout Request Submitted!",
-            description: `Your withdrawal of ${formatCurrency(withdrawAmount)} has been submitted for processing.`,
+            description: withdrawalPreview
+              ? `Your withdrawal of ${formatCurrency(withdrawAmount)} PTS (Rs. ${withdrawalPreview.userNetPkr.toFixed(2)} net) has been submitted for processing.`
+              : `Your withdrawal of ${formatCurrency(withdrawAmount)} PTS has been submitted for processing.`,
           });
           queryClient.invalidateQueries({ queryKey: ["earnings"] }); // Refresh balance
           // Reset form
@@ -2615,10 +2639,10 @@ export default function UserPortal() {
     // Get current step button states
     const canProceed = () => {
       if (isConfigLoading) return false;
-      if (currentStep === 1) return withdrawAmount && parseFloat(withdrawAmount) >= MIN_PAYOUT;
-      if (currentStep === 2) return selectedMethod;
+      if (currentStep === 1) return withdrawAmount && parseInt(withdrawAmount, 10) > 0;
+      if (currentStep === 2) return selectedMethod && !!withdrawalPreview && !withdrawalPreviewError;
       if (currentStep === 3) {
-        return paymentDetails.name.trim() && paymentDetails.number.trim() && paymentDetails.email.trim();
+        return paymentDetails.name.trim() && paymentDetails.number.trim() && paymentDetails.email.trim() && !!withdrawalPreview;
       }
       return false;
     };
@@ -2717,8 +2741,11 @@ export default function UserPortal() {
                       className="w-full max-w-sm md:max-w-lg mx-auto px-2 md:px-0"
                     >
                       <div className="text-center mb-4 md:mb-8">
+                        <div className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">
+                          TX-Points to Withdraw
+                        </div>
                         <div className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 min-h-[40px] md:min-h-[60px] flex items-center justify-center border-b-2 border-muted-foreground/30 pb-2 md:pb-4">
-                          ₨ {withdrawAmount || "0.00"}
+                          {withdrawAmount || "0"} <span className="text-base md:text-xl text-muted-foreground ml-2">PTS</span>
                         </div>
                       </div>
 
@@ -2766,8 +2793,21 @@ export default function UserPortal() {
                     >
                       <div className="text-center mb-4 md:mb-8">
                         <div className="text-lg md:text-xl lg:text-2xl font-black text-primary mb-2">
-                          Withdrawing {formatCurrency(withdrawAmount)}
+                          Withdrawing {formatCurrency(withdrawAmount)} PTS
                         </div>
+                        {isPreviewLoading && (
+                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Calculating exact PKR value…</div>
+                        )}
+                        {withdrawalPreviewError && (
+                          <div className="text-xs font-bold text-red-500 uppercase tracking-widest">
+                            {(withdrawalPreviewError as Error).message}
+                          </div>
+                        )}
+                        {withdrawalPreview && (
+                          <div className="text-sm md:text-base font-bold text-foreground/70">
+                            ≈ Rs. {withdrawalPreview.exactPkr.toFixed(2)} · Net after 15% fee: Rs. {withdrawalPreview.userNetPkr.toFixed(2)}
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid gap-3 md:gap-4 mb-4 md:mb-6">
@@ -2897,26 +2937,42 @@ export default function UserPortal() {
                         <TechnicalLabel text="PAYOUT SUMMARY" className="mb-4 font-black text-xs md:text-sm" />
                         <div className="bg-muted/10 border-2 border-black p-4 md:p-6 space-y-3">
                           <div className="flex justify-between items-center text-sm md:text-base">
-                            <span className="font-bold text-muted-foreground">Requested Amount</span>
-                            <span className="font-black text-foreground">{formatCurrency(withdrawAmount || "0")}</span>
+                            <span className="font-bold text-muted-foreground">Requested</span>
+                            <span className="font-black text-foreground">{formatCurrency(withdrawAmount || "0")} PTS</span>
+                          </div>
+
+                          <div className="flex justify-between items-center text-sm md:text-base">
+                            <span className="font-bold text-muted-foreground">Exact PKR Value</span>
+                            <span className="font-black text-foreground">
+                              {withdrawalPreview ? `Rs. ${withdrawalPreview.exactPkr.toFixed(2)}` : isPreviewLoading ? "…" : "—"}
+                            </span>
                           </div>
 
                           <div className="flex justify-between items-center text-sm md:text-base">
                             <span className="font-bold text-muted-foreground flex items-center gap-2">
                               Withdrawal Fee
-                              <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">{WITHDRAWAL_FEE_PERCENT}%</span>
+                              <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">{withdrawalPreview?.feePercent ?? WITHDRAWAL_FEE_PERCENT}%</span>
                             </span>
-                            <span className="font-black text-red-500">-{formatCurrency((parseFloat(withdrawAmount || "0") * (WITHDRAWAL_FEE_PERCENT / 100)).toFixed(2))}</span>
+                            <span className="font-black text-red-500">
+                              {withdrawalPreview ? `-Rs. ${withdrawalPreview.platformFee.toFixed(2)}` : "—"}
+                            </span>
                           </div>
 
-                          {user?.referredBy && (
+                          {withdrawalPreview?.referrerName && (
                             <>
                               <div className="my-2 border-t border-dashed border-black/20" />
                               <div className="flex justify-between items-center text-xs md:text-sm">
                                 <span className="text-white font-bold opacity-60">Referrer Share (of fee above)</span>
-                                <span className="text-white font-black">{REFERRAL_FEE_SHARE_PERCENT}%</span>
+                                <span className="text-white font-black">Rs. {withdrawalPreview.referralCommission.toFixed(2)}</span>
                               </div>
                             </>
+                          )}
+
+                          {withdrawalPreview?.sRankFastTrack && (
+                            <div className="flex justify-between items-center text-xs md:text-sm">
+                              <span className="text-amber-500 font-bold uppercase tracking-widest">S-Rank Fast Track</span>
+                              <span className="text-amber-500 font-black">Instant Approval</span>
+                            </div>
                           )}
 
                           <div className="my-2 border-t-2 border-black" />
@@ -2924,7 +2980,7 @@ export default function UserPortal() {
                           <div className="flex justify-between items-center text-base md:text-lg lg:text-xl">
                             <span className="font-black text-amber-500 uppercase tracking-tighter">Net to Receive</span>
                             <span className="font-black text-primary bg-black px-3 py-2 text-2xl">
-                              {formatCurrency((parseFloat(withdrawAmount || "0") * (1 - WITHDRAWAL_FEE_PERCENT / 100)).toFixed(2))}
+                              {withdrawalPreview ? `Rs. ${withdrawalPreview.userNetPkr.toFixed(2)}` : "—"}
                             </span>
                           </div>
                         </div>
@@ -3037,7 +3093,7 @@ export default function UserPortal() {
                                 {item.status === 'pending' ? 'PENDING' : item.status === 'completed' ? 'TRANSFERRED' : 'REJECTED'}
                               </div>
                             </div>
-                            <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)}</div>
+                            <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)} PTS <span className="text-muted-foreground font-bold">· Rs. {parseFloat(item.netAmount || "0").toFixed(2)}</span></div>
                             <div className="text-[10px] text-muted-foreground">{formatDate(item.createdAt)}</div>
                           </motion.div>
                         ))
@@ -3141,7 +3197,7 @@ export default function UserPortal() {
                               {item.status === 'pending' ? 'PENDING' : item.status === 'completed' ? 'TRANSFERRED' : 'REJECTED'}
                             </div>
                           </div>
-                          <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)}</div>
+                          <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)} PTS <span className="text-muted-foreground font-bold">· Rs. {parseFloat(item.netAmount || "0").toFixed(2)}</span></div>
                           <div className="text-[10px] text-muted-foreground">{formatDate(item.createdAt)}</div>
                         </motion.div>
                       ))

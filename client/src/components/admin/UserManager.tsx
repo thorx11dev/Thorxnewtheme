@@ -63,6 +63,7 @@ interface UserProfile {
   identity: string;
   role: string;
   rank: string;
+  userRankTier?: string;
   rankLocked?: boolean;
   trustStatus?: string | null;
   trustReason?: string | null;

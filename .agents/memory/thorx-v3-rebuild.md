@@ -53,10 +53,13 @@ All routes implemented. Key fixes applied in this session:
 - Added `getRankDefByTier(userRankTier)` bridge function
 - E-S to Urdu key mapping: E→Nawa Aya, D→Chota Don, C→Bawa Ji, B→Haji Sab, A/S→Chacha Supreme
 
-### Phase 6 (Cleanup) — NOT STARTED
-- Old `rallying`/rally references may still exist in some UI strings
-- `commission_logs` L2 writes: write-frozen but old writes may exist
-- Urdu rank strings in misc. hardcoded places (banner texts, descriptions)
+### Phase 6 (Cleanup) — COMPLETE (this session)
+- Retired `POST /api/guilds/:id/join`, `/members/:userId/approve`, `/members/:userId/reject` (410 stubs; no client caller remained — `/apply` + `/applications/:id` are canonical).
+- Rewrote stale "Guild Vault escrow / rank-multiplier release" and old Urdu rank name copy in `faq-section.tsx` and the embedded FAQ in `UserPortal.tsx` to describe the actual Weekly Bonus Pool + PS-driven E–S rank system; corrected the referral-commission FAQ (was wrongly described as flat 15% to referrer; actual is 50%-of-15%-fee, paid as PKR cash, not TX-Points).
+- Fixed dashboard rank badge and profile modal to read `userRankTier` (not the frozen legacy `rank` field) with E–S tier names/PS-based next-rank progress instead of Urdu names + earnings/referral thresholds.
+- Fixed `TaskManager.tsx`/`UserManager.tsx` admin UI to display/select E–S tier names.
+- **Found and fixed a real bug** (not just cosmetic): `daily_tasks.targetRank` task-visibility gate was compared against the legacy `user.rank` field, which is frozen (its only writer, legacy `checkAndUpdateRank`, is dead code) — so task visibility could never track a user's actual progression. Repointed at `userRankTier`; default target value migrated `"Nawa Aya"` → `"E-Rank"` in schema + `/api/tasks` filter.
+- Old `rallying`/rally UI references and `commission_logs` old writes were not found still present — no action needed.
 
 ## Critical Constraints
 
@@ -77,3 +80,9 @@ The C-Rank gate in `/api/tasks/:id/verify` only fires for CPA tasks.
 Old avatar system uses Urdu rank keys. New system uses E-S tier strings.
 Use `resolveAvatarUrlByTier(savedAvatar, user.userRankTier)` for any v3 component.
 Old `resolveAvatarUrl(savedAvatar, user.rank)` still works for backward-compat.
+
+## REFERRAL_FEE_SHARE_PCT = 50 is intentional, not a spec deviation
+The spec appendix says 30, but the confirmed real business rule (user-verified) is: withdrawal fee is a flat 15%; of that 15% fee, 50% (default, admin-configurable via system_config) goes to the referrer as a PKR cash bonus, 50% stays as Thorx profit. `calculateWithdrawalBreakdown` in `server/storage.ts` already implements exactly this — do not "fix" this to 30 in a future session.
+
+## Withdrawal amount is denominated in TX-Points end-to-end, not PKR
+`POST /api/withdrawals` and `GET /api/withdrawals/preview` both treat `amount`/`points` as a raw count of TX-Points, walked FIFO against `user_transactions.pointsCredited` (never derived via `CONVERSION_RATE`). The real PKR value (`exactPkr`) is summed from the ledger's `realPkrValue` for exactly the rows consumed to cover the requested points — this is the single source of truth per user-confirmed design (TX-Points are a UI illusion; PKR is real). Any withdrawal UI must capture a **points** amount and call `/api/withdrawals/preview` to show the user the real PKR result before they confirm — never let the UI compute PKR client-side from a flat rate.
