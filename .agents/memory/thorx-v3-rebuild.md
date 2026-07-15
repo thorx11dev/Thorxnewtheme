@@ -12,8 +12,21 @@ description: Status and durable gotchas for the THORX v3 rank/PS/GPS/guild-bonus
 - All new frontend components (Part F user-facing + Part G admin) exist and implement real logic, not stubs; `GuildVaultPanel.tsx`/`ScratchCardModal.tsx` are correct re-export shims; no "Vault"/"Locked Points" strings remain in user-facing JSX.
 - `checkAndUpdateRankTier` (standalone fn in `ps-engine.ts`, imported into storage.ts) and `checkAndUpdateRank` (older `DatabaseStorage` method, still used by legacy paths) are two distinct, both-valid functions with confusingly similar names — not a bug, don't try to unify them without checking every call site.
 
+## Third-pass findings (2026-07-15) — fixed
+Three real defects found and fixed on a third deep-verification pass:
+1. **Engine B rank gate placed AFTER task completion (spec L.3 invariant violation)**: In `POST /api/tasks/:id/verify`, the C-Rank gate for CPA tasks fired AFTER `updateTaskRecord(status='completed')` — so a below-C-Rank user's task slot was permanently consumed with no earn event. Fixed by moving the entire `isCpaTask` detection + rank gate block BEFORE the `updateTaskRecord` call. New comment: "Gate check is BEFORE updateTaskRecord so a failed rank check does not consume the task slot."
+2. **S-Rank auto-approve missing from `createWithdrawal`** (spec E.7): `storage.createWithdrawal` always inserted `status: 'pending'` regardless of user rank. Fixed by looking up `userRankTier` just before the INSERT and setting `initialStatus = 'S-Rank' ? 'approved' : 'pending'`.
+3. **Admin tables showed old Urdu rank names** (spec G.3): `PayoutControl.tsx` used `withdrawal.user.rank ?? 'Nawa Aya'` for both the badge display and sort priority; `UserInspectorPanel.tsx` used `user.rank || "Nawa Aya"`. Both updated to use `userRankTier` (E-S system) with `E-Rank` as the fallback. `rankPriority` map in PayoutControl updated from old Urdu keys to `S-RANK/A-RANK/.../E-RANK`.
+
+**Confirmed NOT gaps (investigated, all clear):**
+- `lastActiveAt` middleware IS present — in `routes.ts` lines 121-128 (fire-and-forget UPDATE on every authenticated request), not in `index.ts` as spec suggests, but functionally equivalent.
+- `commission_logs.createCommissionLog` — storage method exists but confirmed nothing calls it; all new writes go to `referral_commissions`. Write-frozen as required.
+- `GuildVaultPanel.tsx` and `ScratchCardModal.tsx` — correct shims (re-export of GuildMemberPanel / ThorxCard respectively), Phase 6 complete.
+- No "Vault" / "Locked Points" strings in user-facing client JSX (only appear in admin-internal comments).
+- All 10 Appendix A invariants verified in code.
+
 ## Confirmed real gaps
-None open. Two more real defects were found on a second independent re-verification pass (2026-07-15, same day as the "spec-complete" claim below) and fixed — see "Second-pass findings" below. Prior "spec-complete" claims should not be trusted at face value; always re-trace call sites, don't just grep for keywords.
+None open as of third-pass verification (2026-07-15). Two more real defects were found on a second independent re-verification pass (2026-07-15, same day as the "spec-complete" claim below) and fixed — see "Second-pass findings" below. Prior "spec-complete" claims should not be trusted at face value; always re-trace call sites, don't just grep for keywords.
 
 ## Second-pass findings (2026-07-15) — fixed
 - **Invariant #3 (Vault language) missed by first pass**: `client/src/components/ui/commission-calculator.tsx`, rendered live in the authenticated user portal's referral sidebar (`UserPortal.tsx` "Advanced Commission Calculator" block), labeled a line "Guild Vault Bonus" with a hardcoded, non-system_config-driven estimate formula. First pass only checked `GuildVaultPanel.tsx`/`ScratchCardModal.tsx` shims and missed this file because it doesn't have "Vault" in its filename. **Lesson: grep case-insensitively across ALL of `client/src`, not just files with suggestive names, when checking a banned-word invariant.** Fixed by renaming to "Guild Weekly Bonus" / `guildWeeklyBonusEstimate`.

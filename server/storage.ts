@@ -1904,6 +1904,14 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Minimum payout requirement not met. Threshold: Rs.${minPayout}.`);
     }
 
+    // THORX v3 (spec E.7, L.8, Appendix A): S-Rank withdrawals are auto-approved immediately.
+    const [withdrawingUser] = await db
+      .select({ userRankTier: users.userRankTier })
+      .from(users)
+      .where(eq(users.id, insertWithdrawal.userId))
+      .limit(1);
+    const initialStatus: string = withdrawingUser?.userRankTier === 'S-Rank' ? 'approved' : 'pending';
+
     try {
       const [withdrawal] = await db
         .insert(withdrawals)
@@ -1912,7 +1920,7 @@ export class DatabaseStorage implements IStorage {
           amount: pointsRequested.toString(),
           fee: breakdown.platformFee.toFixed(2),
           netAmount: breakdown.userNetPkr.toFixed(2),
-          status: "pending",
+          status: initialStatus,
         })
         .returning();
 

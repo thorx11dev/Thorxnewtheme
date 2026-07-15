@@ -63,6 +63,7 @@ interface Withdrawal {
     email: string;
     phone: string;
     rank: string;
+    userRankTier?: string;
   };
 }
 
@@ -99,12 +100,14 @@ export function PayoutControl() {
   const totalCount = data?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
+  // THORX v3 (spec G.3): sort by userRankTier (E-S system), not old Urdu names
   const rankPriority: Record<string, number> = {
-    "CHACHA SUPREME": 1,
-    "HAJI SAAB": 2,
-    "BAWA JI": 3,
-    "MUNNA": 4,
-    "NAWA AYA": 5,
+    "S-RANK": 1,
+    "A-RANK": 2,
+    "B-RANK": 3,
+    "C-RANK": 4,
+    "D-RANK": 5,
+    "E-RANK": 6,
   };
 
   const getDeadtimeLeft = (createdAt: string) => {
@@ -121,8 +124,8 @@ export function PayoutControl() {
 
   const withdrawalsList = [...rawWithdrawals].sort((a, b) => {
     if (sortType === 'rank') {
-      const pA = rankPriority[a.user.rank?.toUpperCase() || "NAWA AYA"] || 6;
-      const pB = rankPriority[b.user.rank?.toUpperCase() || "NAWA AYA"] || 6;
+      const pA = rankPriority[(a.user.userRankTier ?? a.user.rank ?? 'E-Rank').toUpperCase()] || 7;
+      const pB = rankPriority[(b.user.userRankTier ?? b.user.rank ?? 'E-Rank').toUpperCase()] || 7;
       if (pA !== pB) return pA - pB;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }
@@ -383,7 +386,7 @@ export function PayoutControl() {
                       <td className="p-6 text-center">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-[8px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
-                            {(withdrawal.user.rank ?? 'Nawa Aya')}
+                            {(withdrawal.user.userRankTier ?? withdrawal.user.rank ?? 'E-Rank')}
                           </span>
                           {sortType === 'deadtime' && (
                             <div className={cn(
@@ -522,7 +525,7 @@ export function PayoutControl() {
                       <div className="text-xs text-zinc-400 mt-1">{selectedWithdrawal?.user.email}</div>
                       <div className="mt-2.5">
                         <span className="text-[9px] font-bold text-zinc-600 bg-zinc-200 px-2 py-0.5 rounded-full uppercase tracking-wide">
-                          {selectedWithdrawal?.user.rank}
+                          {selectedWithdrawal?.user.userRankTier ?? selectedWithdrawal?.user.rank ?? 'E-Rank'}
                         </span>
                       </div>
                     </div>

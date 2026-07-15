@@ -91,7 +91,7 @@ export function UserInspectorPanel({ user, isOpen, onClose, onViewInCRM }: UserI
                 <div className="mt-1.5 flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-zinc-100 rounded-full font-semibold text-[9px] tracking-wide uppercase text-zinc-600">
                     <Trophy size={9} />
-                    {user.rank || "Nawa Aya"}
+                    {user.userRankTier || user.rank || "E-Rank"}
                   </span>
                   <span className={cn(
                     "inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-[9px] tracking-wide uppercase",

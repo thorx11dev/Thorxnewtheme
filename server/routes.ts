@@ -3489,18 +3489,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Mark as completed
-      const updatedRecord = await storage.updateTaskRecord(record.id, {
-        status: 'completed',
-        completedAt: new Date()
-      } as any);
-
-      // THORX v3 (spec B.2, L.3): Engine B CPA tasks require C-Rank; indirect tasks are open.
-      // Determine engine type from task metadata.
+      // THORX v3 (spec B.2, L.3): Engine B CPA tasks require C-Rank.
+      // Gate check is BEFORE updateTaskRecord so a failed rank check does not
+      // consume the task slot — spec invariant L.3: "E-Rank user → 403 RANK_GATE".
       const isCpaTask = task.taskCategory === 'cpa_offer' && task.grossPkrPerCompletion && parseFloat(task.grossPkrPerCompletion) > 0;
 
       if (isCpaTask) {
-        // C-Rank gate for Engine B (spec L.3)
         const user = await storage.getUserById(userId);
         const RANK_ORDER = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"];
         const userTierIdx = RANK_ORDER.indexOf(user?.userRankTier || "E-Rank");
@@ -3513,6 +3507,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
+
+      // Mark as completed (only reached if rank gate passed)
+      const updatedRecord = await storage.updateTaskRecord(record.id, {
+        status: 'completed',
+        completedAt: new Date()
+      } as any);
 
       // Fire earn event (Engine_B for CPA, Indirect for social tasks).
       // Fire-and-forget — don't block the verify response on earn failures.
