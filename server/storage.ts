@@ -93,6 +93,8 @@ import {
   type InsertGuildStrike,
   guildWeeklyCycles,
   type GuildWeeklyCycle,
+  guildWeeklySnapshots,
+  type GuildWeeklySnapshot,
   guildVaultLedger,
   type GuildVaultLedger,
   pointsLedger,
@@ -4219,6 +4221,479 @@ export class DatabaseStorage implements IStorage {
     if (settings.avatarUrl !== undefined) updates.avatarUrl = settings.avatarUrl;
     const [guild] = await db.update(guilds).set(updates).where(eq(guilds.id, guildId)).returning();
     return guild;
+  }
+
+  // ── THORX v3 (spec E.9): Guild discovery, applications, captain DM, roster/nudge ──
+
+  async getGuildDiscoveryList(): Promise<any[]> {
+    const rows = await db
+      .select()
+      .from(guilds)
+      .where(and(eq(guilds.status, "active"), eq(guilds.isPublic, true)))
+      .orderBy(desc(guilds.guildPerformanceScore));
+    return rows;
+  }
+
+  async getGuildApplicationStatus(userId: string): Promise<GuildMember | undefined> {
+    const [membership] = await db
+      .select()
+      .from(guildMembers)
+      .where(and(eq(guildMembers.userId, userId), eq(guildMembers.status, "pending")))
+      .orderBy(desc(guildMembers.requestedAt))
+      .limit(1);
+    return membership;
+  }
+
+  // Spec E.9: join application with a required cover letter + rank gate.
+  async applyToGuildWithCoverLetter(guildId: string, userId: string, coverLetter: string): Promise<GuildMember> {
+    return await db.transaction(async (tx) => {
+      const existing = await this.getActiveGuildMembershipTx(tx, userId);
+      if (existing) throw new Error("You are already in a guild.");
+
+      const [pendingExisting] = await tx
+        .select()
+        .from(guildMembers)
+        .where(and(eq(guildMembers.userId, userId), eq(guildMembers.status, "pending")))
+        .limit(1);
+      if (pendingExisting) throw new Error("You already have a pending join request.");
+
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, guildId));
+      if (!guild) throw new Error("Guild not found");
+      if (guild.status !== "active" || !guild.recruitmentOpen) {
+        throw new Error("This guild is not accepting new members right now.");
+      }
+      if (guild.memberCount >= guild.memberCapacity) {
+        throw new Error("This guild is full.");
+      }
+
+      const [user] = await tx.select().from(users).where(eq(users.id, userId));
+      const RANK_ORDER = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"];
+      const userTierIdx = RANK_ORDER.indexOf(user?.userRankTier || "E-Rank");
+      const minTierIdx = RANK_ORDER.indexOf(guild.minRankRequired || "E-Rank");
+      if (userTierIdx < minTierIdx) {
+        throw new Error(`This guild requires ${guild.minRankRequired} or higher.`);
+      }
+
+      const [membership] = await tx.insert(guildMembers).values({
+        guildId,
+        userId,
+        role: "member",
+        status: "pending",
+        coverLetter,
+      }).returning();
+      return membership;
+    });
+  }
+
+  // Spec E.9: PATCH /api/guilds/:id/applications/:applicationId — captain decides.
+  async decideGuildApplication(
+    guildId: string,
+    applicationId: string,
+    captainId: string,
+    action: "accept" | "reject",
+    rejectionReason?: string,
+  ): Promise<GuildMember> {
+    return await db.transaction(async (tx) => {
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, guildId));
+      if (!guild) throw new Error("Guild not found");
+      if (guild.captainId !== captainId) throw new Error("Only the guild captain can decide applications.");
+
+      const [membership] = await tx
+        .select()
+        .from(guildMembers)
+        .where(and(eq(guildMembers.id, applicationId), eq(guildMembers.guildId, guildId), eq(guildMembers.status, "pending")))
+        .limit(1);
+      if (!membership) throw new Error("No pending application found.");
+
+      if (action === "accept") {
+        const [updated] = await tx.update(guildMembers).set({
+          status: "active",
+          joinedAt: new Date(),
+        }).where(eq(guildMembers.id, membership.id)).returning();
+
+        await tx.update(guilds).set({
+          memberCount: sql`${guilds.memberCount} + 1`,
+          updatedAt: new Date(),
+        }).where(eq(guilds.id, guildId));
+
+        await tx.update(users).set({
+          guildId,
+          guildRole: "member",
+        }).where(eq(users.id, membership.userId));
+
+        await this.createNotification({
+          userId: membership.userId,
+          title: "Guild Application Accepted!",
+          message: `You've joined ${guild.name}.`,
+          type: "system",
+        });
+
+        return updated;
+      } else {
+        if (!rejectionReason || rejectionReason.trim().length < 10) {
+          throw new Error("A rejection reason of at least 10 characters is required.");
+        }
+        const [updated] = await tx.update(guildMembers).set({
+          status: "rejected",
+        }).where(eq(guildMembers.id, membership.id)).returning();
+
+        await this.createNotification({
+          userId: membership.userId,
+          title: "Guild Application Declined",
+          message: rejectionReason.trim(),
+          type: "system",
+        });
+
+        return updated;
+      }
+    });
+  }
+
+  async getGuildWeeklyHistory(guildId: string): Promise<GuildWeeklySnapshot[]> {
+    return await db
+      .select()
+      .from(guildWeeklySnapshots)
+      .where(eq(guildWeeklySnapshots.guildId, guildId))
+      .orderBy(desc(guildWeeklySnapshots.weekStart))
+      .limit(8);
+  }
+
+  async getGuildRosterForCaptain(guildId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: guildMembers.id,
+        userId: guildMembers.userId,
+        role: guildMembers.role,
+        status: guildMembers.status,
+        joinedAt: guildMembers.joinedAt,
+        weeklyPointsContributed: guildMembers.weeklyPointsContributed,
+        isMvp: guildMembers.isMvp,
+        name: users.name,
+        userRankTier: users.userRankTier,
+        lastActiveAt: users.lastActiveAt,
+        profilePicture: users.profilePicture,
+      })
+      .from(guildMembers)
+      .innerJoin(users, eq(users.id, guildMembers.userId))
+      .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.status, "active")))
+      .orderBy(desc(guildMembers.weeklyPointsContributed));
+  }
+
+  // Rate-limited to once per member per 24h — spec E.9 "nudge" action.
+  async nudgeGuildMember(guildId: string, captainId: string, memberUserId: string): Promise<void> {
+    const [guild] = await db.select().from(guilds).where(eq(guilds.id, guildId));
+    if (!guild) throw new Error("Guild not found");
+    if (guild.captainId !== captainId) throw new Error("Only the guild captain can nudge members.");
+
+    const [membership] = await db
+      .select()
+      .from(guildMembers)
+      .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.userId, memberUserId), eq(guildMembers.status, "active")))
+      .limit(1);
+    if (!membership) throw new Error("This user is not an active member of your guild.");
+
+    if (membership.lastNudgedAt && Date.now() - membership.lastNudgedAt.getTime() < 24 * 60 * 60 * 1000) {
+      throw new Error("You already nudged this member in the last 24 hours.");
+    }
+
+    await db.update(guildMembers).set({ lastNudgedAt: new Date() }).where(eq(guildMembers.id, membership.id));
+    await this.createNotification({
+      userId: memberUserId,
+      title: "Your captain is nudging you!",
+      message: `${guild.name} needs your help to hit this week's target.`,
+      type: "system",
+    });
+  }
+
+  async setGuildMemberMvp(guildId: string, captainId: string, memberUserId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, guildId));
+      if (!guild) throw new Error("Guild not found");
+      if (guild.captainId !== captainId) throw new Error("Only the guild captain can set the MVP.");
+
+      const [membership] = await tx
+        .select()
+        .from(guildMembers)
+        .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.userId, memberUserId), eq(guildMembers.status, "active")))
+        .limit(1);
+      if (!membership) throw new Error("This user is not an active member of your guild.");
+      if (membership.isMvp) throw new Error("This member is already this week's MVP.");
+
+      await tx.update(guildMembers).set({ isMvp: false }).where(eq(guildMembers.guildId, guildId));
+      await tx.update(guildMembers).set({ isMvp: true, mvpSetAt: new Date() }).where(eq(guildMembers.id, membership.id));
+    });
+    await awardMVPGPS(memberUserId, guildId);
+  }
+
+  // ── THORX v3 (spec E.9): Withdrawal preview & referral cash withdrawal ─────
+
+  async previewWithdrawal(userId: string, points: number): Promise<{
+    exactPkr: number; platformFee: number; feePercent: number; referralCommission: number;
+    referrerName: string | null; userNetPkr: number; sRankFastTrack: boolean;
+  }> {
+    const breakdown = await this.calculateWithdrawalBreakdown(userId, points);
+    const feePercent = await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15);
+    const user = await this.getUserById(userId);
+    return {
+      exactPkr: breakdown.exactPkr,
+      platformFee: breakdown.platformFee,
+      feePercent,
+      referralCommission: breakdown.referralCommission,
+      referrerName: breakdown.referrerName,
+      userNetPkr: breakdown.userNetPkr,
+      sRankFastTrack: user?.userRankTier === "S-Rank",
+    };
+  }
+
+  async getReferralCashBalance(userId: string): Promise<{ balanceCashPkr: number; totalEarnedAllTime: number; referralCount: number }> {
+    const user = await this.getUserById(userId);
+    const [totals] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${referralCommissions.commissionAmountPkr}), 0)` })
+      .from(referralCommissions)
+      .where(eq(referralCommissions.referrerId, userId));
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(users)
+      .where(eq(users.referredBy, userId));
+    return {
+      balanceCashPkr: parseFloat(user?.balanceCashPkr ?? "0"),
+      totalEarnedAllTime: parseFloat(totals?.total ?? "0"),
+      referralCount: Number(count) || 0,
+    };
+  }
+
+  // Spec E.9: no platform fee, minimum Rs. 50, same withdrawal method/account fields.
+  async createReferralCashWithdrawal(userId: string, amount: number, method: string, accountName: string, accountNumber: string, accountDetails: any): Promise<Withdrawal> {
+    if (!Number.isFinite(amount) || amount < 50) {
+      throw new Error("Minimum referral cash withdrawal is Rs. 50.");
+    }
+    return await db.transaction(async (tx) => {
+      const [user] = await tx.select().from(users).where(eq(users.id, userId));
+      if (!user) throw new Error("User not found");
+      const balance = parseFloat(user.balanceCashPkr);
+      if (balance < amount) throw new Error(`Insufficient referral balance. Available: Rs.${balance.toFixed(2)}.`);
+
+      const [pending] = await tx
+        .select()
+        .from(withdrawals)
+        .where(and(eq(withdrawals.userId, userId), eq(withdrawals.status, "pending"), eq(withdrawals.method, `referral:${method}`)))
+        .limit(1);
+      if (pending) throw new Error("A pending referral cash withdrawal already exists.");
+
+      await tx.update(users).set({
+        balanceCashPkr: sql`${users.balanceCashPkr} - ${amount.toFixed(2)}`,
+      }).where(eq(users.id, userId));
+
+      const [withdrawal] = await tx.insert(withdrawals).values({
+        userId,
+        amount: amount.toFixed(2),
+        method: `referral:${method}`,
+        accountName,
+        accountNumber,
+        accountDetails: accountDetails ?? {},
+        fee: "0.00",
+        netAmount: amount.toFixed(2),
+        status: "pending",
+      }).returning();
+
+      return withdrawal;
+    });
+  }
+
+  // ── THORX v3 (spec E.9): Admin ops — ledger validator, PS/GPS overrides, ──
+  // ── captain reassignment, weekly-target overrides, inactive-captain alert ──
+
+  async adminValidateLedger(userId: string): Promise<{
+    userId: string; txPointsBalance: number; ledgerUnwithdrawnPoints: number; consistent: boolean;
+  }> {
+    const user = await this.getUserById(userId);
+    if (!user) throw new Error("User not found");
+    const [{ total }] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${userTransactions.pointsCredited}), 0)` })
+      .from(userTransactions)
+      .where(and(eq(userTransactions.userId, userId), eq(userTransactions.withdrawn, false)));
+    const ledgerUnwithdrawnPoints = Number(total) || 0;
+    return {
+      userId,
+      txPointsBalance: user.txPointsBalance ?? 0,
+      ledgerUnwithdrawnPoints,
+      consistent: (user.txPointsBalance ?? 0) === ledgerUnwithdrawnPoints,
+    };
+  }
+
+  async adminValidateLedgerScan(limit = 50, offset = 0): Promise<{ scanned: number; mismatches: any[] }> {
+    const rows = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, "user"))
+      .limit(limit)
+      .offset(offset);
+
+    const mismatches: any[] = [];
+    for (const row of rows) {
+      const result = await this.adminValidateLedger(row.id);
+      if (!result.consistent) mismatches.push(result);
+    }
+    return { scanned: rows.length, mismatches };
+  }
+
+  async adminAdjustUserPS(userId: string, delta: number, reason: string, adminId: string): Promise<User> {
+    return await db.transaction(async (tx) => {
+      const [updated] = await tx.update(users).set({
+        performanceScore: sql`GREATEST(0, ${users.performanceScore} + ${delta})`,
+      }).where(eq(users.id, userId)).returning();
+      if (!updated) throw new Error("User not found");
+
+      await tx.insert(auditLogs).values({
+        adminId,
+        action: "ADMIN_PS_ADJUSTMENT",
+        targetType: "user",
+        targetId: userId,
+        details: { delta, reason },
+      });
+      return updated;
+    }).then(async (updated) => {
+      await checkAndUpdateRankTier(userId);
+      return updated;
+    });
+  }
+
+  async adminAdjustGuildGPS(guildId: string, delta: number, reason: string, adminId: string): Promise<Guild> {
+    return await db.transaction(async (tx) => {
+      const [updated] = await tx.update(guilds).set({
+        guildPerformanceScore: sql`GREATEST(0, ${guilds.guildPerformanceScore} + ${delta})`,
+        updatedAt: new Date(),
+      }).where(eq(guilds.id, guildId)).returning();
+      if (!updated) throw new Error("Guild not found");
+
+      await tx.insert(auditLogs).values({
+        adminId,
+        action: "ADMIN_GPS_ADJUSTMENT",
+        targetType: "guild",
+        targetId: guildId,
+        details: { delta, reason },
+      });
+      return updated;
+    }).then(async (updated) => {
+      await checkAndUpdateGuildRankTier(guildId);
+      return updated;
+    });
+  }
+
+  async adminReassignCaptain(guildId: string, newCaptainUserId: string, adminId: string): Promise<Guild> {
+    return await db.transaction(async (tx) => {
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, guildId));
+      if (!guild) throw new Error("Guild not found");
+
+      const [newCaptainMembership] = await tx
+        .select()
+        .from(guildMembers)
+        .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.userId, newCaptainUserId), eq(guildMembers.status, "active")))
+        .limit(1);
+      if (!newCaptainMembership) throw new Error("The new captain must be an active member of this guild.");
+
+      const oldCaptainId = guild.captainId;
+      await tx.update(guildMembers).set({ role: "member" })
+        .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.userId, oldCaptainId)));
+      await tx.update(guildMembers).set({ role: "captain" })
+        .where(eq(guildMembers.id, newCaptainMembership.id));
+      await tx.update(users).set({ guildRole: "member" }).where(eq(users.id, oldCaptainId));
+      await tx.update(users).set({ guildRole: "captain" }).where(eq(users.id, newCaptainUserId));
+
+      const [updated] = await tx.update(guilds).set({ captainId: newCaptainUserId, updatedAt: new Date() })
+        .where(eq(guilds.id, guildId)).returning();
+
+      await tx.insert(auditLogs).values({
+        adminId,
+        action: "ADMIN_CAPTAIN_REASSIGNED",
+        targetType: "guild",
+        targetId: guildId,
+        details: { oldCaptainId, newCaptainId: newCaptainUserId },
+      });
+
+      return updated;
+    });
+  }
+
+  async adminSetGuildWeeklyTarget(guildId: string, weeklyTarget: number, adminId: string): Promise<Guild> {
+    if (!Number.isFinite(weeklyTarget) || weeklyTarget <= 0) {
+      throw new Error("Weekly target must be a positive number.");
+    }
+    return await db.transaction(async (tx) => {
+      const [updated] = await tx.update(guilds).set({ weeklyTarget, updatedAt: new Date() })
+        .where(eq(guilds.id, guildId)).returning();
+      if (!updated) throw new Error("Guild not found");
+      await tx.insert(auditLogs).values({
+        adminId, action: "ADMIN_WEEKLY_TARGET_SET", targetType: "guild", targetId: guildId,
+        details: { weeklyTarget },
+      });
+      return updated;
+    });
+  }
+
+  async adminBulkSetWeeklyTargets(weeklyTarget: number, scope: "all" | "byDifficulty", difficulty: string | undefined, adminId: string): Promise<number> {
+    if (!Number.isFinite(weeklyTarget) || weeklyTarget <= 0) {
+      throw new Error("Weekly target must be a positive number.");
+    }
+    return await db.transaction(async (tx) => {
+      const whereClause = scope === "byDifficulty" && difficulty
+        ? and(eq(guilds.status, "active"), eq(guilds.targetDifficulty, difficulty))
+        : eq(guilds.status, "active");
+      const updated = await tx.update(guilds).set({ weeklyTarget, updatedAt: new Date() })
+        .where(whereClause).returning({ id: guilds.id });
+
+      await tx.insert(auditLogs).values({
+        adminId, action: "ADMIN_BULK_WEEKLY_TARGET_SET", targetType: "guild", targetId: "bulk",
+        details: { weeklyTarget, scope, difficulty, affected: updated.length },
+      });
+      return updated.length;
+    });
+  }
+
+  async adminGetInactiveCaptains(inactiveDays = 3): Promise<any[]> {
+    const cutoff = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
+    return await db
+      .select({
+        guildId: guilds.id,
+        guildName: guilds.name,
+        captainId: guilds.captainId,
+        captainName: users.name,
+        lastActiveAt: users.lastActiveAt,
+      })
+      .from(guilds)
+      .innerJoin(users, eq(users.id, guilds.captainId))
+      .where(and(eq(guilds.status, "active"), lt(users.lastActiveAt, cutoff)))
+      .orderBy(asc(users.lastActiveAt));
+  }
+
+  async adminGetReferralStats(): Promise<{ totalCommissionsPaid: number; totalReferrers: number; totalCommissionCount: number }> {
+    const [row] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${referralCommissions.commissionAmountPkr}), 0)`,
+        count: sql<number>`COUNT(*)`,
+        referrers: sql<number>`COUNT(DISTINCT ${referralCommissions.referrerId})`,
+      })
+      .from(referralCommissions);
+    return {
+      totalCommissionsPaid: parseFloat(row?.total ?? "0"),
+      totalReferrers: Number(row?.referrers) || 0,
+      totalCommissionCount: Number(row?.count) || 0,
+    };
+  }
+
+  async adminGetReferralLeaderboard(limit = 20): Promise<any[]> {
+    return await db
+      .select({
+        referrerId: referralCommissions.referrerId,
+        referrerName: users.name,
+        totalCommissionPkr: sql<string>`SUM(${referralCommissions.commissionAmountPkr})`,
+        commissionCount: sql<number>`COUNT(*)`,
+      })
+      .from(referralCommissions)
+      .innerJoin(users, eq(users.id, referralCommissions.referrerId))
+      .groupBy(referralCommissions.referrerId, users.name)
+      .orderBy(desc(sql`SUM(${referralCommissions.commissionAmountPkr})`))
+      .limit(limit);
   }
 }
 

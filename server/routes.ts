@@ -115,6 +115,17 @@ export const requireSessionAuth = async (req: Request, res: Response, next: Next
 
     // Attach user profile to request
     req.userProfile = userProfile;
+
+    // THORX v3 (spec E.10): keep lastActiveAt fresh on every authenticated
+    // request (used by inactivity penalties, captain-activity alerts, health
+    // engine). Fire-and-forget — must never block or fail the request.
+    setImmediate(() => {
+      db.update(users)
+        .set({ lastActiveAt: new Date() })
+        .where(eq(users.id, userProfile.id))
+        .catch((err) => console.error("[lastActiveAt] update failed:", err));
+    });
+
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);

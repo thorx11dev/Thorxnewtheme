@@ -9,6 +9,8 @@ import { csrfProtection } from "./middleware/csrf";
 import { startLeaderboardCleanup } from "./jobs/leaderboard-cleanup";
 import { startHealthSnapshotJob } from "./jobs/health-snapshot";
 import { startGuildVaultResolutionJob } from "./jobs/guild-vault-resolution";
+import { startGuildWeeklyResetJob } from "./jobs/guild-weekly-reset";
+import { startInactivityPenaltyJob } from "./jobs/inactivity-penalty";
 
 // Suppress pg v8 SSL deprecation warning (Railway injects sslmode=require in DATABASE_URL)
 const originalEmitWarning = process.emitWarning;
@@ -128,5 +130,7 @@ app.use((req, res, next) => {
     // Health snapshots run in all environments so development builds have data
     startHealthSnapshotJob();
     startGuildVaultResolutionJob();
+    startGuildWeeklyResetJob();
+    startInactivityPenaltyJob();
   });
 })();

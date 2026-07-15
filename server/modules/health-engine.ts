@@ -59,6 +59,14 @@ function clamp(n: number): number {
   return Math.max(0, Math.min(100, n));
 }
 
+// THORX v3 (spec E.11): guard every score against NaN/Infinity before it is
+// ever written to the DB or shown in the UI — a single bad signal (e.g. a
+// division that produced NaN before reaching clamp()) must not corrupt the
+// whole snapshot with a NaN overall score.
+function safeScore(val: number): number {
+  return Number.isFinite(val) ? clamp(val) : 0;
+}
+
 function linearScore(value: number, badEnd: number, goodEnd: number): number {
   if (goodEnd > badEnd) {
     // Higher value = better
@@ -562,12 +570,12 @@ export async function computeHealthScore(): Promise<HealthResult> {
   ];
 
   return {
-    overallScore: Math.round(overallScore * 100) / 100,
-    financialScore: financial.score,
-    operationalScore: operational.score,
-    userHealthScore: userHealth.score,
-    riskHealthScore: risk.score,
-    integrityScore: integrity.score,
+    overallScore: safeScore(Math.round(overallScore * 100) / 100),
+    financialScore: safeScore(financial.score),
+    operationalScore: safeScore(operational.score),
+    userHealthScore: safeScore(userHealth.score),
+    riskHealthScore: safeScore(risk.score),
+    integrityScore: safeScore(integrity.score),
     signalsJson: {
       financial: financial.signals,
       operational: operational.signals,
@@ -604,8 +612,10 @@ export async function computeAndSaveHealthSnapshot(): Promise<void> {
       .orderBy(desc(healthSnapshots.recordedAt))
       .limit(1);
 
-    const delta1h = snap1h ? result.overallScore - parseFloat(snap1h.score ?? "0") : null;
-    const delta24h = snap24h ? result.overallScore - parseFloat(snap24h.score ?? "0") : null;
+    const rawDelta1h = snap1h ? result.overallScore - parseFloat(snap1h.score ?? "0") : null;
+    const rawDelta24h = snap24h ? result.overallScore - parseFloat(snap24h.score ?? "0") : null;
+    const delta1h = rawDelta1h !== null && Number.isFinite(rawDelta1h) ? rawDelta1h : null;
+    const delta24h = rawDelta24h !== null && Number.isFinite(rawDelta24h) ? rawDelta24h : null;
 
     await db.insert(healthSnapshots).values({
       overallScore: result.overallScore.toFixed(2),
