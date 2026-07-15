@@ -25,8 +25,20 @@ Three real defects found and fixed on a third deep-verification pass:
 - No "Vault" / "Locked Points" strings in user-facing client JSX (only appear in admin-internal comments).
 - All 10 Appendix A invariants verified in code.
 
+## Fourth-pass findings (2026-07-15) — fixed
+Three gaps found and fixed on a fourth independent re-verification pass:
+1. **TypeScript error in `routes.ts:2007`**: `auditLogs.metadata` referenced a non-existent column — `audit_logs` table has `details` (jsonb), not `metadata`. Fixed to `auditLogs.details`. This was the only `tsc --noEmit` error.
+2. **`GuildDiscoveryPanel.tsx` missing `successfulWeeks` display**: The `GuildDiscovery` interface had `successfulWeeks?: number` but the card never rendered it. Also, `storage.getGuildDiscoveryList()` did a bare `.select()` from `guilds` (which has no `successfulWeeks` column) — it never computed the count from `guild_weekly_snapshots`. Fixed both: (a) updated `getGuildDiscoveryList` to run a parallel `COUNT(*)` aggregate over `guildWeeklySnapshots WHERE wasSuccessful=true GROUP BY guildId` and merge into results; (b) added amber star + "N successful weeks" badge in the guild card meta row.
+3. **`LeaderboardInsights.tsx` still had L2 column**: CSV export headers included "Network Referrals (L2)" and the data row included `u.level2Count`. Top Recruiters table had a sortable "Network (L2)" column header and a data cell. All removed; comments cite Appendix A invariant #4 (1-tier referral only).
+
+**Confirmed NOT gaps on this pass (investigated, all clear):**
+- All 26+ spec E.9 routes present (verified by subagent line-by-line).
+- Background jobs use `setInterval` (self-healing) not exact cron — deliberate architectural choice documented in file comments; functionally meets spec intent.
+- PayoutControl RED ALERT: fully implemented (lines 604–622 render the alert conditional on `ledgerCheck.isMismatch`).
+- All 10 Appendix A invariants still hold in code.
+
 ## Confirmed real gaps
-None open as of third-pass verification (2026-07-15). Two more real defects were found on a second independent re-verification pass (2026-07-15, same day as the "spec-complete" claim below) and fixed — see "Second-pass findings" below. Prior "spec-complete" claims should not be trusted at face value; always re-trace call sites, don't just grep for keywords.
+None open as of fourth-pass verification (2026-07-15). Prior "spec-complete" claims should not be trusted at face value; always re-trace call sites, don't just grep for keywords.
 
 ## Second-pass findings (2026-07-15) — fixed
 - **Invariant #3 (Vault language) missed by first pass**: `client/src/components/ui/commission-calculator.tsx`, rendered live in the authenticated user portal's referral sidebar (`UserPortal.tsx` "Advanced Commission Calculator" block), labeled a line "Guild Vault Bonus" with a hardcoded, non-system_config-driven estimate formula. First pass only checked `GuildVaultPanel.tsx`/`ScratchCardModal.tsx` shims and missed this file because it doesn't have "Vault" in its filename. **Lesson: grep case-insensitively across ALL of `client/src`, not just files with suggestive names, when checking a banned-word invariant.** Fixed by renaming to "Guild Weekly Bonus" / `guildWeeklyBonusEstimate`.

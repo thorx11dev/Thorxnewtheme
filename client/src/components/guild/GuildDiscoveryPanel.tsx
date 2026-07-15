@@ -184,6 +184,11 @@ export function GuildDiscoveryPanel() {
                         <span className={cn("font-medium", slots > 0 ? "text-emerald-600" : "text-red-500")}>
                           {slots > 0 ? `${slots} slot${slots !== 1 ? "s" : ""} open` : "Full"}
                         </span>
+                        {(guild.successfulWeeks ?? 0) > 0 && (
+                          <span className="flex items-center gap-1 text-amber-600">
+                            <Star size={10} /> {guild.successfulWeeks} successful week{guild.successfulWeeks !== 1 ? "s" : ""}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

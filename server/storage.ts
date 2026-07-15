@@ -4170,12 +4170,22 @@ export class DatabaseStorage implements IStorage {
   // ── THORX v3 (spec E.9): Guild discovery, applications, captain DM, roster/nudge ──
 
   async getGuildDiscoveryList(): Promise<any[]> {
-    const rows = await db
-      .select()
-      .from(guilds)
-      .where(and(eq(guilds.status, "active"), eq(guilds.isPublic, true)))
-      .orderBy(desc(guilds.guildPerformanceScore));
-    return rows;
+    // Spec F.6: include successfulWeeks count — shown as "24 weeks successful"; never PKR amount.
+    const [rows, successCounts] = await Promise.all([
+      db.select()
+        .from(guilds)
+        .where(and(eq(guilds.status, "active"), eq(guilds.isPublic, true)))
+        .orderBy(desc(guilds.guildPerformanceScore)),
+      db.select({
+        guildId: guildWeeklySnapshots.guildId,
+        count: sql<number>`COUNT(*)::int`,
+      })
+        .from(guildWeeklySnapshots)
+        .where(eq(guildWeeklySnapshots.wasSuccessful, true))
+        .groupBy(guildWeeklySnapshots.guildId),
+    ]);
+    const countMap = new Map(successCounts.map(r => [r.guildId, r.count]));
+    return rows.map(g => ({ ...g, successfulWeeks: countMap.get(g.id) ?? 0 }));
   }
 
   async getGuildApplicationStatus(userId: string): Promise<GuildMember | undefined> {

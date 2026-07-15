@@ -84,7 +84,8 @@ function trustStatusStyle(status?: string | null) {
 
 function downloadAsCSV(rows: any[], filename: string) {
   if (!rows.length) return;
-  const headers = ["Rank", "Name", "Email", "Total Earned", "Available Balance", "Direct Referrals (L1)", "Network Referrals (L2)", "Performance Score", "Trust Status"];
+  // THORX v3: L2 removed — referral is 1-tier only (Appendix A invariant #4)
+  const headers = ["Rank", "Name", "Email", "Total Earned", "Available Balance", "Direct Referrals (L1)", "Performance Score", "Trust Status"];
   const csvRows = rows.map((u, i) => [
     u.globalRank || i + 1,
     `${u.firstName} ${u.lastName}`,
@@ -92,7 +93,6 @@ function downloadAsCSV(rows: any[], filename: string) {
     u.totalEarnings || 0,
     u.availableBalance || 0,
     u.level1Count || u.referralCount || 0,
-    u.level2Count || 0,
     u.performanceScore || 0,
     u.trustStatus || "N/A"
   ]);
@@ -511,9 +511,7 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                     <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase cursor-pointer select-none" onClick={() => handleReferrerSort("level1Count")}>
                       <div className="flex items-center gap-1.5">Direct Referrals (L1) <ArrowUpDown size={11} /></div>
                     </th>
-                    <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase cursor-pointer select-none" onClick={() => handleReferrerSort("level2Count")}>
-                      <div className="flex items-center gap-1.5">Network (L2) <ArrowUpDown size={11} /></div>
-                    </th>
+                    {/* THORX v3: L2 column removed — 1-tier referral only (Appendix A #4) */}
                     <th className="p-5 font-black text-[10px] tracking-widest text-[#111]/40 uppercase cursor-pointer select-none" onClick={() => handleReferrerSort("totalEarnings")}>
                       <div className="flex items-center gap-1.5">Total Earned <ArrowUpDown size={11} /></div>
                     </th>
@@ -524,7 +522,7 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                   {isLoading
                     ? Array.from({ length: 5 }).map((_, i) => (
                         <tr key={i}>
-                          {Array.from({ length: 6 }).map((_, j) => (
+                          {Array.from({ length: 5 }).map((_, j) => (
                             <td key={j} className="p-5"><Skeleton className="h-4 w-full rounded-full" /></td>
                           ))}
                         </tr>
@@ -564,9 +562,7 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                               <span className="font-black text-sm tabular-nums text-[#111]">{user.level1Count || 0}</span>
                             </div>
                           </td>
-                          <td className="p-5">
-                            <span className="font-black text-sm tabular-nums text-[#111]">{user.level2Count || 0}</span>
-                          </td>
+                          {/* L2 cell removed */}
                           <td className="p-5">
                             <span className="font-black text-sm tabular-nums text-[#111]">
                               PKR {parseFloat(user.totalEarnings || "0").toLocaleString()}
