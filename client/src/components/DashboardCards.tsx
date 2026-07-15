@@ -18,6 +18,7 @@ import { Zap, Wallet, Users, Gift, Shield, Crown, Clock, UserCog, Bell } from "l
 import { RankBadge } from "@/components/RankBadge";
 import { PSProgressCard } from "@/components/PSProgressCard";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { cn } from "@/lib/utils";
 
@@ -70,7 +71,7 @@ export function DashboardCards() {
 
   // Withdrawal value preview — real PKR value read from the ledger via the
   // preview endpoint (invariant 2), never computed client-side from a flat rate.
-  const { data: withdrawalPreview } = useQuery<{ exactPkr: number; platformFee: number; userNetPkr: number }>({
+  const { data: withdrawalPreview, isLoading: isWithdrawalPreviewLoading } = useQuery<{ exactPkr: number; platformFee: number; userNetPkr: number }>({
     queryKey: ["/api/withdrawals/preview", "dashboard-card", txPoints],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/withdrawals/preview?points=${txPoints}`);
@@ -79,7 +80,7 @@ export function DashboardCards() {
     enabled: guildRole === "simple" && txPoints > 0,
   });
 
-  const { data: referralStats } = useQuery<{ count: number; totalEarned: string }>({
+  const { data: referralStats, isLoading: isReferralStatsLoading } = useQuery<{ count: number; totalEarned: string }>({
     queryKey: ["/api/referrals", "dashboard-card"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/referrals");
@@ -88,7 +89,7 @@ export function DashboardCards() {
     },
   });
 
-  const { data: guild } = useQuery<any>({
+  const { data: guild, isLoading: isGuildLoading } = useQuery<any>({
     queryKey: ["/api/guilds", guildId, "dashboard-card"],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/guilds/${guildId}`);
@@ -99,7 +100,7 @@ export function DashboardCards() {
     refetchInterval: 30000,
   });
 
-  const { data: members = [] } = useQuery<any[]>({
+  const { data: members = [], isLoading: isMembersLoading } = useQuery<any[]>({
     queryKey: ["/api/guilds", guildId, "members", "dashboard-card"],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/guilds/${guildId}/members`);
@@ -125,10 +126,14 @@ export function DashboardCards() {
         <CardShell testId="card-withdrawal-value">
           <CardHead icon={Wallet} label="WITHDRAWAL VALUE" />
           <p className="text-2xl md:text-3xl font-black text-foreground mb-1">
-            {withdrawalPreview ? `Rs. ${withdrawalPreview.exactPkr.toFixed(2)}` : "—"}
+            {isWithdrawalPreviewLoading
+              ? <Skeleton className="h-8 w-28 rounded" />
+              : withdrawalPreview ? `Rs. ${withdrawalPreview.exactPkr.toFixed(2)}` : "—"}
           </p>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-            {withdrawalPreview ? `After fee: Rs. ${withdrawalPreview.userNetPkr.toFixed(2)}` : "Earn points to see value"}
+            {isWithdrawalPreviewLoading
+              ? <Skeleton className="h-3 w-40 rounded mt-1" />
+              : withdrawalPreview ? `After fee: Rs. ${withdrawalPreview.userNetPkr.toFixed(2)}` : "Earn points to see value"}
           </p>
         </CardShell>
 
@@ -140,7 +145,9 @@ export function DashboardCards() {
           <CardHead icon={Gift} label="REFERRAL BALANCE" />
           <p className="text-2xl md:text-3xl font-black text-foreground mb-1">Rs. {balanceCashPkr.toFixed(2)}</p>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-3">
-            {referralStats?.count ?? 0} referral{(referralStats?.count ?? 0) === 1 ? "" : "s"}
+            {isReferralStatsLoading
+              ? <Skeleton className="h-3 w-24 rounded" />
+              : `${referralStats?.count ?? 0} referral${(referralStats?.count ?? 0) === 1 ? "" : "s"}`}
           </p>
           <button
             onClick={() => navigate("/referrals")}
@@ -191,19 +198,27 @@ export function DashboardCards() {
         <CardShell testId="card-weekly-contribution">
           <CardHead icon={Zap} label="MY WEEKLY CONTRIB" />
           <p className="text-2xl md:text-3xl font-black text-foreground mb-1">
-            {(me?.weeklyPointsContributed ?? 0).toLocaleString()} pts this wk
+            {isMembersLoading
+              ? <Skeleton className="h-8 w-32 rounded" />
+              : `${(me?.weeklyPointsContributed ?? 0).toLocaleString()} pts this wk`}
           </p>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-            {myPosition > 0 ? `Rank #${myPosition} in guild` : "Not ranked yet"}
+            {isMembersLoading
+              ? <Skeleton className="h-3 w-28 rounded mt-1" />
+              : myPosition > 0 ? `Rank #${myPosition} in guild` : "Not ranked yet"}
           </p>
         </CardShell>
 
         <CardShell testId="card-guild-progress">
           <CardHead icon={Shield} label="GUILD PROGRESS" />
-          <p className="text-lg font-black text-foreground mb-2">
-            {currentWeeklyPoints.toLocaleString()} / {weeklyTarget.toLocaleString()}
-          </p>
-          <Progress value={guildProgressPct} className="h-2" />
+          {isGuildLoading
+            ? <><Skeleton className="h-6 w-28 rounded mb-2" /><Skeleton className="h-2 w-full rounded" /></>
+            : <>
+                <p className="text-lg font-black text-foreground mb-2">
+                  {currentWeeklyPoints.toLocaleString()} / {weeklyTarget.toLocaleString()}
+                </p>
+                <Progress value={guildProgressPct} className="h-2" />
+              </>}
         </CardShell>
 
         <div data-testid="card-performance-rank">
@@ -247,17 +262,23 @@ export function DashboardCards() {
       <CardShell testId="card-team-roster">
         <CardHead icon={Users} label="TEAM ROSTER" />
         <p className="text-2xl md:text-3xl font-black text-foreground mb-1">
-          {active.length} / {guild?.memberCapacity ?? 10} members
+          {isMembersLoading
+            ? <Skeleton className="h-8 w-36 rounded" />
+            : `${active.length} / ${guild?.memberCapacity ?? 10} members`}
         </p>
         <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-          {inactive.length} inactive (0 pts)
+          {isMembersLoading
+            ? <Skeleton className="h-3 w-24 rounded mt-1" />
+            : `${inactive.length} inactive (0 pts)`}
         </p>
       </CardShell>
 
       <CardShell testId="card-pending-requests">
         <CardHead icon={Bell} label="PENDING REQUESTS" />
         <p className="text-2xl md:text-3xl font-black text-foreground mb-1">
-          {pending.length > 0 ? `🔴 ${pending.length} new` : "0 new"}
+          {isMembersLoading
+            ? <Skeleton className="h-8 w-16 rounded" />
+            : pending.length > 0 ? `🔴 ${pending.length} new` : "0 new"}
         </p>
         <button
           onClick={() => navigate("/dashboard?tab=guild")}
@@ -270,11 +291,15 @@ export function DashboardCards() {
 
       <CardShell testId="card-weekly-progress">
         <CardHead icon={Shield} label="WEEKLY PROGRESS" />
-        <p className="text-lg font-black text-foreground mb-2">
-          {currentWeeklyPoints.toLocaleString()} / {weeklyTarget.toLocaleString()}
-        </p>
-        <Progress value={weeklyProgressPct} className="h-2 mb-1" />
-        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">{daysLeft} days left</p>
+        {isGuildLoading
+          ? <><Skeleton className="h-6 w-28 rounded mb-2" /><Skeleton className="h-2 w-full rounded mb-1" /><Skeleton className="h-3 w-20 rounded" /></>
+          : <>
+              <p className="text-lg font-black text-foreground mb-2">
+                {currentWeeklyPoints.toLocaleString()} / {weeklyTarget.toLocaleString()}
+              </p>
+              <Progress value={weeklyProgressPct} className="h-2 mb-1" />
+              <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">{daysLeft} days left</p>
+            </>}
       </CardShell>
 
       <CardShell testId="card-captain-earnings" className="sm:col-span-2 lg:col-span-1">

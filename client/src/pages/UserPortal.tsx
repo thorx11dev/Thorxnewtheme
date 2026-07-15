@@ -26,6 +26,7 @@ import { WaterfallAdPlayer } from "@/components/ads/HilltopAdsPlayer";
 import { NotificationModal } from "@/components/ui/notification-modal";
 import { CommissionCalculator } from "@/components/ui/commission-calculator";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
 import { DashboardCards } from "@/components/DashboardCards";
@@ -2776,7 +2777,7 @@ export default function UserPortal() {
                           Withdrawing {formatCurrency(withdrawAmount)} PTS
                         </div>
                         {isPreviewLoading && (
-                          <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Calculating exact PKR value…</div>
+                          <div className="flex justify-center"><Skeleton className="h-3 w-48 rounded mt-1" /></div>
                         )}
                         {withdrawalPreviewError && (
                           <div className="text-xs font-bold text-red-500 uppercase tracking-widest">
@@ -2924,7 +2925,7 @@ export default function UserPortal() {
                           <div className="flex justify-between items-center text-sm md:text-base">
                             <span className="font-bold text-muted-foreground">Exact PKR Value</span>
                             <span className="font-black text-foreground">
-                              {withdrawalPreview ? `Rs. ${withdrawalPreview.exactPkr.toFixed(2)}` : isPreviewLoading ? "…" : "—"}
+                              {isPreviewLoading ? <Skeleton className="h-5 w-24 rounded inline-block" /> : withdrawalPreview ? `Rs. ${withdrawalPreview.exactPkr.toFixed(2)}` : "—"}
                             </span>
                           </div>
 
@@ -2934,7 +2935,7 @@ export default function UserPortal() {
                               <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded-sm">{withdrawalPreview?.feePercent ?? WITHDRAWAL_FEE_PERCENT}%</span>
                             </span>
                             <span className="font-black text-red-500">
-                              {withdrawalPreview ? `-Rs. ${withdrawalPreview.platformFee.toFixed(2)}` : "—"}
+                              {isPreviewLoading ? <Skeleton className="h-5 w-20 rounded inline-block" /> : withdrawalPreview ? `-Rs. ${withdrawalPreview.platformFee.toFixed(2)}` : "—"}
                             </span>
                           </div>
 
@@ -3515,7 +3516,15 @@ export default function UserPortal() {
                         <div className="chat-container bg-muted/30 h-[450px] md:h-[600px] p-4 md:p-6 space-y-4 md:space-y-6 overflow-y-auto custom-scrollbar relative">
                           <div className="absolute inset-0 industrial-grid opacity-[0.03] pointer-events-none"></div>
 
-                          {chatMessages.map((message, idx) => (
+                          {isChatHistoryLoading ? (
+                            <div className="space-y-4">
+                              {[...Array(3)].map((_, i) => (
+                                <div key={i} className={`flex items-start gap-3 ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
+                                  <Skeleton className={`h-16 rounded-2xl border-2 border-black/10 ${i % 2 === 0 ? "w-64" : "w-48"}`} />
+                                </div>
+                              ))}
+                            </div>
+                          ) : chatMessages.map((message, idx) => (
                             <motion.div
                               key={message.id}
                               initial={{ opacity: 0, y: 15, scale: 0.98 }}
@@ -3535,7 +3544,8 @@ export default function UserPortal() {
                                 </div>
                               </div>
                             </motion.div>
-                          ))}
+                          ))
+                          }
                         </div>
 
                         {/* Chat Input Area */}
