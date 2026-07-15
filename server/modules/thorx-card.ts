@@ -6,6 +6,8 @@
 // value layered on top purely for engagement — they never change what the
 // user can withdraw.
 
+import Decimal from "decimal.js";
+
 export interface CardDrawParams {
   userPkrShare: number;   // exact PKR already split from gross for this user
   conversionRate: number; // system_config CONVERSION_RATE (TX-Points per Rs.10)
@@ -50,7 +52,7 @@ export function drawThorxCard(params: CardDrawParams): CardResult {
   min = Math.max(0.01, min);
   if (max < min) max = min;
 
-  const targetPoints = (userPkrShare / 10.0) * conversionRate;
+  const targetPoints = new Decimal(userPkrShare).div(10).times(conversionRate).toNumber();
   const cardVariance = min + Math.random() * (max - min);
   const pointsCredited = Math.max(0, Math.round(targetPoints * cardVariance));
 

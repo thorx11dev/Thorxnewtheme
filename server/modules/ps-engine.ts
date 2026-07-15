@@ -30,21 +30,32 @@ function yesterdayOf(dateStr: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+// `tx` (optional) lets callers — chiefly recordEarnEvent — run this inside
+// their own transaction so the PS write is atomic with the rest of the earn
+// event (Critical finding #2 of the 2026-07-15 production-readiness audit:
+// recordEarnEvent previously had no transaction wrapper at all). Typed `any`
+// (matches the existing tx-param convention elsewhere in storage.ts) since
+// drizzle's transaction client and the base db client are structurally
+// close but not identical types.
+type DbClient = any;
+
 // Award PS after a task completion (call from recordEarnEvent).
-export async function awardTaskPS(userId: string, engineType: "A" | "B" | "C"): Promise<void> {
+export async function awardTaskPS(userId: string, engineType: "A" | "B" | "C", tx?: DbClient): Promise<void> {
+  const dbc = tx ?? db;
   const rewardKey = `PS_ENGINE_${engineType}_REWARD`;
   const defaultReward = engineType === "A" ? 5 : engineType === "B" ? 25 : 15;
   const reward = await cfg<number>(rewardKey, defaultReward);
-  await db.update(users)
+  await dbc.update(users)
     .set({ performanceScore: drizzleSql`${users.performanceScore} + ${reward}` })
     .where(eq(users.id, userId));
-  await checkAndUpdateRankTier(userId);
+  await checkAndUpdateRankTier(userId, tx);
 }
 
 // Process the daily login/activity streak. Safe to call multiple times a day
 // (idempotent per PKT calendar day).
-export async function processStreak(userId: string): Promise<{ streakDays: number; psAwarded: number }> {
-  const [user] = await db.select().from(users).where(eq(users.id, userId));
+export async function processStreak(userId: string, tx?: DbClient): Promise<{ streakDays: number; psAwarded: number }> {
+  const dbc = tx ?? db;
+  const [user] = await dbc.select().from(users).where(eq(users.id, userId));
   if (!user) return { streakDays: 0, psAwarded: 0 };
 
   const today = todayPKT();
@@ -61,7 +72,7 @@ export async function processStreak(userId: string): Promise<{ streakDays: numbe
   const day3Plus = await cfg<number>("PS_STREAK_DAY3_PLUS", 20);
   const psAwarded = newStreakDays === 1 ? day1 : newStreakDays === 2 ? day2 : day3Plus;
 
-  await db.update(users)
+  await dbc.update(users)
     .set({
       streakDays: newStreakDays,
       lastStreakDate: today,
@@ -69,7 +80,7 @@ export async function processStreak(userId: string): Promise<{ streakDays: numbe
     })
     .where(eq(users.id, userId));
 
-  await checkAndUpdateRankTier(userId);
+  await checkAndUpdateRankTier(userId, tx);
   return { streakDays: newStreakDays, psAwarded };
 }
 
@@ -114,8 +125,9 @@ function computeRankTier(ps: number, thresholds: Record<string, number>): RankTi
 
 // Called after every PS change. PS is the sole input to rank (invariant #6);
 // rankLocked bypasses automatic changes; E-Rank is a hard floor (invariant #7).
-export async function checkAndUpdateRankTier(userId: string): Promise<void> {
-  const [user] = await db.select().from(users).where(eq(users.id, userId));
+export async function checkAndUpdateRankTier(userId: string, tx?: DbClient): Promise<void> {
+  const dbc = tx ?? db;
+  const [user] = await dbc.select().from(users).where(eq(users.id, userId));
   if (!user || user.rankLocked) return;
 
   const thresholds: Record<string, number> = {
@@ -129,8 +141,8 @@ export async function checkAndUpdateRankTier(userId: string): Promise<void> {
   const newRank = computeRankTier(user.performanceScore, thresholds);
   if (newRank === user.userRankTier) return;
 
-  await db.update(users).set({ userRankTier: newRank }).where(eq(users.id, userId));
-  await db.insert(rankLogs).values({
+  await dbc.update(users).set({ userRankTier: newRank }).where(eq(users.id, userId));
+  await dbc.insert(rankLogs).values({
     userId,
     oldRank: user.userRankTier,
     newRank,

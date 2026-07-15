@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import {
   users,
   earnings,
@@ -906,30 +907,29 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(params.userId);
     if (!user) throw new Error("User not found");
 
-    // Step 1: Engine split.
-    let userPkrShare = 0;
-    let thorxProfitPkr = 0;
-    let guildPoolPkr = 0;
+    // Step 1: Engine split. Decimal (not native float */) — Critical finding
+    // #3 of the 2026-07-15 production-readiness audit.
+    const grossPkrD = new Decimal(params.grossPkr);
+    let userPkrShareD = new Decimal(0);
+    let thorxProfitPkrD = new Decimal(0);
+    let guildPoolPkrD = new Decimal(0);
 
     if (params.engineType === "Engine_A" || params.engineType === "Engine_B") {
       const thorxCut = params.engineType === "Engine_A" ? engineAThorxCutPct : engineBThorxCutPct;
       const userCut = 100 - thorxCut;
-      thorxProfitPkr = (params.grossPkr * thorxCut) / 100;
-      userPkrShare = (params.grossPkr * userCut) / 100;
+      thorxProfitPkrD = grossPkrD.times(thorxCut).div(100);
+      userPkrShareD = grossPkrD.times(userCut).div(100);
     } else if (params.engineType === "Engine_C") {
       if (!params.guildId) throw new Error("guildId is required for Engine_C earn events");
-      thorxProfitPkr = (params.grossPkr * engineCThorxCutPct) / 100;
-      guildPoolPkr = (params.grossPkr * engineCGuildPoolPct) / 100;
-      userPkrShare = (params.grossPkr * engineCUserCutPct) / 100;
-      await db
-        .update(guilds)
-        .set({
-          weeklyBonusPool: sql`${guilds.weeklyBonusPool} + ${guildPoolPkr}`,
-          currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${Math.round(params.grossPkr * 100)}`,
-        })
-        .where(eq(guilds.id, params.guildId));
+      thorxProfitPkrD = grossPkrD.times(engineCThorxCutPct).div(100);
+      guildPoolPkrD = grossPkrD.times(engineCGuildPoolPct).div(100);
+      userPkrShareD = grossPkrD.times(engineCUserCutPct).div(100);
     }
     // 'Indirect' — no PKR payout, only PS (userPkrShare/thorxProfitPkr stay 0).
+
+    const userPkrShare = userPkrShareD.toNumber();
+    const thorxProfitPkr = thorxProfitPkrD.toNumber();
+    const guildPoolPkr = guildPoolPkrD.toNumber();
 
     // Step 2: Thorx Card draw (if the user has a PKR share to convert).
     let cardResult = { pointsCredited: 0, realPkrValue: 0, cardVariance: 1.0, targetPoints: 0 };
@@ -943,63 +943,94 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
-    // Step 3: Persist user_transactions — the immutable source of truth for
-    // withdrawal math (Appendix A #1/#2). real_pkr_value is write-once.
-    await db.insert(userTransactions).values({
-      userId: params.userId,
-      engineType: params.engineType,
-      pointsCredited: cardResult.pointsCredited,
-      realPkrValue: cardResult.realPkrValue.toFixed(4),
-      grossPkr: params.grossPkr.toFixed(4),
-      thorxProfitPkr: thorxProfitPkr.toFixed(4),
-      guildPoolPkr: guildPoolPkr.toFixed(4),
-      conversionRate: Math.round(conversionRate),
-      cardVariance: cardResult.cardVariance.toFixed(4),
-      sourceId: params.sourceId,
-      sourceType: params.sourceType,
-    });
-
-    // Step 4: Update user-facing balances + earnings history.
+    // Steps 3-6 are wrapped in a single transaction — Critical finding #2 of
+    // the 2026-07-15 production-readiness audit: recordEarnEvent previously
+    // made independent, unguarded db calls for the ledger row, balance
+    // update, PS award, and rank check, so a mid-sequence crash could leave
+    // points credited with an inconsistent ledger/rank state. Notification /
+    // websocket / feed side-effects intentionally stay outside the
+    // transaction (Step 7) — they're not part of the financial-consistency
+    // contract and shouldn't hold a DB transaction open.
     let earning: Earning | undefined;
-    if (cardResult.pointsCredited > 0) {
-      await db
-        .update(users)
-        .set({
-          txPointsBalance: sql`${users.txPointsBalance} + ${cardResult.pointsCredited}`,
-          totalEarnings: sql`${users.totalEarnings} + ${cardResult.realPkrValue.toFixed(2)}`,
-          lastActiveAt: new Date(),
-        })
-        .where(eq(users.id, params.userId));
+    try {
+    await db.transaction(async (tx) => {
+      // Step 3: Persist user_transactions — the immutable source of truth for
+      // withdrawal math (Appendix A #1/#2). real_pkr_value is write-once.
+      // uniq_user_transactions_source (sourceId, sourceType) rejects a
+      // duplicate ledger row outright if this same ad_view/task completion
+      // is ever submitted twice — defense-in-depth for Critical finding #4
+      // of the 2026-07-15 production-readiness audit.
+      await tx.insert(userTransactions).values({
+        userId: params.userId,
+        engineType: params.engineType,
+        pointsCredited: cardResult.pointsCredited,
+        realPkrValue: cardResult.realPkrValue.toFixed(4),
+        grossPkr: params.grossPkr.toFixed(4),
+        thorxProfitPkr: thorxProfitPkr.toFixed(4),
+        guildPoolPkr: guildPoolPkr.toFixed(4),
+        conversionRate: Math.round(conversionRate),
+        cardVariance: cardResult.cardVariance.toFixed(4),
+        sourceId: params.sourceId,
+        sourceType: params.sourceType,
+      });
 
-      [earning] = await db
-        .insert(earnings)
-        .values({
-          userId: params.userId,
-          type: params.engineType,
-          amount: cardResult.realPkrValue.toFixed(2),
-          description: `${params.engineType} task completion`,
-          status: "completed",
-        })
-        .returning();
+      if (params.engineType === "Engine_C" && params.guildId) {
+        await tx
+          .update(guilds)
+          .set({
+            weeklyBonusPool: sql`${guilds.weeklyBonusPool} + ${guildPoolPkr}`,
+            currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${Math.round(params.grossPkr * 100)}`,
+          })
+          .where(eq(guilds.id, params.guildId));
+      }
+
+      // Step 4: Update user-facing balances + earnings history.
+      if (cardResult.pointsCredited > 0) {
+        await tx
+          .update(users)
+          .set({
+            txPointsBalance: sql`${users.txPointsBalance} + ${cardResult.pointsCredited}`,
+            totalEarnings: sql`${users.totalEarnings} + ${cardResult.realPkrValue.toFixed(2)}`,
+            lastActiveAt: new Date(),
+          })
+          .where(eq(users.id, params.userId));
+
+        [earning] = await tx
+          .insert(earnings)
+          .values({
+            userId: params.userId,
+            type: params.engineType,
+            amount: cardResult.realPkrValue.toFixed(2),
+            description: `${params.engineType} task completion`,
+            status: "completed",
+          })
+          .returning();
+      }
+
+      // Step 5: Guild member contribution tracking (Engine C only).
+      if (params.engineType === "Engine_C" && params.guildId) {
+        await tx
+          .update(guildMembers)
+          .set({ weeklyPointsContributed: sql`${guildMembers.weeklyPointsContributed} + ${cardResult.pointsCredited}` })
+          .where(and(eq(guildMembers.userId, params.userId), eq(guildMembers.guildId, params.guildId)));
+        await awardMemberGPS(params.guildId, cardResult.pointsCredited, tx);
+      }
+
+      // Step 6: PS award + streak + rank-tier check (PS is the sole rank input — Appendix A #6).
+      if (params.engineType !== "Indirect") {
+        await awardTaskPS(params.userId, params.engineType.replace("Engine_", "") as "A" | "B" | "C", tx);
+      }
+      await processStreak(params.userId, tx);
+      await checkAndUpdateRankTier(params.userId, tx);
+    });
+    } catch (err: any) {
+      if (err?.code === "23505") {
+        throw new Error("This earn event has already been recorded (duplicate submission).");
+      }
+      throw err;
     }
 
-    // Step 5: Guild member contribution tracking (Engine C only).
-    if (params.engineType === "Engine_C" && params.guildId) {
-      await db
-        .update(guildMembers)
-        .set({ weeklyPointsContributed: sql`${guildMembers.weeklyPointsContributed} + ${cardResult.pointsCredited}` })
-        .where(and(eq(guildMembers.userId, params.userId), eq(guildMembers.guildId, params.guildId)));
-      await awardMemberGPS(params.guildId, cardResult.pointsCredited);
-    }
-
-    // Step 6: PS award + streak + rank-tier check (PS is the sole rank input — Appendix A #6).
-    if (params.engineType !== "Indirect") {
-      await awardTaskPS(params.userId, params.engineType.replace("Engine_", "") as "A" | "B" | "C");
-    }
-    await processStreak(params.userId);
-    await checkAndUpdateRankTier(params.userId);
-
-    // Step 7: Live feed event.
+    // Step 7: Live feed event (after commit — see note above).
     await emitFeedEvent({
       type: "earn",
       userId: params.userId,
@@ -1769,9 +1800,16 @@ export class DatabaseStorage implements IStorage {
   // rows until pointsCredited covers pointsRequested, and sums their
   // realPkrValue as the exact PKR base. This is Appendix A invariant #1/#2:
   // withdrawal math is NEVER recomputed from points × conversion rate.
+  // `dbc` lets callers pass a transaction client so the FIFO ledger read is
+  // taken inside the same transaction as the withdrawal-row lock (see
+  // processWithdrawal) instead of racing against concurrent writers.
+  // All PKR arithmetic uses Decimal (not native float +/-/*) — Critical
+  // finding #3 of the 2026-07-15 production-readiness audit: parseFloat +
+  // native math on DECIMAL columns accumulates sub-paisa drift at scale.
   private async calculateWithdrawalBreakdown(
     userId: string,
-    pointsRequested: number
+    pointsRequested: number,
+    dbc: any = db
   ): Promise<{
     exactPkr: number;
     platformFee: number;
@@ -1781,7 +1819,7 @@ export class DatabaseStorage implements IStorage {
     userNetPkr: number;
     consumedTransactionIds: string[];
   }> {
-    const rows = await db
+    const rows = await dbc
       .select({
         id: userTransactions.id,
         pointsCredited: userTransactions.pointsCredited,
@@ -1792,12 +1830,12 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(userTransactions.createdAt));
 
     let pointsAccumulated = 0;
-    let exactPkr = 0;
+    let exactPkr = new Decimal(0);
     const consumedTransactionIds: string[] = [];
     for (const row of rows) {
       if (pointsAccumulated >= pointsRequested) break;
       pointsAccumulated += row.pointsCredited;
-      exactPkr += parseFloat(row.realPkrValue);
+      exactPkr = exactPkr.plus(row.realPkrValue); // Decimal parses the DECIMAL string directly — no float round-trip
       consumedTransactionIds.push(row.id);
     }
 
@@ -1807,26 +1845,26 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    const feeRate = (await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15)) / 100;
-    const platformFee = exactPkr * feeRate;
+    const feeRate = new Decimal(await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15)).div(100);
+    const platformFee = exactPkr.times(feeRate);
 
     const user = await this.getUserById(userId);
     const referrer = user?.referredBy ? await this.getUserById(user.referredBy) : undefined;
-    let referralCommission = 0;
+    let referralCommission = new Decimal(0);
     if (referrer) {
-      const refSharePct = (await this.getSystemConfigValue<number>("REFERRAL_FEE_SHARE_PCT", 50)) / 100;
-      referralCommission = platformFee * refSharePct;
+      const refSharePct = new Decimal(await this.getSystemConfigValue<number>("REFERRAL_FEE_SHARE_PCT", 50)).div(100);
+      referralCommission = platformFee.times(refSharePct);
     }
 
-    const userNetPkr = exactPkr - platformFee;
+    const userNetPkr = exactPkr.minus(platformFee);
 
     return {
-      exactPkr,
-      platformFee,
-      referralCommission,
+      exactPkr: exactPkr.toNumber(),
+      platformFee: platformFee.toNumber(),
+      referralCommission: referralCommission.toNumber(),
       referrerId: referrer?.id ?? null,
       referrerName: referrer?.identity ?? null,
-      userNetPkr,
+      userNetPkr: userNetPkr.toNumber(),
       consumedTransactionIds,
     };
   }
@@ -1843,6 +1881,13 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Withdrawal amount must be a positive whole number of TX-Points");
     }
 
+    // Fast-path check for a friendly error message — this alone still has a
+    // TOCTOU race window under concurrent requests. The actual guarantee
+    // comes from a partial unique index (one row per user WHERE status =
+    // 'pending') added for Critical finding #4 of the 2026-07-15
+    // production-readiness audit: a double-tapped submit / retried request
+    // can no longer create two pending withdrawals for the same user, no
+    // matter the timing — Postgres rejects the second INSERT outright.
     const [pending] = await db
       .select()
       .from(withdrawals)
@@ -1859,18 +1904,27 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Minimum payout requirement not met. Threshold: Rs.${minPayout}.`);
     }
 
-    const [withdrawal] = await db
-      .insert(withdrawals)
-      .values({
-        ...insertWithdrawal,
-        amount: pointsRequested.toString(),
-        fee: breakdown.platformFee.toFixed(2),
-        netAmount: breakdown.userNetPkr.toFixed(2),
-        status: "pending",
-      })
-      .returning();
+    try {
+      const [withdrawal] = await db
+        .insert(withdrawals)
+        .values({
+          ...insertWithdrawal,
+          amount: pointsRequested.toString(),
+          fee: breakdown.platformFee.toFixed(2),
+          netAmount: breakdown.userNetPkr.toFixed(2),
+          status: "pending",
+        })
+        .returning();
 
-    return withdrawal;
+      return withdrawal;
+    } catch (err: any) {
+      // Postgres unique_violation on uniq_withdrawals_one_pending_per_user —
+      // translate the DB-level guarantee into the same friendly error.
+      if (err?.code === "23505") {
+        throw new Error("A pending payout request already exists for this account.");
+      }
+      throw err;
+    }
   }
 
   async getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]> {
@@ -1900,15 +1954,32 @@ export class DatabaseStorage implements IStorage {
   // commission (Appendix A #4) into the referrer's separate cash wallet
   // (Appendix A #5 — never mixed with txPointsBalance), audit-logs the
   // action (Appendix A #10), and emits a live feed event + notification.
+  // Critical finding #1 of the 2026-07-15 production-readiness audit: the
+  // pending-status check used to happen BEFORE the transaction opened, with
+  // no row lock, so two concurrent approvals of the same withdrawal could
+  // both pass the check and both execute the payout. Fix: lock the
+  // withdrawal row with SELECT ... FOR UPDATE as the very first statement
+  // inside the transaction, and re-check status only after the lock is held.
+  // A second concurrent call blocks on the lock, then sees status !=
+  // 'pending' once it acquires it, and throws instead of double-paying.
   async processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal> {
-    const withdrawal = await this.getWithdrawalById(withdrawalId);
-    if (!withdrawal) throw new Error("Withdrawal not found");
-    if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending");
-
-    const pointsRequested = parseInt(withdrawal.amount, 10);
-    const breakdown = await this.calculateWithdrawalBreakdown(withdrawal.userId, pointsRequested);
+    let breakdown!: Awaited<ReturnType<DatabaseStorage["calculateWithdrawalBreakdown"]>>;
+    let withdrawalUserId!: string;
 
     const updated = await db.transaction(async (tx) => {
+      const [withdrawal] = await tx
+        .select()
+        .from(withdrawals)
+        .where(eq(withdrawals.id, withdrawalId))
+        .for("update");
+
+      if (!withdrawal) throw new Error("Withdrawal not found");
+      if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending");
+
+      withdrawalUserId = withdrawal.userId;
+      const pointsRequested = parseInt(withdrawal.amount, 10);
+      breakdown = await this.calculateWithdrawalBreakdown(withdrawal.userId, pointsRequested, tx);
+
       const [updatedWithdrawal] = await tx
         .update(withdrawals)
         .set({
@@ -1954,7 +2025,7 @@ export class DatabaseStorage implements IStorage {
 
         await tx.insert(referralCommissions).values({
           referrerId: breakdown.referrerId,
-          inviteeId: withdrawal.userId,
+          inviteeId: withdrawalUserId,
           withdrawalId,
           commissionAmountPkr: breakdown.referralCommission.toFixed(2),
           inviteeNetPkr: breakdown.userNetPkr.toFixed(2),
@@ -1976,16 +2047,16 @@ export class DatabaseStorage implements IStorage {
       return updatedWithdrawal;
     });
 
-    const user = await this.getUserById(withdrawal.userId);
+    const user = await this.getUserById(withdrawalUserId);
     await emitFeedEvent({
       type: "withdrawal",
-      userId: withdrawal.userId,
-      displayMessage: `Payout approved: '${user?.identity ?? withdrawal.userId}' → Rs.${breakdown.userNetPkr.toFixed(2)} | Fee: Rs.${breakdown.platformFee.toFixed(2)}${breakdown.referralCommission > 0 ? ` | Ref: Rs.${breakdown.referralCommission.toFixed(2)}` : ""}`,
+      userId: withdrawalUserId,
+      displayMessage: `Payout approved: '${user?.identity ?? withdrawalUserId}' → Rs.${breakdown.userNetPkr.toFixed(2)} | Fee: Rs.${breakdown.platformFee.toFixed(2)}${breakdown.referralCommission > 0 ? ` | Ref: Rs.${breakdown.referralCommission.toFixed(2)}` : ""}`,
       data: breakdown,
     });
 
     await this.createNotification({
-      userId: withdrawal.userId,
+      userId: withdrawalUserId,
       title: "Payout Processed",
       message: `Rs.${breakdown.userNetPkr.toFixed(2)} sent to your account.${transactionId ? ` Transaction: ${transactionId}` : ""}`,
       type: "system",
@@ -1997,22 +2068,31 @@ export class DatabaseStorage implements IStorage {
   // Reject withdrawal — no balance refund needed since createWithdrawal
   // never deducts points/PKR up front under the v3 ledger model.
   async rejectWithdrawal(withdrawalId: string, adminId: string, reason: string): Promise<Withdrawal> {
-    const [updatedWithdrawal] = await db
-      .update(withdrawals)
-      .set({
-        status: "rejected",
-        rejectionReason: reason,
-        processedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(withdrawals.id, withdrawalId))
-      .returning();
+    // Same row-lock discipline as processWithdrawal — prevents a reject
+    // racing an in-flight approval of the same withdrawal.
+    return await db.transaction(async (tx) => {
+      const [withdrawal] = await tx
+        .select()
+        .from(withdrawals)
+        .where(eq(withdrawals.id, withdrawalId))
+        .for("update");
 
-    if (!updatedWithdrawal) {
-      throw new Error("Withdrawal not found");
-    }
+      if (!withdrawal) throw new Error("Withdrawal not found");
+      if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending");
 
-    return updatedWithdrawal;
+      const [updatedWithdrawal] = await tx
+        .update(withdrawals)
+        .set({
+          status: "rejected",
+          rejectionReason: reason,
+          processedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(withdrawals.id, withdrawalId))
+        .returning();
+
+      return updatedWithdrawal;
+    });
   }
 
   // ── Guilds: CRUD, join/approve flow, vault & ledger reads ────────────────────

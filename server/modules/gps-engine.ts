@@ -11,6 +11,10 @@ import { storage } from "../storage";
 const GUILD_RANK_TIERS = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"] as const;
 export type GuildRankTier = (typeof GUILD_RANK_TIERS)[number];
 
+// `tx` (optional) lets recordEarnEvent run this inside its own transaction —
+// see the matching note in ps-engine.ts. Typed `any` for the same reason.
+type DbClient = any;
+
 async function cfg<T>(key: string, fallback: T): Promise<T> {
   return storage.getSystemConfigValue<T>(key, fallback);
 }
@@ -18,38 +22,41 @@ async function cfg<T>(key: string, fallback: T): Promise<T> {
 // Called whenever a member earns points via Engine C (or any engine, per
 // spec's "member contributes toward guild" rule) — awards a % of the raw
 // points to the guild's GPS and weekly point total.
-export async function awardMemberGPS(guildId: string, memberPointsEarned: number): Promise<void> {
+export async function awardMemberGPS(guildId: string, memberPointsEarned: number, tx?: DbClient): Promise<void> {
+  const dbc = tx ?? db;
   const pct = await cfg<number>("GPS_MEMBER_POINTS_PCT", 10);
   const gpsAward = Math.round((memberPointsEarned * pct) / 100);
   if (gpsAward <= 0) return;
 
-  await db.update(guilds)
+  await dbc.update(guilds)
     .set({
       guildPerformanceScore: drizzleSql`${guilds.guildPerformanceScore} + ${gpsAward}`,
       currentWeeklyPoints: drizzleSql`${guilds.currentWeeklyPoints} + ${memberPointsEarned}`,
     })
     .where(eq(guilds.id, guildId));
 
-  await checkAndUpdateGuildRankTier(guildId);
+  await checkAndUpdateGuildRankTier(guildId, tx);
 }
 
 // Called by the Sunday reset job when a guild hits its weekly target.
-export async function awardMilestoneGPS(guildId: string): Promise<number> {
+export async function awardMilestoneGPS(guildId: string, tx?: DbClient): Promise<number> {
+  const dbc = tx ?? db;
   const bonus = await cfg<number>("GPS_MILESTONE_BONUS", 1000);
-  await db.update(guilds)
+  await dbc.update(guilds)
     .set({ guildPerformanceScore: drizzleSql`${guilds.guildPerformanceScore} + ${bonus}` })
     .where(eq(guilds.id, guildId));
-  await checkAndUpdateGuildRankTier(guildId);
+  await checkAndUpdateGuildRankTier(guildId, tx);
   return bonus;
 }
 
 // Called when a captain sets a weekly MVP.
-export async function awardMVPGPS(guildId: string): Promise<number> {
+export async function awardMVPGPS(guildId: string, tx?: DbClient): Promise<number> {
+  const dbc = tx ?? db;
   const bonus = await cfg<number>("GPS_MVP_BONUS", 200);
-  await db.update(guilds)
+  await dbc.update(guilds)
     .set({ guildPerformanceScore: drizzleSql`${guilds.guildPerformanceScore} + ${bonus}` })
     .where(eq(guilds.id, guildId));
-  await checkAndUpdateGuildRankTier(guildId);
+  await checkAndUpdateGuildRankTier(guildId, tx);
   return bonus;
 }
 
@@ -62,8 +69,9 @@ function computeGuildRankTier(gps: number, thresholds: Record<string, number>): 
   return "E-Rank";
 }
 
-export async function checkAndUpdateGuildRankTier(guildId: string): Promise<void> {
-  const [guild] = await db.select().from(guilds).where(eq(guilds.id, guildId));
+export async function checkAndUpdateGuildRankTier(guildId: string, tx?: DbClient): Promise<void> {
+  const dbc = tx ?? db;
+  const [guild] = await dbc.select().from(guilds).where(eq(guilds.id, guildId));
   if (!guild) return;
 
   const thresholds: Record<string, number> = {
@@ -89,13 +97,13 @@ export async function checkAndUpdateGuildRankTier(guildId: string): Promise<void
     "S-Rank": await cfg("WEEKLY_TARGET_S_RANK", 500000),
   };
 
-  await db.update(guilds).set({
+  await dbc.update(guilds).set({
     guildRankTier: newRank,
     memberCapacity: memberCapacityByRank[newRank],
     weeklyTarget: weeklyTargetByRank[newRank],
   }).where(eq(guilds.id, guildId));
 
-  await db.insert(rankLogs).values({
+  await dbc.insert(rankLogs).values({
     userId: guild.captainId,
     oldRank: guild.guildRankTier,
     newRank,
