@@ -10,11 +10,11 @@ export function CommissionCalculator() {
     const [guildMembers, setGuildMembers] = useState(8);
 
     const REFERRAL_RATE = 0.15; // 15% direct commission
-    const VAULT_BONUS_RATE = 1.15; // 15% vault bonus at Rank B+
+    const GUILD_BONUS_RATE = 1.15; // Guild Weekly Bonus estimate multiplier at Rank B+
 
     const referralPoints = referralCount * avgPoints * REFERRAL_RATE;
-    const guildVaultBonus = guildMembers * avgPoints * 0.15 * (VAULT_BONUS_RATE - 1);
-    const totalPotential = referralPoints + guildVaultBonus;
+    const guildWeeklyBonusEstimate = guildMembers * avgPoints * 0.15 * (GUILD_BONUS_RATE - 1);
+    const totalPotential = referralPoints + guildWeeklyBonusEstimate;
 
     const formatPoints = (pts: number) =>
         `${Math.round(pts).toLocaleString()} TX-Pts`;
@@ -83,8 +83,8 @@ export function CommissionCalculator() {
                         <span className="font-black text-black dark:text-white">{formatPoints(referralPoints)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                        <span className="font-bold text-black/50 dark:text-white/50">Guild Vault Bonus</span>
-                        <span className="font-black text-black dark:text-white">{formatPoints(guildVaultBonus)}</span>
+                        <span className="font-bold text-black/50 dark:text-white/50">Guild Weekly Bonus</span>
+                        <span className="font-black text-black dark:text-white">{formatPoints(guildWeeklyBonusEstimate)}</span>
                     </div>
                     <div className="mt-8 bg-black dark:bg-white text-white dark:text-black p-6 shadow-[4px_4px_0px_#ff6b35]">
                         <div className="text-[10px] font-black uppercase tracking-widest text-[#ff6b35] mb-1">Your Potential</div>

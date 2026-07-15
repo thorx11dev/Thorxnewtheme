@@ -2064,6 +2064,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { amount, type, reason, creditIntent } = req.body;
       const adminId = req.userProfile.id;
 
+      // Appendix A invariant #10: every admin balance adjustment must be
+      // logged to audit_logs with a required reason — no silent defaults.
+      if (!reason || String(reason).trim().length < 5) {
+        return res.status(400).json({ message: "reason (≥5 chars) required." });
+      }
+
       // When adding credit, a creditIntent is required to distinguish verified deposits from manual adjustments
       if (type === 'add' && creditIntent && !['verified_deposit', 'admin_credit'].includes(creditIntent)) {
         return res.status(400).json({ message: "Invalid creditIntent value" });
