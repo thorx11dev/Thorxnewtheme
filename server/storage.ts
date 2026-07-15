@@ -119,7 +119,7 @@ import {
 import { drawThorxCard } from "./modules/thorx-card";
 import { awardTaskPS, processStreak } from "./modules/ps-engine";
 import { checkAndUpdateRankTier } from "./modules/ps-engine";
-import { awardMemberGPS } from "./modules/gps-engine";
+import { awardMemberGPS, awardMVPGPS, checkAndUpdateGuildRankTier } from "./modules/gps-engine";
 import { emitFeedEvent } from "./modules/live-feed";
 import { db } from "./db";
 import { eq, desc, asc, and, or, sql, inArray, ilike, gte, lte, lt, ne } from "drizzle-orm";
@@ -3770,13 +3770,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkUpdateWithdrawalStatus(ids: string[], status: string, adminId: string): Promise<void> {
+    // 'completed'/'rejected' must go through updateWithdrawalStatus so they hit
+    // processWithdrawal/rejectWithdrawal — the sole code paths that consume the
+    // user_transactions FIFO ledger, mark rows withdrawn, deduct txPointsBalance,
+    // and credit referral_commissions (spec Part E.7, Appendix A invariants #1/#2/#4).
+    // A raw UPDATE here (the old behavior) flipped status without touching the
+    // ledger at all — a real double-spend risk. Non-terminal statuses (e.g.
+    // 'processing') still use a plain update since there's no ledger effect yet.
+    if (status === 'completed' || status === 'rejected') {
+      for (const id of ids) {
+        await this.updateWithdrawalStatus(id, status, adminId, undefined, status === 'rejected' ? 'Bulk rejection by administrator' : undefined);
+        await db.insert(auditLogs).values({
+          adminId,
+          action: `BULK_WITHDRAWAL_${status.toUpperCase()}`,
+          targetType: "withdrawal",
+          targetId: id,
+          details: `Bulk status update to ${status}`
+        });
+      }
+      return;
+    }
+
     await db.transaction(async (tx) => {
       for (const id of ids) {
         await tx
           .update(withdrawals)
           .set({ 
             status: status as any, 
-            processedAt: status === 'completed' ? new Date() : null,
+            processedAt: null,
             updatedAt: new Date()
           })
           .where(eq(withdrawals.id, id));
@@ -4368,7 +4389,7 @@ export class DatabaseStorage implements IStorage {
         joinedAt: guildMembers.joinedAt,
         weeklyPointsContributed: guildMembers.weeklyPointsContributed,
         isMvp: guildMembers.isMvp,
-        name: users.name,
+        name: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
         userRankTier: users.userRankTier,
         lastActiveAt: users.lastActiveAt,
         profilePicture: users.profilePicture,
@@ -4422,7 +4443,7 @@ export class DatabaseStorage implements IStorage {
       await tx.update(guildMembers).set({ isMvp: false }).where(eq(guildMembers.guildId, guildId));
       await tx.update(guildMembers).set({ isMvp: true, mvpSetAt: new Date() }).where(eq(guildMembers.id, membership.id));
     });
-    await awardMVPGPS(memberUserId, guildId);
+    await awardMVPGPS(guildId);
   }
 
   // ── THORX v3 (spec E.9): Withdrawal preview & referral cash withdrawal ─────
@@ -4657,7 +4678,7 @@ export class DatabaseStorage implements IStorage {
         guildId: guilds.id,
         guildName: guilds.name,
         captainId: guilds.captainId,
-        captainName: users.name,
+        captainName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
         lastActiveAt: users.lastActiveAt,
       })
       .from(guilds)
@@ -4685,13 +4706,13 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select({
         referrerId: referralCommissions.referrerId,
-        referrerName: users.name,
+        referrerName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
         totalCommissionPkr: sql<string>`SUM(${referralCommissions.commissionAmountPkr})`,
         commissionCount: sql<number>`COUNT(*)`,
       })
       .from(referralCommissions)
       .innerJoin(users, eq(users.id, referralCommissions.referrerId))
-      .groupBy(referralCommissions.referrerId, users.name)
+      .groupBy(referralCommissions.referrerId, users.firstName, users.lastName)
       .orderBy(desc(sql`SUM(${referralCommissions.commissionAmountPkr})`))
       .limit(limit);
   }
