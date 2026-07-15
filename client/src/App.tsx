@@ -31,7 +31,7 @@ function Router() {
 
   // Real-time sync: pushes admin-side changes (balance, rank, status) to this
   // session instantly so the portal never shows stale data.
-  useRealtimeSync(isAuthenticated ? user : null);
+  useRealtimeSync(isAuthenticated ? user : null, user?.guildId);
 
   useEffect(() => {
     if (!isLoading) {

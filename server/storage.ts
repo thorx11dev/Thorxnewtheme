@@ -245,7 +245,8 @@ export interface IStorage {
   getUsersCountInRange(since: Date): Promise<number>;
   getEarningsSumInRange(since: Date): Promise<string>;
   getAnalyticsData(since: Date): Promise<any[]>;
-  
+  getEngineRevenue(since: Date): Promise<{ Engine_A: number; Engine_B: number; Engine_C: number; Indirect: number }>;
+
   // Scalable Data Architecture methods
   getUsersPaginated(params: { page: number, limit: number, search?: string, sort?: string, sortOrder?: 'asc' | 'desc', ids?: string[] }): Promise<{ users: User[], totalCount: number }>;
   getAuditLogsPaginated(params: { page: number, limit: number, search?: string, ids?: string[], period?: string }): Promise<{ logs: AuditLog[], totalCount: number }>;
@@ -1538,6 +1539,27 @@ export class DatabaseStorage implements IStorage {
     });
 
     return Array.from(mergedMap.values()).sort((a,b) => a.date.localeCompare(b.date));
+  }
+
+  async getEngineRevenue(since: Date): Promise<{ Engine_A: number; Engine_B: number; Engine_C: number; Indirect: number }> {
+    // user_transactions are all credits; filter by date window only
+    const condition = since.getTime() > 0
+      ? gte(userTransactions.createdAt, since)
+      : undefined;
+    const rows = await db
+      .select({
+        engineType: userTransactions.engineType,
+        total: sql<string>`COALESCE(SUM(${userTransactions.realPkrValue}), '0')`,
+      })
+      .from(userTransactions)
+      .where(condition)
+      .groupBy(userTransactions.engineType);
+    const result: Record<string, number> = { Engine_A: 0, Engine_B: 0, Engine_C: 0, Indirect: 0 };
+    for (const row of rows) {
+      const key = row.engineType;
+      if (key && key in result) result[key] = parseFloat(row.total);
+    }
+    return result as { Engine_A: number; Engine_B: number; Engine_C: number; Indirect: number };
   }
 
   async createChatMessage(insertChatMessage: InsertChatMessage): Promise<ChatMessage> {
@@ -4930,6 +4952,7 @@ export class MemStorage {
   async getUsersCountInRange(since: Date): Promise<number> { throw new Error("Not implemented in MemStorage"); }
   async getEarningsSumInRange(since: Date): Promise<string> { throw new Error("Not implemented in MemStorage"); }
   async getAnalyticsData(since: Date): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
+  async getEngineRevenue(_since: Date): Promise<{ Engine_A: number; Engine_B: number; Engine_C: number; Indirect: number }> { throw new Error("Not implemented in MemStorage"); }
   async getAllUsers(): Promise<User[]> { throw new Error("Not implemented in MemStorage"); } // Added for MemStorage
   async createChatMessage(chatMessage: InsertChatMessage): Promise<ChatMessage> { throw new Error("Not implemented in MemStorage"); }
   async getUserChatHistory(userId: string, limit?: number): Promise<ChatMessage[]> { throw new Error("Not implemented in MemStorage"); }

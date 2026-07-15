@@ -46,7 +46,7 @@ function buildWsUrl(): string {
  * broadcasts a change — keeping the user portal, profile modal, and team
  * portal CRM in sync without a manual refresh.
  */
-export function useRealtimeSync(user: User | null) {
+export function useRealtimeSync(user: User | null, guildId?: string | null) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,8 +62,13 @@ export function useRealtimeSync(user: User | null) {
       const ws = new WebSocket(buildWsUrl());
       socketRef.current = ws;
 
+      ws.onopen = () => {
+        // Register this socket's active guild so broadcastGuildEvent routes correctly
+        if (guildId) ws.send(JSON.stringify({ type: "join_guild", guildId }));
+      };
+
       ws.onmessage = (event) => {
-        let msg: { type?: string; userId?: string; reason?: string; data?: { oldRank?: string; newRank?: string } };
+        let msg: { type?: string; userId?: string; guildId?: string; reason?: string; data?: Record<string, unknown> };
         try {
           msg = JSON.parse(event.data);
         } catch {
@@ -108,6 +113,42 @@ export function useRealtimeSync(user: User | null) {
             });
           }
         }
+
+        // ── H.1 guild-scoped events ────────────────────────────────────
+        if (msg.type === "guild.weekly_points") {
+          queryClient.invalidateQueries({ queryKey: ["guild", "weekly-tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId, "weekly-snapshot"] });
+        }
+
+        if (msg.type === "guild.application_received") {
+          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId, "applications"] });
+        }
+
+        if (msg.type === "guild.application_decided" && msg.userId === user.id) {
+          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId, "application-status"] });
+          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
+          const action = (msg.data as any)?.action;
+          toast({
+            title: action === "accept" ? "🎉 Guild Application Accepted!" : "Guild Application Update",
+            description: action === "accept"
+              ? "You have been accepted into the guild. Welcome!"
+              : "Your guild application was not accepted this time.",
+            variant: action === "accept" ? undefined : "destructive",
+          });
+        }
+
+        if (msg.type === "guild.nudge_received" && msg.userId === user.id) {
+          toast({ title: "👋 Nudge from your Guild Captain", description: "Your captain wants you to complete your weekly tasks!" });
+        }
+
+        if (msg.type === "guild.mvp_selected") {
+          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId, "members"] });
+        }
+
+        if (msg.type === "user.ps_updated" && msg.userId === user.id) {
+          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+        }
       };
 
       ws.onclose = () => {
@@ -129,5 +170,5 @@ export function useRealtimeSync(user: User | null) {
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       socketRef.current?.close();
     };
-  }, [user?.id, queryClient]);
+  }, [user?.id, guildId, queryClient]);
 }

@@ -46,6 +46,13 @@ interface AnalyticsPoint {
   amount: number;
 }
 
+interface EngineRevenue {
+  Engine_A: number;
+  Engine_B: number;
+  Engine_C: number;
+  Indirect: number;
+}
+
 // ── Metric card ──────────────────────────────────────────────────────────────
 
 function MetricCard({
@@ -255,6 +262,16 @@ export function AdminDashboard() {
     },
   });
 
+  const { data: engineRevenue } = useQuery<EngineRevenue>({
+    queryKey: ["/api/admin/analytics/engine-revenue", dateRange],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/analytics/engine-revenue?range=${dateRange}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch engine revenue");
+      return res.json();
+    },
+    refetchInterval: 60000,
+  });
+
   const isFounder = user?.role === "founder";
 
   // Derived values — all correctly sourced
@@ -435,22 +452,50 @@ export function AdminDashboard() {
         </div>
       </section>
 
-      {/* Section 4.5: Engine Breakdown (THORX v3) */}
+      {/* Section 4.5: Engine Revenue (THORX v3) — live from user_transactions */}
       <section className="space-y-3">
-        <SectionLabel text="Engine Breakdown (v3)" />
+        <SectionLabel text={`Engine Revenue · ${rangeLabel}`} />
         <div className="grid grid-cols-3 gap-4">
-          {[
-            { engine: "Engine A", label: "Video Ads",    color: "#f97316", description: "60/40 user/Thorx split" },
-            { engine: "Engine B", label: "CPA Offers",   color: "#7c3aed", description: "C-Rank+ · 45/55 split" },
-            { engine: "Engine C", label: "Guild Tasks",  color: "#16a34a", description: "70% member / 30% captain" },
-          ].map(({ engine, label, color, description }) => (
-            <div key={engine} className="bg-white border-[1.5px] border-[#111] p-4 rounded-[2rem] shadow-sm">
-              <div className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color }}>{engine}</div>
-              <div className="text-lg font-black text-[#111]">{label}</div>
-              <div className="text-[10px] text-zinc-400 mt-1 font-medium">{description}</div>
-            </div>
-          ))}
+          {([
+            { key: "Engine_A" as const, label: "Engine A · Video Ads",   color: "#f97316", sub: "User earnings via ad views" },
+            { key: "Engine_B" as const, label: "Engine B · CPA Offers",  color: "#7c3aed", sub: "C-Rank+ CPA completions" },
+            { key: "Engine_C" as const, label: "Engine C · Guild Tasks", color: "#16a34a", sub: "Guild weekly task pool" },
+          ]).map(({ key, label, color, sub }) => {
+            const rev = engineRevenue?.[key] ?? null;
+            const total = (engineRevenue?.Engine_A ?? 0) + (engineRevenue?.Engine_B ?? 0) + (engineRevenue?.Engine_C ?? 0);
+            const sharePct = total > 0 && rev !== null ? ((rev / total) * 100).toFixed(0) : null;
+            return (
+              <motion.div
+                key={key}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white border-[1.5px] border-[#111] p-5 rounded-[2rem] shadow-sm space-y-2"
+              >
+                <div className="text-[9px] font-black uppercase tracking-widest" style={{ color }}>{label}</div>
+                <div className="text-2xl font-black text-[#111]">
+                  {rev === null ? <span className="text-sm text-zinc-300">—</span> : `₨${rev.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] text-zinc-400 font-medium">{sub}</div>
+                  {sharePct && <div className="text-[10px] font-black" style={{ color }}>{sharePct}%</div>}
+                </div>
+                {rev !== null && total > 0 && (
+                  <div className="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${(rev / total) * 100}%`, backgroundColor: color }} />
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
+        {engineRevenue && (
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Total user earnings {rangeLabel}:</span>
+            <span className="text-sm font-black text-[#111]">
+              ₨{((engineRevenue.Engine_A || 0) + (engineRevenue.Engine_B || 0) + (engineRevenue.Engine_C || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+        )}
       </section>
 
       {/* Section 5: Analytics Charts */}

@@ -5,7 +5,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage, RANK_NAMES } from "./storage";
 import { pool, db } from "./db";
-import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh, broadcastGuildMessage } from "./realtime";
+import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh, broadcastGuildMessage, broadcastGuildEvent, broadcastToUser } from "./realtime";
 import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, dailyTasks, systemConfig, weeklyTasks } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -1124,6 +1124,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sourceId: record.id,
         sourceType: 'weekly_task',
         guildId: membership.guildId,
+      });
+      broadcastGuildEvent(membership.guildId, 'guild.weekly_points', {
+        userId, guildId: membership.guildId, pointsCredited: earnResult?.pointsCredited ?? 0
       });
       res.status(201).json({ record, earnResult });
     } catch (error) {
@@ -2469,6 +2472,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analytics for Admin Dashboard
+  app.get("/api/admin/analytics/engine-revenue", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
+    try {
+      const range = (req.query.range as string) || "7d";
+      const now = new Date();
+      let since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      if (range === "24h") since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      else if (range === "30d") since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      else if (range === "all") since = new Date(0);
+      const revenue = await storage.getEngineRevenue(since);
+      res.json(revenue);
+    } catch (error) {
+      console.error("Engine revenue error:", error);
+      res.status(500).json({ message: "Failed to fetch engine revenue" });
+    }
+  });
+
   app.get("/api/admin/analytics", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
     try {
       const range = (req.query.range as string) || "7d";
@@ -4198,6 +4217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cover letter must be at least 50 characters." });
       }
       const membership = await storage.applyToGuildWithCoverLetter(req.params.id, userId, coverLetter.trim());
+      broadcastGuildEvent(req.params.id, 'guild.application_received', { userId, guildId: req.params.id });
       res.status(201).json({ membership });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to submit guild application";
@@ -4215,6 +4235,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const membership = await storage.decideGuildApplication(
         req.params.id, req.params.applicationId, captainId, action, rejectionReason
       );
+      // Notify the applicant personally + entire guild of the decision
+      if (membership?.userId) {
+        broadcastToUser(membership.userId, 'guild.application_decided', { action, guildId: req.params.id });
+      }
+      broadcastGuildEvent(req.params.id, 'guild.application_decided_notify', { action, guildId: req.params.id });
       res.json({ membership });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to decide application";
@@ -4245,6 +4270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const captainId = getThorxPrincipalId(req) as string;
       await storage.nudgeGuildMember(req.params.id, captainId, req.params.userId);
+      broadcastToUser(req.params.userId, 'guild.nudge_received', { guildId: req.params.id });
       res.json({ success: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to nudge member";
@@ -4256,6 +4282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const captainId = getThorxPrincipalId(req) as string;
       await storage.setGuildMemberMvp(req.params.id, captainId, req.params.userId);
+      broadcastGuildEvent(req.params.id, 'guild.mvp_selected', { userId: req.params.userId, guildId: req.params.id });
       res.json({ success: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to set MVP";
@@ -4392,6 +4419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "reason (≥5 chars) required." });
       }
       const user = await storage.adminAdjustUserPS(req.params.userId, delta, String(reason).trim(), adminId);
+      broadcastUserUpdated(req.params.userId, 'ps_updated', { delta, newPs: user.performanceScore });
       res.json({ user });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to adjust PS";
@@ -4408,6 +4436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "reason (≥5 chars) required." });
       }
       const guild = await storage.adminAdjustGuildGPS(req.params.id, delta, String(reason).trim(), adminId);
+      broadcastGuildEvent(req.params.id, 'guild.gps_updated', { delta, guildId: req.params.id });
       res.json({ guild });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to adjust GPS";

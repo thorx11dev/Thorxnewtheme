@@ -66,6 +66,20 @@ export function initRealtime(
         sockets.set(ws, { userId, canSeeUserActivity: visibility });
         ws.on("close", () => sockets.delete(ws));
         ws.on("error", () => sockets.delete(ws));
+        // Handle client-initiated guild registration so broadcastGuildEvent
+        // can route guild-scoped events to individual members.
+        ws.on("message", (raw) => {
+          try {
+            const msg = JSON.parse(raw.toString());
+            if (msg.type === "join_guild" && typeof msg.guildId === "string") {
+              setSocketGuild(ws, msg.guildId);
+            } else if (msg.type === "leave_guild") {
+              setSocketGuild(ws, null);
+            }
+          } catch {
+            // ignore malformed messages
+          }
+        });
       });
     });
   });
@@ -145,4 +159,40 @@ export function broadcastAdminFeedEvent(event: {
   sockets.forEach((meta, ws) => {
     if (meta.canSeeUserActivity) send(ws, payload);
   });
+}
+
+/**
+ * Push a guild-scoped event to all sockets whose active guild matches, plus
+ * all admin/team sessions permitted to see cross-user activity.
+ * Used for Engine C events: weekly_points, pool_credited, nudge, mvp, applications.
+ */
+export function broadcastGuildEvent(guildId: string, eventType: string, data?: Record<string, unknown>) {
+  const payload = { type: eventType, guildId, data, at: Date.now() };
+  sockets.forEach((meta, ws) => {
+    if (meta.guildId === guildId || meta.canSeeUserActivity) {
+      send(ws, payload);
+    }
+  });
+}
+
+/**
+ * Push an event directly to a specific user's connected sessions only.
+ * Used for user-private notifications: application_decided, nudge_received.
+ */
+export function broadcastToUser(userId: string, eventType: string, data?: Record<string, unknown>) {
+  const payload = { type: eventType, userId, data, at: Date.now() };
+  sockets.forEach((meta, ws) => {
+    if (meta.userId === userId) send(ws, payload);
+  });
+}
+
+/**
+ * Register (or deregister) the active guild for a WebSocket session so that
+ * guild-scoped events are routed correctly. Call from client join/leave messages.
+ */
+export function setSocketGuild(ws: WebSocket, guildId: string | null) {
+  const meta = sockets.get(ws);
+  if (!meta) return;
+  if (guildId) meta.guildId = guildId;
+  else delete meta.guildId;
 }

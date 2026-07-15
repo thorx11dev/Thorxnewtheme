@@ -22,10 +22,21 @@ All spec Part F frontend gaps fixed and typecheck+workflow-verified:
 - F.11 withdrawal preview: the flow was already inline in `UserPortal.tsx` (not a separate `WithdrawalModal.tsx` file) and already covered most of the spec's content (points requested, exact PKR, fee%, referrer share, S-Rank fast-track). Added the two genuinely missing pieces: a 2-second minimum display timer before the confirm button activates, and a masked payment method line (`JazzCash ●●●● 4567`). Did not extract into a separate file — functional parity mattered more than matching Appendix B's file manifest exactly.
 - **Real bug found+fixed independently of the spec**: `CaptainPortal.tsx` and `GuildMemberPanel.tsx` both queried `GET /api/guilds/:id` (which returns `{guild, members}`) but treated the response as the flat guild object (`guild.name`, `guild.captainId`, etc. were all `undefined`). Fixed the queryFn to unwrap `.guild`, and fixed a same-cause `guild.memberCount` (never existed on the schema) fallback to use actual member-array length in both files.
 
-## Remaining gaps (as of 2026-07-15 — after Phase 6 admin completion)
+## Remaining gaps (as of 2026-07-15 — after Phase 7 WS+analytics completion)
 - `scripts/migrate-v3.ts` does not exist. Low risk since this DB was created directly with v3 schema.
-- New WebSocket event names from spec H.1 (e.g. `user.ps_updated`, `guild.weekly_points`, `admin.feed_event`) are not yet emitted from server route handlers (realtime.ts infrastructure exists).
-- `AdminDashboard.tsx` engine breakdown card is still hardcoded static text (requires new backend analytics endpoint for per-engine revenue data).
+- `scripts/migrate-v3.ts` production migration script not built (low risk — this DB was v3 from the start).
+
+## Phase 8 — COMPLETE (2026-07-15)
+- `server/realtime.ts`: added `ws.on("message")` handler in `initRealtime` — responds to `{ type: "join_guild", guildId }` by calling `setSocketGuild(ws, guildId)`, enabling guild-scoped WS routing.
+- `client/src/hooks/useRealtimeSync.ts`: updated signature to accept `guildId?`; sends `join_guild` on `ws.onopen`; handles H.1 event types: `guild.weekly_points` (invalidate weekly-tasks), `guild.application_received/decided` (invalidate guild queries + toast), `guild.nudge_received` (toast), `guild.mvp_selected` (invalidate members), `user.ps_updated` (invalidate session-auth + dashboard).
+- `client/src/App.tsx`: passes `user?.guildId` to `useRealtimeSync`.
+- All changes pass 0-error typecheck and app boots clean.
+
+## Phase 7 — COMPLETE (2026-07-15)
+- `server/realtime.ts`: added `broadcastGuildEvent(guildId, type, data)` and `broadcastToUser(userId, type, data)` and `setSocketGuild(ws, guildId)`.
+- `server/routes.ts`: wired new broadcasts at PS adjust (user.ps_updated), GPS adjust (guild.gps_updated), guild apply (guild.application_received), application decide (guild.application_decided + broadcastToUser applicant), weekly task complete (guild.weekly_points), nudge (guild.nudge_received to target user), MVP selection (guild.mvp_selected). Also added engine-revenue endpoint (`GET /api/admin/analytics/engine-revenue?range=`).
+- `server/storage.ts`: added `getEngineRevenue(since)` — aggregates `realPkrValue` from `user_transactions` grouped by `engineType`; no `type` column exists on that table (all rows are credits), so filter is date-window only.
+- `AdminDashboard.tsx`: replaced 3 static engine text cards with live `EngineRevenue` cards fetching from the new endpoint — shows real user earnings per engine with share bar + total.
 
 ## Admin Phase 6 — COMPLETE (2026-07-15)
 All admin panel gaps from spec G and H.5 were closed:
