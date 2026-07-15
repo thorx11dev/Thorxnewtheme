@@ -70,6 +70,8 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - 2026-07-15 (re-import): `node_modules/.bin/tsx` missing. Ran `npm install` + `npx drizzle-kit push --force` (no conflicts). App running on port 5000. Full auth regression passed — unauthenticated `/api/user` (401) → register QA account with `firstName`/`lastName`/`identity` fields (201) → session check (200) → logout → 401 → wrong-password rejected (UNAUTHORIZED) → correct-password login (200) → duplicate email rejected (DUPLICATE_EMAIL) → QA account deleted from DB. Founder (Thorx X / thorx11dev@gmail.com, role: founder) provisioned via `POST /api/bootstrap-founder`; login → `/api/admin/config` (200) → `/api/team/members` (200) → logout (401 confirmed).
 
+- 2026-07-15 (auth regression + founder re-provisioning): Previous founder account deleted (FK deps cleared from audit_logs first). Full auth regression passed — unauthenticated `/api/user` (401 NO_SESSION) → register QA account (201) → session check (200) → logout (200) → `/api/user` (401 NO_SESSION) → wrong-password login (401 UNAUTHORIZED) → correct-password login (200) → duplicate email rejected (400 DUPLICATE_EMAIL) → QA account deleted from DB. Founder (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder` with user-supplied password; login → `/api/user` (200, role: founder) → `/api/admin/config` (200, 58 entries) → `/api/team/members` (200) → logout (200) → `/api/user` (401 NO_SESSION). Only founder account remains in `users` table.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
