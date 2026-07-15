@@ -40,7 +40,7 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - Role: `founder` (full access to team portal)
 - Created via `POST /api/bootstrap-founder` (one-time; blocked once any team member exists)
-- A founder account exists in this environment's database: `thorx11dev@gmail.com` (password set by the user, not stored here). Log in via the normal `/login` flow.
+- A founder account exists in this environment's database: `thorx11dev@gmail.com` / name "Thorx X" (password set by the user, not stored here). Log in via the normal `/login` flow at `/team-portal` or `/team`.
 
 ## Setup notes (this import)
 
@@ -50,6 +50,7 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 - `npm run dev` verified working on port 5000 (landing page renders correctly).
 - Re-verified again on a later re-import (2026-07-14): same steps (`npm install`, `npx drizzle-kit push --force`, restart workflow) got it running cleanly with no schema issues.
 - 2026-07-14: verified end-to-end auth flow (register → login → profile → logout, session cookie cleared and subsequent requests correctly 401) against the live dev domain, and provisioned the founder account above. All `/api` POST routes require CSRF: `GET` any `/api/*` route first to receive the `thorx.csrf.v2` cookie, then echo its value back as the `x-csrf-token` header on the POST.
+- 2026-07-15: re-imported again; fresh empty DB, same `npm install` + `npx drizzle-kit push --force` steps worked cleanly (no leftover `session` table this time). Re-ran full auth regression against the live dev domain: register (201) → authenticated profile fetch (200) → logout (200) → profile after logout (401) → wrong-password login (401) → duplicate-email register (400) → founder login (200) → founder profile + `/api/team/members` access (200) → founder logout (200). All passed. Founder credentials were reset to a new password/name provided by the user in this session.
 
 ## User preferences
 
