@@ -17,6 +17,7 @@ import { processProfilePicture } from "./utils/local-profile-picture";
 import { authRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
+import { simulateThorxCards } from "./modules/thorx-card";
 
 /** Authenticated user id from session cookie. */
 export function getThorxPrincipalId(req: Request): string | undefined {
@@ -946,12 +947,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!name || typeof name !== "string" || !name.trim()) {
         return res.status(400).json({ message: "Guild name is required." });
       }
+      // THORX v3 (spec E.9): B-Rank gate for guild creation.
+      const creator = await storage.getUserById(userId);
+      const RANK_ORDER = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"];
+      if (RANK_ORDER.indexOf(creator?.userRankTier || "E-Rank") < RANK_ORDER.indexOf("B-Rank")) {
+        return res.status(403).json({ message: "B-Rank or higher required to create a guild.", error: "RANK_GATE" });
+      }
       const guild = await storage.createGuild({ name: name.trim(), description, captainId: userId });
       res.status(201).json({ guild });
     } catch (error) {
       console.error("Create guild error:", error);
       const message = error instanceof Error ? error.message : "Failed to create guild";
       res.status(400).json({ message });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Guild Discovery — must be defined BEFORE /api/guilds/:id ──
+  app.get("/api/guilds/discovery", requireSessionAuth, async (req, res) => {
+    try {
+      const guilds = await storage.getGuildDiscoveryList();
+      res.json({ guilds });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch guild discovery list" });
     }
   });
 
@@ -1103,8 +1120,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!membership || membership.status !== "active") {
         return res.status(403).json({ message: "Only active guild members can complete weekly tasks." });
       }
-      const record = await storage.completeWeeklyTask(userId, membership.guildId, req.params.taskId);
-      res.status(201).json({ record });
+      if (!["member", "captain"].includes(membership.role)) {
+        return res.status(403).json({ message: "Only members and captains can complete weekly tasks." });
+      }
+      // THORX v3 (spec E.9): Creates the record (with dup/date checks) then calls
+      // recordEarnEvent for the engine split, Thorx Card draw, PS, GPS, and feed event.
+      const { record, task } = await storage.prepareWeeklyTaskCompletion(userId, membership.guildId, req.params.taskId);
+      // Indirect tasks (taskCategory='indirect' or no grossPkrPerCompletion) → PS only, no PKR.
+      const grossPkr = task.taskCategory === 'indirect' ? 0 : parseFloat(task.grossPkrPerCompletion ?? "0");
+      const engineType: "Engine_C" | "Indirect" = grossPkr > 0 ? "Engine_C" : "Indirect";
+      const earnResult = await storage.recordEarnEvent({
+        userId,
+        engineType,
+        grossPkr,
+        sourceId: record.id,
+        sourceType: 'weekly_task',
+        guildId: membership.guildId,
+      });
+      res.status(201).json({ record, earnResult });
     } catch (error) {
       console.error("Complete weekly task error:", error);
       const msg = error instanceof Error ? error.message : "Failed to complete task";
@@ -1233,6 +1266,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Admin list guilds error:", error);
       res.status(500).json({ message: "Failed to fetch guilds" });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Admin guild routes with literal paths — MUST be defined
+  // BEFORE the parameterized /api/admin/guilds/:id/* routes to avoid Express conflicts.
+  app.get("/api/admin/guilds/inactive-captains", requireTeamRole, async (req, res) => {
+    try {
+      const inactiveDays = req.query.days ? parseInt(req.query.days as string) : 3;
+      const captains = await storage.adminGetInactiveCaptains(inactiveDays);
+      res.json({ captains });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch inactive captains" });
+    }
+  });
+
+  app.post("/api/admin/guilds/bulk-targets", requireTeamRole, async (req, res) => {
+    try {
+      const adminId = getThorxPrincipalId(req) as string;
+      const { weeklyTarget, scope, difficulty } = req.body;
+      if (!Number.isFinite(weeklyTarget) || weeklyTarget <= 0) {
+        return res.status(400).json({ message: "weeklyTarget must be a positive number." });
+      }
+      const count = await storage.adminBulkSetWeeklyTargets(weeklyTarget, scope ?? "all", difficulty, adminId);
+      res.json({ updated: count });
+    } catch (error) {
+      console.error("Bulk set weekly targets error:", error);
+      const msg = error instanceof Error ? error.message : "Failed to bulk set targets";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── Admin: Ledger validation (scan before :userId to avoid Express conflict) ──
+  app.get("/api/admin/ledger/validate/scan", requireTeamRole, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const result = await storage.adminValidateLedgerScan(limit, offset);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Ledger scan failed" });
+    }
+  });
+
+  app.get("/api/admin/ledger/validate/:userId", requireTeamRole, async (req, res) => {
+    try {
+      const result = await storage.adminValidateLedger(req.params.userId);
+      res.json(result);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Ledger validation failed";
+      res.status(400).json({ message: msg });
     }
   });
 
@@ -3393,6 +3476,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completedAt: new Date()
       } as any);
 
+      // THORX v3 (spec E.9): Daily tasks are Indirect earn events (PS + streak only,
+      // no PKR). Fire-and-forget — don't block the verify response on earn failures.
+      storage.recordEarnEvent({
+        userId,
+        engineType: 'Indirect',
+        grossPkr: 0,
+        sourceId: updatedRecord?.id ?? taskId,
+        sourceType: 'daily_task',
+      }).catch((err) => console.error("[tasks/verify] recordEarnEvent failed:", err));
+
       res.json({ success: true, record: updatedRecord });
     } catch (error) {
       res.status(500).json({ message: "Verification failed" });
@@ -4044,6 +4137,290 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("[RiskCases] getScoreHistory error:", err);
       res.status(500).json({ message: "Failed to load score history" });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Guild application flow ────────────────────────────
+  app.get("/api/guilds/:id/application-status", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const application = await storage.getGuildApplicationStatus(userId);
+      res.json({ application: application ?? null });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch application status" });
+    }
+  });
+
+  app.post("/api/guilds/:id/apply", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const { coverLetter } = req.body;
+      if (!coverLetter || typeof coverLetter !== "string" || coverLetter.trim().length < 20) {
+        return res.status(400).json({ message: "Cover letter must be at least 20 characters." });
+      }
+      const membership = await storage.applyToGuildWithCoverLetter(req.params.id, userId, coverLetter.trim());
+      res.status(201).json({ membership });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to submit guild application";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.patch("/api/guilds/:id/applications/:applicationId", requireSessionAuth, async (req, res) => {
+    try {
+      const captainId = getThorxPrincipalId(req) as string;
+      const { action, rejectionReason } = req.body;
+      if (!["accept", "reject"].includes(action)) {
+        return res.status(400).json({ message: "action must be 'accept' or 'reject'." });
+      }
+      const membership = await storage.decideGuildApplication(
+        req.params.id, req.params.applicationId, captainId, action, rejectionReason
+      );
+      res.json({ membership });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to decide application";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.get("/api/guilds/:id/weekly-history", requireSessionAuth, async (req, res) => {
+    try {
+      const history = await storage.getGuildWeeklyHistory(req.params.id);
+      res.json({ history });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch weekly history" });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Captain Portal — roster management ──────────────
+  app.get("/api/guilds/:id/members", requireSessionAuth, async (req, res) => {
+    try {
+      const roster = await storage.getGuildRosterForCaptain(req.params.id);
+      res.json({ members: roster });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch guild members" });
+    }
+  });
+
+  app.post("/api/guilds/:id/members/:userId/nudge", requireSessionAuth, async (req, res) => {
+    try {
+      const captainId = getThorxPrincipalId(req) as string;
+      await storage.nudgeGuildMember(req.params.id, captainId, req.params.userId);
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to nudge member";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.post("/api/guilds/:id/members/:userId/mvp", requireSessionAuth, async (req, res) => {
+    try {
+      const captainId = getThorxPrincipalId(req) as string;
+      await storage.setGuildMemberMvp(req.params.id, captainId, req.params.userId);
+      res.json({ success: true });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to set MVP";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Captain DM ──────────────────────────────────────
+  app.get("/api/guilds/:id/dm/:memberId", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const messages = await storage.getCaptainMessageThread(req.params.id, userId, req.params.memberId);
+      res.json({ messages });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.post("/api/guilds/:id/dm/:memberId", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const { message } = req.body;
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ message: "Message cannot be empty." });
+      }
+      if (message.trim().length > 1000) {
+        return res.status(400).json({ message: "Message cannot exceed 1000 characters." });
+      }
+      const msg = await storage.sendCaptainMessage(
+        req.params.id, userId, req.params.memberId, message.trim()
+      );
+      res.status(201).json({ message: msg });
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : "Failed to send message";
+      res.status(400).json({ message: errMsg });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Withdrawal preview & referral cash withdrawal ────
+  app.get("/api/withdrawals/preview", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const points = parseInt(req.query.points as string);
+      if (!Number.isFinite(points) || points <= 0) {
+        return res.status(400).json({ message: "points must be a positive integer." });
+      }
+      const preview = await storage.previewWithdrawal(userId, points);
+      res.json(preview);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to preview withdrawal";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.get("/api/user/referral-balance", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const balance = await storage.getReferralCashBalance(userId);
+      res.json(balance);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch referral balance" });
+    }
+  });
+
+  app.post("/api/withdrawals/referral", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const { amount, method, accountName, accountNumber, accountDetails } = req.body;
+      if (!Number.isFinite(amount) || amount < 50) {
+        return res.status(400).json({ message: "Minimum referral cash withdrawal is Rs. 50." });
+      }
+      if (!method || !accountName || !accountNumber) {
+        return res.status(400).json({ message: "method, accountName, and accountNumber are required." });
+      }
+      const withdrawal = await storage.createReferralCashWithdrawal(
+        userId, amount, method, accountName, accountNumber, accountDetails ?? {}
+      );
+      res.status(201).json({ withdrawal });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to submit referral withdrawal";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Admin — Live Activity Feed ──────────────────────
+  app.get("/api/admin/live-feed", requireTeamRole, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const eventType = typeof req.query.type === "string" ? req.query.type : undefined;
+      const events = await storage.getActivityFeedEvents(limit, eventType);
+      res.json({ events });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch activity feed" });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Admin — Thorx Card simulator ────────────────────
+  app.post("/api/admin/simulate/thorx-card", requireTeamRole, async (req, res) => {
+    try {
+      const {
+        iterations, grossPkr, engineType, userRankTier,
+        conversionRate, varianceMin, varianceMax, thorxCutPct, userCutPct,
+      } = req.body;
+      const n = Math.min(Math.max(parseInt(String(iterations ?? "1000")), 1), 10000);
+      const result = simulateThorxCards({
+        grossPkr: parseFloat(String(grossPkr ?? "1.0")),
+        engineType: (engineType ?? "A") as "A" | "B" | "C",
+        userRankTier: String(userRankTier ?? "E-Rank"),
+        iterations: n,
+        config: {
+          conversionRate: parseFloat(String(conversionRate ?? "1000")),
+          varianceMin: parseFloat(String(varianceMin ?? "0.8")),
+          varianceMax: parseFloat(String(varianceMax ?? "1.2")),
+        },
+        engineSplits: {
+          thorxCutPct: parseFloat(String(thorxCutPct ?? "40")),
+          userCutPct: parseFloat(String(userCutPct ?? "60")),
+        },
+      });
+      res.json({ simulations: result, count: result.length });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Simulation failed";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Admin — PS / GPS manual adjustments ─────────────
+  app.patch("/api/admin/users/:userId/ps", requirePermission("MANAGE_USERS"), async (req, res) => {
+    try {
+      const adminId = getThorxPrincipalId(req) as string;
+      const { delta, reason } = req.body;
+      if (!Number.isFinite(delta)) return res.status(400).json({ message: "delta must be a number." });
+      if (!reason || String(reason).trim().length < 5) {
+        return res.status(400).json({ message: "reason (≥5 chars) required." });
+      }
+      const user = await storage.adminAdjustUserPS(req.params.userId, delta, String(reason).trim(), adminId);
+      res.json({ user });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to adjust PS";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.patch("/api/admin/guilds/:id/gps", requireTeamRole, async (req, res) => {
+    try {
+      const adminId = getThorxPrincipalId(req) as string;
+      const { delta, reason } = req.body;
+      if (!Number.isFinite(delta)) return res.status(400).json({ message: "delta must be a number." });
+      if (!reason || String(reason).trim().length < 5) {
+        return res.status(400).json({ message: "reason (≥5 chars) required." });
+      }
+      const guild = await storage.adminAdjustGuildGPS(req.params.id, delta, String(reason).trim(), adminId);
+      res.json({ guild });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to adjust GPS";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.patch("/api/admin/guilds/:id/captain", requireTeamRole, async (req, res) => {
+    try {
+      const adminId = getThorxPrincipalId(req) as string;
+      const { newCaptainUserId } = req.body;
+      if (!newCaptainUserId) return res.status(400).json({ message: "newCaptainUserId is required." });
+      const guild = await storage.adminReassignCaptain(req.params.id, newCaptainUserId, adminId);
+      res.json({ guild });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to reassign captain";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.patch("/api/admin/guilds/:id/weekly-target", requireTeamRole, async (req, res) => {
+    try {
+      const adminId = getThorxPrincipalId(req) as string;
+      const { weeklyTarget } = req.body;
+      if (!Number.isFinite(weeklyTarget) || weeklyTarget <= 0) {
+        return res.status(400).json({ message: "weeklyTarget must be a positive number." });
+      }
+      const guild = await storage.adminSetGuildWeeklyTarget(req.params.id, weeklyTarget, adminId);
+      res.json({ guild });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to set weekly target";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── THORX v3 (spec E.9): Admin — Referral analytics ─────────────────────
+  app.get("/api/admin/referrals/stats", requireTeamRole, async (req, res) => {
+    try {
+      const stats = await storage.adminGetReferralStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch referral stats" });
+    }
+  });
+
+  app.get("/api/admin/referrals/leaderboard", requireTeamRole, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      const leaderboard = await storage.adminGetReferralLeaderboard(limit);
+      res.json({ leaderboard });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch referral leaderboard" });
     }
   });
 

@@ -115,6 +115,11 @@ import {
   referralCommissions,
   type ReferralCommission,
   type InsertReferralCommission,
+  captainMessages,
+  type CaptainMessage,
+  type InsertCaptainMessage,
+  activityFeed,
+  type ActivityFeed,
 } from "@shared/schema";
 import { drawThorxCard } from "./modules/thorx-card";
 import { awardTaskPS, processStreak } from "./modules/ps-engine";
@@ -458,6 +463,37 @@ export interface IStorage {
     cleared: number;
     precision: number | null;
   }>>;
+
+  // ── THORX v3 (spec E.9): Guild discovery, applications, captain DM, roster ──
+  getGuildDiscoveryList(): Promise<any[]>;
+  getGuildApplicationStatus(userId: string): Promise<any>;
+  applyToGuildWithCoverLetter(guildId: string, userId: string, coverLetter: string): Promise<any>;
+  decideGuildApplication(guildId: string, applicationId: string, captainId: string, action: 'accept' | 'reject', rejectionReason?: string): Promise<any>;
+  getGuildWeeklyHistory(guildId: string): Promise<any[]>;
+  getGuildRosterForCaptain(guildId: string): Promise<any[]>;
+  nudgeGuildMember(guildId: string, captainId: string, memberUserId: string): Promise<void>;
+  setGuildMemberMvp(guildId: string, captainId: string, memberUserId: string): Promise<void>;
+  getCaptainMessageThread(guildId: string, userId1: string, userId2: string): Promise<any[]>;
+  sendCaptainMessage(guildId: string, fromUserId: string, toUserId: string, message: string): Promise<any>;
+  prepareWeeklyTaskCompletion(userId: string, guildId: string, taskId: string): Promise<{ record: any; task: any }>;
+  getActivityFeedEvents(limit: number, eventType?: string): Promise<any[]>;
+
+  // ── THORX v3 (spec E.9): Withdrawal preview & referral cash ──────────────
+  previewWithdrawal(userId: string, points: number): Promise<any>;
+  getReferralCashBalance(userId: string): Promise<{ balanceCashPkr: number; totalEarnedAllTime: number; referralCount: number }>;
+  createReferralCashWithdrawal(userId: string, amount: number, method: string, accountName: string, accountNumber: string, accountDetails: any): Promise<any>;
+
+  // ── THORX v3 (spec E.9): Admin ops ────────────────────────────────────────
+  adminValidateLedger(userId: string): Promise<any>;
+  adminValidateLedgerScan(limit?: number, offset?: number): Promise<any>;
+  adminAdjustUserPS(userId: string, delta: number, reason: string, adminId: string): Promise<User>;
+  adminAdjustGuildGPS(guildId: string, delta: number, reason: string, adminId: string): Promise<any>;
+  adminReassignCaptain(guildId: string, newCaptainUserId: string, adminId: string): Promise<any>;
+  adminSetGuildWeeklyTarget(guildId: string, weeklyTarget: number, adminId: string): Promise<any>;
+  adminBulkSetWeeklyTargets(weeklyTarget: number, scope: 'all' | 'byDifficulty', difficulty: string | undefined, adminId: string): Promise<number>;
+  adminGetInactiveCaptains(inactiveDays?: number): Promise<any[]>;
+  adminGetReferralStats(): Promise<any>;
+  adminGetReferralLeaderboard(limit?: number): Promise<any[]>;
 }
 
 const RANKS = [
@@ -4716,6 +4752,75 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(sql`SUM(${referralCommissions.commissionAmountPkr})`))
       .limit(limit);
   }
+
+  // ── THORX v3 (spec E.9): Captain DM, weekly task preparation, activity feed ──
+
+  async getCaptainMessageThread(guildId: string, userId1: string, userId2: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(captainMessages)
+      .where(
+        and(
+          eq(captainMessages.guildId, guildId),
+          or(
+            and(eq(captainMessages.fromUserId, userId1), eq(captainMessages.toUserId, userId2)),
+            and(eq(captainMessages.fromUserId, userId2), eq(captainMessages.toUserId, userId1)),
+          )
+        )
+      )
+      .orderBy(asc(captainMessages.createdAt))
+      .limit(100);
+  }
+
+  async sendCaptainMessage(guildId: string, fromUserId: string, toUserId: string, message: string): Promise<any> {
+    const [msg] = await db.insert(captainMessages).values({
+      guildId,
+      fromUserId,
+      toUserId,
+      message,
+    }).returning();
+    // Mark incoming messages from the recipient as read now that we're in thread.
+    await db.update(captainMessages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(captainMessages.guildId, guildId),
+          eq(captainMessages.fromUserId, toUserId),
+          eq(captainMessages.toUserId, fromUserId),
+          eq(captainMessages.isRead, false),
+        )
+      );
+    return msg;
+  }
+
+  // Creates the weekly task record WITHOUT updating txPointsBalance —
+  // the caller (route) is responsible for calling recordEarnEvent afterward.
+  async prepareWeeklyTaskCompletion(userId: string, guildId: string, taskId: string): Promise<{ record: any; task: any }> {
+    const [task] = await db.select().from(weeklyTasks).where(eq(weeklyTasks.id, taskId));
+    if (!task || !task.isActive) throw new Error("Task not found or inactive.");
+    const now = new Date();
+    if (now < task.weekStart || now > task.weekEnd) throw new Error("Task is not available this week.");
+    const [existing] = await db
+      .select()
+      .from(weeklyTaskRecords)
+      .where(and(eq(weeklyTaskRecords.userId, userId), eq(weeklyTaskRecords.taskId, taskId)));
+    if (existing) throw new Error("Task already completed.");
+    const [record] = await db.insert(weeklyTaskRecords).values({ userId, guildId, taskId }).returning();
+    return { record, task };
+  }
+
+  async getActivityFeedEvents(limit = 50, eventType?: string): Promise<any[]> {
+    const conditions = eventType ? eq(activityFeed.eventType, eventType) : undefined;
+    const query = db
+      .select()
+      .from(activityFeed)
+      .orderBy(desc(activityFeed.createdAt))
+      .limit(Math.min(limit, 200));
+    if (conditions) {
+      return await query.where(conditions);
+    }
+    return await query;
+  }
 }
 
 export class MemStorage {
@@ -4878,6 +4983,33 @@ export class MemStorage {
   async saveScoreHistory(entry: InsertScoreHistory): Promise<ScoreHistory> { throw new Error("Not implemented in MemStorage"); }
   async getScoreHistory(userId: string, limit?: number): Promise<ScoreHistory[]> { throw new Error("Not implemented in MemStorage"); }
   async getRiskSignalStats(): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
+
+  // THORX v3 stubs
+  async getGuildDiscoveryList(): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
+  async getGuildApplicationStatus(_userId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async applyToGuildWithCoverLetter(_guildId: string, _userId: string, _coverLetter: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async decideGuildApplication(_guildId: string, _applicationId: string, _captainId: string, _action: 'accept' | 'reject', _rejectionReason?: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async getGuildWeeklyHistory(_guildId: string): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
+  async getGuildRosterForCaptain(_guildId: string): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
+  async nudgeGuildMember(_guildId: string, _captainId: string, _memberUserId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+  async setGuildMemberMvp(_guildId: string, _captainId: string, _memberUserId: string): Promise<void> { throw new Error("Not implemented in MemStorage"); }
+  async getCaptainMessageThread(_guildId: string, _userId1: string, _userId2: string): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
+  async sendCaptainMessage(_guildId: string, _fromUserId: string, _toUserId: string, _message: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async prepareWeeklyTaskCompletion(_userId: string, _guildId: string, _taskId: string): Promise<{ record: any; task: any }> { throw new Error("Not implemented in MemStorage"); }
+  async getActivityFeedEvents(_limit: number, _eventType?: string): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
+  async previewWithdrawal(_userId: string, _points: number): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async getReferralCashBalance(_userId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async createReferralCashWithdrawal(_userId: string, _amount: number, _method: string, _accountName: string, _accountNumber: string, _accountDetails: any): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async adminValidateLedger(_userId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async adminValidateLedgerScan(_limit?: number, _offset?: number): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async adminAdjustUserPS(_userId: string, _delta: number, _reason: string, _adminId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async adminAdjustGuildGPS(_guildId: string, _delta: number, _reason: string, _adminId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async adminReassignCaptain(_guildId: string, _newCaptainUserId: string, _adminId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async adminSetGuildWeeklyTarget(_guildId: string, _weeklyTarget: number, _adminId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async adminBulkSetWeeklyTargets(_weeklyTarget: number, _scope: 'all' | 'byDifficulty', _difficulty: string | undefined, _adminId: string): Promise<number> { throw new Error("Not implemented in MemStorage"); }
+  async adminGetInactiveCaptains(_inactiveDays?: number): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
+  async adminGetReferralStats(): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async adminGetReferralLeaderboard(_limit?: number): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
 
   private generateReferralCode(): string {
     const prefix = "THORX";
