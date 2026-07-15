@@ -13,6 +13,11 @@ import { SystemSettingsManager } from "@/components/admin/SystemSettingsManager"
 import { LeaderboardInsights } from "@/components/admin/LeaderboardInsights";
 import { ReconciliationPanel } from "@/components/admin/ReconciliationPanel";
 import { GuildManager } from "@/components/admin/GuildManager";
+import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
+import { ThorxCardSandbox } from "@/components/admin/ThorxCardSandbox";
+import { LedgerValidator } from "@/components/admin/LedgerValidator";
+import { RanksCustomizer } from "@/components/admin/RanksCustomizer";
+import { ReferralAnalytics } from "@/components/admin/ReferralAnalytics";
 import { Shield, Lock } from "lucide-react";
 
 export default function TeamPortal() {
@@ -104,6 +109,16 @@ export default function TeamPortal() {
         return <SystemSettingsManager />;
       case "finance":
         return <ReconciliationPanel />;
+      case "live-feed":
+        return <LiveActivityFeed />;
+      case "card-sandbox":
+        return <ThorxCardSandbox />;
+      case "ledger":
+        return <LedgerValidator />;
+      case "ranks":
+        return <RanksCustomizer />;
+      case "referrals":
+        return <ReferralAnalytics />;
       default:
         return <AdminDashboard />;
     }
@@ -119,9 +134,14 @@ export default function TeamPortal() {
       case "inbox": return "Communications";
       case "audit": return "Security Audit";
       case "team": return "Team Access";
-      case "guilds": return "Guild Vault";
-      case "settings": return "Global Settings";
-      case "finance": return "Financial Reconciliation";
+      case "guilds":       return "Guild Manager";
+      case "live-feed":    return "Live Activity Feed";
+      case "card-sandbox": return "Thorx Card Sandbox";
+      case "ledger":       return "Ledger Validator";
+      case "ranks":        return "Ranks & Engine Config";
+      case "referrals":    return "Referral Analytics";
+      case "settings":     return "Financial Control Center";
+      case "finance":      return "Financial Reconciliation";
       default: return "Command Center";
     }
   };

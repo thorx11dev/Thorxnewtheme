@@ -26,7 +26,8 @@ import {
   Send,
   Plus,
   Check,
-  Lock
+  Lock,
+  TrendingUp,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -91,12 +92,15 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   const itemsPerPage = 10; // Optimized for admin view
   
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [modalType, setModalType] = useState<'details' | 'balance' | 'network' | 'notes' | 'delete' | 'trust' | null>(null);
+  const [modalType, setModalType] = useState<'details' | 'balance' | 'network' | 'notes' | 'delete' | 'trust' | 'ps' | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
   const [creditIntent, setCreditIntent] = useState<'verified_deposit' | 'admin_credit' | null>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
   const [adjustmentReason, setAdjustmentReason] = useState("");
+  // THORX v3: PS override
+  const [psDelta, setPsDelta] = useState("");
+  const [psReason, setPsReason] = useState("");
   const [newNote, setNewNote] = useState("");
   const [networkZoom, setNetworkZoom] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -152,6 +156,21 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
       toast({ title: "Balance Adjusted", description: "User's financial ledger has been updated." });
       closeModal();
     }
+  });
+
+  // THORX v3: PS override mutation (PATCH /api/admin/users/:userId/ps)
+  const psAdjustMutation = useMutation({
+    mutationFn: async ({ userId, delta, reason }: { userId: string; delta: number; reason: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/users/${userId}/ps`, { delta, reason });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/team/users'] });
+      toast({ title: "PS Adjusted", description: "Performance score updated." });
+      setPsDelta(""); setPsReason("");
+      closeModal();
+    },
+    onError: (err: any) => toast({ title: "Failed", description: err?.message, variant: "destructive" }),
   });
 
   const setTrustStatusMutation = useMutation({
@@ -423,6 +442,15 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                           title="Balance"
                         >
                           <DollarSign size={16} />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-10 w-10 p-0 rounded-full border-[1.5px] border-purple-200 hover:border-purple-500 hover:bg-purple-50 text-purple-500 transition-colors"
+                          onClick={() => { setSelectedUser(user); setPsDelta(""); setPsReason(""); setModalType('ps'); }}
+                          title="Adjust PS"
+                        >
+                          <TrendingUp size={16} />
                         </Button>
                         <Button 
                           size="sm" 
@@ -869,6 +897,51 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
               Adjust Balance
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* PS Adjust Dialog — THORX v3 */}
+      <Dialog open={!!selectedUser && modalType === 'ps'} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="border border-black/5 bg-white rounded-[2rem] p-0 max-w-sm overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12)] *:!rounded-none [&>button]:hidden">
+          <DialogHeader className="p-8 border-b border-zinc-100 bg-white">
+            <DialogTitle className="text-xl font-black tracking-tighter text-[#111] uppercase flex items-center gap-2">
+              <TrendingUp size={18} className="text-purple-500" />
+              Adjust PS
+            </DialogTitle>
+            <DialogDescription className="text-zinc-500 font-bold text-[10px] tracking-widest mt-1 uppercase">
+              {selectedUser?.firstName} {selectedUser?.lastName} · Current PS: {(selectedUser as any)?.performanceScore ?? "—"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-8 space-y-6">
+            <div>
+              <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">PS Delta (positive = add, negative = subtract)</div>
+              <input
+                type="number"
+                placeholder="e.g. +50 or -100"
+                value={psDelta}
+                onChange={e => setPsDelta(e.target.value)}
+                className="w-full border-2 border-black rounded-xl px-4 py-3 text-lg font-black text-[#111] focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div>
+              <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Reason (min 5 chars)</div>
+              <input
+                type="text"
+                placeholder="Reason for PS adjustment..."
+                value={psReason}
+                onChange={e => setPsReason(e.target.value)}
+                className="w-full border-2 border-black rounded-xl px-4 py-3 font-bold text-[#111] focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <button
+              className="w-full bg-purple-600 text-white font-black text-sm tracking-widest uppercase py-4 rounded-2xl hover:bg-purple-700 transition-colors disabled:opacity-40"
+              disabled={!psDelta || psReason.length < 5 || psAdjustMutation.isPending}
+              onClick={() => selectedUser && psAdjustMutation.mutate({ userId: selectedUser.id, delta: parseFloat(psDelta), reason: psReason })}
+            >
+              {psAdjustMutation.isPending ? "Applying…" : "Apply PS Adjustment"}
+            </button>
+            <button onClick={closeModal} className="w-full text-center text-xs font-bold text-zinc-400 hover:text-[#111] transition-colors py-1">Cancel</button>
+          </div>
         </DialogContent>
       </Dialog>
 

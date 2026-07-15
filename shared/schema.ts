@@ -323,6 +323,9 @@ export const dailyTasks = pgTable("daily_tasks", {
   targetRank: text("target_rank").default("Nawa Aya"), // minimum rank to see it
   isActive: boolean("is_active").default(true),
   isMandatory: boolean("is_mandatory").default(false), // controls payout access
+  // THORX v3 (spec D.5 analogue for daily_tasks): Engine B CPA tasks vs indirect social tasks
+  taskCategory: text("task_category").default("indirect"), // 'cpa_offer' | 'indirect' | 'platform'
+  grossPkrPerCompletion: decimal("gross_pkr_per_completion", { precision: 10, scale: 4 }), // null = indirect
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

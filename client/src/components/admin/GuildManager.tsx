@@ -5,7 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Vault, Search, ShieldAlert, ShieldCheck, Snowflake, Play, RefreshCw } from "lucide-react";
+import { Vault, Search, ShieldAlert, ShieldCheck, Snowflake, Play, RefreshCw, TrendingUp, Target, AlertTriangle, Crown } from "lucide-react";
+import { RankBadge } from "@/components/RankBadge";
 
 interface AdminGuild {
   id: string;
@@ -26,6 +27,8 @@ export function GuildManager() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [strikeReason, setStrikeReason] = useState<Record<string, string>>({});
+  const [gpsAdjust, setGpsAdjust] = useState<Record<string, { delta: string; reason: string }>>({});
+  const [weeklyTarget, setWeeklyTarget] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery<{ guilds: AdminGuild[]; total: number }>({
     queryKey: ["/api/admin/guilds", search, statusFilter],
@@ -68,6 +71,37 @@ export function GuildManager() {
       invalidate();
     },
     onError: (err: any) => toast({ title: "Failed", description: err?.message, variant: "destructive" }),
+  });
+
+  const gpsMutation = useMutation({
+    mutationFn: async ({ id, delta, reason }: { id: string; delta: number; reason: string }) =>
+      (await apiRequest("PATCH", `/api/admin/guilds/${id}/gps`, { delta, reason })).json(),
+    onSuccess: (_, vars) => {
+      toast({ title: "GPS adjusted" });
+      setGpsAdjust(prev => ({ ...prev, [vars.id]: { delta: "", reason: "" } }));
+      invalidate();
+    },
+    onError: (err: any) => toast({ title: "Failed", description: err?.message, variant: "destructive" }),
+  });
+
+  const weeklyTargetMutation = useMutation({
+    mutationFn: async ({ id, target }: { id: string; target: number }) =>
+      (await apiRequest("PATCH", `/api/admin/guilds/${id}/weekly-target`, { target })).json(),
+    onSuccess: (_, vars) => {
+      toast({ title: "Weekly target updated" });
+      setWeeklyTarget(prev => ({ ...prev, [vars.id]: "" }));
+      invalidate();
+    },
+    onError: (err: any) => toast({ title: "Failed", description: err?.message, variant: "destructive" }),
+  });
+
+  const { data: inactiveCaptains = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/guilds/inactive-captains"],
+    queryFn: async () => {
+      const r = await apiRequest("GET", "/api/admin/guilds/inactive-captains?days=48");
+      const d = await r.json();
+      return d.captains ?? [];
+    },
   });
 
   const runResolutionMutation = useMutation({
@@ -116,6 +150,27 @@ export function GuildManager() {
           ))}
         </div>
       </div>
+
+      {/* Inactive captain alert */}
+      {inactiveCaptains.length > 0 && (
+        <div className="rounded-xl bg-red-50 border border-red-300 p-4 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="font-bold text-sm text-red-700">⚠ Inactive Captains ({inactiveCaptains.length})</div>
+            <div className="text-xs text-red-600 mt-1">
+              The following guild captains have been inactive for 48+ hours and may need to be replaced:
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {inactiveCaptains.map((c: any) => (
+                <span key={c.userId} className="text-xs bg-red-100 border border-red-200 rounded px-2 py-0.5 flex items-center gap-1">
+                  <Crown size={10} className="text-red-500" />
+                  {c.guildName}: {c.firstName || c.email || c.userId.slice(0, 8)}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="p-20 text-center">
@@ -189,6 +244,62 @@ export function GuildManager() {
                   >
                     <ShieldCheck className="w-3 h-3 mr-1" /> Clear Strikes
                   </Button>
+                </div>
+              </div>
+
+              {/* THORX v3: GPS adjust + weekly target setter */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-dashed border-black/10">
+                {/* GPS Adjust */}
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" /> GPS Adjust (δ)
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Input
+                      type="number"
+                      placeholder="delta (e.g. +100 or -50)"
+                      value={gpsAdjust[g.id]?.delta || ""}
+                      onChange={(e) => setGpsAdjust(prev => ({ ...prev, [g.id]: { ...(prev[g.id] || {}), delta: e.target.value, reason: prev[g.id]?.reason || "" } }))}
+                      className="border-2 border-black h-8 text-sm w-28"
+                    />
+                    <Input
+                      placeholder="reason (5+ chars)"
+                      value={gpsAdjust[g.id]?.reason || ""}
+                      onChange={(e) => setGpsAdjust(prev => ({ ...prev, [g.id]: { ...(prev[g.id] || {}), delta: prev[g.id]?.delta || "", reason: e.target.value } }))}
+                      className="border-2 border-black h-8 text-sm flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs font-black"
+                      disabled={!gpsAdjust[g.id]?.delta || (gpsAdjust[g.id]?.reason?.length ?? 0) < 5 || gpsMutation.isPending}
+                      onClick={() => gpsMutation.mutate({ id: g.id, delta: parseFloat(gpsAdjust[g.id].delta), reason: gpsAdjust[g.id].reason })}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+                {/* Weekly Target */}
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1">
+                    <Target className="w-3 h-3" /> Weekly Target Override
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Input
+                      type="number"
+                      placeholder="target pts (0 = auto)"
+                      value={weeklyTarget[g.id] || ""}
+                      onChange={(e) => setWeeklyTarget(prev => ({ ...prev, [g.id]: e.target.value }))}
+                      className="border-2 border-black h-8 text-sm flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs font-black"
+                      disabled={!weeklyTarget[g.id] || weeklyTargetMutation.isPending}
+                      onClick={() => weeklyTargetMutation.mutate({ id: g.id, target: parseFloat(weeklyTarget[g.id]) })}
+                    >
+                      Set
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

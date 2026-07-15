@@ -12,7 +12,8 @@ import {
   Target,
   Trophy,
   Settings,
-  Vault
+  Vault,
+  Activity,
 } from "lucide-react";
 import TechnicalLabel from "@/components/ui/technical-label";
 import { Button } from "@/components/ui/button";
@@ -28,16 +29,22 @@ interface AdminSidebarProps {
 }
 
 const adminSections = [
-  { id: "dashboard",   name: "DASHBOARD",    icon: LayoutDashboard },
-  { id: "leaderboard", name: "LEADERBOARD",  icon: Trophy        },
-  { id: "tasks",       name: "DAILY TASKS",  icon: Target        },
-  { id: "payouts",     name: "PAYOUT QUEUE", icon: Wallet        },
-  { id: "users",       name: "USER CRM",     icon: Users         },
-  { id: "inbox",       name: "INBOX",        icon: Mail          },
-  { id: "audit",       name: "AUDIT LOGS",   icon: ScrollText    },
-  { id: "team",        name: "TEAM KEYS",    icon: ShieldCheck   },
-  { id: "guilds",      name: "GUILD VAULT",  icon: Vault         },
-  { id: "settings",    name: "SETTINGS",     icon: Settings      },
+  { id: "dashboard",    name: "DASHBOARD",     icon: LayoutDashboard },
+  { id: "leaderboard",  name: "LEADERBOARD",   icon: Trophy        },
+  { id: "tasks",        name: "DAILY TASKS",   icon: Target        },
+  { id: "payouts",      name: "PAYOUT QUEUE",  icon: Wallet        },
+  { id: "users",        name: "USER CRM",      icon: Users         },
+  { id: "guilds",       name: "GUILDS",        icon: Vault         },
+  { id: "live-feed",    name: "LIVE FEED",     icon: Activity      },
+  { id: "card-sandbox", name: "CARD SANDBOX",  icon: ShieldCheck   },
+  { id: "ledger",       name: "LEDGER",        icon: ScrollText    },
+  { id: "ranks",        name: "RANKS CONFIG",  icon: Trophy        },
+  { id: "referrals",    name: "REFERRALS",     icon: Users         },
+  { id: "inbox",        name: "INBOX",         icon: Mail          },
+  { id: "audit",        name: "AUDIT LOGS",    icon: ScrollText    },
+  { id: "team",         name: "TEAM KEYS",     icon: ShieldCheck   },
+  { id: "finance",      name: "FINANCE",       icon: Wallet        },
+  { id: "settings",     name: "SETTINGS",      icon: Settings      },
 ];
 
 export function AdminNavigation({ activeSection, onSectionChange, onLogout, className }: AdminSidebarProps) {

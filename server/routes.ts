@@ -616,6 +616,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profilePicture: user.profilePicture,
         rank: user.rank || 'Nawa Aya',
         name: `${user.firstName} ${user.lastName || ""}`.trim(),
+        // THORX v3 fields
+        userRankTier: user.userRankTier || 'E-Rank',
+        guildRole: user.guildRole || 'simple',
+        guildId: user.guildId || null,
+        performanceScore: user.performanceScore ?? 0,
+        streakDays: user.streakDays ?? 0,
+        balanceCashPkr: user.balanceCashPkr ?? '0.00',
+        txPointsBalance: user.txPointsBalance ?? 0,
+        lastActiveAt: user.lastActiveAt,
       });
     } catch (error) {
       console.error("Get user error:", error);
@@ -1421,9 +1430,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const adView = await storage.createAdView(adViewData);
 
+      // THORX v3 (spec E.6, I.1): Route earn through recordEarnEvent for
+      // Engine A split (60% user / 40% Thorx), Thorx Card draw, PS award, and feed event.
+      let thorxCard: { pointsCredited: number; realPkrValue: number; engineType: string } | null = null;
+      try {
+        const earnResult = await storage.recordEarnEvent({
+          userId: thorxPid,
+          engineType: 'Engine_A',
+          grossPkr: parseFloat(adConfig.reward),
+          sourceId: adView.id,
+          sourceType: 'ad_view',
+        });
+        thorxCard = {
+          pointsCredited: earnResult.pointsCredited,
+          realPkrValue: earnResult.realPkrValue,
+          engineType: 'Engine_A',
+        };
+      } catch (earnErr) {
+        console.error("[ad-view] recordEarnEvent failed:", earnErr);
+        // Don't fail the response — ad view is already recorded
+      }
+
       res.status(201).json({
         success: true,
         adView,
+        thorxCard,
         message: `Authentication Successful: ${adConfig.reward} PKR credited to pending.`
       });
     } catch (error) {
@@ -3476,17 +3507,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completedAt: new Date()
       } as any);
 
-      // THORX v3 (spec E.9): Daily tasks are Indirect earn events (PS + streak only,
-      // no PKR). Fire-and-forget — don't block the verify response on earn failures.
-      storage.recordEarnEvent({
-        userId,
-        engineType: 'Indirect',
-        grossPkr: 0,
-        sourceId: updatedRecord?.id ?? taskId,
-        sourceType: 'daily_task',
-      }).catch((err) => console.error("[tasks/verify] recordEarnEvent failed:", err));
+      // THORX v3 (spec B.2, L.3): Engine B CPA tasks require C-Rank; indirect tasks are open.
+      // Determine engine type from task metadata.
+      const isCpaTask = task.taskCategory === 'cpa_offer' && task.grossPkrPerCompletion && parseFloat(task.grossPkrPerCompletion) > 0;
 
-      res.json({ success: true, record: updatedRecord });
+      if (isCpaTask) {
+        // C-Rank gate for Engine B (spec L.3)
+        const user = await storage.getUserById(userId);
+        const RANK_ORDER = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"];
+        const userTierIdx = RANK_ORDER.indexOf(user?.userRankTier || "E-Rank");
+        if (userTierIdx < RANK_ORDER.indexOf("C-Rank")) {
+          return res.status(403).json({
+            error: "RANK_GATE",
+            requiredRank: "C-Rank",
+            currentRank: user?.userRankTier || "E-Rank",
+            message: "Engine B CPA offers require C-Rank or higher.",
+          });
+        }
+      }
+
+      // Fire earn event (Engine_B for CPA, Indirect for social tasks).
+      // Fire-and-forget — don't block the verify response on earn failures.
+      let thorxCard: { pointsCredited: number; realPkrValue: number; engineType: string } | null = null;
+      try {
+        const earnResult = await storage.recordEarnEvent({
+          userId,
+          engineType: isCpaTask ? 'Engine_B' : 'Indirect',
+          grossPkr: isCpaTask ? parseFloat(task.grossPkrPerCompletion!) : 0,
+          sourceId: updatedRecord?.id ?? taskId,
+          sourceType: 'daily_task',
+        });
+        if (isCpaTask && earnResult.pointsCredited > 0) {
+          thorxCard = { pointsCredited: earnResult.pointsCredited, realPkrValue: earnResult.realPkrValue, engineType: 'Engine_B' };
+        }
+      } catch (err) {
+        console.error("[tasks/verify] recordEarnEvent failed:", err);
+      }
+
+      res.json({ success: true, record: updatedRecord, thorxCard });
     } catch (error) {
       res.status(500).json({ message: "Verification failed" });
     }
@@ -4155,8 +4213,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getThorxPrincipalId(req) as string;
       const { coverLetter } = req.body;
-      if (!coverLetter || typeof coverLetter !== "string" || coverLetter.trim().length < 20) {
-        return res.status(400).json({ message: "Cover letter must be at least 20 characters." });
+      if (!coverLetter || typeof coverLetter !== "string" || coverLetter.trim().length < 50) {
+        return res.status(400).json({ message: "Cover letter must be at least 50 characters." });
       }
       const membership = await storage.applyToGuildWithCoverLetter(req.params.id, userId, coverLetter.trim());
       res.status(201).json({ membership });

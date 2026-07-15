@@ -166,3 +166,35 @@ export const ALL_AVATARS = RANK_DEFINITIONS.flatMap((r) => r.avatars).map((a) =>
   id: a.id,
   url: a.url,
 }));
+
+// ── THORX v3: E-S rank tier ↔ Urdu rank key bridge ───────────────────────
+// New userRankTier column uses E-S labels; avatar system uses legacy Urdu keys.
+// Use this to bridge calls from v3 components into the existing avatar system.
+const TIER_TO_RANK_KEY: Record<string, string> = {
+  "E-Rank": "Nawa Aya",
+  "D-Rank": "Chota Don",
+  "C-Rank": "Bawa Ji",
+  "B-Rank": "Haji Sab",
+  "A-Rank": "Chacha Supreme",
+  "S-Rank": "Chacha Supreme",
+};
+
+/**
+ * Resolves avatar URL using the new E-S userRankTier field.
+ * Falls back to Nawa Aya if tier is unknown.
+ */
+export function resolveAvatarUrlByTier(
+  savedAvatar: string | null | undefined,
+  userRankTier?: string | null
+): string {
+  const rankKey = (userRankTier && TIER_TO_RANK_KEY[userRankTier]) || "Nawa Aya";
+  return resolveAvatarUrl(savedAvatar, rankKey);
+}
+
+/**
+ * Returns the RankDefinition for the given E-S rank tier.
+ */
+export function getRankDefByTier(userRankTier?: string | null): RankDefinition {
+  const rankKey = (userRankTier && TIER_TO_RANK_KEY[userRankTier]) || "Nawa Aya";
+  return getRankDef(rankKey);
+}

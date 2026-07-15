@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { resolveAvatarUrl } from "@/lib/rankAvatars";
+import { RankBadge } from "@/components/RankBadge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -410,10 +411,11 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                             </div>
                           </td>
                           <td className="p-5">
-                            <div className="flex flex-col gap-1">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 border-[1px] border-[#111]/20 bg-zinc-100 rounded-full font-black text-[8px] tracking-widest uppercase text-[#111]">
-                                {user.rank || "Nawa Aya"}
-                              </span>
+                            <div className="flex flex-col gap-1.5">
+                              {user.userRankTier
+                                ? <RankBadge rank={user.userRankTier} size="sm" />
+                                : <span className="inline-flex items-center gap-1 px-2 py-0.5 border-[1px] border-[#111]/20 bg-zinc-100 rounded-full font-black text-[8px] tracking-widest uppercase text-[#111]">{user.rank || "—"}</span>
+                              }
                               <span className={cn(
                                 "inline-flex items-center gap-1 px-2 py-0.5 border-[1px] rounded-full font-black text-[8px] tracking-widest uppercase",
                                 trustStatusStyle(user.trustStatus)
@@ -429,25 +431,17 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                           </td>
                           <td className="p-5">
                             <div className="space-y-1">
+                              {/* THORX v3: L1-only — L2 writes are frozen */}
                               <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
                                 L1: <span className="text-[#111]">{user.level1Count || 0}</span>
-                              </div>
-                              <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
-                                L2: <span className="text-[#111]">{user.level2Count || 0}</span>
                               </div>
                             </div>
                           </td>
                           <td className="p-5">
-                            <div className="flex items-center gap-2">
-                              <div className="w-20 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-primary rounded-full"
-                                  style={{ width: `${Math.min(parseFloat(user.performanceScore || "0"), 100)}%` }}
-                                />
-                              </div>
-                              <span className="font-black text-[10px] tabular-nums text-zinc-500">
-                                {parseFloat(user.performanceScore || "0").toFixed(1)}
-                              </span>
+                            {/* PS column — raw performance score with rank indicator */}
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-black text-sm tabular-nums text-[#111]">{(user.performanceScore || 0).toLocaleString()}</span>
+                              <span className="text-[9px] text-zinc-400 uppercase tracking-widest">PS</span>
                             </div>
                           </td>
                           <td className="p-5 text-right">

@@ -435,6 +435,24 @@ export function AdminDashboard() {
         </div>
       </section>
 
+      {/* Section 4.5: Engine Breakdown (THORX v3) */}
+      <section className="space-y-3">
+        <SectionLabel text="Engine Breakdown (v3)" />
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { engine: "Engine A", label: "Video Ads",    color: "#f97316", description: "60/40 user/Thorx split" },
+            { engine: "Engine B", label: "CPA Offers",   color: "#7c3aed", description: "C-Rank+ · 45/55 split" },
+            { engine: "Engine C", label: "Guild Tasks",  color: "#16a34a", description: "70% member / 30% captain" },
+          ].map(({ engine, label, color, description }) => (
+            <div key={engine} className="bg-white border-[1.5px] border-[#111] p-4 rounded-[2rem] shadow-sm">
+              <div className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color }}>{engine}</div>
+              <div className="text-lg font-black text-[#111]">{label}</div>
+              <div className="text-[10px] text-zinc-400 mt-1 font-medium">{description}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Section 5: Analytics Charts */}
       <section className="space-y-3">
         <SectionLabel text={`Analytics · ${rangeLabel}`} />

@@ -1,34 +1,79 @@
 ---
-name: THORX v3 rebuild (PS/GPS rank system)
-description: In-progress full rebuild per a 2700-line spec — rank system, engines, guild reset, Thorx Card. Read before touching rank/guild/earn/withdrawal code.
+name: THORX v3 rebuild
+description: Full rank/engine/guild rebuild — phase status, critical decisions, and known constraints.
 ---
 
-## Status
-Phase 1 (schema + isolated backend modules) complete: new columns on users/guilds/guild_members/guild_weekly_cycles/weekly_tasks/score_history/rank_logs, 5 new tables (user_transactions, referral_commissions, captain_messages, guild_weekly_snapshots, activity_feed), and 5 new modules (`server/modules/thorx-card.ts`, `ps-engine.ts`, `gps-engine.ts`, `live-feed.ts`, `server/middleware/rankGate.ts`).
+## Phase Status (as of last session)
 
-Phase 2 (backend earn/withdrawal rewrite) complete and curl-verified end to end (ad-view → ledger entry → withdrawal request → admin approval → referral commission), including the referral-commission path. See below for the two non-obvious decisions made.
+### Phase 1 (Schema + Modules) — COMPLETE
+All new tables and columns exist in `shared/schema.ts`. All five server modules and rankGate middleware exist. Added `task_category` and `gross_pkr_per_completion` columns to `daily_tasks` via executeSql (ALTER TABLE, TTY-safe).
 
-Not yet done: Phase 3 (routes beyond withdrawal request/approval, cron jobs, health engine fix), Phase 4-5 (frontend — rank tier terminology E/D/C/B/A/S-Rank replacing old Urdu names, rankAvatars.ts rename, real ThorxCard.tsx component, "Available Balance" display), Phase 6 (cleanup — remove rally system, old guild-vault-resolution.ts job, L2 referrals).
+### Phase 2 (Storage: recordEarnEvent, processWithdrawal) — COMPLETE
+Engine split math, ThorxCard draw, PS award, streak, GPS for Engine C, and feed event all wired in `server/storage.ts`. FIFO ledger walk for withdrawals. Double-spend bug fixed.
 
-## Phase 2 decisions (user-confirmed)
-- **Dual rank-tier systems coexist on purpose during migration.** Old `checkAndUpdateRank`/`users.rank` (totalEarnings+referral based, drives the legacy avatar system) is untouched; new `checkAndUpdateRankTier`/`users.userRankTier` (PS-based, spec Appendix A #6) is wired only into the new `recordEarnEvent`. Don't merge them until Phase 5 explicitly retires the old one — they read/write different columns so there's no collision risk in the interim.
-- **Withdrawal request creation and approval were rewritten together, not just approval.** The spec only detailed the approval step assuming requests already arrive in TX-Points, but the legacy request-creation code deducted PKR from `availableBalance` via `commissionLogs` — a real double-accounting model mismatch. Resolved by making `createWithdrawal` accept `amount` as TX-Points, validate against a FIFO walk of un-withdrawn `user_transactions` (fails fast, but doesn't deduct/mark anything), and letting `processWithdrawal` recompute the same FIFO breakdown fresh at approval time as the sole point where transactions are marked `withdrawn` and points are deducted. `commission_logs` is now write-frozen; only `referral_commissions` is written, and only at approval.
-- **Known interim UX gap, deliberately not fixed in Phase 2:** `users.availableBalance` (the PKR figure the dashboard calls "Available Balance") is no longer updated by ad-view earn events once they route through the new `recordEarnEvent` — v3 earn events only touch `txPointsBalance`/`user_transactions`. The dashboard will show a frozen/stale number until Phase 4-5 replaces that widget with a points-based ledger display; fixing the display now would mean a much larger UI/copy rewrite (FAQ text explicitly promises "wallet balance is exactly what you receive") that's out of scope for a backend-only pass.
-- **Testing withdrawal approval locally needs a real `team_keys` row.** `requireSessionAuth` in server/routes.ts silently reverts any `team`/`admin` role back to `'user'` if that user has no active row in `team_keys` — granting `role='admin'` via SQL alone is not enough to pass `requirePermission`; insert a `team_keys` row (`access_level`, `permissions: ['payouts']`, `is_active: true`) too.
+### Phase 3 (Backend Routes) — COMPLETE
+All routes implemented. Key fixes applied in this session:
+- `POST /api/ad-view` → now calls `recordEarnEvent(Engine_A)`, returns `thorxCard` payload.
+- `POST /api/tasks/:id/verify` → C-Rank gate for CPA tasks (`taskCategory==='cpa_offer'`), Engine_B for CPA, Indirect for social. Returns `thorxCard` payload.
+- `POST /api/guilds/:id/apply` → coverLetter minimum changed 20→50 chars (spec compliance).
+- `GET /api/user` → now returns all v3 fields: `userRankTier, guildRole, guildId, performanceScore, streakDays, balanceCashPkr, txPointsBalance, lastActiveAt`.
+- `GET /api/dashboard/stats` → now returns all v3 fields same as above.
 
-## Phase 1 audit (user-confirmed)
-Audited against spec text (not my own summary) and fixed: config defaults (`CONVERSION_RATE`/`MIN_PAYOUT`/`REFERRAL_FEE_SHARE_PCT` updated to v3 values 1000/1000/30 per user's explicit choice — these pre-existed with old values so the "insert if missing" bootstrap had silently skipped them), `guilds.last_rally_at` dropped, `guilds.min_rank_required` migrated from `varchar(1)` letter format to full-tier text, 3 indexes rebuilt as partial indexes to match spec, `last_streak_date`/`week_start` column types corrected to `date`. Also had to retire `triggerCaptainRally`/`POST /api/guilds/:id/rally` (410) since it depended on the dropped `last_rally_at` column — full rally UI removal is still deferred to Phase 6.
-**Why this matters:** when a schema-additive migration touches a config table with an "insert if missing" bootstrap, always diff *values* against the new spec too, not just check whether the *keys* exist — pre-existing keys silently keep stale values otherwise.
+### Phase 4/5 (Frontend) — COMPLETE
 
-## Phase 1/2 independent re-audit (2026-07-15) — bugs found and fixed
-Re-verified Phase 1 (schema + modules) and Phase 2 (storage.ts earn/withdrawal) against the spec text directly via explore subagents, then via `tsc --noEmit` + a real curl E2E test (register referrer+referee → 4 ad-view earn events → withdrawal request → founder-approved payout → DB verification → rejection path → cleanup) against the live dev domain. Found and fixed:
-- **`tsc --noEmit` was NOT clean** despite the module existing: `gps-engine.ts` exports `awardMVPGPS`/`checkAndUpdateGuildRankTier` but `storage.ts` only imported `awardMemberGPS` — the other two were called as bare (unimported) identifiers. Also `awardMVPGPS(guildId)` takes one arg (it's a guild-level GPS bonus, not member-scoped — confirmed against spec line ~746) but was called with `(memberUserId, guildId)`. Also 4 call sites read `users.name`, a column that doesn't exist in the v3 schema (only `firstName`/`lastName`) — replaced with `sql\`${users.firstName} || ' ' || ${users.lastName}\`` projections.
-- **Critical financial bug: `bulkUpdateWithdrawalStatus` bypassed the ledger entirely.** The admin bulk-approve/reject endpoint (`POST /api/admin/withdrawals/bulk`) called a raw `UPDATE withdrawals SET status=...` instead of routing through `processWithdrawal`/`rejectWithdrawal` (the sole code paths that consume the `user_transactions` FIFO ledger, mark rows withdrawn, deduct `txPointsBalance`, and pay `referral_commissions`). The single-withdrawal admin PATCH endpoint (`updateWithdrawalStatus`) was already correct — only the bulk path was broken. This meant bulk-approving a withdrawal marked it "completed" without ever deducting the user's balance or paying the referrer: a double-spend risk. Fixed by making `bulkUpdateWithdrawalStatus` call `this.updateWithdrawalStatus(id, ...)` per id for `completed`/`rejected` statuses; non-terminal statuses (e.g. `processing`) still use the plain raw update since there's no ledger effect yet.
-**Why this matters:** any place that flips withdrawal status must be traced to confirm it goes through `processWithdrawal`/`rejectWithdrawal` — a second/legacy code path (bulk actions, CSV-driven admin tools, etc.) can silently reintroduce a raw status update that skips the ledger. Grep for every `withdrawals.*status` write site, not just the ones the current feature touches.
-**How to test the withdrawal ledger without waiting for real earnings:** ad-view rewards are tiny (0.10–0.50 PKR each); to hit `MIN_PAYOUT` (config, default 100) in a live E2E test, temporarily `UPDATE system_config SET value='0.01' WHERE key='MIN_PAYOUT'` (or similar), always restore the original value afterward.
+**New components created:**
+- `client/src/components/RankBadge.tsx` — E-S rank badge, used across all leaderboards/profiles
+- `client/src/components/ThorxCard.tsx` — Replaces ScratchCardModal; handles Engine_A/B/C payloads
+- `client/src/components/PSProgressCard.tsx` — PS progress bar with streak bonus display
+- `client/src/components/guild/GuildDiscoveryPanel.tsx` — GPS leaderboard + apply flow for simple users
+- `client/src/components/guild/GuildMemberPanel.tsx` — 4-tab member view (progress/tasks/chat/DM)
+- `client/src/components/guild/CaptainPortal.tsx` — 5-tab captain view (requests/roster/DM/stats/settings)
+- `client/src/components/admin/LiveActivityFeed.tsx` — Real-time engine event feed
+- `client/src/components/admin/ThorxCardSandbox.tsx` — Admin simulation tool
+- `client/src/components/admin/LedgerValidator.tsx` — Financial ledger integrity checker
+- `client/src/components/admin/ReferralAnalytics.tsx` — L1-only referral stats and leaderboard
+- `client/src/components/admin/RanksCustomizer.tsx` — PS thresholds, engine splits, card variance, PS awards
 
-## Key gotchas hit during Phase 1
-- `drizzle-kit push` fails with "Interactive prompts require a TTY" in this environment whenever it detects an ambiguous rename/new-table — non-interactive shell can't answer the prompt. Workaround: write the ALTER TABLE/CREATE TABLE DDL by hand (matching schema.ts exactly) and apply via `executeSql`, skip drizzle-kit push entirely for additive changes.
-- Circular table references (e.g. `users.guildId` → `guilds.id`, where `guilds` is defined later in the file): use `.references((): any => guilds.id, ...)` — the arrow-function form defers evaluation past module load, so forward references between pgTable consts work.
-- Manual `db.select({...})` column-list literals typed against the full `User`/`GuildMember` interface break at compile time every time a new NOT NULL column is added to that table — must add the new columns to every hand-rolled select projection, not just `db.select()` (which auto-includes everything).
-- rank_logs table only had a `userId` FK; extended it with `targetType` ('user'|'guild') + `guildId` columns to also log GPS/guild rank changes through the same audit table.
+**Shims (backward compatibility):**
+- `GuildVaultPanel.tsx` → re-exports `GuildMemberPanel` as `GuildVaultPanel`
+- `ScratchCardModal.tsx` → bridges old `ScratchCardBreakdown` shape → `ThorxCard` component
+
+**Modified components:**
+- `UserPortal.tsx` → 3-context routing: `guildRole === 'captain'` → CaptainPortal, `'member'` → GuildMemberPanel, `'simple'` → GuildDiscoveryPanel
+- `TeamPortal.tsx` → added 5 new sections: live-feed, card-sandbox, ledger, ranks, referrals
+- `AdminSidebar.tsx` → added 6 new nav entries + `Activity` icon import
+- `AdminDashboard.tsx` → Engine Breakdown section (A/B/C cards)
+- `GuildManager.tsx` → GPS adjust controls, weekly target override, inactive captain alert banner
+- `LeaderboardInsights.tsx` → replaced Urdu rank display with `RankBadge(userRankTier)`, PS raw score column, L1-only referral column
+- `UserManager.tsx` → PS adjust button + `TrendingUp` icon + full PS adjust dialog (PATCH `/api/admin/users/:userId/ps`)
+- `useAuth.ts` → User interface extended with all v3 fields
+
+**rankAvatars.ts:**
+- Added `resolveAvatarUrlByTier(savedAvatar, userRankTier)` bridge function
+- Added `getRankDefByTier(userRankTier)` bridge function
+- E-S to Urdu key mapping: E→Nawa Aya, D→Chota Don, C→Bawa Ji, B→Haji Sab, A/S→Chacha Supreme
+
+### Phase 6 (Cleanup) — NOT STARTED
+- Old `rallying`/rally references may still exist in some UI strings
+- `commission_logs` L2 writes: write-frozen but old writes may exist
+- Urdu rank strings in misc. hardcoded places (banner texts, descriptions)
+
+## Critical Constraints
+
+**Why:** `drizzle-kit push` fails in non-TTY env (Replit). All future schema changes must use raw SQL via `executeSql` callback.
+
+**Why:** `commission_logs` is write-frozen; all new referral commission writes go to `referral_commissions` only. Reading from `commission_logs` for display is OK.
+
+**Why:** BOOTSTRAP_SECRET is unset in this environment; the founder bootstrap endpoint accepts calls without a secret header.
+
+**How to apply:** When adding DB columns, use `executeSql({ sqlQuery: "ALTER TABLE ... ADD COLUMN IF NOT EXISTS ..." })` not drizzle push.
+
+## Daily Tasks Engine Split Note
+`daily_tasks.taskCategory` defaults to `'indirect'` → treated as PS-only social tasks.
+To make a daily task earn PKR (Engine B), admin sets `taskCategory='cpa_offer'` AND `grossPkrPerCompletion > 0`.
+The C-Rank gate in `/api/tasks/:id/verify` only fires for CPA tasks.
+
+## Rank Avatar Bridge
+Old avatar system uses Urdu rank keys. New system uses E-S tier strings.
+Use `resolveAvatarUrlByTier(savedAvatar, user.userRankTier)` for any v3 component.
+Old `resolveAvatarUrl(savedAvatar, user.rank)` still works for backward-compat.

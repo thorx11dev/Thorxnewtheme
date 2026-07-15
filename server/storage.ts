@@ -2638,7 +2638,16 @@ export class DatabaseStorage implements IStorage {
       referralEarnings: referralEarningsResult?.total || "0.00",
       adsWatchedToday,
       adsWatchedTotal: totalAdViewsResult?.count || 0,
-      dailyGoalProgress
+      dailyGoalProgress,
+      // THORX v3 fields (spec B.2, F.2)
+      txPointsBalance: user.txPointsBalance ?? 0,
+      performanceScore: user.performanceScore ?? 0,
+      userRankTier: user.userRankTier || 'E-Rank',
+      guildRole: user.guildRole || 'simple',
+      guildId: user.guildId || null,
+      streakDays: user.streakDays ?? 0,
+      balanceCashPkr: user.balanceCashPkr ?? '0.00',
+      lastActiveAt: user.lastActiveAt,
     };
   }
 

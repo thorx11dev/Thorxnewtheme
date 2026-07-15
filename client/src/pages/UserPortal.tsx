@@ -29,6 +29,9 @@ import { cn } from "@/lib/utils";
 import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
 import { GuildVaultPanel } from "@/components/guild/GuildVaultPanel";
+import { GuildDiscoveryPanel } from "@/components/guild/GuildDiscoveryPanel";
+import { GuildMemberPanel } from "@/components/guild/GuildMemberPanel";
+import { CaptainPortal } from "@/components/guild/CaptainPortal";
 import { ScratchCardModal, type ScratchCardBreakdown } from "@/components/guild/ScratchCardModal";
 import { useLocation } from "wouter";
 import {
@@ -3182,8 +3185,13 @@ export default function UserPortal() {
           </p>
         </div>
 
-        {/* Guild vault panel */}
-        {user?.id && <GuildVaultPanel currentUserId={user.id} />}
+        {/* THORX v3 (spec F.6–F.8): 3-context routing by guildRole */}
+        {user && (() => {
+          const role = (user as any).guildRole ?? 'simple';
+          if (role === 'captain') return <CaptainPortal />;
+          if (role === 'member')  return <GuildMemberPanel />;
+          return <GuildDiscoveryPanel />;
+        })()}
       </motion.div>
     );
   }

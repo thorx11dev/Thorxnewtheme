@@ -22,6 +22,15 @@ export interface User {
   profilePicture?: string;
   permissions?: string[];
   referredBy?: string | null;
+  // THORX v3 fields
+  userRankTier?: string;
+  guildRole?: string;
+  guildId?: string | null;
+  performanceScore?: number;
+  streakDays?: number;
+  balanceCashPkr?: string;
+  txPointsBalance?: number;
+  lastActiveAt?: string | null;
 }
 
 export function useAuth() {
