@@ -156,28 +156,38 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
       ? uploadedPhotoUrl
       : resolveAvatarUrl(avatar, user?.rank);
 
-  const getNextRankReqs = (earnings: number, refs: number) => {
-    if (earnings < 2500 || refs < 5)   return { name: "MUNNA",           reqEarned: 2500,  reqRefs: 5 };
-    if (earnings < 5000 || refs < 10)  return { name: "BAWA JI",         reqEarned: 5000,  reqRefs: 10 };
-    if (earnings < 10000 || refs < 15) return { name: "HAJI SAAB",       reqEarned: 10000, reqRefs: 15 };
-    if (earnings < 25000 || refs < 25) return { name: "CHACHA SUPREME",  reqEarned: 25000, reqRefs: 25 };
-    return null;
+  // THORX v3: rank is driven entirely by Performance Score (PS) — see
+  // server/modules/ps-engine.ts. These thresholds mirror the system_config
+  // defaults (PS_RANK_*_MIN); if an admin changes them the progress bar
+  // below is approximate until this modal reads system_config directly.
+  const PS_RANK_THRESHOLDS: { name: string; min: number }[] = [
+    { name: "D-Rank", min: 1000 },
+    { name: "C-Rank", min: 3000 },
+    { name: "B-Rank", min: 6000 },
+    { name: "A-Rank", min: 10000 },
+    { name: "S-Rank", min: 20000 },
+  ];
+
+  const getNextRankReq = (ps: number) => {
+    const next = PS_RANK_THRESHOLDS.find((tier) => ps < tier.min);
+    return next ? { name: next.name, reqPS: next.min } : null;
   };
 
-  const nextRank = getNextRankReqs(Number(user?.totalEarnings || 0), activeRefsCount);
+  const performanceScore = Number(user?.performanceScore || 0);
+  const nextRank = getNextRankReq(performanceScore);
   const isAdmin = user?.role === "admin" || user?.role === "founder" || user?.role === "team";
 
-  const getRankDetails = (rankTitle?: string) => {
+  const getRankDetails = (rankTier?: string) => {
     if (isAdmin) {
       let displayTitle = "REGULAR";
       if (user?.role === "founder") displayTitle = "FOUNDER";
       if (user?.role === "admin") displayTitle = "ADMIN";
       return { title: displayTitle };
     }
-    return { title: rankTitle?.toUpperCase() || "NAWA AYA" };
+    return { title: rankTier?.toUpperCase() || "E-RANK" };
   };
 
-  const rank = getRankDetails(user?.rank);
+  const rank = getRankDetails(user?.userRankTier);
 
   if (!isOpen) return null;
 
@@ -288,20 +298,11 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
                   <>
                     <div>
                       <div className="flex justify-between text-[10px] font-bold uppercase text-white/40 mb-1.5">
-                        <span>Earnings</span>
-                        <span>{Number(user?.totalEarnings || 0).toFixed(0)} / {nextRank.reqEarned}</span>
+                        <span>Performance Score</span>
+                        <span>{performanceScore} / {nextRank.reqPS}</span>
                       </div>
                       <div className="relative h-1 w-full bg-white/5 overflow-hidden">
-                        <div className="absolute inset-y-0 left-0 bg-primary transition-all" style={{ width: `${Math.min((Number(user?.totalEarnings || 0) / nextRank.reqEarned) * 100, 100)}%` }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-[10px] font-bold uppercase text-white/40 mb-1.5">
-                        <span>Referrals</span>
-                        <span>{activeRefsCount} / {nextRank.reqRefs}</span>
-                      </div>
-                      <div className="relative h-1 w-full bg-white/5 overflow-hidden">
-                        <div className="absolute inset-y-0 left-0 bg-white transition-all" style={{ width: `${Math.min((activeRefsCount / nextRank.reqRefs) * 100, 100)}%` }} />
+                        <div className="absolute inset-y-0 left-0 bg-primary transition-all" style={{ width: `${Math.min((performanceScore / nextRank.reqPS) * 100, 100)}%` }} />
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-white/30 font-mono uppercase pt-2">

@@ -178,7 +178,7 @@ export function TaskManager() {
     });
   };
 
-  const RANKS = ["Chacha Supreme", "Haji Sab", "Bawa Ji", "Chota Don", "Nawa Aya"];
+  const RANKS = ["S-Rank", "A-Rank", "B-Rank", "C-Rank", "D-Rank", "E-Rank"];
 
   const filteredTasks = tasks?.filter(task => 
     task.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -514,16 +514,17 @@ export function TaskManager() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-semibold tracking-widest uppercase text-zinc-400 ml-1">Target Rank</Label>
-                  <Select name="targetRank" defaultValue={editingTask?.targetRank || "Nawa Aya"}>
+                  <Select name="targetRank" defaultValue={editingTask?.targetRank || "E-Rank"}>
                     <SelectTrigger className="h-11 bg-white border border-zinc-300 rounded-xl font-medium text-sm px-4">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="border border-zinc-200 rounded-xl text-sm">
-                      <SelectItem value="Nawa Aya">Nawa Aya (Public)</SelectItem>
-                      <SelectItem value="Chota Don">Chota Don</SelectItem>
-                      <SelectItem value="Bawa Ji">Bawa Ji</SelectItem>
-                      <SelectItem value="Haji Sab">Haji Sab</SelectItem>
-                      <SelectItem value="Chacha Supreme">Chacha Supreme</SelectItem>
+                      <SelectItem value="E-Rank">E-Rank (Public)</SelectItem>
+                      <SelectItem value="D-Rank">D-Rank</SelectItem>
+                      <SelectItem value="C-Rank">C-Rank</SelectItem>
+                      <SelectItem value="B-Rank">B-Rank</SelectItem>
+                      <SelectItem value="A-Rank">A-Rank</SelectItem>
+                      <SelectItem value="S-Rank">S-Rank</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

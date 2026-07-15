@@ -402,7 +402,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     <td className="p-6 text-center">
                         <div className="flex flex-col gap-2 items-center">
                            <span className="inline-flex items-center gap-1 text-[9px] font-black text-black bg-zinc-500 border-2 border-black px-2 py-0.5 tracking-widest uppercase shadow-sm">
-                             {(user.rank ?? 'Nawa Aya')}
+                             {(user.userRankTier ?? 'E-Rank')}
                              {user.rankLocked && <Lock size={10} className="text-black" />}
                            </span>
                         </div>
@@ -832,7 +832,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     <div>
                       <div className="text-[9px] font-medium text-zinc-400 uppercase tracking-wide mb-1.5">Rank</div>
                       <span className={cn("inline-flex items-center gap-1 text-[9px] font-bold text-white px-2 py-0.5 rounded-full tracking-wide uppercase", getRankDef(selectedUser?.rank).bgColor)}>
-                        {(selectedUser?.rank ?? 'Nawa Aya')}
+                        {(selectedUser?.userRankTier ?? 'E-Rank')}
                         {selectedUser?.rankLocked && <Lock size={10} />}
                       </span>
                     </div>

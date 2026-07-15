@@ -141,6 +141,7 @@ const GUEST_USER: AuthUser = {
   isActive: true,
   createdAt: "1970-01-01T00:00:00.000Z",
   rank: "Nawa Aya",
+  userRankTier: "E-Rank",
 };
 
 // Interactive Divider Component
@@ -757,7 +758,7 @@ export default function UserPortal() {
   const referralLevel1Count = (referralLeaderboard || []).filter((r: any) => r.level === 1).length;
   const referralLevel2Count = (referralLeaderboard || []).filter((r: any) => r.level === 2).length;
 
-  const userRank = (user?.rank || "Nawa Aya").toLowerCase();
+  const userRank = (user?.userRankTier || "E-Rank").toLowerCase();
 
   // Payout is always open — no task gate (Blueprint v2026)
   const adsWatchedTodayCount = todayAdViews?.count || 0;
@@ -1503,19 +1504,20 @@ export default function UserPortal() {
 
   // Dashboard Section
   function renderDashboardSection() {
-    const getRank = (rankTitle?: string) => {
-      const title = (rankTitle || "Nawa Aya").toUpperCase();
+    const getRank = (rankTier?: string) => {
+      const title = (rankTier || "E-Rank").toUpperCase();
       // All ranks use the same Silver (Zinc-500) frame/badge style — the avatar
       // frame color is standardized across tiers, not rank-branded.
       const silver = { color: "text-zinc-500", border: "border-zinc-500", bg: "bg-zinc-500" };
-      if (title === "CHACHA SUPREME") return { title: "CHACHA SUPREME", icon: Crown, ...silver };
-      if (title === "HAJI SAB") return { title: "HAJI SAB", icon: Trophy, ...silver };
-      if (title === "BAWA JI") return { title: "BAWA JI", icon: Medal, ...silver };
-      if (title === "CHOTA DON") return { title: "CHOTA DON", icon: Shield, ...silver };
-      return { title: "NAWA AYA", icon: User, ...silver };
+      if (title === "S-RANK") return { title: "S-RANK", icon: Crown, ...silver };
+      if (title === "A-RANK") return { title: "A-RANK", icon: Trophy, ...silver };
+      if (title === "B-RANK") return { title: "B-RANK", icon: Trophy, ...silver };
+      if (title === "C-RANK") return { title: "C-RANK", icon: Medal, ...silver };
+      if (title === "D-RANK") return { title: "D-RANK", icon: Shield, ...silver };
+      return { title: "E-RANK", icon: User, ...silver };
     };
 
-    const rank = getRank(displayUser?.rank);
+    const rank = getRank(displayUser?.userRankTier);
 
     // Improved Avatar Logic:
     // Resolve avatar using rank-aware system
@@ -3363,7 +3365,7 @@ export default function UserPortal() {
                             id: "002",
                             protocol: "EARNING-MODEL",
                             question: "How do I earn on THORX?",
-                            answer: "Three earning streams: 1) Engine A — Watch 15–25 second video ads, then actively explore the advertiser's page for 15 seconds inside our secure AI sandbox. 2) Engine B — Complete curated CPA tasks (app downloads, reviews, registrations) and submit proof for AI-verified payout. 3) Engine C — Join a Guild to earn weekly vault bonuses with rank-based multipliers, plus earn a passive referral commission whenever your direct referral withdraws their earnings."
+                            answer: "Three earning streams: 1) Engine A — Watch 15–25 second video ads, then actively explore the advertiser's page for 15 seconds inside our secure AI sandbox. 2) Engine B — Complete curated CPA tasks (app downloads, reviews, registrations) and submit proof for AI-verified payout. 3) Engine C — Join a Guild to earn weekly bonus TX-Points plus a share of your Guild's Weekly Bonus Pool, plus earn a passive referral commission whenever your direct referral withdraws their earnings."
                           },
                           {
                             id: "003",
@@ -3381,13 +3383,13 @@ export default function UserPortal() {
                             id: "005",
                             protocol: "RANKING-SYSTEM",
                             question: "What are the user ranks?",
-                            answer: "THORX uses a Dual-Requirement Ranking System — you must meet BOTH referral and earnings thresholds to upgrade. Ranks: 1) Nawa Aya (Priority 5 — new users), 2) Chota Don (5 refs + 2,500 PKR — Priority 4), 3) Bawa Ji (10 refs + 5,000 PKR — Priority 3), 4) Haji Sab (15 refs + 10,000 PKR — Priority 2), 5) Chacha Supreme (25 refs + 25,000 PKR — Priority 1, fastest payouts)."
+                            answer: "Your rank is driven entirely by your Performance Score (PS), earned from completing tasks and maintaining a daily streak. Ranks: E-Rank → D-Rank → C-Rank (unlocks Engine B) → B-Rank (unlocks guild creation) → A-Rank (wider Thorx Card variance) → S-Rank (instant-approved withdrawals). Totals earned or referred don't affect your rank directly — only PS does."
                           },
                           {
                             id: "006",
                             protocol: "PAYOUT-METHODS",
                             question: "How do I withdraw my earnings?",
-                            answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. You must complete your required daily tasks to unlock the payout page — it is mathematically locked until tasks are complete. Higher-ranked users (Chacha Supreme, Haji Sab) have payouts processed first. A flat 15% withdrawal fee is deducted from every payout; this is already reflected in your displayed wallet balance so there are no surprises at withdrawal time."
+                            answer: "Withdrawals are sent directly to JazzCash or EasyPaisa. Access is always open — no daily task completion required. S-Rank users have their withdrawals auto-approved instantly. A flat 15% withdrawal fee is deducted from every payout; the preview screen shows the exact breakdown before you confirm."
                           },
                           {
                             id: "007",

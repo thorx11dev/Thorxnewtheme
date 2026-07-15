@@ -1008,40 +1008,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/guilds/:id/join", requireSessionAuth, async (req, res) => {
-    try {
-      const userId = getThorxPrincipalId(req) as string;
-      const membership = await storage.requestToJoinGuild(req.params.id, userId);
-      res.status(201).json({ membership });
-    } catch (error) {
-      console.error("Join guild error:", error);
-      const message = error instanceof Error ? error.message : "Failed to request guild join";
-      res.status(400).json({ message });
-    }
+  // THORX v3 (spec K.3 Phase 6): legacy join/approve/reject routes retired —
+  // superseded by POST /api/guilds/:id/apply + PATCH /api/guilds/:id/applications/:applicationId.
+  // No client code calls these anymore; kept as 410 stubs in case of stale clients.
+  app.post("/api/guilds/:id/join", requireSessionAuth, async (_req, res) => {
+    res.status(410).json({ message: "Use POST /api/guilds/:id/apply instead.", error: "ENDPOINT_RETIRED" });
   });
 
-  app.post("/api/guilds/:id/members/:userId/approve", requireSessionAuth, async (req, res) => {
-    try {
-      const captainId = getThorxPrincipalId(req) as string;
-      const membership = await storage.decideGuildJoinRequest(req.params.id, req.params.userId, captainId, true);
-      res.json({ membership });
-    } catch (error) {
-      console.error("Approve guild join error:", error);
-      const message = error instanceof Error ? error.message : "Failed to approve join request";
-      res.status(400).json({ message });
-    }
+  app.post("/api/guilds/:id/members/:userId/approve", requireSessionAuth, async (_req, res) => {
+    res.status(410).json({ message: "Use PATCH /api/guilds/:id/applications/:applicationId instead.", error: "ENDPOINT_RETIRED" });
   });
 
-  app.post("/api/guilds/:id/members/:userId/reject", requireSessionAuth, async (req, res) => {
-    try {
-      const captainId = getThorxPrincipalId(req) as string;
-      const membership = await storage.decideGuildJoinRequest(req.params.id, req.params.userId, captainId, false);
-      res.json({ membership });
-    } catch (error) {
-      console.error("Reject guild join error:", error);
-      const message = error instanceof Error ? error.message : "Failed to reject join request";
-      res.status(400).json({ message });
-    }
+  app.post("/api/guilds/:id/members/:userId/reject", requireSessionAuth, async (_req, res) => {
+    res.status(410).json({ message: "Use PATCH /api/guilds/:id/applications/:applicationId instead.", error: "ENDPOINT_RETIRED" });
   });
 
   app.post("/api/guilds/:id/leave", requireSessionAuth, async (req, res) => {
@@ -3415,13 +3394,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
 
       const user = await storage.getUserById(userId);
-      const userRank = (user?.rank || "Nawa Aya").toLowerCase();
+      const userRankTier = (user?.userRankTier || "E-Rank").toLowerCase();
 
       const tasksWithRecords = await storage.getDailyTasksForUser(userId);
-      
-      // Filter by rank and active status
+
+      // Filter by rank tier and active status (THORX v3: keyed off userRankTier,
+      // the PS-driven rank — not the legacy, now-frozen `rank` field).
       const filteredTasks = tasksWithRecords.filter(({ task }) => {
-          const isTargeted = (task.targetRank || "nawa aya").toLowerCase() === "nawa aya" || (task.targetRank || "nawa aya").toLowerCase() === userRank;
+          const targetRank = (task.targetRank || "e-rank").toLowerCase();
+          const isTargeted = targetRank === "e-rank" || targetRank === userRankTier;
           return isTargeted && task.isActive;
       });
 

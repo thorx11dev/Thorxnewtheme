@@ -83,7 +83,7 @@ const allFaqData = [
     id: "002",
     protocol: "EARNING-MODEL",
     question: "How do I earn TX-Points on THORX?",
-    answer: "Three earning streams: 1) Engine A — Watch 15–25 second video ads then actively explore the advertiser's page for 15 seconds inside our AI sandbox. 2) Engine B — Complete curated CPA tasks (app downloads, reviews, registrations) with AI-verified proof submission. 3) Engine C — Join a Guild to earn bonus TX-Points from weekly tasks and vault multipliers, plus earn direct referral commissions."
+    answer: "Three earning streams: 1) Engine A — Watch 15–25 second video ads then actively explore the advertiser's page for 15 seconds inside our AI sandbox. 2) Engine B — Complete curated CPA tasks (app downloads, reviews, registrations) with AI-verified proof submission. 3) Engine C — Join a Guild to earn bonus TX-Points from weekly tasks and a share of your Guild's Weekly Bonus Pool, plus earn direct referral commissions."
   },
   {
     id: "003",
@@ -101,13 +101,13 @@ const allFaqData = [
     id: "005",
     protocol: "ENGINE-C",
     question: "What is Engine C — the Guild Social Hub?",
-    answer: "Engine C is THORX's social gaming hub. It has two spaces: 1) The Public Space (open to all) — browse guild profiles, rankings, and performance boards, then send a recruitment request to join one. 2) The Private Member Dashboard — exclusive to guild members: real-time team chat, weekly task panels with bonus TX-Point rewards, a live vault viewer, and guild roster with contribution stats."
+    answer: "Engine C is THORX's social gaming hub. It has two spaces: 1) The Public Space (open to all) — browse guild profiles, rankings, and performance boards, then apply to join one. 2) The Private Member Dashboard — exclusive to guild members: real-time team chat, weekly task panels with bonus TX-Point rewards, a live Weekly Bonus Pool tracker, and guild roster with contribution stats."
   },
   {
     id: "006",
-    protocol: "GUILD-VAULT",
-    question: "How does the Guild Vault work?",
-    answer: "When you earn TX-Points while a Guild member, 15% is automatically held in your Guild Vault escrow. At the end of each week, if your Guild hits its collective point target, those held points are released with a rank-based multiplier (up to 1.30× at Guild Rank S). If the target is missed, the held points roll over with a partial release. The Vault incentivizes coordinated teamwork."
+    protocol: "WEEKLY-BONUS-POOL",
+    question: "How does the Guild Weekly Bonus Pool work?",
+    answer: "A share of every Engine C task your Guild completes is automatically contributed to your Guild's Weekly Bonus Pool. At the end of each week, if your Guild hits its collective point target, the pool is distributed — 30% to the Captain, 70% split among members proportional to their weekly contribution. If the target is missed, the pool is voided and the week resets. This incentivizes coordinated teamwork."
   },
   {
     id: "007",
@@ -119,19 +119,19 @@ const allFaqData = [
     id: "008",
     protocol: "REFERRAL-SYSTEM",
     question: "How does the Referral Commission work?",
-    answer: "THORX operates a direct (single-level) referral system. Share your referral link — when someone registers and converts their TX-Points, you receive 15% of their platform fee as TX-Points credited to your wallet instantly. It's simple, transparent, and scales with how active your referred users are. There are no multi-level tiers or hidden splits."
+    answer: "THORX operates a direct (single-level) referral system. Share your referral link — when someone you referred withdraws, you receive a share of their withdrawal's platform fee, credited as real PKR to your separate Referral Cash Balance (withdrawable on its own, never mixed with your TX-Points). It's simple, transparent, and scales with how active your referred users are. There are no multi-level tiers or hidden splits."
   },
   {
     id: "009",
     protocol: "RANKING-SYSTEM",
     question: "What are the user ranks and how do they work?",
-    answer: "THORX has five personal ranks: Nawa Aya (E) → Chota Don (D) → Bawa Ji (C) → Haji Sab (B) → Chacha Supreme (A/S). Ranks unlock lower platform fees at conversion, faster payout priority, and higher Guild Vault release multipliers. Guild Ranks (E through S) are separate — they track your Guild's collective weekly performance."
+    answer: "THORX has six personal ranks, driven entirely by your Performance Score (PS): E-Rank → D-Rank → C-Rank → B-Rank → A-Rank → S-Rank. Higher ranks unlock Engine B access (C-Rank+), guild creation (B-Rank+), wider Thorx Card variance bonuses (A-Rank, S-Rank), and instant-approved withdrawals (S-Rank). Guild Ranks (E through S) are separate — they track your Guild's collective weekly performance."
   },
   {
     id: "010",
     protocol: "PAYOUT-METHODS",
     question: "How do I withdraw my earnings?",
-    answer: "Access is always open in the Payout section — no daily task completion required. Enter the Conversion Room, convert the TX-Points you want, then select JazzCash or EasyPaisa and enter your account details. Higher-ranked users (Chacha Supreme, Haji Sab) have their payouts processed first. The minimum conversion threshold is shown in your Wallet section."
+    answer: "Access is always open in the Payout section — no daily task completion required. Enter the Conversion Room, convert the TX-Points you want, then select JazzCash or EasyPaisa and enter your account details. S-Rank users have their withdrawals auto-approved instantly. The minimum conversion threshold is shown in your Wallet section."
   },
   {
     id: "011",

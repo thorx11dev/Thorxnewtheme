@@ -320,7 +320,7 @@ export const dailyTasks = pgTable("daily_tasks", {
   actionUrl: text("action_url"), // URL to visit
   secretCode: text("secret_code"), // Code required to pass verification
   instructions: text("instructions"), // How to do the task
-  targetRank: text("target_rank").default("Nawa Aya"), // minimum rank to see it
+  targetRank: text("target_rank").default("E-Rank"), // minimum rank tier to see it (E-Rank..S-Rank)
   isActive: boolean("is_active").default(true),
   isMandatory: boolean("is_mandatory").default(false), // controls payout access
   // THORX v3 (spec D.5 analogue for daily_tasks): Engine B CPA tasks vs indirect social tasks
@@ -902,7 +902,7 @@ export const insertDailyTaskSchema = createInsertSchema(dailyTasks, {
   instructions: z.string().nullable().optional(),
   actionUrl: z.string().nullable().optional(),
   secretCode: z.string().nullable().optional(),
-  targetRank: z.string().default("Nawa Aya"),
+  targetRank: z.string().default("E-Rank"),
   isMandatory: z.boolean().default(false),
   isActive: z.boolean().default(true),
 }).omit({
