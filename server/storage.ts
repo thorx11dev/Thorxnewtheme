@@ -120,7 +120,7 @@ import { checkAndUpdateRankTier } from "./modules/ps-engine";
 import { awardMemberGPS } from "./modules/gps-engine";
 import { emitFeedEvent } from "./modules/live-feed";
 import { db } from "./db";
-import { eq, desc, and, or, sql, inArray, ilike, gte, lte, lt, ne } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, inArray, ilike, gte, lte, lt, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { encryptCredential, decryptCredential, isEncrypted } from "./utils/credential-crypto";
@@ -292,6 +292,7 @@ export interface IStorage {
   // Withdrawals
   createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal>;
   getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]>;
+  getWithdrawalById(withdrawalId: string): Promise<Withdrawal | undefined>;
   getCheckPendingWithdrawal(userId: string): Promise<Withdrawal | undefined>;
   processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal>;
   rejectWithdrawal(withdrawalId: string, adminId: string, reason: string): Promise<Withdrawal>;
@@ -850,158 +851,174 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
+  // THORX v3 (spec Part E.6) — complete rewrite. Engine-specific PKR split,
+  // Thorx Card randomized display draw, immutable user_transactions ledger
+  // entry (the sole basis for withdrawal math — Appendix A invariants #1/#2),
+  // PS award + streak + rank-tier check, and a live feed event. Replaces the
+  // old points_ledger / guild_vault_ledger split entirely for new earn events.
   async recordEarnEvent(params: {
     userId: string;
-    sourceType: string; // ad_view | cpa_offer | daily_task
-    sourceRefId?: string;
-    totalPkrAmount: string; // the FULL value of this earn event, before any guild vault split
-    earningType: string; // stored on the `earnings` row's `type` column
-    earningDescription: string;
-    earningStatus: "pending" | "completed";
-  }): Promise<{ earning: Earning; pointsLedgerEntry: PointsLedger; breakdown: EarnEventBreakdown }> {
-    const result = await db.transaction(async (tx) => {
-      const conversionRate = await this.getSystemConfigValue<number>("CONVERSION_RATE", DEFAULT_CONVERSION_RATE);
-      const vaultHoldPct = await this.getSystemConfigValue<number>("VAULT_HOLD_PCT", DEFAULT_VAULT_HOLD_PCT);
+    engineType: "Engine_A" | "Engine_B" | "Engine_C" | "Indirect";
+    grossPkr: number; // from network/task config
+    sourceId: string; // ad_view.id or task_record.id
+    sourceType: "ad_view" | "weekly_task" | "daily_task";
+    guildId?: string; // required for Engine_C
+  }): Promise<{ success: boolean; pointsCredited: number; realPkrValue: number; earning?: Earning }> {
+    const [
+      engineAThorxCutPct,
+      engineBThorxCutPct,
+      engineCThorxCutPct,
+      engineCGuildPoolPct,
+      engineCUserCutPct,
+      conversionRate,
+      cardVarianceMin,
+      cardVarianceMax,
+    ] = await Promise.all([
+      this.getSystemConfigValue<number>("ENGINE_A_THORX_CUT_PCT", 40),
+      this.getSystemConfigValue<number>("ENGINE_B_THORX_CUT_PCT", 40),
+      this.getSystemConfigValue<number>("ENGINE_C_THORX_CUT_PCT", 20),
+      this.getSystemConfigValue<number>("ENGINE_C_GUILD_POOL_PCT", 35),
+      this.getSystemConfigValue<number>("ENGINE_C_USER_CUT_PCT", 45),
+      this.getSystemConfigValue<number>("CONVERSION_RATE", DEFAULT_CONVERSION_RATE),
+      this.getSystemConfigValue<number>("CARD_VARIANCE_MIN", 0.80),
+      this.getSystemConfigValue<number>("CARD_VARIANCE_MAX", 1.20),
+    ]);
 
-      const membershipRow = await this.getActiveGuildMembershipTx(tx, params.userId);
-      const inGuild = !!(membershipRow && membershipRow.guild.status === "active");
+    const user = await this.getUserById(params.userId);
+    if (!user) throw new Error("User not found");
 
-      const totalPkr = parseFloat(params.totalPkrAmount);
-      const vaultPkr = inGuild ? Math.round(totalPkr * (vaultHoldPct / 100) * 10000) / 10000 : 0;
-      const walletPkr = Math.round((totalPkr - vaultPkr) * 10000) / 10000;
+    // Step 1: Engine split.
+    let userPkrShare = 0;
+    let thorxProfitPkr = 0;
+    let guildPoolPkr = 0;
 
-      const totalPoints = Math.round(totalPkr * conversionRate);
-      const basePoints = Math.round(walletPkr * conversionRate);
-      const guildBonusPoints = totalPoints - basePoints;
+    if (params.engineType === "Engine_A" || params.engineType === "Engine_B") {
+      const thorxCut = params.engineType === "Engine_A" ? engineAThorxCutPct : engineBThorxCutPct;
+      const userCut = 100 - thorxCut;
+      thorxProfitPkr = (params.grossPkr * thorxCut) / 100;
+      userPkrShare = (params.grossPkr * userCut) / 100;
+    } else if (params.engineType === "Engine_C") {
+      if (!params.guildId) throw new Error("guildId is required for Engine_C earn events");
+      thorxProfitPkr = (params.grossPkr * engineCThorxCutPct) / 100;
+      guildPoolPkr = (params.grossPkr * engineCGuildPoolPct) / 100;
+      userPkrShare = (params.grossPkr * engineCUserCutPct) / 100;
+      await db
+        .update(guilds)
+        .set({
+          weeklyBonusPool: sql`${guilds.weeklyBonusPool} + ${guildPoolPkr}`,
+          currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${Math.round(params.grossPkr * 100)}`,
+        })
+        .where(eq(guilds.id, params.guildId));
+    }
+    // 'Indirect' — no PKR payout, only PS (userPkrShare/thorxProfitPkr stay 0).
 
-      // Same pending/available + totalEarnings bookkeeping createEarning() has always
-      // done, just scoped to the wallet share — the vault share is tracked separately
-      // below and is not part of the user's spendable balance until weekly release.
-      const [earning] = await tx
+    // Step 2: Thorx Card draw (if the user has a PKR share to convert).
+    let cardResult = { pointsCredited: 0, realPkrValue: 0, cardVariance: 1.0, targetPoints: 0 };
+    if (userPkrShare > 0) {
+      cardResult = drawThorxCard({
+        userPkrShare,
+        conversionRate,
+        userRankTier: user.userRankTier,
+        varianceMin: cardVarianceMin,
+        varianceMax: cardVarianceMax,
+      });
+    }
+
+    // Step 3: Persist user_transactions — the immutable source of truth for
+    // withdrawal math (Appendix A #1/#2). real_pkr_value is write-once.
+    await db.insert(userTransactions).values({
+      userId: params.userId,
+      engineType: params.engineType,
+      pointsCredited: cardResult.pointsCredited,
+      realPkrValue: cardResult.realPkrValue.toFixed(4),
+      grossPkr: params.grossPkr.toFixed(4),
+      thorxProfitPkr: thorxProfitPkr.toFixed(4),
+      guildPoolPkr: guildPoolPkr.toFixed(4),
+      conversionRate: Math.round(conversionRate),
+      cardVariance: cardResult.cardVariance.toFixed(4),
+      sourceId: params.sourceId,
+      sourceType: params.sourceType,
+    });
+
+    // Step 4: Update user-facing balances + earnings history.
+    let earning: Earning | undefined;
+    if (cardResult.pointsCredited > 0) {
+      await db
+        .update(users)
+        .set({
+          txPointsBalance: sql`${users.txPointsBalance} + ${cardResult.pointsCredited}`,
+          totalEarnings: sql`${users.totalEarnings} + ${cardResult.realPkrValue.toFixed(2)}`,
+          lastActiveAt: new Date(),
+        })
+        .where(eq(users.id, params.userId));
+
+      [earning] = await db
         .insert(earnings)
         .values({
           userId: params.userId,
-          type: params.earningType,
-          amount: walletPkr.toFixed(2),
-          description: params.earningDescription,
-          status: params.earningStatus,
+          type: params.engineType,
+          amount: cardResult.realPkrValue.toFixed(2),
+          description: `${params.engineType} task completion`,
+          status: "completed",
         })
         .returning();
+    }
 
-      const toPending = params.earningStatus === "pending";
-      const balanceUpdate: Record<string, any> = {
-        totalEarnings: sql`${users.totalEarnings} + ${walletPkr.toFixed(2)}`,
-        txPointsBalance: sql`${users.txPointsBalance} + ${totalPoints}`,
-        updatedAt: new Date(),
-      };
-      if (toPending) {
-        balanceUpdate.pendingBalance = sql`${users.pendingBalance} + ${walletPkr.toFixed(2)}`;
-      } else {
-        balanceUpdate.availableBalance = sql`${users.availableBalance} + ${walletPkr.toFixed(2)}`;
-      }
-      await tx.update(users).set(balanceUpdate).where(eq(users.id, params.userId));
+    // Step 5: Guild member contribution tracking (Engine C only).
+    if (params.engineType === "Engine_C" && params.guildId) {
+      await db
+        .update(guildMembers)
+        .set({ weeklyPointsContributed: sql`${guildMembers.weeklyPointsContributed} + ${cardResult.pointsCredited}` })
+        .where(and(eq(guildMembers.userId, params.userId), eq(guildMembers.guildId, params.guildId)));
+      await awardMemberGPS(params.guildId, cardResult.pointsCredited);
+    }
 
-      const guildId = inGuild ? membershipRow!.guild.id : null;
-      const [pointsLedgerEntry] = await tx
-        .insert(pointsLedger)
-        .values({
-          userId: params.userId,
-          guildId,
-          sourceType: params.sourceType,
-          sourceRefId: params.sourceRefId,
-          pointsDisplayed: totalPoints,
-          lockedPkrValue: totalPkr.toFixed(4),
-          conversionRateUsed: conversionRate.toFixed(4),
-          vaultShareLockedPkr: vaultPkr.toFixed(4),
-          metadata: {
-            basePoints,
-            guildBonusPoints,
-            walletPkr: walletPkr.toFixed(4),
-            vaultPkr: vaultPkr.toFixed(4),
-            guildId,
-          },
-        })
-        .returning();
+    // Step 6: PS award + streak + rank-tier check (PS is the sole rank input — Appendix A #6).
+    if (params.engineType !== "Indirect") {
+      await awardTaskPS(params.userId, params.engineType.replace("Engine_", "") as "A" | "B" | "C");
+    }
+    await processStreak(params.userId);
+    await checkAndUpdateRankTier(params.userId);
 
-      if (inGuild && vaultPkr > 0) {
-        const guild = membershipRow!.guild;
-        const { weekStart, weekEnd } = getUtcWeekBounds(new Date());
-
-        const weeklyTargets = await this.getSystemConfigValue<Record<string, number>>(
-          "WEEKLY_GOAL_TARGETS_BY_RANK",
-          DEFAULT_WEEKLY_GOAL_TARGETS_BY_RANK
-        );
-        const targetPoints = weeklyTargets[guild.guildRank] ?? DEFAULT_WEEKLY_GOAL_TARGETS_BY_RANK.E;
-
-        // Idempotent: unique(guildId, weekStart) means a concurrent earn event for
-        // any member of this guild this week has already created the cycle row.
-        await tx
-          .insert(guildWeeklyCycles)
-          .values({ guildId: guild.id, weekStart, weekEnd, targetPoints })
-          .onConflictDoNothing({ target: [guildWeeklyCycles.guildId, guildWeeklyCycles.weekStart] });
-
-        await tx
-          .insert(guildVaultLedger)
-          .values({
-            guildId: guild.id,
-            userId: params.userId,
-            weekStart,
-            pointsHeld: guildBonusPoints,
-            pkrHeld: vaultPkr.toFixed(4),
-          })
-          .onConflictDoUpdate({
-            target: [guildVaultLedger.guildId, guildVaultLedger.userId, guildVaultLedger.weekStart],
-            set: {
-              pointsHeld: sql`${guildVaultLedger.pointsHeld} + ${guildBonusPoints}`,
-              pkrHeld: sql`${guildVaultLedger.pkrHeld} + ${vaultPkr.toFixed(4)}`,
-              updatedAt: new Date(),
-            },
-          });
-
-        await tx
-          .update(guilds)
-          .set({
-            vaultBalancePkr: sql`${guilds.vaultBalancePkr} + ${vaultPkr.toFixed(4)}`,
-            guildScore: sql`${guilds.guildScore} + ${guildBonusPoints}`,
-            updatedAt: new Date(),
-          })
-          .where(eq(guilds.id, guild.id));
-      }
-
-      const breakdown: EarnEventBreakdown = {
-        basePoints,
-        guildBonusPoints,
-        totalPoints,
-        vaultPkr: vaultPkr.toFixed(4),
-        walletPkr: walletPkr.toFixed(2),
-        guildId,
-      };
-
-      return { earning, pointsLedgerEntry, breakdown };
+    // Step 7: Live feed event.
+    await emitFeedEvent({
+      type: "earn",
+      userId: params.userId,
+      guildId: params.guildId,
+      displayMessage: `User '${user.identity}' – ${params.engineType} | Real: Rs.${cardResult.realPkrValue.toFixed(2)} | Points: ${cardResult.pointsCredited} | Thorx: Rs.${thorxProfitPkr.toFixed(2)}`,
+      data: { engineType: params.engineType, grossPkr: params.grossPkr, cardResult, thorxProfitPkr, guildPoolPkr },
     });
 
-    await this.checkAndUpdateRank(params.userId);
-    return result;
+    return { success: true, pointsCredited: cardResult.pointsCredited, realPkrValue: cardResult.realPkrValue, earning };
   }
 
   // Ad views methods
   async createAdView(insertAdView: InsertAdView): Promise<AdView & { pointsBreakdown?: EarnEventBreakdown }> {
     const [adView] = await db.insert(adViews).values(insertAdView).returning();
 
-    // Create corresponding earning record + points ledger entry (with guild vault split).
-    // If recordEarnEvent throws (e.g. constraint violation, config error), roll back the
+    // Ad views are Engine A (spec Part C.1) — record the v3 ledger-based earn
+    // event. If recordEarnEvent throws (e.g. config error), roll back the
     // adView row so the caller gets a clean error and no orphaned ad_views row exists.
     if (insertAdView.completed && insertAdView.earnedAmount) {
       try {
-        const { breakdown } = await this.recordEarnEvent({
+        const result = await this.recordEarnEvent({
           userId: insertAdView.userId,
+          engineType: "Engine_A",
+          grossPkr: parseFloat(insertAdView.earnedAmount),
+          sourceId: adView.id,
           sourceType: "ad_view",
-          sourceRefId: adView.id,
-          totalPkrAmount: insertAdView.earnedAmount,
-          earningType: "ad_view",
-          earningDescription: `Watched ${insertAdView.adType} ad`,
-          earningStatus: "pending",
         });
+        // Map the new Thorx Card result onto the legacy ScratchCardBreakdown
+        // shape the frontend still expects (Phase 4/5 will swap this modal
+        // for the dedicated ThorxCard component from the spec).
+        const breakdown: EarnEventBreakdown = {
+          basePoints: result.pointsCredited,
+          guildBonusPoints: 0,
+          totalPoints: result.pointsCredited,
+          vaultPkr: "0.00",
+          walletPkr: result.realPkrValue.toFixed(2),
+          guildId: null,
+        };
         return { ...adView, pointsBreakdown: breakdown };
       } catch (err) {
         // Best-effort rollback — suppress secondary errors so the original propagates.
@@ -1708,89 +1725,112 @@ export class DatabaseStorage implements IStorage {
   // that code path was retired (see thorx_master_plan.md and memory topic
   // "referral-simplification"); any pending L2 rows were settled once via a
   // one-time migration at that time.
+  // THORX v3 (spec Part E.7) — FIFO-consumes un-withdrawn user_transactions
+  // rows until pointsCredited covers pointsRequested, and sums their
+  // realPkrValue as the exact PKR base. This is Appendix A invariant #1/#2:
+  // withdrawal math is NEVER recomputed from points × conversion rate.
+  private async calculateWithdrawalBreakdown(
+    userId: string,
+    pointsRequested: number
+  ): Promise<{
+    exactPkr: number;
+    platformFee: number;
+    referralCommission: number;
+    referrerId: string | null;
+    referrerName: string | null;
+    userNetPkr: number;
+    consumedTransactionIds: string[];
+  }> {
+    const rows = await db
+      .select({
+        id: userTransactions.id,
+        pointsCredited: userTransactions.pointsCredited,
+        realPkrValue: userTransactions.realPkrValue,
+      })
+      .from(userTransactions)
+      .where(and(eq(userTransactions.userId, userId), eq(userTransactions.withdrawn, false)))
+      .orderBy(asc(userTransactions.createdAt));
+
+    let pointsAccumulated = 0;
+    let exactPkr = 0;
+    const consumedTransactionIds: string[] = [];
+    for (const row of rows) {
+      if (pointsAccumulated >= pointsRequested) break;
+      pointsAccumulated += row.pointsCredited;
+      exactPkr += parseFloat(row.realPkrValue);
+      consumedTransactionIds.push(row.id);
+    }
+
+    if (pointsAccumulated < pointsRequested) {
+      throw new Error(
+        `Insufficient balance. Available: ${pointsAccumulated} points, requested: ${pointsRequested} points.`
+      );
+    }
+
+    const feeRate = (await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15)) / 100;
+    const platformFee = exactPkr * feeRate;
+
+    const user = await this.getUserById(userId);
+    const referrer = user?.referredBy ? await this.getUserById(user.referredBy) : undefined;
+    let referralCommission = 0;
+    if (referrer) {
+      const refSharePct = (await this.getSystemConfigValue<number>("REFERRAL_FEE_SHARE_PCT", 50)) / 100;
+      referralCommission = platformFee * refSharePct;
+    }
+
+    const userNetPkr = exactPkr - platformFee;
+
+    return {
+      exactPkr,
+      platformFee,
+      referralCommission,
+      referrerId: referrer?.id ?? null,
+      referrerName: referrer?.identity ?? null,
+      userNetPkr,
+      consumedTransactionIds,
+    };
+  }
+
+  // THORX v3 (spec Part E.7) — a withdrawal request is denominated in
+  // TX-Points (insertWithdrawal.amount). The PKR breakdown is computed
+  // up-front (fail fast on insufficient ledger balance / below minimum) but
+  // is NOT persisted as a deduction yet — points are only marked withdrawn
+  // once an admin approves via processWithdrawal, which recomputes the
+  // breakdown fresh against the ledger as of approval time.
   async createWithdrawal(insertWithdrawal: InsertWithdrawal): Promise<Withdrawal> {
-    // 0. Fetch Dynamic Configuration
-    const minPayout = await this.getSystemConfigValue("MIN_PAYOUT", 100);
-    const withdrawalFeeRate = await this.getSystemConfigValue("WITHDRAWAL_FEE_PCT", 15) / 100;
-    const referralFeeSharePct = await this.getSystemConfigValue("REFERRAL_FEE_SHARE_PCT", 50) / 100;
-
-    // Validate minimum withdrawal amount
-    const amount = parseFloat(insertWithdrawal.amount);
-    if (amount < minPayout) {
-      throw new Error(`Minimum payout requirement not met. Threshold: ${minPayout} PKR`);
-    }
-    if (amount <= 0) {
-      throw new Error("Withdrawal amount must be positive");
+    const pointsRequested = parseInt(insertWithdrawal.amount, 10);
+    if (!Number.isFinite(pointsRequested) || pointsRequested <= 0) {
+      throw new Error("Withdrawal amount must be a positive whole number of TX-Points");
     }
 
-    // Start a transaction to ensure integrity
-    return await db.transaction(async (tx) => {
-      // 1. Fetch user state inside transaction for atomic verification
-      const [user] = await tx.select().from(users).where(eq(users.id, insertWithdrawal.userId));
-      if (!user) {
-        throw new Error("User not found in registry.");
-      }
+    const [pending] = await db
+      .select()
+      .from(withdrawals)
+      .where(and(eq(withdrawals.userId, insertWithdrawal.userId), eq(withdrawals.status, "pending")))
+      .limit(1);
+    if (pending) {
+      throw new Error("A pending payout request already exists for this account.");
+    }
 
-      // 2. Atomic Balance Verification
-      const currentBalance = parseFloat(user.availableBalance || "0");
-      if (currentBalance < amount) {
-        throw new Error(`Insufficient balance. Current treasury: ${currentBalance} PKR.`);
-      }
+    const breakdown = await this.calculateWithdrawalBreakdown(insertWithdrawal.userId, pointsRequested);
 
-      // 3. Atomic Pending Check
-      const [pending] = await tx
-        .select()
-        .from(withdrawals)
-        .where(and(eq(withdrawals.userId, insertWithdrawal.userId), eq(withdrawals.status, "pending")))
-        .limit(1);
-      
-      if (pending) {
-        throw new Error("Synchronization Error: A pending payout request already exists for this node.");
-      }
+    const minPayout = await this.getSystemConfigValue<number>("MIN_PAYOUT", 100);
+    if (breakdown.exactPkr < minPayout) {
+      throw new Error(`Minimum payout requirement not met. Threshold: Rs.${minPayout}.`);
+    }
 
-      // 4. Calculate Fee and Net Amount
-      // Net = Total - WithdrawalFee. The referral share is carved OUT of that fee,
-      // not deducted additionally — the user's total deduction is always exactly
-      // withdrawalFeeRate (default 15%), regardless of whether they were referred.
-      const feeAmount = (amount * withdrawalFeeRate).toFixed(2);
-      const l1BonusAmount = user.referredBy ? (parseFloat(feeAmount) * referralFeeSharePct) : 0;
-
-      const netAmount = (amount - parseFloat(feeAmount)).toFixed(2);
-
-      // 5. Create Withdrawal Record
-      const [withdrawal] = await tx.insert(withdrawals).values({
+    const [withdrawal] = await db
+      .insert(withdrawals)
+      .values({
         ...insertWithdrawal,
-        fee: feeAmount,
-        netAmount: netAmount,
-        status: "pending"
-      }).returning();
+        amount: pointsRequested.toString(),
+        fee: breakdown.platformFee.toFixed(2),
+        netAmount: breakdown.userNetPkr.toFixed(2),
+        status: "pending",
+      })
+      .returning();
 
-      // 6. Securely deduct balance inside transaction
-      await tx.update(users).set({
-        availableBalance: sql`${users.availableBalance} - ${insertWithdrawal.amount}`,
-        updatedAt: new Date()
-      }).where(eq(users.id, insertWithdrawal.userId));
-
-      // 7. Determine Commission (single-level referral only — see fee model notes above)
-      if (user.referredBy && l1BonusAmount > 0) {
-        await tx.insert(commissionLogs).values({
-          beneficiaryId: user.referredBy,
-          sourceUserId: user.id,
-          triggerWithdrawalId: withdrawal.id,
-          amount: l1BonusAmount.toFixed(2),
-          rate: (withdrawalFeeRate * referralFeeSharePct).toFixed(4),
-          level: 1,
-          status: "pending",
-          metadata: {
-            withdrawalAmount: insertWithdrawal.amount,
-            calculatedAt: new Date().toISOString(),
-            configUsed: { withdrawalFeeRate, referralFeeSharePct }
-          }
-        });
-      }
-
-      return withdrawal;
-    });
+    return withdrawal;
   }
 
   async getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]> {
@@ -1798,6 +1838,11 @@ export class DatabaseStorage implements IStorage {
       .from(withdrawals)
       .where(eq(withdrawals.userId, userId))
       .orderBy(desc(withdrawals.createdAt));
+  }
+
+  async getWithdrawalById(withdrawalId: string): Promise<Withdrawal | undefined> {
+    const [withdrawal] = await db.select().from(withdrawals).where(eq(withdrawals.id, withdrawalId));
+    return withdrawal;
   }
 
   async getCheckPendingWithdrawal(userId: string): Promise<Withdrawal | undefined> {
@@ -1809,112 +1854,125 @@ export class DatabaseStorage implements IStorage {
     return withdrawal;
   }
 
-  // Process (approve) withdrawal and release commissions
+  // THORX v3 (spec Part E.7) — finalizes a payout against the immutable
+  // ledger: marks the consumed user_transactions rows withdrawn, deducts the
+  // points from the user's TX-Points balance, pays the 1-tier referral
+  // commission (Appendix A #4) into the referrer's separate cash wallet
+  // (Appendix A #5 — never mixed with txPointsBalance), audit-logs the
+  // action (Appendix A #10), and emits a live feed event + notification.
   async processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal> {
-    return await db.transaction(async (tx) => {
-      // 1. Update withdrawal status
-      const [withdrawal] = await tx
+    const withdrawal = await this.getWithdrawalById(withdrawalId);
+    if (!withdrawal) throw new Error("Withdrawal not found");
+    if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending");
+
+    const pointsRequested = parseInt(withdrawal.amount, 10);
+    const breakdown = await this.calculateWithdrawalBreakdown(withdrawal.userId, pointsRequested);
+
+    const updated = await db.transaction(async (tx) => {
+      const [updatedWithdrawal] = await tx
         .update(withdrawals)
         .set({
           status: "completed",
           transactionId: transactionId || null,
+          fee: breakdown.platformFee.toFixed(2),
+          netAmount: breakdown.userNetPkr.toFixed(2),
           processedAt: new Date(),
-          updatedAt: new Date()
-        })
-        .where(eq(withdrawals.id, withdrawalId))
-        .returning();
-
-      if (!withdrawal) {
-        throw new Error("Withdrawal not found");
-      }
-
-      // 2. Find all pending commissions for this withdrawal
-      const pendingCommissions = await tx
-        .select()
-        .from(commissionLogs)
-        .where(and(
-          eq(commissionLogs.triggerWithdrawalId, withdrawalId),
-          eq(commissionLogs.status, "pending")
-        ));
-
-      // 3. Release commissions - update status and credit beneficiaries
-      for (const commission of pendingCommissions) {
-        // Update commission status
-        await tx
-          .update(commissionLogs)
-          .set({
-            status: "paid",
-            updatedAt: new Date()
-          })
-          .where(eq(commissionLogs.id, commission.id));
-
-        // Credit the beneficiary's balance
-        await tx
-          .update(users)
-          .set({
-            totalEarnings: sql`${users.totalEarnings} + ${commission.amount}`,
-            availableBalance: sql`${users.availableBalance} + ${commission.amount}`,
-            updatedAt: new Date()
-          })
-          .where(eq(users.id, commission.beneficiaryId));
-
-        // Check if beneficiary's rank should be updated
-        await this.checkAndUpdateRank(commission.beneficiaryId);
-      }
-
-      return withdrawal;
-    });
-  }
-
-  // Reject withdrawal and void commissions
-  async rejectWithdrawal(withdrawalId: string, adminId: string, reason: string): Promise<Withdrawal> {
-    return await db.transaction(async (tx) => {
-      // 1. Get the withdrawal
-      const [withdrawal] = await tx
-        .select()
-        .from(withdrawals)
-        .where(eq(withdrawals.id, withdrawalId));
-
-      if (!withdrawal) {
-        throw new Error("Withdrawal not found");
-      }
-
-      // 2. Update withdrawal status
-      const [updatedWithdrawal] = await tx
-        .update(withdrawals)
-        .set({
-          status: "rejected",
-          rejectionReason: reason,
-          processedAt: new Date(),
-          updatedAt: new Date()
-        })
-        .where(eq(withdrawals.id, withdrawalId))
-        .returning();
-
-      // 3. Void all pending commissions
-      await tx
-        .update(commissionLogs)
-        .set({
-          status: "voided",
           updatedAt: new Date(),
-          metadata: sql`jsonb_set(metadata, '{rejectionReason}', ${JSON.stringify(reason)}::jsonb)`
         })
-        .where(and(
-          eq(commissionLogs.triggerWithdrawalId, withdrawalId),
-          eq(commissionLogs.status, "pending")
-        ));
+        .where(eq(withdrawals.id, withdrawalId))
+        .returning();
 
-      // 4. Refund the withdrawal amount to user's available balance
       await tx
         .update(users)
         .set({
-          availableBalance: sql`${users.availableBalance} + ${withdrawal.amount}`,
-          updatedAt: new Date()
+          txPointsBalance: sql`${users.txPointsBalance} - ${pointsRequested}`,
+          totalWithdrawn: sql`${users.totalWithdrawn} + ${breakdown.userNetPkr.toFixed(2)}`,
+          updatedAt: new Date(),
         })
         .where(eq(users.id, withdrawal.userId));
 
+      if (breakdown.consumedTransactionIds.length > 0) {
+        await tx
+          .update(userTransactions)
+          .set({ withdrawn: true, withdrawalId })
+          .where(inArray(userTransactions.id, breakdown.consumedTransactionIds));
+      }
+
+      // 1-tier referral commission only (Appendix A #4) — paid from the
+      // platform fee into the referrer's balanceCashPkr, never txPointsBalance.
+      if (breakdown.referrerId && breakdown.referralCommission > 0) {
+        const feeRateUsed = (await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15)) / 100;
+        const refShareRateUsed = (await this.getSystemConfigValue<number>("REFERRAL_FEE_SHARE_PCT", 50)) / 100;
+
+        await tx
+          .update(users)
+          .set({
+            balanceCashPkr: sql`${users.balanceCashPkr} + ${breakdown.referralCommission.toFixed(2)}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, breakdown.referrerId));
+
+        await tx.insert(referralCommissions).values({
+          referrerId: breakdown.referrerId,
+          inviteeId: withdrawal.userId,
+          withdrawalId,
+          commissionAmountPkr: breakdown.referralCommission.toFixed(2),
+          inviteeNetPkr: breakdown.userNetPkr.toFixed(2),
+          platformFeePkr: breakdown.platformFee.toFixed(2),
+          feeRateUsed: feeRateUsed.toFixed(4),
+          refShareRateUsed: refShareRateUsed.toFixed(4),
+        });
+        // Note: commission_logs is frozen/deprecated (Appendix A #4) — do not write to it.
+      }
+
+      await tx.insert(auditLogs).values({
+        adminId,
+        action: "WITHDRAWAL_APPROVED",
+        targetType: "withdrawal",
+        targetId: withdrawalId,
+        details: { ...breakdown, reason: `Approved payout of Rs.${breakdown.userNetPkr.toFixed(2)}` } as any,
+      });
+
       return updatedWithdrawal;
     });
+
+    const user = await this.getUserById(withdrawal.userId);
+    await emitFeedEvent({
+      type: "withdrawal",
+      userId: withdrawal.userId,
+      displayMessage: `Payout approved: '${user?.identity ?? withdrawal.userId}' → Rs.${breakdown.userNetPkr.toFixed(2)} | Fee: Rs.${breakdown.platformFee.toFixed(2)}${breakdown.referralCommission > 0 ? ` | Ref: Rs.${breakdown.referralCommission.toFixed(2)}` : ""}`,
+      data: breakdown,
+    });
+
+    await this.createNotification({
+      userId: withdrawal.userId,
+      title: "Payout Processed",
+      message: `Rs.${breakdown.userNetPkr.toFixed(2)} sent to your account.${transactionId ? ` Transaction: ${transactionId}` : ""}`,
+      type: "system",
+    });
+
+    return updated;
+  }
+
+  // Reject withdrawal — no balance refund needed since createWithdrawal
+  // never deducts points/PKR up front under the v3 ledger model.
+  async rejectWithdrawal(withdrawalId: string, adminId: string, reason: string): Promise<Withdrawal> {
+    const [updatedWithdrawal] = await db
+      .update(withdrawals)
+      .set({
+        status: "rejected",
+        rejectionReason: reason,
+        processedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(withdrawals.id, withdrawalId))
+      .returning();
+
+    if (!updatedWithdrawal) {
+      throw new Error("Withdrawal not found");
+    }
+
+    return updatedWithdrawal;
   }
 
   // ── Guild Weekly Vault Resolution ────────────────────────────────────────────
@@ -4278,6 +4336,7 @@ export class MemStorage {
   async getCommissionLogsByBeneficiary(userId: string): Promise<CommissionLog[]> { throw new Error("Not implemented in MemStorage"); }
   async createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
   async getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]> { throw new Error("Not implemented in MemStorage"); }
+  async getWithdrawalById(withdrawalId: string): Promise<Withdrawal | undefined> { throw new Error("Not implemented in MemStorage"); }
   async getCheckPendingWithdrawal(userId: string): Promise<Withdrawal | undefined> { throw new Error("Not implemented in MemStorage"); }
   async processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
   async rejectWithdrawal(withdrawalId: string, adminId: string, reason: string): Promise<Withdrawal> { throw new Error("Not implemented in MemStorage"); }
