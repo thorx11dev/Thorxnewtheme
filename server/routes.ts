@@ -18,6 +18,7 @@ import { authRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
+import { runWeeklyGuildReset } from "./modules/guild-reset";
 
 /** Authenticated user id from session cookie. */
 export function getThorxPrincipalId(req: Request): string | undefined {
@@ -993,20 +994,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/guilds/:id/vault", requireSessionAuth, async (req, res) => {
-    try {
-      const userId = getThorxPrincipalId(req) as string;
-      const membership = await storage.getUserGuildMembership(userId);
-      if (!membership || membership.guildId !== req.params.id || membership.status !== "active") {
-        return res.status(403).json({ message: "You must be an active member of this guild to view its vault." });
-      }
-      const status = await storage.getGuildVaultStatus(req.params.id);
-      res.json(status);
-    } catch (error) {
-      console.error("Get guild vault error:", error);
-      res.status(500).json({ message: "Failed to fetch guild vault" });
-    }
-  });
 
   // THORX v3 (spec K.3 Phase 6): legacy join/approve/reject routes retired —
   // superseded by POST /api/guilds/:id/apply + PATCH /api/guilds/:id/applications/:applicationId.
@@ -1134,11 +1121,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const msg = error instanceof Error ? error.message : "Failed to complete task";
       res.status(400).json({ message: msg });
     }
-  });
-
-  // ── Engine C: Captain Rally — retired in THORX v3 (Appendix B) ───────────────
-  app.post("/api/guilds/:id/rally", requireSessionAuth, async (req, res) => {
-    res.status(410).json({ message: "The Captain's Rally feature has been retired in THORX v3.", error: "FEATURE_REMOVED" });
   });
 
   // ── Engine C: Guild Settings (Captain only) ────────────────────────────────────
@@ -1353,7 +1335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/guild-cycles/run-resolution", requireTeamRole, async (req, res) => {
     try {
-      const result = await storage.runGuildWeeklyResolution();
+      const result = await runWeeklyGuildReset();
       res.json(result);
     } catch (error) {
       console.error("Admin run guild resolution error:", error);
@@ -3283,7 +3265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedKeys = [
         "AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT",
         "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT",
-        "CONVERSION_RATE", "VAULT_HOLD_PCT", "WEEKLY_GOAL_TARGETS_BY_RANK", "VAULT_RELEASE_MULTIPLIER_BY_RANK",
+        "CONVERSION_RATE",
       ];
       
       if (!allowedKeys.includes(key)) {
@@ -3319,7 +3301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedKeys = [
         "AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT",
         "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT",
-        "CONVERSION_RATE", "VAULT_HOLD_PCT", "WEEKLY_GOAL_TARGETS_BY_RANK", "VAULT_RELEASE_MULTIPLIER_BY_RANK",
+        "CONVERSION_RATE",
       ];
 
       if (!allowedKeys.includes(key)) {

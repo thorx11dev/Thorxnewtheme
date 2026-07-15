@@ -95,8 +95,6 @@ import {
   type GuildWeeklyCycle,
   guildWeeklySnapshots,
   type GuildWeeklySnapshot,
-  guildVaultLedger,
-  type GuildVaultLedger,
   pointsLedger,
   type PointsLedger,
   type InsertPointsLedger,
@@ -132,17 +130,10 @@ import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { encryptCredential, decryptCredential, isEncrypted } from "./utils/credential-crypto";
 
-// ── Guild Vault & Points Ledger config defaults ──────────────────────────────
+// ── Points Ledger config defaults ────────────────────────────────────────────
 // Real values are read via getSystemConfigValue() from system_config at runtime
 // (team/admin editable); these are only the fallback if a key was never set.
 const DEFAULT_CONVERSION_RATE = 100; // 100 points == 1.00 PKR
-const DEFAULT_VAULT_HOLD_PCT = 15; // 15% of every earn event is held in the guild vault
-const DEFAULT_WEEKLY_GOAL_TARGETS_BY_RANK: Record<string, number> = {
-  E: 5000, D: 10000, C: 20000, B: 35000, A: 55000, S: 80000,
-};
-const DEFAULT_VAULT_RELEASE_MULTIPLIER_BY_RANK: Record<string, number> = {
-  E: 1.0, D: 1.05, C: 1.10, B: 1.15, A: 1.20, S: 1.30,
-};
 
 // Fixed UTC week boundary: Monday 00:00:00 UTC through Sunday 23:59:59.999 UTC.
 // Not user-configurable in v1 (see design notes in shared/schema.ts).
@@ -530,18 +521,7 @@ export class DatabaseStorage implements IStorage {
       { key: "MIN_PAYOUT", value: 100, description: "Minimum PKR required for withdrawal" },
       { key: "WITHDRAWAL_FEE_PCT", value: 15, description: "Total percentage fee deducted from every payout" },
       { key: "REFERRAL_FEE_SHARE_PCT", value: 50, description: "Share of the withdrawal fee (above) carved out to the withdrawing user's direct referrer; the rest stays with the platform" },
-      { key: "CONVERSION_RATE", value: 100, description: "Points shown per 1.00 PKR earned (Guild Vault & Points Ledger)" },
-      { key: "VAULT_HOLD_PCT", value: 15, description: "Percentage of every earn event held in a member's Guild Vault, released weekly" },
-      {
-        key: "WEEKLY_GOAL_TARGETS_BY_RANK",
-        value: { E: 5000, D: 10000, C: 20000, B: 35000, A: 55000, S: 80000 },
-        description: "Weekly points target a guild must hit at each Guild Rank to earn the release multiplier"
-      },
-      {
-        key: "VAULT_RELEASE_MULTIPLIER_BY_RANK",
-        value: { E: 1.0, D: 1.05, C: 1.10, B: 1.15, A: 1.20, S: 1.30 },
-        description: "PKR multiplier applied to a guild's held vault when its weekly points goal is met, scaled by Guild Rank"
-      },
+      { key: "CONVERSION_RATE", value: 100, description: "Points shown per 1.00 PKR earned (Points Ledger)" },
       { 
         key: "AD_NETWORKS", 
         value: [
@@ -2035,171 +2015,6 @@ export class DatabaseStorage implements IStorage {
     return updatedWithdrawal;
   }
 
-  // ── Guild Weekly Vault Resolution ────────────────────────────────────────────
-  // Design decisions made here (agent's call, documented per task instructions,
-  // since the master plan did not specify exact resolution mechanics):
-  //  - Held vault PKR is NEVER destructively forfeited by this automated job.
-  //    The user's principal is always released back to them; only the BONUS
-  //    multiplier is at stake. This is deliberately conservative — an automated
-  //    job should never be the one to delete real money from a user's balance.
-  //    guild_vault_ledger.status only ever transitions held -> released here;
-  //    'forfeited' is reserved for a possible future admin-only action (e.g.
-  //    disbanding a fraud guild) and is never set automatically.
-  //  - Goal met -> release principal x VAULT_RELEASE_MULTIPLIER_BY_RANK[guildRank].
-  //    Goal missed -> release principal x 1.0 (no bonus) AND add one guild strike.
-  //  - 3 uncleared strikes (clearedAt IS NULL) freezes the guild. A frozen guild's
-  //    members stop accruing new vault holds (recordEarnEvent only splits for
-  //    status: 'active' guilds) until an admin unfreezes/clears strikes.
-  //  - "Actual points" for a week = SUM(pointsHeld) across every member's vault
-  //    bucket for that (guild, weekStart) — i.e. the guild's collective bonus
-  //    points earned that week, compared against the snapshot target.
-  async getResolvableGuildWeeklyCycles(asOf: Date = new Date()): Promise<GuildWeeklyCycle[]> {
-    return await db
-      .select()
-      .from(guildWeeklyCycles)
-      .where(and(eq(guildWeeklyCycles.resolved, false), lt(guildWeeklyCycles.weekEnd, asOf)));
-  }
-
-  async resolveGuildWeeklyCycle(cycleId: string): Promise<{
-    cycle: GuildWeeklyCycle;
-    goalMet: boolean;
-    multiplierApplied: number;
-    membersReleased: number;
-    totalReleasedPkr: string;
-    guildFrozen: boolean;
-  }> {
-    return await db.transaction(async (tx) => {
-      const [cycle] = await tx.select().from(guildWeeklyCycles).where(eq(guildWeeklyCycles.id, cycleId));
-      if (!cycle) throw new Error("Guild weekly cycle not found");
-      if (cycle.resolved) {
-        throw new Error("Guild weekly cycle already resolved");
-      }
-
-      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, cycle.guildId));
-      if (!guild) throw new Error("Guild not found for weekly cycle");
-
-      const buckets = await tx
-        .select()
-        .from(guildVaultLedger)
-        .where(and(
-          eq(guildVaultLedger.guildId, cycle.guildId),
-          eq(guildVaultLedger.weekStart, cycle.weekStart),
-          eq(guildVaultLedger.status, "held")
-        ));
-
-      const actualPoints = buckets.reduce((sum, b) => sum + b.pointsHeld, 0);
-      const goalMet = actualPoints >= cycle.targetPoints;
-
-      const multiplierTable = await this.getSystemConfigValue<Record<string, number>>(
-        "VAULT_RELEASE_MULTIPLIER_BY_RANK",
-        DEFAULT_VAULT_RELEASE_MULTIPLIER_BY_RANK
-      );
-      const multiplier = goalMet ? (multiplierTable[guild.guildRank] ?? 1.0) : 1.0;
-      const conversionRate = await this.getSystemConfigValue<number>("CONVERSION_RATE", DEFAULT_CONVERSION_RATE);
-
-      let totalReleasedPkr = 0;
-      for (const bucket of buckets) {
-        const heldPkr = parseFloat(bucket.pkrHeld);
-        const releasedPkr = Math.round(heldPkr * multiplier * 10000) / 10000;
-        const bonusPkr = Math.round((releasedPkr - heldPkr) * 10000) / 10000;
-        totalReleasedPkr += releasedPkr;
-
-        await tx.update(guildVaultLedger).set({
-          status: "released",
-          releasedMultiplier: multiplier.toFixed(2),
-          releasedPkrValue: releasedPkr.toFixed(4),
-          releasedAt: new Date(),
-          updatedAt: new Date(),
-        }).where(eq(guildVaultLedger.id, bucket.id));
-
-        await tx.update(users).set({
-          availableBalance: sql`${users.availableBalance} + ${releasedPkr.toFixed(2)}`,
-          totalEarnings: sql`${users.totalEarnings} + ${releasedPkr.toFixed(2)}`,
-          updatedAt: new Date(),
-        }).where(eq(users.id, bucket.userId));
-
-        await tx.insert(pointsLedger).values({
-          userId: bucket.userId,
-          guildId: cycle.guildId,
-          sourceType: "guild_release",
-          sourceRefId: cycle.id,
-          pointsDisplayed: Math.max(0, Math.round(bonusPkr * conversionRate)),
-          lockedPkrValue: releasedPkr.toFixed(4),
-          conversionRateUsed: conversionRate.toFixed(4),
-          vaultShareLockedPkr: "0.0000",
-          weekStart: cycle.weekStart,
-          metadata: {
-            originalPkrHeld: heldPkr.toFixed(4),
-            multiplierApplied: multiplier,
-            goalMet,
-            actualPoints,
-            targetPoints: cycle.targetPoints,
-            guildId: cycle.guildId,
-            cycleId: cycle.id,
-          },
-        });
-      }
-
-      await tx.update(guilds).set({
-        vaultBalancePkr: sql`GREATEST(${guilds.vaultBalancePkr} - ${totalReleasedPkr.toFixed(4)}, 0)`,
-        updatedAt: new Date(),
-      }).where(eq(guilds.id, cycle.guildId));
-
-      await tx.update(guildWeeklyCycles).set({
-        actualPoints,
-        goalMet,
-        multiplierApplied: multiplier.toFixed(2),
-        resolved: true,
-        resolvedAt: new Date(),
-      }).where(eq(guildWeeklyCycles.id, cycle.id));
-
-      let guildFrozen = false;
-      if (!goalMet) {
-        await tx.insert(guildStrikes).values({
-          guildId: cycle.guildId,
-          reason: `Weekly goal missed: ${actualPoints}/${cycle.targetPoints} points (week of ${cycle.weekStart.toISOString().slice(0, 10)})`,
-          source: "system_goal_missed",
-        });
-
-        const [{ count: activeStrikes }] = await tx
-          .select({ count: sql<number>`count(*)` })
-          .from(guildStrikes)
-          .where(and(eq(guildStrikes.guildId, cycle.guildId), sql`${guildStrikes.clearedAt} IS NULL`));
-
-        const newStrikeCount = Number(activeStrikes) || 0;
-        await tx.update(guilds).set({ strikes: newStrikeCount, updatedAt: new Date() }).where(eq(guilds.id, cycle.guildId));
-
-        if (newStrikeCount >= 3 && guild.status === "active") {
-          await tx.update(guilds).set({ status: "frozen", updatedAt: new Date() }).where(eq(guilds.id, cycle.guildId));
-          guildFrozen = true;
-        }
-      }
-
-      return {
-        cycle: { ...cycle, actualPoints, goalMet, multiplierApplied: multiplier.toFixed(2), resolved: true, resolvedAt: new Date() },
-        goalMet,
-        multiplierApplied: multiplier,
-        membersReleased: buckets.length,
-        totalReleasedPkr: totalReleasedPkr.toFixed(4),
-        guildFrozen,
-      };
-    });
-  }
-
-  async runGuildWeeklyResolution(): Promise<{ resolvedCycles: number; frozenGuilds: number }> {
-    const resolvable = await this.getResolvableGuildWeeklyCycles();
-    let frozenGuilds = 0;
-    for (const cycle of resolvable) {
-      try {
-        const result = await this.resolveGuildWeeklyCycle(cycle.id);
-        if (result.guildFrozen) frozenGuilds++;
-      } catch (error) {
-        console.error(`[GuildVault] Failed to resolve weekly cycle ${cycle.id}:`, error);
-      }
-    }
-    return { resolvedCycles: resolvable.length, frozenGuilds };
-  }
-
   // ── Guilds: CRUD, join/approve flow, vault & ledger reads ────────────────────
   // Join flow is request-then-captain-approval (not instant) per master plan.
   async createGuild(params: { name: string; description?: string; captainId: string }): Promise<Guild> {
@@ -2387,45 +2202,6 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       }).where(eq(guilds.id, guildId));
     });
-  }
-
-  async getGuildVaultStatus(guildId: string): Promise<{
-    guild: Guild;
-    currentCycle: GuildWeeklyCycle | null;
-    memberBuckets: Array<GuildVaultLedger & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'avatar'> }>;
-  }> {
-    const [guild] = await db.select().from(guilds).where(eq(guilds.id, guildId));
-    if (!guild) throw new Error("Guild not found");
-
-    const { weekStart } = getUtcWeekBounds(new Date());
-    const [currentCycle] = await db
-      .select()
-      .from(guildWeeklyCycles)
-      .where(and(eq(guildWeeklyCycles.guildId, guildId), eq(guildWeeklyCycles.weekStart, weekStart)))
-      .limit(1);
-
-    const memberBuckets = await db
-      .select({
-        id: guildVaultLedger.id,
-        guildId: guildVaultLedger.guildId,
-        userId: guildVaultLedger.userId,
-        weekStart: guildVaultLedger.weekStart,
-        pointsHeld: guildVaultLedger.pointsHeld,
-        pkrHeld: guildVaultLedger.pkrHeld,
-        status: guildVaultLedger.status,
-        releasedMultiplier: guildVaultLedger.releasedMultiplier,
-        releasedPkrValue: guildVaultLedger.releasedPkrValue,
-        releasedAt: guildVaultLedger.releasedAt,
-        createdAt: guildVaultLedger.createdAt,
-        updatedAt: guildVaultLedger.updatedAt,
-        user: { id: users.id, firstName: users.firstName, lastName: users.lastName, avatar: users.avatar },
-      })
-      .from(guildVaultLedger)
-      .innerJoin(users, eq(users.id, guildVaultLedger.userId))
-      .where(and(eq(guildVaultLedger.guildId, guildId), eq(guildVaultLedger.weekStart, weekStart)))
-      .orderBy(desc(guildVaultLedger.pointsHeld));
-
-    return { guild, currentCycle: currentCycle ?? null, memberBuckets };
   }
 
   async getPointsLedgerForUser(userId: string, limit = 50, offset = 0): Promise<{ entries: PointsLedger[]; total: number }> {
@@ -4280,18 +4056,6 @@ export class DatabaseStorage implements IStorage {
       .set({ txPointsBalance: sql`${users.txPointsBalance} + ${task.pointReward}`, updatedAt: new Date() })
       .where(eq(users.id, userId));
     return record;
-  }
-
-  // ── Engine C: Captain Rally ──────────────────────────────────────────────────
-
-  // NOTE: THORX v3 spec (Appendix B) removes the guild rally system entirely
-  // (guilds.last_rally_at was dropped in the Phase 1 migration). This function
-  // is intentionally disabled rather than deleted outright — full route/UI
-  // removal happens in Phase 6 cleanup. Left in place so the endpoint below
-  // fails loudly and clearly instead of throwing a raw "column does not
-  // exist" Postgres error.
-  async triggerCaptainRally(_guildId: string, _captainId: string): Promise<any> {
-    throw new Error("The Captain's Rally feature has been retired in THORX v3.");
   }
 
   // ── Engine C: Guild Settings (Captain only) ──────────────────────────────────

@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Vault, Search, ShieldAlert, ShieldCheck, Snowflake, Play, RefreshCw, TrendingUp, Target, AlertTriangle, Crown, UserCog, Users2 } from "lucide-react";
+import { Search, ShieldAlert, ShieldCheck, Snowflake, Play, RefreshCw, TrendingUp, Target, AlertTriangle, Crown, UserCog, Users2 } from "lucide-react";
 import { RankBadge } from "@/components/RankBadge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -21,7 +21,7 @@ interface AdminGuild {
   strikes: number;
   status: string;
   memberCount: number;
-  vaultBalancePkr: string;
+  weeklyBonusPool?: string;
   createdAt: string;
 }
 
@@ -163,7 +163,7 @@ export function GuildManager() {
   const runResolutionMutation = useMutation({
     mutationFn: async () => (await apiRequest("POST", "/api/admin/guild-cycles/run-resolution", {})).json(),
     onSuccess: (data: any) => {
-      toast({ title: "Weekly resolution run", description: `${data?.resolved ?? 0} cycle(s) resolved.` });
+      toast({ title: "Weekly resolution run", description: `${data?.distributed ?? 0} distributed, ${data?.voided ?? 0} voided, ${data?.skipped ?? 0} already resolved.` });
       invalidate();
     },
     onError: (err: any) => toast({ title: "Failed to run resolution", description: err?.message, variant: "destructive" }),
@@ -173,8 +173,8 @@ export function GuildManager() {
     <div className="space-y-6 pb-24 w-full animate-in slide-in-from-bottom-2 duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter uppercase text-[#111]">Guild Vault</h2>
-          <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Moderate guilds, strikes, and vault cycles</p>
+          <h2 className="text-4xl font-black tracking-tighter uppercase text-[#111]">Guild Manager</h2>
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Moderate guilds, strikes, and weekly bonus cycles</p>
         </div>
         <Button
           onClick={() => runResolutionMutation.mutate()}
@@ -292,7 +292,7 @@ export function GuildManager() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white border-[1.5px] border-[#111]/20 flex items-center justify-center rounded-full">
-                    <Vault className="w-5 h-5 text-zinc-500" />
+                    <Users2 className="w-5 h-5 text-zinc-500" />
                   </div>
                   <div>
                     <div className="font-black text-lg text-[#111] flex items-center gap-2">
@@ -302,7 +302,7 @@ export function GuildManager() {
                       {g.status === "disbanded" && <span className="text-[9px] bg-zinc-400 text-white px-1.5 py-0.5 rounded-sm">DISBANDED</span>}
                     </div>
                     <div className="text-[11px] text-zinc-400 font-bold">
-                      {g.memberCount} members · {g.guildScore} pts · Vault: Rs {parseFloat(g.vaultBalancePkr).toFixed(2)} · {g.strikes} strike(s)
+                      {g.memberCount} members · {g.guildScore} pts · Rs {parseFloat(g.weeklyBonusPool ?? "0").toFixed(2)} pool · {g.strikes} strike(s)
                     </div>
                   </div>
                 </div>

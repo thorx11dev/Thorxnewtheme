@@ -986,12 +986,12 @@ export type ErrorEvent = typeof errorEvents.$inferSelect;
 //    and `conversionRateUsed` must NEVER be mutated after insert — that is the
 //    entire point of the "bulletproof" guarantee (admin rate changes must not
 //    retroactively alter value already earned). Corrections are new rows.
-//  - The 15% guild-vault share of an earn event is recorded on the SAME
+//  - The legacy 15% guild-vault share of an earn event was recorded on the SAME
 //    points_ledger row (via vaultShareLockedPkr + metadata breakdown) rather
-//    than a second row, since it's one earn event / one Scratch Card reveal.
-//  - `guild_vault_ledger` is the per-guild-per-member-per-week accrual bucket
-//    used by the weekly resolution job; it is separate from points_ledger and
-//    IS mutated (status/released fields) exactly once, by the resolution job.
+//    than a second row, since it was one earn event / one Scratch Card reveal.
+//    The v3 rebuild replaced this entire vault mechanism (including the
+//    per-guild-per-member-per-week `guild_vault_ledger` table) with the
+//    Guild Weekly Bonus Pool system — see server/modules/guild-reset.ts.
 //  - Weekly boundaries are fixed UTC weeks: Monday 00:00:00 UTC through
 //    Sunday 23:59:59 UTC. This is intentionally not configurable in v1.
 
@@ -1007,7 +1007,6 @@ export const guilds = pgTable("guilds", {
   status: text("status").notNull().default("active"), // active | frozen | disbanded
   isPublic: boolean("is_public").notNull().default(true), // discoverable in guild search
   memberCount: integer("member_count").notNull().default(1), // denormalized, kept in sync in-transaction
-  vaultBalancePkr: decimal("vault_balance_pkr", { precision: 12, scale: 4 }).notNull().default("0.0000"), // denormalized sum of currently-held vault PKR
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   // Engine C — Captain controls (Blueprint v2026)
@@ -1137,44 +1136,6 @@ export const insertGuildWeeklyCycleSchema = createInsertSchema(guildWeeklyCycles
 export type InsertGuildWeeklyCycle = z.infer<typeof insertGuildWeeklyCycleSchema>;
 export type GuildWeeklyCycle = typeof guildWeeklyCycles.$inferSelect;
 
-// Per-guild-per-member-per-week vault accrual bucket. One row per (guild, user,
-// week), upserted (incremented) on every qualifying earn event, then mutated
-// exactly once by the weekly resolution job when released or forfeited-to-flat.
-export const guildVaultLedger = pgTable("guild_vault_ledger", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  weekStart: timestamp("week_start").notNull(),
-  pointsHeld: integer("points_held").notNull().default(0),
-  pkrHeld: decimal("pkr_held", { precision: 12, scale: 4 }).notNull().default("0.0000"),
-  status: text("status").notNull().default("held"), // held | released | forfeited
-  releasedMultiplier: decimal("released_multiplier", { precision: 4, scale: 2 }),
-  releasedPkrValue: decimal("released_pkr_value", { precision: 12, scale: 4 }),
-  releasedAt: timestamp("released_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("guild_vault_ledger_guild_id_idx").on(table.guildId),
-  index("guild_vault_ledger_user_id_idx").on(table.userId),
-  index("guild_vault_ledger_status_idx").on(table.status),
-  index("guild_vault_ledger_week_start_idx").on(table.weekStart),
-  // Unique (guildId, userId, weekStart) is the ON CONFLICT target in recordEarnEvent's upsert.
-  // Must match the constraint created in the DB migration.
-  unique("guild_vault_ledger_bucket_unique").on(table.guildId, table.userId, table.weekStart),
-]);
-
-export const insertGuildVaultLedgerSchema = createInsertSchema(guildVaultLedger).omit({
-  id: true,
-  status: true,
-  releasedMultiplier: true,
-  releasedPkrValue: true,
-  releasedAt: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertGuildVaultLedger = z.infer<typeof insertGuildVaultLedgerSchema>;
-export type GuildVaultLedger = typeof guildVaultLedger.$inferSelect;
-
 // The bulletproof points/PKR valuation ledger — append-only, see design notes above.
 export const pointsLedger = pgTable("points_ledger", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1214,7 +1175,6 @@ export const guildsRelations = relations(guilds, ({ one, many }) => ({
   members: many(guildMembers),
   strikeLog: many(guildStrikes),
   weeklyCycles: many(guildWeeklyCycles),
-  vaultLedger: many(guildVaultLedger),
   pointsLedgerEntries: many(pointsLedger),
 }));
 
@@ -1236,22 +1196,10 @@ export const guildStrikesRelations = relations(guildStrikes, ({ one }) => ({
   }),
 }));
 
-export const guildWeeklyCyclesRelations = relations(guildWeeklyCycles, ({ one, many }) => ({
+export const guildWeeklyCyclesRelations = relations(guildWeeklyCycles, ({ one }) => ({
   guild: one(guilds, {
     fields: [guildWeeklyCycles.guildId],
     references: [guilds.id],
-  }),
-  vaultBuckets: many(guildVaultLedger),
-}));
-
-export const guildVaultLedgerRelations = relations(guildVaultLedger, ({ one }) => ({
-  guild: one(guilds, {
-    fields: [guildVaultLedger.guildId],
-    references: [guilds.id],
-  }),
-  user: one(users, {
-    fields: [guildVaultLedger.userId],
-    references: [users.id],
   }),
 }));
 
