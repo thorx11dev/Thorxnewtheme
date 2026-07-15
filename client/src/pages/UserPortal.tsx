@@ -2753,6 +2753,7 @@ export default function UserPortal() {
                           whileHover={{ scale: 1.05, backgroundColor: 'rgba(var(--destructive-rgb), 0.1)' }}
                           whileTap={{ scale: 0.95 }}
                           onClick={handleBackspace}
+                          aria-label="Backspace"
                           className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-destructive/10 border-2 border-destructive text-destructive transition-all duration-200 flex items-center justify-center"
                         >
                           ⌫

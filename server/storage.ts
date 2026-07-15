@@ -126,7 +126,7 @@ import { checkAndUpdateRankTier } from "./modules/ps-engine";
 import { awardMemberGPS, awardMVPGPS, checkAndUpdateGuildRankTier } from "./modules/gps-engine";
 import { emitFeedEvent } from "./modules/live-feed";
 import { db } from "./db";
-import { eq, desc, asc, and, or, sql, inArray, ilike, gte, lte, lt, ne } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, inArray, ilike, gte, lte, lt, ne, isNotNull } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { encryptCredential, decryptCredential, isEncrypted } from "./utils/credential-crypto";
@@ -2922,29 +2922,46 @@ export class DatabaseStorage implements IStorage {
     // Clear existing cache for current period
     await db.delete(leaderboardCache);
 
-    // Fetch all qualified users (real members only — team/admin/founder excluded)
-    const allQualifiedUsers = await db.select({
-      id: users.id,
-      totalEarnings: users.totalEarnings,
-      isVerified: users.isVerified,
-      createdAt: users.createdAt,
-      lastLoginDate: users.lastLoginDate,
-      userRankTier: users.userRankTier,
-      guildRole: users.guildRole,
-      referralCount: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id AND u2.role = 'user' AND u2.is_active = true), 0) AS INTEGER)`,
-      level2Count: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 JOIN users u3 ON u3.referred_by = u2.id WHERE u2.referred_by = users.id AND u3.role = 'user' AND u3.is_active = true), 0) AS INTEGER)`
-    })
-    .from(users)
-    .where(and(eq(users.isActive, true), eq(users.role, "user")));
+    // Fetch qualified users + L1 referral counts in parallel.
+    // Previous version used two per-row correlated subqueries (O(2N) DB round-trips);
+    // replaced with a single GROUP BY aggregate run in parallel with the main query.
+    // Note: level2Count is hardcoded 0 below per spec H.5 (L2 writes frozen) — so no
+    // L2 aggregate is needed here.
+    const [allQualifiedUsers, l1Rows] = await Promise.all([
+      db.select({
+        id: users.id,
+        totalEarnings: users.totalEarnings,
+        isVerified: users.isVerified,
+        createdAt: users.createdAt,
+        lastLoginDate: users.lastLoginDate,
+        userRankTier: users.userRankTier,
+        guildRole: users.guildRole,
+      })
+      .from(users)
+      .where(and(eq(users.isActive, true), eq(users.role, "user"))),
+
+      // One aggregate query for all L1 counts (replaces per-row correlated subquery)
+      db.select({
+        referrerId: users.referredBy,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(users)
+      .where(and(isNotNull(users.referredBy), eq(users.role, "user"), eq(users.isActive, true)))
+      .groupBy(users.referredBy),
+    ]);
 
     if (!allQualifiedUsers.length) return;
+
+    const l1Map = new Map<string, number>(
+      l1Rows.map(r => [r.referrerId as string, r.count])
+    );
 
     // Pre-sort arrays for percentile normalization (O(n log n) once each)
     const earningsSorted = [...allQualifiedUsers]
       .map(u => parseFloat(u.totalEarnings || "0"))
       .sort((a, b) => a - b);
     const referralsSorted = [...allQualifiedUsers]
-      .map(u => u.referralCount)
+      .map(u => l1Map.get(u.id) ?? 0)
       .sort((a, b) => a - b);
 
     function percentileRank(sortedArr: number[], value: number): number {
@@ -2964,7 +2981,7 @@ export class DatabaseStorage implements IStorage {
       const earningsScore = percentileRank(earningsSorted, earned);
 
       // 2. Team Score (0-100) — percentile rank by referral count
-      const teamScore = percentileRank(referralsSorted, u.referralCount);
+      const teamScore = percentileRank(referralsSorted, l1Map.get(u.id) ?? 0);
 
       // 3. Active Score (0-100) — decay by days since last login
       const daysSinceLogin = Math.max(0, (now.getTime() - new Date(u.lastLoginDate || u.createdAt!).getTime()) / 86400000);
@@ -2991,7 +3008,7 @@ export class DatabaseStorage implements IStorage {
         teamScore: teamScore.toFixed(2),
         activeScore: activeScore.toFixed(2),
         healthScore: healthScore.toFixed(2),
-        level1Count: u.referralCount,
+        level1Count: l1Map.get(u.id) ?? 0,
         level2Count: 0, // L2 removed per spec H.5
         userRankTier: u.userRankTier ?? 'E-Rank',
         guildRole: u.guildRole ?? 'simple',

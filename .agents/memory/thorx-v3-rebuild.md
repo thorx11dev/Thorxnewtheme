@@ -52,7 +52,32 @@ Removed entirely, not just deprecated: `server/jobs/guild-vault-resolution.ts` (
 **Why it mattered:** the legacy job raced the new spec-compliant `server/modules/guild-reset.ts` Sunday sweep on the same `guild_weekly_cycles` table — if the new job ever threw mid-run, the legacy sweep would read the permanently-empty vault ledger, wrongly conclude "goal missed," and could freeze a healthy guild after 3 false strikes.
 **How it was repointed:** the admin "Run Weekly Resolution Now" button (`GuildManager.tsx`) now calls the same route, but the route handler calls `runWeeklyGuildReset()` from `guild-reset.ts` instead; response shape changed from `{resolvedCycles, frozenGuilds}` to `{guildsProcessed, distributed, voided, skipped}` — client toast updated to match.
 
-## Production-readiness audit (2026-07-15) — full disposition
+## Production-readiness audit (2026-07-15) — full disposition (second pass 2026-07-15)
+
+**Second-pass verification against audit file `Pasted-THORX-Deep-Investigation...txt`:**
+
+Items the audit claimed were gaps but were already fully resolved (verified in code, not just memory):
+- Double-payout race — `SELECT ... FOR UPDATE` at storage.ts line 1969 ✅
+- `recordEarnEvent` no transaction — `db.transaction()` at storage.ts line 956 ✅
+- PKR float math — `new Decimal()` throughout ✅
+- `POST /api/withdrawals` skips `requireSessionAuth` — has both `requireSessionAuth` + `withdrawalRateLimiter` ✅
+- No rate limiting on mark-verified — has `authRateLimiter` ✅
+- Guild status/strikes skip Zod — `adminGuildStatusSchema` / `adminGuildStrikeSchema` present ✅
+- Social share buttons no `aria-label` — all 7 buttons already have `aria-label` + `title` ✅
+- Share/copy fail silently — toasts on failure already present ✅
+- `/api/reset-password` needs rate limiting — it's a 410 stub ("not available"), N/A ✅
+
+**New fixes applied on second pass:**
+1. **`user_transactions` idempotency unique index** — the storage.ts comment claimed `uniq_user_transactions_source` existed, but it was NOT in `shared/schema.ts` or the live DB. Applied via: `CREATE UNIQUE INDEX IF NOT EXISTS uniq_user_transactions_source ON user_transactions (source_id, source_type) WHERE source_id IS NOT NULL`. Added a schema comment documenting it must be re-applied after a full DB rebuild.
+2. **Withdrawal keypad backspace aria-label** — the ⌫ button had no accessible label. Added `aria-label="Backspace"`.
+3. **Leaderboard correlated subqueries** — `refreshLeaderboardCache` had two per-row correlated subqueries (O(2N) DB round-trips). Replaced with a single parallel `SELECT referred_by, COUNT(*)::int ... GROUP BY referred_by` aggregate + JS Map merge. `isNotNull` added to drizzle-orm imports. Note: `level2Count` was already hardcoded `0` per spec H.5, so no L2 aggregate was needed.
+
+**Still deferred (deliberate):**
+- `recomputeLeaderboardCache` loads top-10,000 users into Node.js memory — acceptable at current scale, concern at 100k+ users.
+- N+1 in guild-reset per-member loop — acceptable at current scale.
+- Zero automated tests, no error monitoring, unstructured logging, no migration history — require larger engineering investment.
+
+
 
 **All 4 Critical items already fixed before this session** (each has an in-code comment crediting the audit):
 - Critical #1 — double-payout race: `processWithdrawal` uses `SELECT ... FOR UPDATE` as first statement inside `db.transaction()`.

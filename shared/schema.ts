@@ -1300,6 +1300,12 @@ export const userTransactions = pgTable("user_transactions", {
   index("idx_user_transactions_user_created").on(table.userId, table.createdAt),
   index("idx_user_transactions_user_withdrawn").on(table.userId, table.withdrawn),
   index("idx_user_transactions_withdrawal").on(table.withdrawalId),
+  // NOTE: a partial unique index also exists on the live DB but cannot be expressed
+  // in Drizzle's table-definition DSL:
+  //   CREATE UNIQUE INDEX uniq_user_transactions_source
+  //   ON user_transactions (source_id, source_type) WHERE source_id IS NOT NULL;
+  // Applied via raw SQL on 2026-07-15 (production-readiness audit idempotency fix).
+  // Re-apply manually after any full DB rebuild.
 ]);
 export type UserTransaction = typeof userTransactions.$inferSelect;
 export type InsertUserTransaction = typeof userTransactions.$inferInsert;
