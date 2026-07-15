@@ -62,6 +62,8 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - 2026-07-15 (re-import): `node_modules/.bin/tsx` was missing (npm install not fully run after import). Ran `npm install`; `drizzle-kit push --force` hit the TTY-prompt error due to a leftover `session` table (auto-created by connect-pg-simple), dropped it and reran successfully. App confirmed running cleanly on port 5000 (landing page renders correctly).
 
+- 2026-07-15 (auth regression + founder provisioning, this import): Full auth regression passed against the live dev domain — unauthenticated `/api/user` (401 NO_SESSION) → register QA account (201) → `/api/user` (200) → logout → `/api/user` (401) → wrong-password login (401 UNAUTHORIZED) → correct-password login (200, session restored) → duplicate email registration rejected (400 DUPLICATE_EMAIL) → QA account deleted via `/api/admin/users/:id`. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder`; verified logout → login with the exact credentials → `/api/user` (200) → `/api/admin/config` (200) → `/api/team/members` (200, shows founder) → logout (401 confirmed after). Only the founder account remains in the `users` table.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
