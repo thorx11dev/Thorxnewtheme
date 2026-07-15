@@ -33,6 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { useDebounce } from "@/hooks/use-debounce";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -174,6 +175,20 @@ export function PayoutControl() {
     },
     enabled: !!selectedWithdrawal && (actionType === 'approve' || actionType === 'view'),
     staleTime: 30000,
+  });
+
+  // Audit trail — history of all admin actions on this withdrawal
+  const { data: auditTrailData, isLoading: auditTrailLoading } = useQuery<{ trail: Array<{
+    id: string; action: string; metadata: any; createdAt: string;
+    adminFirstName: string; adminLastName: string; adminEmail: string;
+  }> }>({
+    queryKey: ['/api/admin/withdrawals', selectedWithdrawal?.id, 'audit-trail'],
+    queryFn: async () => {
+      const r = await apiRequest("GET", `/api/admin/withdrawals/${selectedWithdrawal!.id}/audit-trail`);
+      return r.json();
+    },
+    enabled: !!selectedWithdrawal?.id && actionType === 'view',
+    staleTime: 15000,
   });
 
   const handlePageChange = (newPage: number) => {
@@ -609,6 +624,62 @@ export function PayoutControl() {
                    </div>
                  </div>
                )}
+               {/* ── AUDIT TRAIL ── */}
+               <div>
+                 <TechnicalLabel text="Action History" className="mb-2" />
+                 <div className="rounded-xl border border-zinc-200 overflow-hidden">
+                   {auditTrailLoading ? (
+                     <div className="divide-y divide-zinc-100">
+                       {[0, 1].map(i => (
+                         <div key={i} className="flex items-center gap-3 px-4 py-3">
+                           <Skeleton className="h-7 w-7 rounded-full shrink-0" />
+                           <div className="flex-1 space-y-1.5">
+                             <Skeleton className="h-3 w-40" />
+                             <Skeleton className="h-2.5 w-28" />
+                           </div>
+                           <Skeleton className="h-2.5 w-20 shrink-0" />
+                         </div>
+                       ))}
+                     </div>
+                   ) : !auditTrailData?.trail?.length ? (
+                     <div className="text-center py-5 text-zinc-400 text-xs">No admin actions recorded yet.</div>
+                   ) : (
+                     <div className="divide-y divide-zinc-50 max-h-40 overflow-y-auto">
+                       {auditTrailData.trail.map(entry => {
+                         const actionLabel: Record<string, string> = {
+                           APPROVE_WITHDRAWAL: "Approved",
+                           REJECT_WITHDRAWAL: "Rejected",
+                           PROCESS_WITHDRAWAL: "Processed",
+                           BULK_APPROVE_WITHDRAWALS: "Bulk Approved",
+                           BULK_REJECT_WITHDRAWALS: "Bulk Rejected",
+                         };
+                         const label = actionLabel[entry.action] ?? entry.action.replace(/_/g, " ");
+                         const isApprove = entry.action.includes("APPROVE");
+                         const isReject = entry.action.includes("REJECT");
+                         const txId = entry.metadata?.transactionId;
+                         return (
+                           <div key={entry.id} className="flex items-start gap-3 px-4 py-3">
+                             <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${isApprove ? "bg-emerald-50 text-emerald-600" : isReject ? "bg-red-50 text-red-500" : "bg-zinc-100 text-zinc-400"}`}>
+                               {isApprove ? <CheckCircle size={12} /> : isReject ? <XCircle size={12} /> : <Clock size={12} />}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               <div className="text-xs font-semibold text-zinc-800">{label}</div>
+                               <div className="text-[10px] text-zinc-400 truncate">
+                                 {entry.adminFirstName} {entry.adminLastName}
+                                 {txId && <span className="ml-1.5 font-mono text-zinc-500">· {txId}</span>}
+                               </div>
+                             </div>
+                             <div className="text-[10px] text-zinc-400 shrink-0 mt-0.5">
+                               {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                             </div>
+                           </div>
+                         );
+                       })}
+                     </div>
+                   )}
+                 </div>
+               </div>
+
                {/* ── PAYMENT COPY ── */}
                {selectedWithdrawal && (
                  <div>

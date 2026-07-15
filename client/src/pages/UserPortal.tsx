@@ -813,6 +813,13 @@ export default function UserPortal() {
         setShowScratchCard(true);
       }
     },
+    onError: (err: any) => {
+      toast({
+        title: "Ad View Not Recorded",
+        description: err?.message || "Could not record your ad completion. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Chat and Help Section state

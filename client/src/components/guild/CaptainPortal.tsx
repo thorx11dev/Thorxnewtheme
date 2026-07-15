@@ -121,8 +121,23 @@ export function CaptainPortal() {
       const r = await apiRequest("POST", `/api/guilds/${guildId}/dm/${selectedDmMember}`, { message });
       return r.json();
     },
-    onSuccess: () => {
+    onMutate: async (message: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/guilds", guildId, "dm", selectedDmMember] });
+      const prev = queryClient.getQueryData<any[]>(["/api/guilds", guildId, "dm", selectedDmMember]);
+      queryClient.setQueryData(["/api/guilds", guildId, "dm", selectedDmMember], (old: any[] = []) => [
+        ...old,
+        { message, fromUserId: user?.id, createdAt: new Date().toISOString(), _optimistic: true },
+      ]);
       setDmMsg("");
+      return { prev };
+    },
+    onError: (_err: any, _msg: string, context: any) => {
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(["/api/guilds", guildId, "dm", selectedDmMember], context.prev);
+      }
+      toast({ title: "Message not sent", description: "Could not deliver your message. Please try again.", variant: "destructive" });
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "dm", selectedDmMember] });
     },
   });
@@ -310,7 +325,7 @@ export function CaptainPortal() {
               <div className="p-3 border-t border-zinc-100 flex gap-2">
                 <Input value={dmMsg} onChange={e => setDmMsg(e.target.value)} placeholder="Message member…" className="flex-1 h-8 text-sm"
                   onKeyDown={e => { if (e.key === "Enter" && dmMsg.trim()) sendDmMutation.mutate(dmMsg.trim()); }} />
-                <Button size="sm" className="h-8 w-8 p-0" disabled={!dmMsg.trim() || sendDmMutation.isPending} onClick={() => sendDmMutation.mutate(dmMsg.trim())}><Send size={14} /></Button>
+                <Button size="sm" className="h-8 w-8 p-0" aria-label="Send message" disabled={!dmMsg.trim() || sendDmMutation.isPending} onClick={() => sendDmMutation.mutate(dmMsg.trim())}><Send size={14} /></Button>
               </div>
             </div>
           )}

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Target, Clock, MessageCircle, Star, Send, Users, Zap } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -99,8 +100,25 @@ export function GuildMemberPanel() {
       const r = await apiRequest("POST", `/api/guilds/${guildId}/chat`, { message });
       return r.json();
     },
-    onSuccess: () => {
+    // Optimistic update — append message immediately so the chat doesn't flash
+    // on refetch. Rolls back on error so the user's text isn't silently lost.
+    onMutate: async (message: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/guilds", guildId, "chat"] });
+      const prev = queryClient.getQueryData<any[]>(["/api/guilds", guildId, "chat"]);
+      queryClient.setQueryData(["/api/guilds", guildId, "chat"], (old: any[] = []) => [
+        ...old,
+        { message, senderId: user?.id, senderName: user?.firstName, createdAt: new Date().toISOString(), _optimistic: true },
+      ]);
       setChatMsg("");
+      return { prev };
+    },
+    onError: (_err: any, _msg: string, context: any) => {
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(["/api/guilds", guildId, "chat"], context.prev);
+      }
+      toast({ title: "Message not sent", description: "Could not deliver your message. Please try again.", variant: "destructive" });
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "chat"] });
     },
   });
@@ -110,8 +128,23 @@ export function GuildMemberPanel() {
       const r = await apiRequest("POST", `/api/guilds/${guildId}/dm/${guild?.captainId}`, { message });
       return r.json();
     },
-    onSuccess: () => {
+    onMutate: async (message: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/guilds", guildId, "dm", guild?.captainId] });
+      const prev = queryClient.getQueryData<any[]>(["/api/guilds", guildId, "dm", guild?.captainId]);
+      queryClient.setQueryData(["/api/guilds", guildId, "dm", guild?.captainId], (old: any[] = []) => [
+        ...old,
+        { message, fromUserId: user?.id, createdAt: new Date().toISOString(), _optimistic: true },
+      ]);
       setDmMsg("");
+      return { prev };
+    },
+    onError: (_err: any, _msg: string, context: any) => {
+      if (context?.prev !== undefined) {
+        queryClient.setQueryData(["/api/guilds", guildId, "dm", guild?.captainId], context.prev);
+      }
+      toast({ title: "Message not sent", description: "Could not reach the captain. Please try again.", variant: "destructive" });
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "dm", guild?.captainId] });
     },
   });
@@ -135,7 +168,21 @@ export function GuildMemberPanel() {
   }, [chatMessages]);
 
   if (!guildId || !guild) {
-    return <div className="text-center py-12 text-zinc-400 text-sm">Loading guild data…</div>;
+    return (
+      <div className="space-y-4 p-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[0, 1, 2].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}
+        </div>
+        <Skeleton className="h-48 rounded-xl" />
+      </div>
+    );
   }
 
   const nextSunday = (() => {
@@ -306,7 +353,7 @@ export function GuildMemberPanel() {
               className="flex-1 h-8 text-sm"
               onKeyDown={e => { if (e.key === "Enter" && chatMsg.trim()) sendChatMutation.mutate(chatMsg.trim()); }}
             />
-            <Button size="sm" className="h-8 w-8 p-0" disabled={!chatMsg.trim() || sendChatMutation.isPending} onClick={() => sendChatMutation.mutate(chatMsg.trim())}>
+            <Button size="sm" className="h-8 w-8 p-0" aria-label="Send message" disabled={!chatMsg.trim() || sendChatMutation.isPending} onClick={() => sendChatMutation.mutate(chatMsg.trim())}>
               <Send size={14} />
             </Button>
           </div>
@@ -340,7 +387,7 @@ export function GuildMemberPanel() {
               className="flex-1 h-8 text-sm"
               onKeyDown={e => { if (e.key === "Enter" && dmMsg.trim()) sendDmMutation.mutate(dmMsg.trim()); }}
             />
-            <Button size="sm" className="h-8 w-8 p-0" disabled={!dmMsg.trim() || sendDmMutation.isPending} onClick={() => sendDmMutation.mutate(dmMsg.trim())}>
+            <Button size="sm" className="h-8 w-8 p-0" aria-label="Send message to captain" disabled={!dmMsg.trim() || sendDmMutation.isPending} onClick={() => sendDmMutation.mutate(dmMsg.trim())}>
               <Send size={14} />
             </Button>
           </div>

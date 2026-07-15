@@ -6,8 +6,8 @@ import connectPg from "connect-pg-simple";
 import { storage, RANK_NAMES } from "./storage";
 import { pool, db } from "./db";
 import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh, broadcastGuildMessage, broadcastGuildEvent, broadcastToUser } from "./realtime";
-import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, dailyTasks, systemConfig, weeklyTasks } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, dailyTasks, systemConfig, weeklyTasks, auditLogs } from "@shared/schema";
+import { eq, sql, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "./validation";
 import { hilltopAdsService } from "./hilltopads-service";
@@ -1992,6 +1992,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Fetch withdrawals error:", error);
       res.status(500).json({ message: "Failed to fetch withdrawals" });
+    }
+  });
+
+  // Per-withdrawal audit trail — spec Part G.2: "Audit table showing who approved/rejected,
+  // when, and what transaction ID was provided." Queries audit_logs joined to the admin user.
+  app.get("/api/admin/withdrawals/:id/audit-trail", requirePermission("MANAGE_PAYOUTS"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const trail = await db
+        .select({
+          id: auditLogs.id,
+          action: auditLogs.action,
+          metadata: auditLogs.metadata,
+          createdAt: auditLogs.createdAt,
+          adminFirstName: users.firstName,
+          adminLastName: users.lastName,
+          adminEmail: users.email,
+        })
+        .from(auditLogs)
+        .innerJoin(users, eq(auditLogs.adminId, users.id))
+        .where(
+          and(
+            eq(auditLogs.targetType, "withdrawal"),
+            eq(auditLogs.targetId, id)
+          )
+        )
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(50);
+      res.json({ trail });
+    } catch (error) {
+      console.error("Fetch withdrawal audit trail error:", error);
+      res.status(500).json({ message: "Failed to fetch audit trail" });
     }
   });
 
