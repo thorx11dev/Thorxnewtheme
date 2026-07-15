@@ -66,6 +66,8 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - 2026-07-15 (auth regression + founder provisioning, this import): Full auth regression passed against the live dev domain — unauthenticated `/api/user` (401 NO_SESSION) → register QA account (201) → `/api/user` (200) → logout → `/api/user` (401) → wrong-password login (401 UNAUTHORIZED) → correct-password login (200, session restored) → duplicate email registration rejected (400 DUPLICATE_EMAIL) → QA account deleted via `/api/admin/users/:id`. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder`; verified logout → login with the exact credentials → `/api/user` (200) → `/api/admin/config` (200) → `/api/team/members` (200, shows founder) → logout (401 confirmed after). Only the founder account remains in the `users` table.
 
+- 2026-07-15 (auth regression + founder provisioning, this import): Full auth regression passed — unauthenticated `/api/user` (401 NO_SESSION) → register QA account (201) → `/api/user` (200) → logout (200) → `/api/user` after logout (401) → wrong-password login (401 UNAUTHORIZED) → correct-password login (200, session restored) → duplicate email registration rejected (400 DUPLICATE_EMAIL) → QA account deleted from DB. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder` (200) → login (200) → `/api/user` role: founder → `/api/admin/config` (200) → `/api/team/members` (200, shows founder) → logout → 401 confirmed.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
