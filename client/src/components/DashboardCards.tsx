@@ -1,0 +1,294 @@
+/**
+ * DashboardCards — THORX v3 (spec F.2)
+ * Three dashboard summary card layouts driven by user.guildRole:
+ *   'simple'  -> 5 cards: TX-Points, Withdrawal Value, Performance Rank, Referral Balance, Join-a-Guild CTA
+ *   'member'  -> 5 cards: TX-Points, My Weekly Contribution, Guild Progress, Performance Rank, Sunday Bonus Status
+ *   'captain' -> 5 cards: Guild GPS Rank, Team Roster, Pending Requests, Weekly Progress, My Captain Earnings
+ *
+ * Invariant 3: "Vault" / "Locked Points" must NEVER appear in this component's
+ * rendered text. Approved user-facing terms: "Guild Weekly Bonus Pool" / "Sunday Bonus".
+ * Invariant 8: the Rs. amount of the pool is never shown here before it is credited —
+ * only progress toward the points target and a qualitative status.
+ */
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
+import { Zap, Wallet, Users, Gift, Shield, Crown, Clock, UserCog, Bell } from "lucide-react";
+import { RankBadge } from "@/components/RankBadge";
+import { PSProgressCard } from "@/components/PSProgressCard";
+import { Progress } from "@/components/ui/progress";
+import TechnicalLabel from "@/components/ui/technical-label";
+import { cn } from "@/lib/utils";
+
+function CardShell({ children, className, testId }: { children: React.ReactNode; className?: string; testId?: string }) {
+  return (
+    <div
+      data-testid={testId}
+      className={cn(
+        "group split-card bg-gradient-to-br from-card to-card/80 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)]",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CardHead({ icon: Icon, label }: { icon: any; label: string }) {
+  return (
+    <div className="flex items-start justify-between mb-3">
+      <Icon className="w-7 h-7 text-primary" />
+      <TechnicalLabel text={label} className="text-muted-foreground text-xs" />
+    </div>
+  );
+}
+
+// Sunday 23:59 PKT (UTC+5) countdown.
+function timeUntilSundayPkt(now: Date): { days: number; hours: number } {
+  const pktNow = new Date(now.getTime() + 5 * 60 * 60 * 1000);
+  const dayOfWeek = pktNow.getUTCDay(); // 0 = Sunday
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+  const target = new Date(Date.UTC(pktNow.getUTCFullYear(), pktNow.getUTCMonth(), pktNow.getUTCDate() + daysUntilSunday, 23, 59, 0));
+  let diffMs = target.getTime() - pktNow.getTime();
+  if (diffMs < 0) diffMs += 7 * 24 * 60 * 60 * 1000;
+  const days = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((diffMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  return { days, hours };
+}
+
+export function DashboardCards() {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const guildRole = (user as any)?.guildRole ?? "simple";
+  const guildId = (user as any)?.guildId ?? null;
+  const txPoints = (user as any)?.txPointsBalance ?? 0;
+  const performanceScore = (user as any)?.performanceScore ?? 0;
+  const userRankTier = (user as any)?.userRankTier ?? "E-Rank";
+  const streakDays = (user as any)?.streakDays ?? 0;
+  const balanceCashPkr = parseFloat((user as any)?.balanceCashPkr ?? "0");
+
+  // Withdrawal value preview — real PKR value read from the ledger via the
+  // preview endpoint (invariant 2), never computed client-side from a flat rate.
+  const { data: withdrawalPreview } = useQuery<{ exactPkr: number; platformFee: number; userNetPkr: number }>({
+    queryKey: ["/api/withdrawals/preview", "dashboard-card", txPoints],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/withdrawals/preview?points=${txPoints}`);
+      return res.json();
+    },
+    enabled: guildRole === "simple" && txPoints > 0,
+  });
+
+  const { data: referralStats } = useQuery<{ count: number; totalEarned: string }>({
+    queryKey: ["/api/referrals", "dashboard-card"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/referrals");
+      const d = await res.json();
+      return d.stats ?? { count: 0, totalEarned: "0" };
+    },
+  });
+
+  const { data: guild } = useQuery<any>({
+    queryKey: ["/api/guilds", guildId, "dashboard-card"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/guilds/${guildId}`);
+      const d = await res.json();
+      return d.guild;
+    },
+    enabled: !!guildId,
+    refetchInterval: 30000,
+  });
+
+  const { data: members = [] } = useQuery<any[]>({
+    queryKey: ["/api/guilds", guildId, "members", "dashboard-card"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/guilds/${guildId}/members`);
+      const d = await res.json();
+      return d.members ?? [];
+    },
+    enabled: !!guildId && guildRole !== "simple",
+    refetchInterval: 30000,
+  });
+
+  const grid = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mb-12";
+
+  // ─────────────────────────── SIMPLE USER ───────────────────────────
+  if (guildRole !== "member" && guildRole !== "captain") {
+    return (
+      <div className={grid}>
+        <CardShell testId="card-tx-points">
+          <CardHead icon={Zap} label="TX-POINTS BALANCE" />
+          <p className="text-2xl md:text-3xl font-black text-primary mb-1">{txPoints.toLocaleString()} pts</p>
+          <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Available Points</p>
+        </CardShell>
+
+        <CardShell testId="card-withdrawal-value">
+          <CardHead icon={Wallet} label="WITHDRAWAL VALUE" />
+          <p className="text-2xl md:text-3xl font-black text-foreground mb-1">
+            {withdrawalPreview ? `Rs. ${withdrawalPreview.exactPkr.toFixed(2)}` : "—"}
+          </p>
+          <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+            {withdrawalPreview ? `After fee: Rs. ${withdrawalPreview.userNetPkr.toFixed(2)}` : "Earn points to see value"}
+          </p>
+        </CardShell>
+
+        <div data-testid="card-performance-rank">
+          <PSProgressCard performanceScore={performanceScore} userRankTier={userRankTier} streakDays={streakDays} />
+        </div>
+
+        <CardShell testId="card-referral-balance">
+          <CardHead icon={Gift} label="REFERRAL BALANCE" />
+          <p className="text-2xl md:text-3xl font-black text-foreground mb-1">Rs. {balanceCashPkr.toFixed(2)}</p>
+          <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-3">
+            {referralStats?.count ?? 0} referral{(referralStats?.count ?? 0) === 1 ? "" : "s"}
+          </p>
+          <button
+            onClick={() => navigate("/referrals")}
+            className="text-xs font-black uppercase tracking-wider text-primary hover:underline"
+            data-testid="button-withdraw-referral-cash"
+          >
+            Withdraw Cash →
+          </button>
+        </CardShell>
+
+        <CardShell testId="card-join-guild-cta" className="sm:col-span-2 lg:col-span-1">
+          <CardHead icon={Shield} label="ENGINE C" />
+          <p className="text-sm font-black text-foreground mb-1">Join a Guild — Unlock Engine C</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Guild members earn a share of tasks completed plus a shot at the Guild Weekly Bonus Pool 🎁
+          </p>
+          <button
+            onClick={() => navigate("/dashboard?tab=guild")}
+            className="text-xs font-black uppercase tracking-wider text-primary hover:underline"
+            data-testid="button-browse-guilds"
+          >
+            Browse Guilds →
+          </button>
+        </CardShell>
+      </div>
+    );
+  }
+
+  // ─────────────────────────── GUILD MEMBER ───────────────────────────
+  if (guildRole === "member") {
+    const me = members.find((m: any) => m.userId === (user as any)?.id);
+    const sorted = [...members].sort((a, b) => (b.weeklyPointsContributed ?? 0) - (a.weeklyPointsContributed ?? 0));
+    const myPosition = sorted.findIndex((m: any) => m.userId === (user as any)?.id) + 1;
+    const weeklyTarget = guild?.weeklyTarget ?? 0;
+    const currentWeeklyPoints = guild?.currentWeeklyPoints ?? 0;
+    const guildProgressPct = weeklyTarget > 0 ? Math.min(100, (currentWeeklyPoints / weeklyTarget) * 100) : 0;
+    const onTrack = guildProgressPct >= 100;
+    const { days, hours } = timeUntilSundayPkt(new Date());
+
+    return (
+      <div className={grid}>
+        <CardShell testId="card-tx-points">
+          <CardHead icon={Zap} label="TX-POINTS BALANCE" />
+          <p className="text-2xl md:text-3xl font-black text-primary mb-1">{txPoints.toLocaleString()} pts</p>
+          <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Available Points</p>
+        </CardShell>
+
+        <CardShell testId="card-weekly-contribution">
+          <CardHead icon={Zap} label="MY WEEKLY CONTRIB" />
+          <p className="text-2xl md:text-3xl font-black text-foreground mb-1">
+            {(me?.weeklyPointsContributed ?? 0).toLocaleString()} pts this wk
+          </p>
+          <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+            {myPosition > 0 ? `Rank #${myPosition} in guild` : "Not ranked yet"}
+          </p>
+        </CardShell>
+
+        <CardShell testId="card-guild-progress">
+          <CardHead icon={Shield} label="GUILD PROGRESS" />
+          <p className="text-lg font-black text-foreground mb-2">
+            {currentWeeklyPoints.toLocaleString()} / {weeklyTarget.toLocaleString()}
+          </p>
+          <Progress value={guildProgressPct} className="h-2" />
+        </CardShell>
+
+        <div data-testid="card-performance-rank">
+          <PSProgressCard performanceScore={performanceScore} userRankTier={userRankTier} streakDays={streakDays} />
+        </div>
+
+        <CardShell testId="card-sunday-bonus-status" className="sm:col-span-2 lg:col-span-1">
+          <CardHead icon={Clock} label="SUNDAY BONUS STATUS" />
+          <p className="text-sm font-black text-foreground mb-1">
+            {onTrack ? "🎉 Target hit — bonus incoming!" : "⏳ In Progress — Keep going!"}
+          </p>
+          <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+            Sunday 11:59 PM PKT — {days}d {hours}h left
+          </p>
+        </CardShell>
+      </div>
+    );
+  }
+
+  // ─────────────────────────── GUILD CAPTAIN ───────────────────────────
+  const active = members.filter((m: any) => m.status === "active");
+  const inactive = active.filter((m: any) => (m.weeklyPointsContributed ?? 0) === 0);
+  const pending = members.filter((m: any) => m.status === "pending");
+  const guildRankTier = guild?.guildRankTier ?? "E-Rank";
+  const guildPerformanceScore = guild?.guildPerformanceScore ?? 0;
+  const weeklyTarget = guild?.weeklyTarget ?? 0;
+  const currentWeeklyPoints = guild?.currentWeeklyPoints ?? 0;
+  const weeklyProgressPct = weeklyTarget > 0 ? Math.min(100, (currentWeeklyPoints / weeklyTarget) * 100) : 0;
+  const { days: daysLeft } = timeUntilSundayPkt(new Date());
+
+  return (
+    <div className={grid}>
+      <CardShell testId="card-guild-gps-rank">
+        <CardHead icon={Crown} label="GUILD GPS RANK" />
+        <div className="mb-2"><RankBadge rank={guildRankTier} size="md" /></div>
+        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+          {guildPerformanceScore.toLocaleString()} GPS
+        </p>
+      </CardShell>
+
+      <CardShell testId="card-team-roster">
+        <CardHead icon={Users} label="TEAM ROSTER" />
+        <p className="text-2xl md:text-3xl font-black text-foreground mb-1">
+          {active.length} / {guild?.memberCapacity ?? 10} members
+        </p>
+        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+          {inactive.length} inactive (0 pts)
+        </p>
+      </CardShell>
+
+      <CardShell testId="card-pending-requests">
+        <CardHead icon={Bell} label="PENDING REQUESTS" />
+        <p className="text-2xl md:text-3xl font-black text-foreground mb-1">
+          {pending.length > 0 ? `🔴 ${pending.length} new` : "0 new"}
+        </p>
+        <button
+          onClick={() => navigate("/dashboard?tab=guild")}
+          className="text-xs font-black uppercase tracking-wider text-primary hover:underline"
+          data-testid="button-review-queue"
+        >
+          Review Queue →
+        </button>
+      </CardShell>
+
+      <CardShell testId="card-weekly-progress">
+        <CardHead icon={Shield} label="WEEKLY PROGRESS" />
+        <p className="text-lg font-black text-foreground mb-2">
+          {currentWeeklyPoints.toLocaleString()} / {weeklyTarget.toLocaleString()}
+        </p>
+        <Progress value={weeklyProgressPct} className="h-2 mb-1" />
+        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">{daysLeft} days left</p>
+      </CardShell>
+
+      <CardShell testId="card-captain-earnings" className="sm:col-span-2 lg:col-span-1">
+        <CardHead icon={UserCog} label="MY CAPTAIN EARNINGS" />
+        <p className="text-sm font-black text-foreground mb-1">TX-Points: {txPoints.toLocaleString()} pts</p>
+        <p className="text-sm font-black text-foreground mb-3">Referral Cash: Rs. {balanceCashPkr.toFixed(2)}</p>
+        <button
+          onClick={() => navigate("/referrals")}
+          className="text-xs font-black uppercase tracking-wider text-primary hover:underline"
+          data-testid="button-withdraw-captain"
+        >
+          Withdraw →
+        </button>
+      </CardShell>
+    </div>
+  );
+}

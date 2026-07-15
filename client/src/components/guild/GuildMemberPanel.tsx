@@ -58,7 +58,7 @@ export function GuildMemberPanel() {
 
   const { data: guild } = useQuery<any>({
     queryKey: ["/api/guilds", guildId],
-    queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}`); return r.json(); },
+    queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}`); const d = await r.json(); return d.guild; },
     enabled: !!guildId,
     refetchInterval: 30000,
   });
@@ -168,7 +168,7 @@ export function GuildMemberPanel() {
             <h2 className="font-black text-lg">{guild.name}</h2>
             <div className="flex items-center gap-2 mt-1">
               <RankBadge rank={guild.guildRankTier || "E-Rank"} size="sm" />
-              <span className="text-xs text-zinc-500">{guild.memberCount}/{guild.memberCapacity} members</span>
+              <span className="text-xs text-zinc-500">{members.filter((m: any) => m.status === "active").length}/{guild.memberCapacity} members</span>
             </div>
           </div>
           <div className="text-right">

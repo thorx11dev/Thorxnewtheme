@@ -28,7 +28,7 @@ import { CommissionCalculator } from "@/components/ui/commission-calculator";
 import { cn } from "@/lib/utils";
 import { apiAbsolutePath } from "@/lib/apiOrigin";
 import { JazzCashLogo, EasyPaisaLogo, BankTransferLogo } from "@/components/ui/payment-icons";
-import { GuildVaultPanel } from "@/components/guild/GuildVaultPanel";
+import { DashboardCards } from "@/components/DashboardCards";
 import { GuildDiscoveryPanel } from "@/components/guild/GuildDiscoveryPanel";
 import { GuildMemberPanel } from "@/components/guild/GuildMemberPanel";
 import { CaptainPortal } from "@/components/guild/CaptainPortal";
@@ -889,6 +889,20 @@ export default function UserPortal() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
+  // THORX v3 (spec F.11): the withdrawal confirm button must stay disabled for a
+  // minimum 2 seconds after the preview screen (step 3) is reached, so the user
+  // has time to actually read the fee breakdown before confirming.
+  const [step3MinDisplayElapsed, setStep3MinDisplayElapsed] = useState(false);
+  useEffect(() => {
+    if (currentStep !== 3) {
+      setStep3MinDisplayElapsed(false);
+      return;
+    }
+    setStep3MinDisplayElapsed(false);
+    const t = setTimeout(() => setStep3MinDisplayElapsed(true), 2000);
+    return () => clearTimeout(t);
+  }, [currentStep]);
+
   // THORX v3: live withdrawal preview — the amount the user types is a count
   // of TX-Points; the real PKR value is computed server-side from the FIFO
   // ledger walk (never guessed/converted client-side), so we fetch the exact
@@ -1123,6 +1137,13 @@ export default function UserPortal() {
 
   const displayUser: AuthUser = user ?? GUEST_USER;
 
+  // THORX v3 (spec F.10): Engine B locked-state inputs — mirrors PSProgressCard's
+  // PS_THRESHOLDS (C-Rank requires 3000 PS).
+  const engineBUserRankTier = (displayUser as any)?.userRankTier || "E-Rank";
+  const engineBPerformanceScore = Number((displayUser as any)?.performanceScore || 0);
+  const engineBPsToUnlock = Math.max(0, 3000 - engineBPerformanceScore);
+  const engineBUnlockPct = Math.min(100, (engineBPerformanceScore / 3000) * 100);
+
   // Utility functions
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -1224,10 +1245,10 @@ export default function UserPortal() {
 
     // Calculate remaining from other sources
     const otherEarnings = totalEarnings - adViewsEarnings - referralEarnings;
-    const guildVaultEarnings = Math.max(0, otherEarnings * 0.7);
+    const guildBonusEarnings = Math.max(0, otherEarnings * 0.7);
     const bonusesEarnings = Math.max(0, otherEarnings * 0.3);
 
-    const total = adViewsEarnings + referralEarnings + guildVaultEarnings + bonusesEarnings;
+    const total = adViewsEarnings + referralEarnings + guildBonusEarnings + bonusesEarnings;
 
     // Theme-consistent color palette: Primary orange, black, beige accents, white
     const chartColors = {
@@ -1242,7 +1263,7 @@ export default function UserPortal() {
       return [
         { name: 'Ad Views', value: 65, color: chartColors.primary },
         { name: 'Referrals', value: 25, color: chartColors.secondary },
-        { name: 'Guild Vault', value: 7, color: chartColors.tertiary },
+        { name: 'Guild Bonus', value: 7, color: chartColors.tertiary },
         { name: 'Bonuses', value: 3, color: chartColors.quaternary }
       ];
     }
@@ -1259,8 +1280,8 @@ export default function UserPortal() {
         color: chartColors.secondary
       },
       {
-        name: 'Guild Vault',
-        value: Math.round((guildVaultEarnings / total) * 100),
+        name: 'Guild Bonus',
+        value: Math.round((guildBonusEarnings / total) * 100),
         color: chartColors.tertiary
       },
       {
@@ -1610,84 +1631,8 @@ export default function UserPortal() {
 
         <InteractiveDivider className="mb-12" />
 
-        {/* ── Blueprint 2026: 4 Dashboard Cards ──────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-12">
-          {/* Card 1: TX-Points Balance */}
-          <motion.div
-            variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ scale: 1.02, translateY: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border-2 border-primary/20 hover:border-primary/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-primary/20"
-            data-testid="card-tx-points"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <Zap className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="TX-POINTS" className="text-muted-foreground text-xs" />
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-tx-points">
-              {((displayUser as any)?.txPointsBalance || 0).toLocaleString()}
-            </p>
-            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Available Points</p>
-          </motion.div>
-
-          {/* Card 2: Engine C Vault */}
-          <motion.div
-            variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ scale: 1.02, translateY: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-primary/5 hover:to-primary/10 border-2 border-muted-foreground/20 hover:border-primary/30 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] hover:shadow-primary/10"
-            data-testid="card-engine-c-vault"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <Award className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="ENGINE C VAULT" className="text-muted-foreground text-xs" />
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-vault-points">
-              {Math.round(parseFloat(dashboardStats?.vaultBalance || (displayUser as any)?.pendingBalance || '0') * 100).toLocaleString()}
-            </p>
-            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Locked in Guild Vault</p>
-          </motion.div>
-
-          {/* Card 3: Direct Referrals */}
-          <motion.div
-            variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ scale: 1.02, translateY: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-muted to-muted/60 hover:from-muted/80 hover:to-muted/40 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
-            data-testid="card-direct-referrals"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <Users className="w-8 h-8 text-foreground/80 group-hover:text-foreground transition-colors" />
-              <TechnicalLabel text="DIRECT REFERRALS" className="text-muted-foreground text-xs" />
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-foreground mb-2 group-hover:text-foreground/90 transition-colors" data-testid="text-referrals-count">
-              {referralsData?.stats?.count || dashboardStats?.referralCount || 0}
-            </p>
-            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Level 1 Invited</p>
-          </motion.div>
-
-          {/* Card 4: Referral Points Earned */}
-          <motion.div
-            variants={{ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 } }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ scale: 1.02, translateY: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="group split-card bg-gradient-to-br from-card to-card/80 hover:from-card/90 hover:to-card/70 border-2 border-muted-foreground/20 hover:border-muted-foreground/40 p-6 text-left transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
-            data-testid="card-referral-points"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <Gift className="w-8 h-8 text-primary group-hover:text-primary/80 transition-colors" />
-              <TechnicalLabel text="REFERRAL POINTS" className="text-muted-foreground text-xs" />
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-primary mb-2 group-hover:text-primary/90 transition-colors" data-testid="text-referral-points">
-              {Math.round(parseFloat(referralsData?.stats?.totalEarned || '0') * 100).toLocaleString()}
-            </p>
-            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">From Direct Referrals</p>
-          </motion.div>
-        </div>
+        {/* THORX v3 (spec F.2): role-based dashboard card variants */}
+        <DashboardCards />
 
         <InteractiveDivider className="my-12" />
 
@@ -2109,6 +2054,33 @@ export default function UserPortal() {
                     ))}
                   </Tabs>
                 </motion.div>
+              </motion.div>
+            ) : (engineBUserRankTier === "E-Rank" || engineBUserRankTier === "D-Rank") ? (
+              // THORX v3 (spec F.10): Engine B locked-state UI for below C-Rank.
+              <motion.div
+                key="engine-2-locked"
+                initial={{ opacity: 0, x: 60 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 60 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className="mt-12 max-w-xl mx-auto py-12 px-6 text-center"
+                data-testid="panel-engine-b-locked"
+              >
+                <Lock className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
+                <TechnicalLabel text="ENGINE B — UNLOCKS AT C-RANK" className="text-muted-foreground text-xs mb-3" />
+                <p className="text-sm text-muted-foreground mb-6">
+                  Premium CPA offers with higher payouts (+25 PS per completion).
+                  You are {engineBUserRankTier} ({engineBPerformanceScore.toLocaleString()} PS).
+                  Need {engineBPsToUnlock.toLocaleString()} more PS to unlock.
+                </p>
+                <Progress value={engineBUnlockPct} className="h-2 mb-6" />
+                <Button
+                  onClick={() => setActiveWorkEngine(1)}
+                  className="bg-primary text-black hover:bg-primary/90 font-black uppercase tracking-tighter"
+                  data-testid="button-engine-b-locked-cta"
+                >
+                  Keep earning with Engine A to reach C-Rank
+                </Button>
               </motion.div>
             ) : (
               <motion.div
@@ -2642,7 +2614,7 @@ export default function UserPortal() {
       if (currentStep === 1) return withdrawAmount && parseInt(withdrawAmount, 10) > 0;
       if (currentStep === 2) return selectedMethod && !!withdrawalPreview && !withdrawalPreviewError;
       if (currentStep === 3) {
-        return paymentDetails.name.trim() && paymentDetails.number.trim() && paymentDetails.email.trim() && !!withdrawalPreview;
+        return paymentDetails.name.trim() && paymentDetails.number.trim() && paymentDetails.email.trim() && !!withdrawalPreview && step3MinDisplayElapsed;
       }
       return false;
     };
@@ -2975,6 +2947,16 @@ export default function UserPortal() {
                             </div>
                           )}
 
+                          {selectedMethod && paymentDetails.number && (
+                            <div className="flex justify-between items-center text-xs md:text-sm">
+                              <span className="font-bold text-muted-foreground">Payment Method</span>
+                              <span className="font-black text-foreground">
+                                {paymentMethods.find(m => m.id === selectedMethod)?.name || selectedMethod}
+                                {" "}●●●● {paymentDetails.number.slice(-4)}
+                              </span>
+                            </div>
+                          )}
+
                           <div className="my-2 border-t-2 border-black" />
 
                           <div className="flex justify-between items-center text-base md:text-lg lg:text-xl">
@@ -3239,7 +3221,7 @@ export default function UserPortal() {
           <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight">Engine C</h1>
           <p className="text-sm text-muted-foreground mt-1 max-w-xl">
             The Social Gaming Hub. Create or join a Guild, complete weekly tasks exclusive to members,
-            coordinate via real-time team chat, and earn multiplied vault bonuses every week.
+            coordinate via real-time team chat, and earn a share of the Guild Weekly Bonus Pool every week.
           </p>
         </div>
 

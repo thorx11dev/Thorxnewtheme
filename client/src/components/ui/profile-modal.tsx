@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { X, User, Edit2, Camera, Lock } from "lucide-react";
+import { X, User, Edit2, Camera, Lock, Star, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { ElasticStack } from "@/components/ui/elastic-stack";
+import { PSProgressCard } from "@/components/PSProgressCard";
 import {
   getRankDef,
   resolveAvatarUrl,
@@ -32,6 +34,21 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
+
+  // THORX v3 (spec F.9): guild context — name + MVP badge for guild members/captains.
+  const guildId = user?.guildId ?? null;
+  const { data: guildInfo } = useQuery<any>({
+    queryKey: ["/api/guilds", guildId, "profile-modal"],
+    queryFn: async () => {
+      const r = await apiRequest("GET", `/api/guilds/${guildId}`);
+      const d = await r.json();
+      return d;
+    },
+    enabled: isOpen && !!guildId,
+  });
+  const guildName = guildInfo?.guild?.name ?? null;
+  const isGuildMvp = !!guildInfo?.members?.find((m: any) => m.userId === user?.id)?.isMvp;
 
   // Current rank config
   const rankDef = getRankDef(user?.rank);
@@ -157,24 +174,9 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
       : resolveAvatarUrl(avatar, user?.rank);
 
   // THORX v3: rank is driven entirely by Performance Score (PS) — see
-  // server/modules/ps-engine.ts. These thresholds mirror the system_config
-  // defaults (PS_RANK_*_MIN); if an admin changes them the progress bar
-  // below is approximate until this modal reads system_config directly.
-  const PS_RANK_THRESHOLDS: { name: string; min: number }[] = [
-    { name: "D-Rank", min: 1000 },
-    { name: "C-Rank", min: 3000 },
-    { name: "B-Rank", min: 6000 },
-    { name: "A-Rank", min: 10000 },
-    { name: "S-Rank", min: 20000 },
-  ];
-
-  const getNextRankReq = (ps: number) => {
-    const next = PS_RANK_THRESHOLDS.find((tier) => ps < tier.min);
-    return next ? { name: next.name, reqPS: next.min } : null;
-  };
-
+  // server/modules/ps-engine.ts. Progress bar rendering is delegated to
+  // PSProgressCard (spec F.5), which owns the canonical PS_THRESHOLDS.
   const performanceScore = Number(user?.performanceScore || 0);
-  const nextRank = getNextRankReq(performanceScore);
   const isAdmin = user?.role === "admin" || user?.role === "founder" || user?.role === "team";
 
   const getRankDetails = (rankTier?: string) => {
@@ -277,11 +279,23 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
                   <p className="text-white font-black text-lg md:text-xl uppercase tracking-tighter leading-tight truncate">
                     {name || "—"}
                   </p>
-                  <div className={cn(
-                    "mt-2 inline-block text-xs font-black text-white px-3 py-0.5 uppercase tracking-widest",
-                    rankDef.bgColor
-                  )}>
-                    {rank.title}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <div className={cn(
+                      "inline-block text-xs font-black text-white px-3 py-0.5 uppercase tracking-widest",
+                      rankDef.bgColor
+                    )}>
+                      {rank.title}
+                    </div>
+                    {guildName && (
+                      <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">
+                        {user?.guildRole === "captain" ? "Captain of" : "Member of"} {guildName}
+                      </span>
+                    )}
+                    {isGuildMvp && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black text-black bg-amber-400 px-2 py-0.5 uppercase tracking-widest">
+                        <Star className="w-2.5 h-2.5" /> MVP
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -294,26 +308,28 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
                     <span className="font-mono font-bold text-sm">PKR {Number(user?.totalEarnings || 0).toFixed(2)}</span>
                   </div>
                 )}
-                {!isAdmin && nextRank ? (
-                  <>
-                    <div>
-                      <div className="flex justify-between text-[10px] font-bold uppercase text-white/40 mb-1.5">
-                        <span>Performance Score</span>
-                        <span>{performanceScore} / {nextRank.reqPS}</span>
-                      </div>
-                      <div className="relative h-1 w-full bg-white/5 overflow-hidden">
-                        <div className="absolute inset-y-0 left-0 bg-primary transition-all" style={{ width: `${Math.min((performanceScore / nextRank.reqPS) * 100, 100)}%` }} />
-                      </div>
+                {!isAdmin && (
+                  <PSProgressCard
+                    performanceScore={performanceScore}
+                    userRankTier={user?.userRankTier || "E-Rank"}
+                    streakDays={Number(user?.streakDays || 0)}
+                    className="!bg-transparent !border-white/10 !p-0"
+                  />
+                )}
+                {!isAdmin && (
+                  <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                    <span className="flex items-center gap-1.5 text-white/40 text-xs font-bold uppercase">
+                      <Wallet className="w-3.5 h-3.5" /> Referral Wallet
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-sm">Rs. {Number(user?.balanceCashPkr || 0).toFixed(2)}</span>
+                      <button
+                        onClick={() => { onClose(); navigate("/referrals"); }}
+                        className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                      >
+                        Withdraw →
+                      </button>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-white/30 font-mono uppercase pt-2">
-                      <span>{rank.title}</span>
-                      <span>Next: {nextRank.name}</span>
-                    </div>
-                  </>
-                ) : !isAdmin && (
-                  <div className="flex items-center justify-between text-[10px] text-white/30 font-mono uppercase pt-2">
-                    <span>{rank.title}</span>
-                    <span className="text-amber-500">Max Rank Achieved</span>
                   </div>
                 )}
               </div>

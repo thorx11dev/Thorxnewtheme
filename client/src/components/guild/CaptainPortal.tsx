@@ -36,7 +36,7 @@ export function CaptainPortal() {
   // Guild info
   const { data: guild } = useQuery<any>({
     queryKey: ["/api/guilds", guildId],
-    queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}`); return r.json(); },
+    queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}`); const d = await r.json(); return d.guild; },
     enabled: !!guildId,
     refetchInterval: 15000,
   });
@@ -167,7 +167,7 @@ export function CaptainPortal() {
             <div className="font-black">{guild.name}</div>
             <div className="flex items-center gap-2 mt-0.5">
               <RankBadge rank={guild.guildRankTier || "E-Rank"} size="sm" />
-              <span className="text-xs text-zinc-500">{guild.memberCount}/{guild.memberCapacity} members</span>
+              <span className="text-xs text-zinc-500">{active.length}/{guild.memberCapacity} members</span>
             </div>
           </div>
         </div>

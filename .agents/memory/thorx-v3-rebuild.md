@@ -13,12 +13,18 @@ A later independent verification pass (parallel explore subagents cross-checking
 - Invariant 1 (real_pkr_value write-once), 2 (withdrawal reads ledger not CONVERSION_RATE), 6 (PS-only rank input + rankLocked bypass), 7 (E-Rank floor on inactivity) — all verified true in code.
 - Routes in spec E.9 (guild discovery/apply/applications, captain DM, member actions, withdrawal preview, referral cash, all new admin endpoints) all exist at the right path/method and enforce required `reason` fields on PS/GPS admin adjustments (invariant 10 holds).
 
-## Confirmed gaps as of last verification (2026-07-15) — NOT done despite earlier claims
-- **Invariant 3 VIOLATED right now**: literal "Vault"/"Locked" strings are directly grep-confirmed still user-facing in `client/src/pages/UserPortal.tsx` (chart label "Guild Vault", card text "ENGINE C VAULT" / "Locked in Guild Vault", copy "...vault bonuses every week"). The earlier session only fixed FAQ copy, not the dashboard card itself.
-- `client/src/components/WithdrawalModal.tsx` does not exist — no dedicated withdrawal preview screen per spec F.11; withdrawal fee logic is inlined ad hoc in `UserPortal.tsx`.
-- `scripts/migrate-v3.ts` does not exist at all.
+## Frontend gaps phase — DONE (2026-07-15)
+All spec Part F frontend gaps fixed and typecheck+workflow-verified:
+- Invariant 3 (Vault/Locked text) fixed: dashboard card, earnings-breakdown chart label, and Engine C intro copy all renamed to "Guild Weekly Bonus Pool"/"Guild Bonus". Grepped clean afterward.
+- F.2 three dashboard card variants built in new `client/src/components/DashboardCards.tsx` (simple/member/captain, driven by `user.guildRole`), replacing the old 4 hardcoded cards in `UserPortal.tsx`.
+- F.9 profile modal (`profile-modal.tsx`) updated: now renders `PSProgressCard`, guild name + role line, MVP star badge, and a separate Referral Wallet (`balanceCashPkr`) row with a Withdraw link.
+- F.10 Engine B locked-state UI added in `UserPortal.tsx` (below C-Rank shows the exact spec mockup: lock icon, PS-to-unlock text, progress bar, CTA); C-Rank+ still shows the pre-existing "coming soon" placeholder since Engine B's actual CPA-offer browsing UI was never in scope of Part F and is a separate, much larger build (backend CPA task/rank-gate logic already exists in `POST /api/tasks/:id/verify`, just no frontend for it).
+- F.11 withdrawal preview: the flow was already inline in `UserPortal.tsx` (not a separate `WithdrawalModal.tsx` file) and already covered most of the spec's content (points requested, exact PKR, fee%, referrer share, S-Rank fast-track). Added the two genuinely missing pieces: a 2-second minimum display timer before the confirm button activates, and a masked payment method line (`JazzCash ●●●● 4567`). Did not extract into a separate file — functional parity mattered more than matching Appendix B's file manifest exactly.
+- **Real bug found+fixed independently of the spec**: `CaptainPortal.tsx` and `GuildMemberPanel.tsx` both queried `GET /api/guilds/:id` (which returns `{guild, members}`) but treated the response as the flat guild object (`guild.name`, `guild.captainId`, etc. were all `undefined`). Fixed the queryFn to unwrap `.guild`, and fixed a same-cause `guild.memberCount` (never existed on the schema) fallback to use actual member-array length in both files.
+
+## Remaining gaps (not yet started as of 2026-07-15)
+- `scripts/migrate-v3.ts` does not exist. Low real risk right now since this repl's DB was created directly with the v3 schema (no legacy Urdu-rank/points_ledger data to backfill) — but spec K.2 wants it to exist for a real production migration.
 - New WebSocket event names from spec H.1 (e.g. `user.ps_updated`, `guild.weekly_points`, `admin.feed_event`) are not emitted anywhere in server code.
-- Dashboard summary card spec (F.2, three variants) not implemented — `UserPortal.tsx` still has legacy hardcoded cards instead.
 - Admin side: `SystemSettingsManager.tsx` was never renamed/rebuilt into `FinancialControlCenter` (engine profit sliders / card variance controls from G.6 missing there specifically, even though `RanksCustomizer.tsx` covers some overlapping ground). `PayoutControl.tsx` missing the double-entry audit / RED ALERT ledger-mismatch banner from G.3. `UserManager.tsx` table missing Guild Role and Referral Cash columns. `GuildManager.tsx` missing "Replace Captain" flow. `AdminDashboard.tsx` engine breakdown card is a static/hardcoded stub, not wired to real data.
 - `server/jobs/leaderboard-cleanup.ts` (or equivalent) not extended with `userRankTier`/`guildRole` per H.5.
 
