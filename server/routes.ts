@@ -14,7 +14,7 @@ import { hilltopAdsService } from "./hilltopads-service";
 import { runtimeConfig } from "./config/runtime";
 import { handleProxyRequest } from "./modules/proxy/proxy-handler";
 import { processProfilePicture } from "./utils/local-profile-picture";
-import { authRateLimiter } from "./middleware/auth-rate-limit";
+import { authRateLimiter, withdrawalRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
@@ -874,7 +874,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/withdrawals", async (req, res) => {
+  // High-severity finding (2026-07-15 audit): these two routes used getThorxPrincipalId
+  // directly, bypassing requireSessionAuth's team-key suspension enforcement — a suspended
+  // account could still read/create withdrawals. requireSessionAuth + withdrawalRateLimiter
+  // added to both.
+  app.get("/api/withdrawals", requireSessionAuth, withdrawalRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req);
       if (!userId) return res.status(401).json({ message: "Not authenticated" });
@@ -888,7 +892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Request Payout endpoint
-  app.post("/api/withdrawals", async (req, res) => {
+  app.post("/api/withdrawals", requireSessionAuth, withdrawalRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req);
       if (!userId) {
@@ -1292,13 +1296,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const adminGuildStatusSchema = z.object({
+    status: z.enum(["active", "frozen", "disbanded"], {
+      errorMap: () => ({ message: "status must be one of: active, frozen, disbanded" }),
+    }),
+  });
+
   app.post("/api/admin/guilds/:id/status", requireTeamRole, async (req, res) => {
     try {
-      const { status } = req.body;
-      if (!["active", "frozen", "disbanded"].includes(status)) {
-        return res.status(400).json({ message: "Invalid status. Must be active, frozen, or disbanded." });
+      const parsed = adminGuildStatusSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid status." });
       }
-      const guild = await storage.setGuildStatus(req.params.id, status);
+      const guild = await storage.setGuildStatus(req.params.id, parsed.data.status);
       res.json({ guild });
     } catch (error) {
       console.error("Admin set guild status error:", error);
@@ -1307,14 +1317,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const adminGuildStrikeSchema = z.object({
+    reason: z.string().min(5, "Reason must be at least 5 characters."),
+  });
+
   app.post("/api/admin/guilds/:id/strikes", requireTeamRole, async (req, res) => {
     try {
       const adminId = getThorxPrincipalId(req) as string;
-      const { reason } = req.body;
-      if (!reason || typeof reason !== "string" || !reason.trim()) {
-        return res.status(400).json({ message: "A reason is required to add a strike." });
+      const parsed = adminGuildStrikeSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid request." });
       }
-      const result = await storage.addManualGuildStrike(req.params.id, reason.trim(), adminId);
+      const result = await storage.addManualGuildStrike(req.params.id, parsed.data.reason.trim(), adminId);
       res.status(201).json(result);
     } catch (error) {
       console.error("Admin add guild strike error:", error);
@@ -2811,7 +2825,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Mark user email as verified (session-based — requires active session)
-  app.post("/api/auth/mark-verified", async (req, res) => {
+  // authRateLimiter added: high-severity audit finding — endpoint was unprotected.
+  app.post("/api/auth/mark-verified", authRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req);
       if (!userId) {
@@ -4335,7 +4350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/withdrawals/referral", requireSessionAuth, async (req, res) => {
+  app.post("/api/withdrawals/referral", requireSessionAuth, withdrawalRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
       const { amount, method, accountName, accountNumber, accountDetails } = req.body;

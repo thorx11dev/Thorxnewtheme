@@ -83,6 +83,10 @@ export const users = pgTable("users", {
   index("users_is_active_idx").on(table.isActive),
   index("users_guild_id_idx").on(table.guildId),
   index("users_user_rank_tier_idx").on(table.userRankTier),
+  // Leaderboard sort columns — missing indexes flagged by 2026-07-15 perf audit
+  index("users_performance_score_idx").on(table.performanceScore),
+  index("users_personal_rank_idx").on(table.personalRank),
+  index("users_total_earnings_idx").on(table.totalEarnings),
   // Financial integrity constraints
   sql`CONSTRAINT check_positive_earnings CHECK (total_earnings >= 0)`,
   sql`CONSTRAINT check_positive_balance CHECK (available_balance >= 0)`,
@@ -344,7 +348,9 @@ export const taskRecords = pgTable("task_records", {
   completedAt: timestamp("completed_at").defaultNow(),
 }, (table) => [
   index("task_records_user_id_idx").on(table.userId),
-  index("task_records_task_id_idx").on(table.taskId)
+  index("task_records_task_id_idx").on(table.taskId),
+  // Composite index for "has user completed task X?" lookup — 2026-07-15 perf audit
+  index("task_records_user_task_idx").on(table.userId, table.taskId)
 ]);
 
 // Chat messages for support chatbot

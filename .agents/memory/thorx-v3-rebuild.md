@@ -40,6 +40,35 @@ Removed entirely, not just deprecated: `server/jobs/guild-vault-resolution.ts` (
 **Why it mattered:** the legacy job raced the new spec-compliant `server/modules/guild-reset.ts` Sunday sweep on the same `guild_weekly_cycles` table — if the new job ever threw mid-run, the legacy sweep would read the permanently-empty vault ledger, wrongly conclude "goal missed," and could freeze a healthy guild after 3 false strikes.
 **How it was repointed:** the admin "Run Weekly Resolution Now" button (`GuildManager.tsx`) now calls the same route, but the route handler calls `runWeeklyGuildReset()` from `guild-reset.ts` instead; response shape changed from `{resolvedCycles, frozenGuilds}` to `{guildsProcessed, distributed, voided, skipped}` — client toast updated to match.
 
+## Production-readiness audit (2026-07-15) — full disposition
+
+**All 4 Critical items already fixed before this session** (each has an in-code comment crediting the audit):
+- Critical #1 — double-payout race: `processWithdrawal` uses `SELECT ... FOR UPDATE` as first statement inside `db.transaction()`.
+- Critical #2 — `recordEarnEvent` no transaction: steps 3-6 wrapped in `db.transaction()`; feed/WS side-effects intentionally outside.
+- Critical #3 — PKR float math: `Decimal` library used for all engine splits in `recordEarnEvent`, `calculateWithdrawalBreakdown`, and `drawThorxCard`. Native float only used for display-only card variance randomisation.
+- Critical #4 — idempotency: partial unique index on `withdrawals` (one pending per user) + `uniq_user_transactions_source` unique index rejects duplicate earn events.
+
+**High items fixed this session:**
+- `GET /api/withdrawals` and `POST /api/withdrawals` — added `requireSessionAuth` (was bypassing suspension enforcement) + `withdrawalRateLimiter`.
+- `POST /api/withdrawals/referral` — added `withdrawalRateLimiter`.
+- `POST /api/auth/mark-verified` — added `authRateLimiter`.
+- `POST /api/admin/guilds/:id/status` — replaced manual string check with Zod `adminGuildStatusSchema`.
+- `POST /api/admin/guilds/:id/strikes` — replaced manual string check with Zod `adminGuildStrikeSchema`.
+- Added `withdrawalRateLimiter` export to `server/middleware/auth-rate-limit.ts`.
+- `PATCH /api/team/members/:id` — investigated mass-assignment claim; confirmed NOT vulnerable (explicit destructure + whitelist, not spread).
+
+**Medium items fixed this session:**
+- DB indexes added via `CREATE INDEX CONCURRENTLY`: `users_performance_score_idx`, `users_personal_rank_idx`, `users_total_earnings_idx`, `task_records_user_task_idx` (composite userId+taskId). Also added to `shared/schema.ts` for future drizzle-kit pushes.
+
+**Medium items NOT fixed (deliberate deferral):**
+- `system_config` in-memory cache — **Invariant #9 forbids persistent in-memory caching** ("No in-memory caching beyond the request"). Per-request parallelised `Promise.all([...8 config reads...])` is the correct pattern. Skip.
+- `recomputeLeaderboardCache` full-table load — medium-term concern; not touched.
+- N+1 in guild-reset per-member loop — acceptable at current scale.
+- Unbounded SELECT * on small tables (daily tasks, ad zones, system configs) — harmless at current scale.
+
+**Not bugs (investigated):**
+- Rate-limit headers absent in dev curl tests — intentional: both rate limiters have `skip: (req) => NODE_ENV !== 'production' && IP is loopback`. Activates in production.
+
 ## Prior resolved items (keep as-is, don't "fix")
 - `REFERRAL_FEE_SHARE_PCT = 50` (not spec's 30%) is the confirmed real business rule per explicit user decision; grep for it shows it's only read via `system_config` (default 50), consistently applied at both withdrawal-preview and processWithdrawal sites.
 - `scripts/migrate-v3.ts` was never built — deemed acceptable since this DB was created directly with v3 schema, no legacy migration needed.
