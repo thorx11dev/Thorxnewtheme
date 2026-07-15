@@ -4437,7 +4437,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userCutPct: parseFloat(String(userCutPct ?? "60")),
         },
       });
-      res.json({ simulations: result, count: result.length });
+      // Bug found during 2026-07-15 production-readiness re-verification:
+      // this used to wrap the array as { simulations, count }, but the client
+      // (ThorxCardSandbox.tsx) treats the mutation response as a bare array
+      // of SimulationResult (resultArray.reverse()/.length/[0], and each `r`
+      // is destructured as { pointsCredited, realPkrValue, cardVariance }).
+      // The wrapper object made every simulated "card" render as `undefined`,
+      // throwing on `r.pointsCredited.toLocaleString()`. Spec G.9 also
+      // describes the response as a flat "array of SimulationResult".
+      res.json(result);
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Simulation failed";
       res.status(400).json({ message: msg });

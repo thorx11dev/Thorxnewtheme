@@ -12,6 +12,15 @@ On a fresh re-import, `DATABASE_URL`/`SESSION_SECRET` are already present as env
 
 **Why:** drizzle-kit's `tablesResolver` triggers an interactive rename-conflict prompt whenever there's ambiguity between existing and target tables, and this prompt cannot be satisfied non-interactively — the environment has no TTY.
 
+## Re-apply raw-SQL-only indexes after every full DB rebuild (THORX v3)
+
+Two idempotency-critical partial unique indexes can't be expressed in Drizzle's schema DSL, so `drizzle-kit push --force` never recreates them on a fresh/rebuilt DB even though `server/storage.ts` assumes they exist (see `thorx-v3-rebuild.md`). After step 3 above, always run:
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_user_transactions_source ON user_transactions (source_id, source_type) WHERE source_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_withdrawals_one_pending_per_user ON withdrawals (user_id) WHERE status = 'pending';
+```
+Verify with `psql "$DATABASE_URL" -c "\di"` before considering setup done — a missing index here means double-payout/duplicate-earn protection is silently absent in production.
+
 ## Founder provisioning on re-import
 
 `POST /api/bootstrap-founder` (dev-only, disabled in production) creates the founder if no team members exist yet — pass `email`/`password`/`firstName`/`lastName` in the body; it hashes the password via the normal `storage.createUser` bcrypt path and logs the session in directly. Safe to use for provisioning the founder account requested by the user on a fresh DB.

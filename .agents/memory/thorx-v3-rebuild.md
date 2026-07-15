@@ -111,6 +111,24 @@ Items the audit claimed were gaps but were already fully resolved (verified in c
 **Not bugs (investigated):**
 - Rate-limit headers absent in dev curl tests — intentional: both rate limiters have `skip: (req) => NODE_ENV !== 'production' && IP is loopback`. Activates in production.
 
+## Sixth-pass: real regression found and fixed (2026-07-15)
+Re-verifying the "Production-readiness audit" doc (re-uploaded, same text as before) against the *actual live DB* — not just the schema.ts comments — found that both raw-SQL-only idempotency indexes documented as already applied were **missing from the live database**:
+- `uniq_user_transactions_source` (partial unique on `user_transactions(source_id, source_type) WHERE source_id IS NOT NULL`)
+- `uniq_withdrawals_one_pending_per_user` (partial unique on `withdrawals(user_id) WHERE status='pending'`)
+
+**Why:** these can't be expressed in Drizzle's table-definition DSL (documented in `shared/schema.ts` comments), so `npx drizzle-kit push --force` never recreates them. Every time this repl gets re-imported and the DB is rebuilt from scratch (see `reimport-setup.md`), these two indexes are silently gone even though the application code (`storage.ts` `createWithdrawal`'s `catch` on Postgres error `23505`, and the `recordEarnEvent` comment citing them) still assumes they exist. Memory/comments describing them as "already applied" become stale the moment the DB is rebuilt — the fix lives in the DB, not the repo, so a fresh DB silently drops it.
+
+**How to apply:** after ANY full DB rebuild (`drizzle-kit push --force` on an empty database, not just a migration), immediately re-run both:
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_user_transactions_source ON user_transactions (source_id, source_type) WHERE source_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_withdrawals_one_pending_per_user ON withdrawals (user_id) WHERE status = 'pending';
+```
+Re-applied and verified via `pg_indexes` + live rollback-wrapped duplicate-insert tests (both correctly threw `23505`) on 2026-07-15. Add this to the standard re-import checklist in `reimport-setup.md`, not just this file.
+
+## Sixth-pass: second real bug found via live browser console, not spec-reading (2026-07-15)
+While founder-testing the admin panel live (not part of the spec-invariant checklist), `ThorxCardSandbox.tsx` (spec G.9) threw an unhandled `TypeError` on every draw: `POST /api/admin/simulate/thorx-card` wrapped its array response as `{ simulations, count }`, but the client always treated the mutation result as a bare array (`resultArray.reverse()/.length/[0]`, then `results.map(r => r.pointsCredited.toLocaleString())`) — so every rendered card read `undefined.toLocaleString()`. Fixed server-side to return the bare array (matches spec G.9's "Returns array of SimulationResult" wording and is the only consumer). Also fixed a second-order issue this exposed: the client passed `lastResult.engineType` into the `<ThorxCard>` claim overlay, but the server's `SimulationResult` never included `engineType` — switched to the sandbox's own `engineType` state instead.
+**Lesson: reading spec text and tracing code line-by-line does not catch response-shape mismatches between a real client fetch and a real server route — actually clicking through the live admin UI (or curling the exact endpoint the client calls, with the client's exact request shape) surfaces bugs that pure text/code tracing misses.** Do a live click-through of any admin tool with a "run" button before declaring a v3 phase complete, not just a code review.
+
 ## Prior resolved items (keep as-is, don't "fix")
 - `REFERRAL_FEE_SHARE_PCT = 50` (not spec's 30%) is the confirmed real business rule per explicit user decision; grep for it shows it's only read via `system_config` (default 50), consistently applied at both withdrawal-preview and processWithdrawal sites.
 - `scripts/migrate-v3.ts` was never built — deemed acceptable since this DB was created directly with v3 schema, no legacy migration needed.

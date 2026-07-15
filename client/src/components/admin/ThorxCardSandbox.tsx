@@ -147,7 +147,10 @@ export function ThorxCardSandbox() {
       {/* Thorx Card overlay */}
       {showCard && lastResult && (
         <ThorxCard
-          payload={{ pointsCredited: lastResult.pointsCredited, realPkrValue: lastResult.realPkrValue, engineType: lastResult.engineType }}
+          // Server's SimulationResult doesn't include engineType (only
+          // iteration/pointsCredited/realPkrValue/cardVariance) — use the
+          // sandbox's own selected engine instead of the missing field.
+          payload={{ pointsCredited: lastResult.pointsCredited, realPkrValue: lastResult.realPkrValue, engineType }}
           onClaim={() => setShowCard(false)}
         />
       )}
