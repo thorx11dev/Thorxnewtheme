@@ -3,63 +3,24 @@ name: THORX v3 rebuild
 description: Full rank/engine/guild rebuild — phase status, critical decisions, and known constraints.
 ---
 
-## Phase Status (as of last session)
+## ⚠️ Prior "COMPLETE" phase status was not reliable — always re-verify independently
 
-### Phase 1 (Schema + Modules) — COMPLETE
-All new tables and columns exist in `shared/schema.ts`. All five server modules and rankGate middleware exist. Added `task_category` and `gross_pkr_per_completion` columns to `daily_tasks` via executeSql (ALTER TABLE, TTY-safe).
+A later independent verification pass (parallel explore subagents cross-checking the actual code against the spec, plus direct grep confirmation) found this file's earlier "Phase 4/5/6 — COMPLETE" claims did not hold up. Do not trust a phase-complete note in this file (or any session summary) without spot-checking the actual files yourself — summaries drift from reality as sessions get long.
 
-### Phase 2 (Storage: recordEarnEvent, processWithdrawal) — COMPLETE
-Engine split math, ThorxCard draw, PS award, streak, GPS for Engine C, and feed event all wired in `server/storage.ts`. FIFO ledger walk for withdrawals. Double-spend bug fixed.
+## Verified-true from Phase 1-3 (schema/backend core)
+- Schema (Part D): all new columns/tables (`user_transactions`, `referral_commissions`, `captain_messages`, `guild_weekly_snapshots`, `activity_feed`, plus new columns on users/guilds/guild_members/guild_weekly_cycles/weekly_tasks/score_history) exist matching spec types/defaults. `balance_cash_pkr >= 0` has a DB CHECK constraint.
+- `server/modules/thorx-card.ts`, `ps-engine.ts`, `gps-engine.ts` match spec math (variance/draw, PS award/streak/inactivity floor, GPS awards).
+- Invariant 1 (real_pkr_value write-once), 2 (withdrawal reads ledger not CONVERSION_RATE), 6 (PS-only rank input + rankLocked bypass), 7 (E-Rank floor on inactivity) — all verified true in code.
+- Routes in spec E.9 (guild discovery/apply/applications, captain DM, member actions, withdrawal preview, referral cash, all new admin endpoints) all exist at the right path/method and enforce required `reason` fields on PS/GPS admin adjustments (invariant 10 holds).
 
-### Phase 3 (Backend Routes) — COMPLETE
-All routes implemented. Key fixes applied in this session:
-- `POST /api/ad-view` → now calls `recordEarnEvent(Engine_A)`, returns `thorxCard` payload.
-- `POST /api/tasks/:id/verify` → C-Rank gate for CPA tasks (`taskCategory==='cpa_offer'`), Engine_B for CPA, Indirect for social. Returns `thorxCard` payload.
-- `POST /api/guilds/:id/apply` → coverLetter minimum changed 20→50 chars (spec compliance).
-- `GET /api/user` → now returns all v3 fields: `userRankTier, guildRole, guildId, performanceScore, streakDays, balanceCashPkr, txPointsBalance, lastActiveAt`.
-- `GET /api/dashboard/stats` → now returns all v3 fields same as above.
-
-### Phase 4/5 (Frontend) — COMPLETE
-
-**New components created:**
-- `client/src/components/RankBadge.tsx` — E-S rank badge, used across all leaderboards/profiles
-- `client/src/components/ThorxCard.tsx` — Replaces ScratchCardModal; handles Engine_A/B/C payloads
-- `client/src/components/PSProgressCard.tsx` — PS progress bar with streak bonus display
-- `client/src/components/guild/GuildDiscoveryPanel.tsx` — GPS leaderboard + apply flow for simple users
-- `client/src/components/guild/GuildMemberPanel.tsx` — 4-tab member view (progress/tasks/chat/DM)
-- `client/src/components/guild/CaptainPortal.tsx` — 5-tab captain view (requests/roster/DM/stats/settings)
-- `client/src/components/admin/LiveActivityFeed.tsx` — Real-time engine event feed
-- `client/src/components/admin/ThorxCardSandbox.tsx` — Admin simulation tool
-- `client/src/components/admin/LedgerValidator.tsx` — Financial ledger integrity checker
-- `client/src/components/admin/ReferralAnalytics.tsx` — L1-only referral stats and leaderboard
-- `client/src/components/admin/RanksCustomizer.tsx` — PS thresholds, engine splits, card variance, PS awards
-
-**Shims (backward compatibility):**
-- `GuildVaultPanel.tsx` → re-exports `GuildMemberPanel` as `GuildVaultPanel`
-- `ScratchCardModal.tsx` → bridges old `ScratchCardBreakdown` shape → `ThorxCard` component
-
-**Modified components:**
-- `UserPortal.tsx` → 3-context routing: `guildRole === 'captain'` → CaptainPortal, `'member'` → GuildMemberPanel, `'simple'` → GuildDiscoveryPanel
-- `TeamPortal.tsx` → added 5 new sections: live-feed, card-sandbox, ledger, ranks, referrals
-- `AdminSidebar.tsx` → added 6 new nav entries + `Activity` icon import
-- `AdminDashboard.tsx` → Engine Breakdown section (A/B/C cards)
-- `GuildManager.tsx` → GPS adjust controls, weekly target override, inactive captain alert banner
-- `LeaderboardInsights.tsx` → replaced Urdu rank display with `RankBadge(userRankTier)`, PS raw score column, L1-only referral column
-- `UserManager.tsx` → PS adjust button + `TrendingUp` icon + full PS adjust dialog (PATCH `/api/admin/users/:userId/ps`)
-- `useAuth.ts` → User interface extended with all v3 fields
-
-**rankAvatars.ts:**
-- Added `resolveAvatarUrlByTier(savedAvatar, userRankTier)` bridge function
-- Added `getRankDefByTier(userRankTier)` bridge function
-- E-S to Urdu key mapping: E→Nawa Aya, D→Chota Don, C→Bawa Ji, B→Haji Sab, A/S→Chacha Supreme
-
-### Phase 6 (Cleanup) — COMPLETE (this session)
-- Retired `POST /api/guilds/:id/join`, `/members/:userId/approve`, `/members/:userId/reject` (410 stubs; no client caller remained — `/apply` + `/applications/:id` are canonical).
-- Rewrote stale "Guild Vault escrow / rank-multiplier release" and old Urdu rank name copy in `faq-section.tsx` and the embedded FAQ in `UserPortal.tsx` to describe the actual Weekly Bonus Pool + PS-driven E–S rank system; corrected the referral-commission FAQ (was wrongly described as flat 15% to referrer; actual is 50%-of-15%-fee, paid as PKR cash, not TX-Points).
-- Fixed dashboard rank badge and profile modal to read `userRankTier` (not the frozen legacy `rank` field) with E–S tier names/PS-based next-rank progress instead of Urdu names + earnings/referral thresholds.
-- Fixed `TaskManager.tsx`/`UserManager.tsx` admin UI to display/select E–S tier names.
-- **Found and fixed a real bug** (not just cosmetic): `daily_tasks.targetRank` task-visibility gate was compared against the legacy `user.rank` field, which is frozen (its only writer, legacy `checkAndUpdateRank`, is dead code) — so task visibility could never track a user's actual progression. Repointed at `userRankTier`; default target value migrated `"Nawa Aya"` → `"E-Rank"` in schema + `/api/tasks` filter.
-- Old `rallying`/rally UI references and `commission_logs` old writes were not found still present — no action needed.
+## Confirmed gaps as of last verification (2026-07-15) — NOT done despite earlier claims
+- **Invariant 3 VIOLATED right now**: literal "Vault"/"Locked" strings are directly grep-confirmed still user-facing in `client/src/pages/UserPortal.tsx` (chart label "Guild Vault", card text "ENGINE C VAULT" / "Locked in Guild Vault", copy "...vault bonuses every week"). The earlier session only fixed FAQ copy, not the dashboard card itself.
+- `client/src/components/WithdrawalModal.tsx` does not exist — no dedicated withdrawal preview screen per spec F.11; withdrawal fee logic is inlined ad hoc in `UserPortal.tsx`.
+- `scripts/migrate-v3.ts` does not exist at all.
+- New WebSocket event names from spec H.1 (e.g. `user.ps_updated`, `guild.weekly_points`, `admin.feed_event`) are not emitted anywhere in server code.
+- Dashboard summary card spec (F.2, three variants) not implemented — `UserPortal.tsx` still has legacy hardcoded cards instead.
+- Admin side: `SystemSettingsManager.tsx` was never renamed/rebuilt into `FinancialControlCenter` (engine profit sliders / card variance controls from G.6 missing there specifically, even though `RanksCustomizer.tsx` covers some overlapping ground). `PayoutControl.tsx` missing the double-entry audit / RED ALERT ledger-mismatch banner from G.3. `UserManager.tsx` table missing Guild Role and Referral Cash columns. `GuildManager.tsx` missing "Replace Captain" flow. `AdminDashboard.tsx` engine breakdown card is a static/hardcoded stub, not wired to real data.
+- `server/jobs/leaderboard-cleanup.ts` (or equivalent) not extended with `userRankTier`/`guildRole` per H.5.
 
 ## Critical Constraints
 
