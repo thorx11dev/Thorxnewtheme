@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save, Settings, DollarSign, Network, Trash2, Plus, ArrowUp, ArrowDown, ShieldAlert, Vault } from "lucide-react";
+import { Save, Settings, DollarSign, Network, Trash2, Plus, ArrowUp, ArrowDown, ShieldAlert, Vault, Zap, Layers, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AdNetwork {
@@ -113,6 +113,120 @@ export function SystemSettingsManager() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h2 className="text-4xl font-black tracking-tighter uppercase text-[#111]">System Protocol</h2>
+        </div>
+      </div>
+
+      {/* ─── ENGINE PROFIT SLIDERS ─── */}
+      <div className="bg-background border-[1.5px] border-[#111] rounded-[2rem] p-8 shadow-sm">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-10 h-10 bg-white border-[1.5px] border-[#111]/20 flex items-center justify-center rounded-full shadow-sm">
+            <Zap className="w-5 h-5 text-zinc-500" />
+          </div>
+          <div>
+            <h3 className="font-black text-xl uppercase text-[#111] tracking-tight">Engine Profit Configuration</h3>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-tight">Platform cut per earning engine — live on every transaction</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { label: "Engine A — Video Ads", cutKey: "ENGINE_A_THORX_CUT_PCT", min: 20, max: 70, color: "#f97316" },
+            { label: "Engine B — CPA Offers", cutKey: "ENGINE_B_THORX_CUT_PCT", min: 20, max: 70, color: "#7c3aed" },
+            { label: "Engine C — Guild Tasks", cutKey: "ENGINE_C_THORX_CUT_PCT", min: 10, max: 40, color: "#16a34a" },
+          ].map(({ label, cutKey, min, max, color }) => {
+            const cut = Number(localConfigs[cutKey] ?? (cutKey === "ENGINE_C_THORX_CUT_PCT" ? 20 : 40));
+            const pool = cutKey === "ENGINE_C_THORX_CUT_PCT" ? Number(localConfigs["ENGINE_C_POOL_PCT"] ?? 35) : 0;
+            const userGets = 100 - cut - pool;
+            return (
+              <div key={cutKey} className="p-4 bg-white border-[1.5px] border-[#111]/10 rounded-2xl space-y-3">
+                <div className="text-[10px] font-black uppercase tracking-widest" style={{ color }}>{label}</div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-zinc-500">
+                    <span>Thorx Cut</span><span className="font-black text-[#111]">{cut}%</span>
+                  </div>
+                  <input type="range" min={min} max={max} value={cut}
+                    onChange={e => updateValue(cutKey, parseInt(e.target.value))}
+                    className="w-full h-2 rounded-full accent-current cursor-pointer"
+                    style={{ accentColor: color }}
+                  />
+                </div>
+                {cutKey === "ENGINE_C_THORX_CUT_PCT" && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-bold text-zinc-500">
+                      <span>Guild Pool</span><span className="font-black text-[#111]">{pool}%</span>
+                    </div>
+                    <input type="range" min={20} max={50} value={pool}
+                      onChange={e => updateValue("ENGINE_C_POOL_PCT", parseInt(e.target.value))}
+                      className="w-full h-2 rounded-full cursor-pointer"
+                      style={{ accentColor: color }}
+                    />
+                  </div>
+                )}
+                <div className="text-[10px] font-bold text-zinc-400">User Gets: <span className="font-black text-emerald-600">{userGets}%</span></div>
+                <div className="flex gap-2">
+                  <Button size="sm" className="flex-1 h-7 text-[10px] font-black" onClick={() => {
+                    saveMutation.mutate({ key: cutKey, value: cut });
+                    if (cutKey === "ENGINE_C_THORX_CUT_PCT") saveMutation.mutate({ key: "ENGINE_C_POOL_PCT", value: pool });
+                  }}>Save</Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ─── THORX CARD VARIANCE CONTROLS ─── */}
+      <div className="bg-background border-[1.5px] border-[#111] rounded-[2rem] p-8 shadow-sm">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-10 h-10 bg-white border-[1.5px] border-[#111]/20 flex items-center justify-center rounded-full shadow-sm">
+            <Activity className="w-5 h-5 text-zinc-500" />
+          </div>
+          <div>
+            <h3 className="font-black text-xl uppercase text-[#111] tracking-tight">Thorx Card Randomness</h3>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-tight">Multiplier range for the randomized reward card draw</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            {[
+              { label: "Min Multiplier ×", key: "CARD_MIN_MULTIPLIER", min: 0.5, max: 1.0, step: 0.05, def: 0.80 },
+              { label: "Max Multiplier ×", key: "CARD_MAX_MULTIPLIER", min: 1.0, max: 1.5, step: 0.05, def: 1.20 },
+              { label: "A-Rank Bonus %", key: "CARD_ARANK_BONUS_PCT", min: 0, max: 15, step: 1, def: 5 },
+              { label: "S-Rank Bonus %", key: "CARD_SRANK_BONUS_PCT", min: 0, max: 20, step: 1, def: 10 },
+            ].map(({ label, key, min, max, step, def }) => {
+              const val = localConfigs[key] ?? def;
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-zinc-500">
+                    <span>{label}</span>
+                    <span className="font-black text-[#111]">{Number(val).toFixed(key.includes('MULTIPLIER') ? 2 : 0)}</span>
+                  </div>
+                  <input type="range" min={min} max={max} step={step} value={val}
+                    onChange={e => updateValue(key, parseFloat(e.target.value))}
+                    className="w-full h-2 rounded-full accent-black cursor-pointer"
+                  />
+                  <Button size="sm" className="h-6 text-[9px] font-black px-3" onClick={() => saveMutation.mutate({ key, value: parseFloat(String(val)) })}>Save</Button>
+                </div>
+              );
+            })}
+          </div>
+          <div className="space-y-3">
+            <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Presets</div>
+            {[
+              { label: "Stable (0.90×–1.10×)", min: 0.90, max: 1.10 },
+              { label: "Standard (0.80×–1.20×)", min: 0.80, max: 1.20 },
+              { label: "Jackpot (0.50×–1.50×)", min: 0.50, max: 1.50 },
+            ].map(({ label, min, max }) => (
+              <Button key={label} variant="outline" className="w-full h-9 text-xs font-black border-[1.5px] border-[#111] justify-start"
+                onClick={() => {
+                  updateValue("CARD_MIN_MULTIPLIER", min);
+                  updateValue("CARD_MAX_MULTIPLIER", max);
+                  saveMutation.mutate({ key: "CARD_MIN_MULTIPLIER", value: min });
+                  saveMutation.mutate({ key: "CARD_MAX_MULTIPLIER", value: max });
+                }}>
+                {label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 

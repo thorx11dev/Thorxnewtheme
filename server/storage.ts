@@ -3043,6 +3043,8 @@ export class DatabaseStorage implements IStorage {
       isVerified: users.isVerified,
       createdAt: users.createdAt,
       lastLoginDate: users.lastLoginDate,
+      userRankTier: users.userRankTier,
+      guildRole: users.guildRole,
       referralCount: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 WHERE u2.referred_by = users.id AND u2.role = 'user' AND u2.is_active = true), 0) AS INTEGER)`,
       level2Count: sql<number>`CAST(COALESCE((SELECT COUNT(*) FROM users u2 JOIN users u3 ON u3.referred_by = u2.id WHERE u2.referred_by = users.id AND u3.role = 'user' AND u3.is_active = true), 0) AS INTEGER)`
     })
@@ -3104,7 +3106,9 @@ export class DatabaseStorage implements IStorage {
         activeScore: activeScore.toFixed(2),
         healthScore: healthScore.toFixed(2),
         level1Count: u.referralCount,
-        level2Count: u.level2Count
+        level2Count: 0, // L2 removed per spec H.5
+        userRankTier: u.userRankTier ?? 'E-Rank',
+        guildRole: u.guildRole ?? 'simple',
       };
     });
 

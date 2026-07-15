@@ -28,6 +28,7 @@ import {
   Check,
   Lock,
   TrendingUp,
+  Crown,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,11 @@ interface UserProfile {
   createdAt: string;
   avatar?: string;
   profilePicture?: string;
+  guildRole?: string;
+  guildId?: string;
+  lastActiveAt?: string;
+  balanceCashPkr?: string;
+  performanceScore?: string;
 }
 
 interface InternalNote {
@@ -315,7 +321,10 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                 <th className="px-4 lg:px-6 py-6 font-black text-[10px] tracking-widest text-[#111] uppercase whitespace-nowrap">Profile</th>
                 <th className="px-4 lg:px-6 py-6 font-black text-[10px] tracking-widest text-[#111] uppercase whitespace-nowrap">Contact Protocol</th>
                 <th className="px-4 lg:px-6 py-6 font-black text-[10px] tracking-widest text-[#111] uppercase whitespace-nowrap text-center">Rank</th>
+                <th className="px-4 lg:px-6 py-6 font-black text-[10px] tracking-widest text-[#111] uppercase whitespace-nowrap text-center">Guild Role</th>
+                <th className="px-4 lg:px-6 py-6 font-black text-[10px] tracking-widest text-[#111] uppercase whitespace-nowrap">Last Active</th>
                 <th className="px-4 lg:px-6 py-6 font-black text-[10px] tracking-widest text-[#111] uppercase whitespace-nowrap">Financials (₨)</th>
+                <th className="px-4 lg:px-6 py-6 font-black text-[10px] tracking-widest text-[#111] uppercase whitespace-nowrap">Ref Cash</th>
                 <th className="px-4 lg:px-6 py-6 font-black text-[10px] tracking-widest text-[#111] uppercase text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
@@ -345,6 +354,12 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                       <Skeleton className="h-5 w-24 bg-zinc-200" />
                       <Skeleton className="h-3 w-20 bg-zinc-200" />
                     </td>
+                    {/* Skeleton: Guild Role */}
+                    <td className="p-6"><Skeleton className="h-5 w-16 rounded-full bg-zinc-200 mx-auto" /></td>
+                    {/* Skeleton: Last Active */}
+                    <td className="p-6"><Skeleton className="h-4 w-16 bg-zinc-200" /></td>
+                    {/* Skeleton: Ref Cash */}
+                    <td className="p-6"><Skeleton className="h-4 w-20 bg-zinc-200" /></td>
                     <td className="p-6 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Skeleton className="h-10 w-10 rounded-full bg-zinc-200" />
@@ -407,6 +422,23 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                              {user.rankLocked && <Lock size={10} className="text-black" />}
                            </span>
                         </div>
+                    </td>
+                    {/* Guild Role */}
+                    <td className="p-6 text-center">
+                      {(() => {
+                        const role = user.guildRole || 'simple';
+                        const clr: Record<string,string> = { captain:'bg-amber-100 text-amber-800 border-amber-300', member:'bg-blue-100 text-blue-800 border-blue-200', simple:'bg-zinc-100 text-zinc-400 border-zinc-200' };
+                        return <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 border rounded-full uppercase tracking-widest ${clr[role]||clr.simple}`}>{role==='captain'&&<Crown size={9}/>}{role}</span>;
+                      })()}
+                    </td>
+                    {/* Last Active */}
+                    <td className="p-6">
+                      {(() => {
+                        if(!user.lastActiveAt) return <span className="text-[10px] text-zinc-400 font-bold">—</span>;
+                        const hrs = (Date.now()-new Date(user.lastActiveAt).getTime())/3600000;
+                        const label = hrs<1?'Just now':hrs<24?`${Math.floor(hrs)}h ago`:`${Math.floor(hrs/24)}d ago`;
+                        return <span className={`text-[10px] font-black ${hrs>48?'text-red-500':'text-zinc-500'}`}>{label}</span>;
+                      })()}
                     </td>
                     <td className="p-6">
                       <div className="font-black text-base text-[#111] mb-1 leading-none">{parseFloat(user.availableBalance).toLocaleString()}</div>

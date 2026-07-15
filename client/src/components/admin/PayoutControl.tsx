@@ -20,7 +20,9 @@ import {
   Info,
   Inbox,
   X,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle,
+  ShieldX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TechnicalLabel from "@/components/ui/technical-label";
@@ -52,6 +54,8 @@ interface Withdrawal {
   accountName: string;
   accountNumber: string;
   status: 'pending' | 'completed' | 'rejected' | 'processing';
+  fee?: string;
+  netAmount?: string;
   createdAt: string;
   user: {
     firstName: string;
@@ -157,6 +161,18 @@ export function PayoutControl() {
     }
   });
 
+  // Ledger validation — fires when a withdrawal is selected for approve/view
+  const { data: ledgerCheck } = useQuery<{ isMismatch: boolean; pointsMismatch?: number; pkrMismatch?: number; severity?: string } | null>({
+    queryKey: ['/api/admin/ledger/validate', selectedWithdrawal?.userId],
+    queryFn: async () => {
+      if (!selectedWithdrawal?.userId) return null;
+      const r = await apiRequest("GET", `/api/admin/ledger/validate/${selectedWithdrawal.userId}`);
+      return r.json();
+    },
+    enabled: !!selectedWithdrawal && (actionType === 'approve' || actionType === 'view'),
+    staleTime: 30000,
+  });
+
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -186,6 +202,14 @@ export function PayoutControl() {
     setCopiedId(text);
     setTimeout(() => setCopiedId(null), 2000);
     toast({ title: "Copied to Clipboard", description: "Value ready for transfer protocol." });
+  };
+
+  const handleCopyPaymentDetails = (w: Withdrawal) => {
+    const formatted = `${w.accountNumber} — ${w.accountName} — ${w.method}`;
+    navigator.clipboard.writeText(formatted);
+    setCopiedId(w.id + '_payment');
+    setTimeout(() => setCopiedId(null), 2000);
+    toast({ title: "Payment Details Copied", description: formatted });
   };
 
   const getStatusStyle = (status: string) => {
@@ -539,6 +563,59 @@ export function PayoutControl() {
                   </div>
                </div>
             </div>
+               {/* ── SYSTEM LEDGER CALCULATION ── */}
+               {selectedWithdrawal?.netAmount && (
+                 <div>
+                   <TechnicalLabel text="System Ledger Calculation" className="mb-2" />
+                   <div className="p-4 bg-zinc-900 border border-zinc-700 rounded-xl font-mono text-xs space-y-1.5 text-white">
+                     {(() => {
+                       const gross = parseFloat(selectedWithdrawal.netAmount || "0") + parseFloat(selectedWithdrawal.fee || "0");
+                       const fee = parseFloat(selectedWithdrawal.fee || "0");
+                       const net = parseFloat(selectedWithdrawal.netAmount || "0");
+                       return (
+                         <>
+                           <div className="flex justify-between"><span className="text-zinc-400">Real PKR (ledger):</span><span className="text-white font-black">Rs. {gross.toFixed(2)}</span></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Platform Fee (15%):</span><span className="text-red-400">− Rs. {fee.toFixed(2)}</span></div>
+                           <div className="border-t border-zinc-700 pt-1.5 flex justify-between"><span className="text-zinc-300 font-black">USER RECEIVES:</span><span className="text-emerald-400 font-black">Rs. {net.toFixed(2)}</span></div>
+                         </>
+                       );
+                     })()}
+                   </div>
+                 </div>
+               )}
+               {/* ── RED ALERT — LEDGER MISMATCH ── */}
+               {ledgerCheck?.isMismatch && (
+                 <div className="p-4 bg-red-600 border-2 border-red-800 rounded-xl animate-pulse">
+                   <div className="flex items-center gap-2 mb-2">
+                     <AlertTriangle className="w-5 h-5 text-white shrink-0" />
+                     <span className="font-black text-white text-sm uppercase tracking-wide">RED ALERT — LEDGER MISMATCH DETECTED</span>
+                   </div>
+                   <div className="text-xs text-red-100 space-y-0.5 font-mono">
+                     {ledgerCheck.pointsMismatch !== undefined && (
+                       <div>Points mismatch: <span className="font-black">+{ledgerCheck.pointsMismatch} TX-Points</span> (possible exploit)</div>
+                     )}
+                     {ledgerCheck.pkrMismatch !== undefined && (
+                       <div>PKR mismatch: <span className="font-black">Rs. {Number(ledgerCheck.pkrMismatch).toFixed(2)}</span></div>
+                     )}
+                     <div className="mt-2">Severity: <span className="font-black uppercase">{ledgerCheck.severity || "CRITICAL"}</span></div>
+                   </div>
+                   <div className="flex gap-2 mt-3">
+                     <Button size="sm" className="h-7 text-[10px] font-black bg-white text-red-600 hover:bg-red-50" onClick={closeModal}>
+                       <ShieldX size={12} className="mr-1" /> Block Withdrawal
+                     </Button>
+                   </div>
+                 </div>
+               )}
+               {/* ── PAYMENT COPY ── */}
+               {selectedWithdrawal && (
+                 <div>
+                   <Button variant="outline" className="w-full h-9 border-[1.5px] border-[#111] font-black text-xs hover:bg-[#111] hover:text-white transition-all"
+                     onClick={() => handleCopyPaymentDetails(selectedWithdrawal)}>
+                     {copiedId === selectedWithdrawal.id + '_payment' ? <Check size={12} className="mr-2"/> : <Copy size={12} className="mr-2"/>}
+                     Copy Payment Details
+                   </Button>
+                 </div>
+               )}
             <DialogFooter className="px-7 py-5 bg-white border-t border-zinc-100 flex flex-col gap-2">
                {selectedWithdrawal?.status === 'pending' ? (
                  <div className="flex gap-3 w-full">

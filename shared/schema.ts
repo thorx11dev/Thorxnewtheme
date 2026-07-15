@@ -179,6 +179,8 @@ export const leaderboardCache = pgTable("leaderboard_cache", {
   healthScore: decimal("health_score", { precision: 10, scale: 2 }).notNull(),
   level1Count: integer("level1_count").default(0),
   level2Count: integer("level2_count").default(0),
+  userRankTier: varchar("user_rank_tier").default("E-Rank"),
+  guildRole: varchar("guild_role").default("simple"),
   recordedAt: timestamp("recorded_at").defaultNow(),
 }, (table) => [
   index("leaderboard_rank_idx").on(table.globalRank),

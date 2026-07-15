@@ -5,8 +5,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Vault, Search, ShieldAlert, ShieldCheck, Snowflake, Play, RefreshCw, TrendingUp, Target, AlertTriangle, Crown } from "lucide-react";
+import { Vault, Search, ShieldAlert, ShieldCheck, Snowflake, Play, RefreshCw, TrendingUp, Target, AlertTriangle, Crown, UserCog, Users2 } from "lucide-react";
 import { RankBadge } from "@/components/RankBadge";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface AdminGuild {
   id: string;
@@ -29,6 +33,14 @@ export function GuildManager() {
   const [strikeReason, setStrikeReason] = useState<Record<string, string>>({});
   const [gpsAdjust, setGpsAdjust] = useState<Record<string, { delta: string; reason: string }>>({});
   const [weeklyTarget, setWeeklyTarget] = useState<Record<string, string>>({});
+  // Replace Captain
+  const [replaceCaptainGuildId, setReplaceCaptainGuildId] = useState<string | null>(null);
+  const [replaceCaptainGuildName, setReplaceCaptainGuildName] = useState<string>("");
+  const [newCaptainUserId, setNewCaptainUserId] = useState<string>("");
+  // Bulk targets
+  const [bulkTargets, setBulkTargets] = useState<Record<string, string>>({
+    'E-Rank': '20000', 'D-Rank': '50000', 'C-Rank': '100000', 'B-Rank': '200000', 'A-Rank': '350000', 'S-Rank': '500000',
+  });
 
   const { data, isLoading } = useQuery<{ guilds: AdminGuild[]; total: number }>({
     queryKey: ["/api/admin/guilds", search, statusFilter],
@@ -104,6 +116,50 @@ export function GuildManager() {
     },
   });
 
+  // Fetch guild members for Replace Captain modal
+  const { data: captainMembers = [] } = useQuery<any[]>({
+    queryKey: ["/api/guilds", replaceCaptainGuildId, "members"],
+    queryFn: async () => {
+      const r = await apiRequest("GET", `/api/guilds/${replaceCaptainGuildId}/members`);
+      const d = await r.json();
+      return d.members ?? d ?? [];
+    },
+    enabled: !!replaceCaptainGuildId,
+  });
+
+  const replaceCaptainMutation = useMutation({
+    mutationFn: async ({ guildId, newCaptainUserId }: { guildId: string; newCaptainUserId: string }) =>
+      (await apiRequest("PATCH", `/api/admin/guilds/${guildId}/captain`, { newCaptainUserId })).json(),
+    onSuccess: () => {
+      toast({ title: "Captain replaced", description: "Guild leadership transferred." });
+      setReplaceCaptainGuildId(null);
+      setNewCaptainUserId("");
+      invalidate();
+    },
+    onError: (err: any) => toast({ title: "Failed", description: err?.message, variant: "destructive" }),
+  });
+
+  const bulkTargetsMutation = useMutation({
+    mutationFn: async (targets: Record<string, number>) => {
+      const ranks = ['E-Rank', 'D-Rank', 'C-Rank', 'B-Rank', 'A-Rank', 'S-Rank'];
+      const results = await Promise.all(
+        ranks.map(rank =>
+          apiRequest("POST", "/api/admin/guilds/bulk-targets", {
+            weeklyTarget: targets[rank],
+            scope: "byDifficulty",
+            difficulty: rank,
+          }).then(r => r.json())
+        )
+      );
+      return results;
+    },
+    onSuccess: () => {
+      toast({ title: "Bulk targets set", description: "Weekly targets applied to all active guilds by rank." });
+      invalidate();
+    },
+    onError: (err: any) => toast({ title: "Failed", description: err?.message, variant: "destructive" }),
+  });
+
   const runResolutionMutation = useMutation({
     mutationFn: async () => (await apiRequest("POST", "/api/admin/guild-cycles/run-resolution", {})).json(),
     onSuccess: (data: any) => {
@@ -160,17 +216,67 @@ export function GuildManager() {
             <div className="text-xs text-red-600 mt-1">
               The following guild captains have been inactive for 48+ hours and may need to be replaced:
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {inactiveCaptains.map((c: any) => (
-                <span key={c.userId} className="text-xs bg-red-100 border border-red-200 rounded px-2 py-0.5 flex items-center gap-1">
-                  <Crown size={10} className="text-red-500" />
-                  {c.guildName}: {c.firstName || c.email || c.userId.slice(0, 8)}
-                </span>
-              ))}
+            <div className="space-y-2 mt-2">
+              {inactiveCaptains.map((c: any) => {
+                const offlineDays = c.lastActiveAt ? Math.floor((Date.now() - new Date(c.lastActiveAt).getTime()) / 86400000) : '?';
+                return (
+                  <div key={c.captainId || c.userId} className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Crown size={12} className="text-red-500 shrink-0" />
+                      <div>
+                        <div className="text-xs font-black text-red-800">{c.guildName}</div>
+                        <div className="text-[10px] text-red-600">Captain: {c.captainName || c.email || c.captainId?.slice(0, 8)} · Offline {offlineDays}d</div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline"
+                      className="h-7 text-[10px] font-black border border-red-300 text-red-700 hover:bg-red-100"
+                      onClick={() => { setReplaceCaptainGuildId(c.guildId); setReplaceCaptainGuildName(c.guildName); setNewCaptainUserId(""); }}>
+                      <UserCog size={10} className="mr-1" /> Replace
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
+
+      {/* ── BULK WEEKLY TARGET ASSIGNER ── */}
+      <div className="rounded-xl bg-background border-[1.5px] border-[#111] p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Target size={16} className="text-zinc-500" />
+          <div className="font-black text-sm text-[#111] uppercase tracking-tight">Weekly Targets by Guild Rank</div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {(['E-Rank', 'D-Rank', 'C-Rank', 'B-Rank', 'A-Rank', 'S-Rank'] as const).map(rank => (
+            <div key={rank} className="space-y-1.5">
+              <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{rank}</div>
+              <Input
+                type="number"
+                value={bulkTargets[rank] || ""}
+                onChange={(e) => setBulkTargets(prev => ({ ...prev, [rank]: e.target.value }))}
+                className="border-2 border-black h-8 text-sm w-full"
+                placeholder="pts/week"
+              />
+            </div>
+          ))}
+        </div>
+        <Button
+          size="sm"
+          className="font-black text-xs flex items-center gap-2"
+          disabled={bulkTargetsMutation.isPending}
+          onClick={() => {
+            const targets: Record<string, number> = {};
+            Object.entries(bulkTargets).forEach(([rank, val]) => {
+              const n = parseFloat(val);
+              if (n > 0) targets[rank] = n;
+            });
+            bulkTargetsMutation.mutate(targets);
+          }}
+        >
+          <Users2 size={12} /> Apply to All Active Guilds
+        </Button>
+      </div>
 
       {isLoading ? (
         <div className="p-20 text-center">
@@ -306,6 +412,42 @@ export function GuildManager() {
           ))}
         </div>
       )}
+      {/* ── REPLACE CAPTAIN DIALOG ── */}
+      <Dialog open={!!replaceCaptainGuildId} onOpenChange={(open) => !open && setReplaceCaptainGuildId(null)}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-black text-lg uppercase">Replace Captain</DialogTitle>
+          </DialogHeader>
+          <div className="px-1 py-2 space-y-4">
+            <div className="text-sm text-zinc-500">Guild: <span className="font-black text-[#111]">{replaceCaptainGuildName}</span></div>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Select New Captain</Label>
+              <select
+                className="w-full h-10 border-2 border-black rounded-lg px-3 text-sm font-bold"
+                value={newCaptainUserId}
+                onChange={(e) => setNewCaptainUserId(e.target.value)}
+              >
+                <option value="">Choose a member...</option>
+                {captainMembers.filter((m: any) => m.status === 'active').map((m: any) => (
+                  <option key={m.userId} value={m.userId}>
+                    {m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.userId.slice(0, 8)} ({m.userRankTier || 'E-Rank'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="border-2 border-black font-black text-xs" onClick={() => setReplaceCaptainGuildId(null)}>Cancel</Button>
+            <Button
+              className="font-black text-xs"
+              disabled={!newCaptainUserId || replaceCaptainMutation.isPending}
+              onClick={() => replaceCaptainMutation.mutate({ guildId: replaceCaptainGuildId!, newCaptainUserId })}
+            >
+              {replaceCaptainMutation.isPending ? "Transferring..." : "Confirm Transfer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
