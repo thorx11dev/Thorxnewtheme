@@ -1117,10 +1117,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ── Engine C: Guild Settings (Captain only) ────────────────────────────────────
+  const guildSettingsSchema = z.object({
+    name: z.string().min(3, "Name must be at least 3 characters").max(60).optional(),
+    description: z.string().max(500).optional().nullable(),
+    minRankRequired: z.string().optional(),
+    recruitmentOpen: z.boolean().optional(),
+    memberCapacity: z.number().int().min(10).max(50).optional(),
+    pinnedMemberId: z.string().optional().nullable(),
+    avatarUrl: z.string().max(500).optional().nullable(),
+    targetDifficulty: z.enum(["easy", "low", "medium", "hard"]).optional(),
+  });
+
   app.patch("/api/guilds/:id/settings", requireSessionAuth, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
-      const { name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl, targetDifficulty } = req.body;
+      const parsed = guildSettingsSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid settings.", errors: parsed.error.flatten().fieldErrors });
+      }
+      const { name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl, targetDifficulty } = parsed.data;
       const guild = await storage.updateGuildSettings(req.params.id, userId, {
         name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl, targetDifficulty,
       });

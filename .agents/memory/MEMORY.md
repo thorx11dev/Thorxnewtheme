@@ -11,4 +11,4 @@
 - [Guild schema unique constraints](guild-schema-constraints.md) — raw `sql\`CONSTRAINT...\`` extras are NOT applied by drizzle-kit push on existing tables; use native `unique()` + manual ALTER TABLE for live DBs.
 - [THORX v3 rebuild](thorx-v3-rebuild.md) — ALL 6 PHASES COMPLETE; Phase 6 cleanup done: T&C updated, shims in place, rally removed, L2 frozen, no Vault/Locked language in user-facing UI.
 - [THORX v3 verification](thorx-v3-verification.md) — Full spec audit 2026-07-16; CONVERSION_RATE=100 intentional (business decision, not spec's 1000); REFERRAL_FEE_SHARE_PCT=50 intentional; all 57 system_config keys seeded; commission_logs write-frozen (fn exists but not called).
-- [Master Fix Plan Progress](master-fix-plan.md) — Phases 3/4/5/6/8/9/10/11/15/16/17/18/19/20 implemented 2026-07-16; see file for phase-by-phase status and remaining items.
+- [Master Fix Plan Progress](master-fix-plan.md) — ALL PHASES COMPLETE 2026-07-16; 7.2 Zod guild settings, 15.1 skeletons, 15.3 empty states, 15.6 two-step PS, 16.4 ad-player UI.

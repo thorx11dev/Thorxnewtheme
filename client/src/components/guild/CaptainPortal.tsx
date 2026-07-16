@@ -14,7 +14,8 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target, MessagesSquare } from "lucide-react";
+import { Megaphone, Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target, MessagesSquare, ListTodo } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -248,7 +249,40 @@ export function CaptainPortal() {
     { id: "settings", label: "Settings", icon: <Settings size={14} /> },
   ];
 
-  if (!guildId || !guild) return <div className="text-center py-12 text-zinc-400 text-sm">Loading guild data…</div>;
+  if (!guildId || !guild) return (
+    <div className="space-y-4">
+      {/* Header skeleton */}
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="w-5 h-5 rounded" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-32 rounded" />
+            <Skeleton className="h-3 w-24 rounded" />
+          </div>
+        </div>
+        <Skeleton className="h-4 w-20 rounded" />
+      </div>
+      {/* Tabs skeleton */}
+      <div className="flex gap-1 bg-zinc-100 rounded-lg p-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="flex-1 h-8 rounded-md" />
+        ))}
+      </div>
+      {/* Content skeleton */}
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 py-2">
+            <Skeleton className="w-8 h-8 rounded-full" />
+            <div className="flex-1 space-y-1">
+              <Skeleton className="h-4 w-1/3 rounded" />
+              <Skeleton className="h-3 w-1/4 rounded" />
+            </div>
+            <Skeleton className="h-6 w-16 rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const RANK_ORDER = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"];
 
@@ -355,6 +389,13 @@ export function CaptainPortal() {
         <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
           <div className="p-3 border-b border-zinc-100 text-sm font-bold">Team Roster ({active.length}/{guild.memberCapacity})</div>
           <div className="divide-y divide-zinc-100">
+            {active.length === 0 && (
+              <div className="text-center py-16">
+                <Users className="mx-auto mb-3 text-zinc-300" size={36} />
+                <p className="text-zinc-400 text-sm">No active members yet.</p>
+                <p className="text-zinc-500 text-xs mt-1">Review pending applications to build your team.</p>
+              </div>
+            )}
             {active.sort((a: any, b: any) => (b.weeklyPointsContributed || 0) - (a.weeklyPointsContributed || 0)).map((m: any, i: number) => {
               const isCaptain = m.userId === guild.captainId;
               const isMe = m.userId === user?.id;

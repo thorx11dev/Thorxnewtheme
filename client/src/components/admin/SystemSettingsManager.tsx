@@ -368,6 +368,11 @@ export function SystemSettingsManager() {
           </p>
         </div>
 
+        {/* ─── Per-Ad-Player Config UI (Phase 16.4) ─── */}
+        <div className="lg:col-span-2">
+          <AdPlayersSection />
+        </div>
+
         {/* Waterfall Management - Full Width */}
         <div className="lg:col-span-2">
           <WaterfallSection 
@@ -485,6 +490,194 @@ function EconomicControl({ label, value, onChange, onSave, isLoading, step }: an
         >
           {isLoading ? "Saving..." : "Update"}
         </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Per-Ad-Player Config Section (Phase 16.4) ───────────────────────────────
+interface AdPlayer {
+  id: string;
+  name: string;
+  pkrToTxRatio: number;
+  variancePct: number;
+}
+
+function AdPlayersSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: players = [], isLoading } = useQuery<AdPlayer[]>({
+    queryKey: ["/api/admin/engine-a/players"],
+    queryFn: async () => {
+      const r = await apiRequest("GET", "/api/admin/engine-a/players");
+      const d = await r.json();
+      return d.players ?? d ?? [];
+    },
+  });
+
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newRatio, setNewRatio] = useState("");
+  const [newVariance, setNewVariance] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRatio, setEditRatio] = useState("");
+  const [editVariance, setEditVariance] = useState("");
+
+  const addMutation = useMutation({
+    mutationFn: async (payload: { name: string; pkrToTxRatio: number; variancePct: number }) => {
+      const r = await apiRequest("POST", "/api/admin/engine-a/players", payload);
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/engine-a/players"] });
+      setShowAddForm(false);
+      setNewName(""); setNewRatio(""); setNewVariance("");
+      toast({ title: "Player added" });
+    },
+    onError: (err: any) => toast({ title: "Failed to add player", description: err.message, variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...payload }: { id: string; name: string; pkrToTxRatio: number; variancePct: number }) => {
+      const r = await apiRequest("PATCH", `/api/admin/engine-a/players/${id}`, payload);
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/engine-a/players"] });
+      setEditingId(null);
+      toast({ title: "Player updated" });
+    },
+    onError: (err: any) => toast({ title: "Failed to update player", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const r = await apiRequest("DELETE", `/api/admin/engine-a/players/${id}`);
+      return r.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/engine-a/players"] });
+      toast({ title: "Player removed" });
+    },
+    onError: (err: any) => toast({ title: "Failed to remove player", description: err.message, variant: "destructive" }),
+  });
+
+  const startEdit = (p: AdPlayer) => {
+    setEditingId(p.id);
+    setEditName(p.name);
+    setEditRatio(String(p.pkrToTxRatio));
+    setEditVariance(String(p.variancePct));
+  };
+
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
+        <div className="flex items-center gap-2">
+          <Activity size={16} className="text-primary" />
+          <span className="text-sm font-black uppercase tracking-widest text-zinc-900">Engine A — Ad Players</span>
+        </div>
+        <Button size="sm" variant="outline" className="h-7 text-xs font-semibold gap-1 rounded-lg"
+          onClick={() => { setShowAddForm(v => !v); }}
+        >
+          <Plus size={12} />Add Player
+        </Button>
+      </div>
+
+      {/* Add form */}
+      {showAddForm && (
+        <div className="border-b border-zinc-100 px-6 py-4 bg-zinc-50 grid grid-cols-3 gap-3 items-end">
+          <div>
+            <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Name</div>
+            <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Player Alpha" className="h-8 text-xs" />
+          </div>
+          <div>
+            <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">PKR → TX Ratio</div>
+            <Input type="number" value={newRatio} onChange={e => setNewRatio(e.target.value)} placeholder="e.g. 1000" className="h-8 text-xs" />
+          </div>
+          <div>
+            <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Variance %</div>
+            <Input type="number" value={newVariance} onChange={e => setNewVariance(e.target.value)} placeholder="e.g. 10" className="h-8 text-xs" />
+          </div>
+          <div className="col-span-3 flex gap-2 justify-end">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowAddForm(false)}>Cancel</Button>
+            <Button size="sm" className="h-7 text-xs bg-zinc-900 text-white hover:bg-black"
+              disabled={!newName.trim() || !newRatio || !newVariance || addMutation.isPending}
+              onClick={() => addMutation.mutate({ name: newName.trim(), pkrToTxRatio: parseFloat(newRatio), variancePct: parseFloat(newVariance) })}
+            >
+              {addMutation.isPending ? "Adding…" : "Save Player"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Player table */}
+      <div className="overflow-x-auto">
+        {isLoading ? (
+          <div className="px-6 py-8 text-center text-zinc-400 text-sm">Loading players…</div>
+        ) : players.length === 0 ? (
+          <div className="px-6 py-10 text-center text-zinc-400 text-sm">
+            <Layers size={32} className="mx-auto mb-2 text-zinc-300" />
+            No ad players configured. Add one to get started.
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-100 bg-zinc-50">
+                <th className="text-left text-[10px] font-black text-zinc-400 uppercase tracking-widest px-6 py-2.5">Name</th>
+                <th className="text-left text-[10px] font-black text-zinc-400 uppercase tracking-widest px-4 py-2.5">PKR → TX Ratio</th>
+                <th className="text-left text-[10px] font-black text-zinc-400 uppercase tracking-widest px-4 py-2.5">Variance %</th>
+                <th className="px-4 py-2.5" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {players.map(p => editingId === p.id ? (
+                <tr key={p.id} className="bg-zinc-50">
+                  <td className="px-6 py-2">
+                    <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-7 text-xs" />
+                  </td>
+                  <td className="px-4 py-2">
+                    <Input type="number" value={editRatio} onChange={e => setEditRatio(e.target.value)} className="h-7 text-xs w-28" />
+                  </td>
+                  <td className="px-4 py-2">
+                    <Input type="number" value={editVariance} onChange={e => setEditVariance(e.target.value)} className="h-7 text-xs w-24" />
+                  </td>
+                  <td className="px-4 py-2">
+                    <div className="flex gap-1 justify-end">
+                      <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setEditingId(null)}>Cancel</Button>
+                      <Button size="sm" className="h-6 text-xs px-2 bg-zinc-900 text-white hover:bg-black"
+                        disabled={updateMutation.isPending}
+                        onClick={() => updateMutation.mutate({ id: p.id, name: editName.trim(), pkrToTxRatio: parseFloat(editRatio), variancePct: parseFloat(editVariance) })}
+                      >
+                        {updateMutation.isPending ? "…" : "Save"}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={p.id} className="hover:bg-zinc-50 transition-colors">
+                  <td className="px-6 py-3 font-semibold text-zinc-900">{p.name}</td>
+                  <td className="px-4 py-3 text-zinc-600 font-mono">{p.pkrToTxRatio.toLocaleString()}×</td>
+                  <td className="px-4 py-3 text-zinc-600 font-mono">±{p.variancePct}%</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 justify-end">
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-900" onClick={() => startEdit(p)}>
+                        <Settings size={12} />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-zinc-400 hover:text-red-600"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => deleteMutation.mutate(p.id)}
+                      >
+                        <Trash2 size={12} />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Search, Users, Trophy, Clock, Lock, ChevronRight, Star } from "lucide-react";
+import { Search, Users, Trophy, Clock, Lock, ChevronRight, Star, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface GuildDiscovery {
@@ -136,7 +136,32 @@ export function GuildDiscoveryPanel() {
 
       {/* Guild List */}
       {isLoading ? (
-        <div className="text-center py-12 text-zinc-400 text-sm">Loading guilds…</div>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-zinc-200 bg-white p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-6 rounded bg-zinc-200 animate-pulse shrink-0 mt-1" />
+                <div className="w-10 h-10 rounded-lg bg-zinc-200 animate-pulse shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-zinc-200 animate-pulse rounded w-1/3" />
+                  <div className="h-3 bg-zinc-100 animate-pulse rounded w-1/2" />
+                  <div className="flex gap-3 pt-0.5">
+                    <div className="h-3 bg-zinc-100 animate-pulse rounded w-16" />
+                    <div className="h-3 bg-zinc-100 animate-pulse rounded w-20" />
+                    <div className="h-3 bg-zinc-100 animate-pulse rounded w-14" />
+                  </div>
+                </div>
+                <div className="w-16 h-7 rounded-lg bg-zinc-100 animate-pulse shrink-0" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : guilds.length === 0 ? (
+        <div className="text-center py-20">
+          <Shield className="mx-auto mb-3 text-zinc-300" size={40} />
+          <p className="text-zinc-800 text-sm font-semibold">No guilds available yet.</p>
+          <p className="text-zinc-500 text-xs mt-1">Reach B-Rank to create the first one.</p>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-zinc-400 text-sm">No guilds match your filters.</div>
       ) : (

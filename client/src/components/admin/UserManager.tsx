@@ -109,6 +109,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   // THORX v3: PS override
   const [psDelta, setPsDelta] = useState("");
   const [psReason, setPsReason] = useState("");
+  const [psConfirming, setPsConfirming] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [networkZoom, setNetworkZoom] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -241,6 +242,9 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
     setNetworkZoom(1);
     setSelectedTrustStatus(null);
     setTrustReason("");
+    setPsDelta("");
+    setPsReason("");
+    setPsConfirming(false);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -980,14 +984,32 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                 className="w-full border-2 border-black rounded-xl px-4 py-3 font-bold text-[#111] focus:outline-none focus:ring-2 focus:ring-purple-400"
               />
             </div>
-            <button
-              className="w-full bg-purple-600 text-white font-black text-sm tracking-widest uppercase py-4 rounded-2xl hover:bg-purple-700 transition-colors disabled:opacity-40"
-              disabled={!psDelta || psReason.length < 5 || psAdjustMutation.isPending}
-              onClick={() => selectedUser && psAdjustMutation.mutate({ userId: selectedUser.id, delta: parseFloat(psDelta), reason: psReason })}
-            >
-              {psAdjustMutation.isPending ? "Applying…" : "Apply PS Adjustment"}
-            </button>
-            <button onClick={closeModal} className="w-full text-center text-xs font-bold text-zinc-400 hover:text-[#111] transition-colors py-1">Cancel</button>
+            {psConfirming ? (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-purple-50 border border-purple-200 px-4 py-3 text-sm font-semibold text-purple-800 text-center">
+                  Apply <span className="font-black">{parseFloat(psDelta) > 0 ? "+" : ""}{psDelta} PS</span> to <span className="font-black">{selectedUser?.firstName}</span>?
+                </div>
+                <button
+                  className="w-full bg-purple-600 text-white font-black text-sm tracking-widest uppercase py-4 rounded-2xl hover:bg-purple-700 transition-colors disabled:opacity-40"
+                  disabled={psAdjustMutation.isPending}
+                  onClick={() => selectedUser && psAdjustMutation.mutate({ userId: selectedUser.id, delta: parseFloat(psDelta), reason: psReason })}
+                >
+                  {psAdjustMutation.isPending ? "Applying…" : "Confirm"}
+                </button>
+                <button onClick={() => setPsConfirming(false)} className="w-full text-center text-xs font-bold text-zinc-400 hover:text-[#111] transition-colors py-1">← Go back</button>
+              </div>
+            ) : (
+              <>
+                <button
+                  className="w-full bg-purple-600 text-white font-black text-sm tracking-widest uppercase py-4 rounded-2xl hover:bg-purple-700 transition-colors disabled:opacity-40"
+                  disabled={!psDelta || psReason.length < 5}
+                  onClick={() => setPsConfirming(true)}
+                >
+                  Review PS Adjustment
+                </button>
+                <button onClick={closeModal} className="w-full text-center text-xs font-bold text-zinc-400 hover:text-[#111] transition-colors py-1">Cancel</button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
