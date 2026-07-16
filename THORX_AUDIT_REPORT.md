@@ -1,8 +1,7 @@
-# THORX — MILLION-DOLLAR PRODUCT AUDIT REPORT
+# THORX — ULTIMATE MILLION-DOLLAR PRODUCT AUDIT REPORT
 **Date:** 2026-07-16  
-**Auditor:** Independent Deep-Scan (3-Agent Parallel Analysis)  
-**Codebase:** React + Vite + Express + PostgreSQL + Drizzle ORM  
-**Scope:** Every route, storage method, schema definition, and frontend component
+**Scope:** Full system — server/routes.ts (4671 lines), server/storage.ts (5244 lines), shared/schema.ts, all frontend components  
+**Standard:** World-class, production-grade, financial-integrity-first
 
 ---
 
@@ -10,208 +9,183 @@
 
 ---
 
-### 1.1 — PKR Leaks (Points-Only Illusion Violations)
+### 1.1 PKR Leakage — Points-Only Illusion Violations
 
-**[C1-01] `GuildDiscoveryPanel.tsx` — `weeklyBonusPool` shown in guild card preview**
-The discovery card renders the guild's `weeklyBonusPool` raw PKR value. Per spec invariant #8, the pool amount must never be shown to any user until it is distributed on Sunday. Users browsing guilds to join can see how much PKR is sitting in a pool they haven't even joined yet — a direct violation of the points-only illusion.
+**Finding A — `balanceCashPkr` Sent to Frontend via Session**
+- **File:** `server/routes.ts` — `/api/auth/session` response, `client/src/hooks/useAuth.ts` line 31
+- **Issue:** The `User` interface includes `balanceCashPkr`. The session endpoint serializes the full user object including this field. Any browser DevTools / network inspector shows the real PKR wallet balance to the user. This field must be stripped from the session response.
+- **Severity:** CRITICAL — breaks the illusion entirely at the API level
 
-**[C1-02] `DashboardCards.tsx` line ~180 — `totalEarnings` label is ambiguous**
-The Captain-context dashboard card displays `totalEarnings` under a label that doesn't clearly distinguish it as a PKR figure. Non-captain users who see a similar card may interpret it as TX-Points.
+**Finding B — GuildMemberPanel Exposes PKR in Task Logic**
+- **File:** `client/src/components/guild/GuildMemberPanel.tsx` line 367
+- **Code:** `parseFloat(task.grossPkrPerCompletion) * 0.45 * 100`
+- **Issue:** `grossPkrPerCompletion` is a raw PKR value. This calculation is used to display TX-Points for a task. Even if the result shows as "TX-Points," the source PKR field name is visible in the network response and the logic is PKR-aware on the frontend. The server should pre-compute the TX-Point display value and never send `grossPkrPerCompletion` to non-admin users.
+- **Severity:** HIGH
 
-**[C1-03] Withdrawal preview in `UserPortal.tsx` lines 2786–2944**
-Correctly shows PKR only on the withdrawal screen. This is intentional and correct per spec. No issue here.
-
-**[C1-04] `ReferralAnalytics.tsx` lines 57–60, 107 — PKR commission amounts**
-Admin-only panel. Showing Rs. amounts here is correct. Not a user-facing leak.
-
-**[C1-05] `LiveActivityFeed.tsx` line 66 — PKR amounts in feed**
-Admin/team panel only. Correct to show real PKR values. Not a user-facing leak.
-
-**Verdict:** The only real user-facing PKR leak is `weeklyBonusPool` appearing in guild discovery cards (C1-01). All other flagged items are in admin-only views and are correct.
-
----
-
-### 1.2 — Database Transaction Safety
-
-**[C1-06] `storage.nudgeGuildMember()` — NOT wrapped in a transaction**
-Performs three sequential operations outside any transaction:
-1. `SELECT` to verify membership and cooldown state
-2. `UPDATE guildMembers SET lastNudgedAt = now()`
-3. `INSERT notifications`
-
-Between step 1 and step 2, a concurrent identical request could pass the cooldown check. Two nudges can fire within the same 24-hour window under concurrent load.
-
-**[C1-07] `storage.sendCaptainMessage()` — NOT wrapped in a transaction**
-Performs two sequential operations outside any transaction:
-1. `INSERT captainMessages` (new message written)
-2. `UPDATE captainMessages SET isRead=true` (mark prior unread messages as read)
-
-If step 2 fails (constraint error, timeout), the message is delivered but the read-status is permanently stale. No recovery path exists.
-
-**All other multi-write paths are correctly transacted:** `recordEarnEvent`, `processWithdrawal`, `createGuild`, `applyToGuildWithCoverLetter`, `decideGuildApplication`, and `setGuildMemberMvp` all correctly use `db.transaction()`.
+**Finding C — Withdrawal Success Toast Shows PKR**
+- **File:** `client/src/pages/UserPortal.tsx` line 2595
+- **Code:** Toast includes `userNetPkr.toFixed(2)` in "Rs." format
+- **Status:** This is intentional (spec allows PKR reveal on withdrawal confirmation screen). Acceptable as-is. ✅
 
 ---
 
-### 1.3 — Race Conditions & Double-Spend
+### 1.2 Race Conditions
 
-**[C1-08] `POST /api/ad-view` — Timing check has a classic race condition**
-The route checks the user's last ad-view timestamp *before* creating the new record. Two concurrent requests sent within milliseconds can both pass the time check before either write completes. This allows a user to earn double points on a single ad slot. The fix requires a DB-level advisory lock or a unique partial index on `(userId, date_trunc('minute', created_at))`.
+**Finding D — `createWithdrawal()` TOCTOU Window**
+- **File:** `server/storage.ts` lines 1952–1965
+- **Issue:** `calculateWithdrawalBreakdown()` (which reads the user's spendable balance) and the S-Rank status check both execute **outside** the transaction. The actual INSERT is wrapped in a transaction, but by then the balance read is stale. A user who fires two simultaneous withdrawal requests could pass both pre-flight checks before either INSERT commits. The partial unique index `uniq_withdrawals_one_pending_per_user` catches non-pending duplicates but **not** two simultaneous submissions of a status other than 'pending'.
+- **Exact gap:** Lines 1952 and 1960–1964 run before `db.transaction()` at line 1974.
+- **Severity:** HIGH — financial double-spend vector
 
-**[C1-09] `POST /api/tasks/:id/verify` — Two writes not in a single transaction**
-The route calls `updateTaskRecord` (marks task completed) and then `recordEarnEvent` (awards points) as two separate, sequential DB operations outside a transaction. If the server crashes or the connection drops between these two calls, the task is marked completed but points are never awarded — with no recovery path. `recordEarnEvent` does have a unique constraint on `(sourceId, sourceType)` preventing duplicate inserts, but the gap between the two calls is still a consistency risk.
-
-**[C1-10] Captain DM — CRITICAL: Zero access control on private threads**
-`GET /api/guilds/:id/dm/:memberId` and `POST /api/guilds/:id/dm/:memberId` pass the caller's `userId` and `req.params.memberId` to `storage.getCaptainMessageThread(guildId, userId, memberId)`. The storage function queries messages between any two user IDs without verifying that the caller is either the guild captain or the specific member named in the URL. **Any authenticated user who knows a guildId and any memberId UUID can read and write into that private DM thread.** This is a critical privacy and security vulnerability requiring immediate fix.
-
----
-
-### 1.4 — Floating-Point Drift
-
-**[C1-11] `recordEarnEvent` — Decimal.js abandoned before DB write**
-The split math (40/60 for Engine A/B, 20/35/45 for Engine C) correctly uses `Decimal.js` via `.times()` and `.div()`. However, all three resulting Decimal values call `.toNumber()` before further processing and string conversion. The intermediate native float operations between `.toNumber()` and `.toFixed(4)` can introduce sub-paisa rounding drift.
-
-**[C1-12] `totalEarnings` accumulation loses precision**
-`user_transactions.real_pkr_value` is stored to 4 decimal places (`.toFixed(4)`). When accumulated into `users.total_earnings`, the SQL expression uses `.toFixed(2)` (2 decimal places). Repeated truncation across thousands of transactions means the user's displayed `totalEarnings` will drift from the true ledger sum. The withdrawal preview uses the ledger correctly, but the dashboard stats surface uses `totalEarnings` which will drift.
-
-**[C1-13] Leaderboard score calculation uses native float arithmetic**
-`refreshLeaderboardCache()` computes weighted scores using `parseFloat(u.totalEarnings)` and native JavaScript multiplication. For a financial leaderboard this should use scaled integer math or Decimal.js throughout.
+**Finding E — `adjustUserBalance()` Unlocked SELECT Inside Transaction**
+- **File:** `server/storage.ts` lines 3382–3385
+- **Code:** `const [user] = await tx.select().from(users).where(eq(users.id, userId));`
+- **Issue:** The user row is read without `.for('update')`. Two concurrent admin adjustments could read the same old balance, then both write increments on top of a stale value. SQL-level increment (`sql\`\${users.availableBalance} + ${x}\``) is used, which makes this safe in practice for additive operations, but the subsequent `adminId` validation reads the admin row the same way (line 3385). If the business logic ever adds conditional branching on the fetched user balance, this becomes a hard bug.
+- **Severity:** MEDIUM (safe today due to SQL-increment pattern, but architecturally wrong)
 
 ---
 
-### 1.5 — Half-Baked or Broken Features
+### 1.3 Floating-Point Precision Drift
 
-**[C1-14] MVP — Can be changed mid-week an unlimited number of times**
-`setGuildMemberMvp` (storage line 4460) correctly prevents the same member from being set twice (`if (membership.isMvp) throw Error`). However, it does NOT prevent the captain from clearing the current MVP and assigning a new one to a different member within the same week. The spec states "only one MVP per guild per week" with the previous MVP cleared only on Sunday reset. Currently the captain can cycle through multiple different MVPs in one week.
+**Finding F — `recordEarnEvent()` Converts Decimal to Native Float**
+- **File:** `server/storage.ts` lines 981–983
+- **Code:**
+  ```typescript
+  const userPkrShare = userPkrShareD.toNumber();      // line 981
+  const thorxProfitPkr = thorxProfitPkrD.toNumber();  // line 982
+  const guildPoolPkr = guildPoolPkrD.toNumber();       // line 983
+  ```
+- **Issue:** `Decimal` (from `decimal.js`) is converted to native JS float BEFORE being used in string interpolation for SQL writes (lines 1025–1031, 1051, 1061). For tiny PKR amounts (e.g. Rs. 0.0003), IEEE 754 float representation introduces drift. This drift compounds across thousands of earn events. The correct fix is to keep all values as `Decimal` through to `.toFixed(N)` only at the SQL boundary.
+- **Severity:** HIGH — financial integrity at scale
 
-**[C1-15] Captain replacement — No WS broadcast to new or old captain**
-`PATCH /api/admin/guilds/:id/captain` updates the DB but emits no WebSocket event. The demoted captain continues to see the Captain Portal UI. The promoted member continues to see the Member Panel. Both must manually refresh to discover their role has changed.
+**Finding G — `parseFloat()` on `earnedAmount` Before Earn Engine**
+- **File:** `server/storage.ts` line 1122
+- **Code:** `grossPkr: parseFloat(insertAdView.earnedAmount)`
+- **Issue:** `insertAdView.earnedAmount` is a string from `insertWithdrawalSchema` / ad config. `parseFloat` converts it to a float before passing to `recordEarnEvent`. This should be `new Decimal(insertAdView.earnedAmount)` passed through as Decimal, not float.
+- **Severity:** MEDIUM
 
-**[C1-16] Withdrawal approved/rejected — No WS notification to the user**
-When an admin approves or rejects a withdrawal at `PATCH /api/admin/withdrawals/:id` (line 2418), the code calls `broadcastTeamRefresh("withdrawals_bulk_updated")` — this only refreshes the admin panel. No `broadcastToUser(withdrawal.userId, 'withdrawal_status_changed')` call exists anywhere. The user must manually refresh to see their withdrawal status change from `pending` to `approved` or `rejected`.
+**Finding H — `parseFloat()` on totalEarnings in Leaderboard Computation**
+- **File:** `server/storage.ts` lines 3036, 3053
+- **Code:** `.map(u => parseFloat(u.totalEarnings || "0"))` and `const earned = parseFloat(u.totalEarnings || "0")`
+- **Issue:** Used in leaderboard percentile and metrics calculations. Float drift on large PKR values (Rs. 10,000+) will produce incorrect rankings.
+- **Severity:** MEDIUM
 
-**[C1-17] `POST /api/ad-view` — Hard-coded static AD_INVENTORY table**
-The route contains a hard-coded dictionary with fixed PKR reward values:
-```
-"ad_001": { reward: "0.25", duration: 30 }
-"ad_002": { reward: "0.15", duration: 15 }
-"ad_003": { reward: "0.50", duration: 45 }
-```
-These values are completely disconnected from HilltopAds real network revenue, from the `system_config` table, and from any admin control. Admin-configured `ENGINE_A_THORX_CUT_PCT` is read correctly in `recordEarnEvent`, but the gross PKR value going in is pulled from this static dictionary — not from any real ad-network revenue signal.
-
----
-
-## CATEGORY 2: The "Million-Dollar Company" Standards Gap
-
----
-
-### 2.1 — Authentication Guard Coverage
-
-The following routes use a manual `getThorxPrincipalId()` + early-return pattern instead of the `requireSessionAuth` middleware. They work correctly today, but they bypass the middleware chain — meaning any future middleware added to `requireSessionAuth` (logging, audit trails, enhanced rate-limiting) will not automatically apply to them:
-
-| Route | Line | Severity |
-|---|---|---|
-| `GET /api/notifications` | 756 | Medium |
-| `GET /api/earnings` | 774 | Medium (comment incorrectly says "no auth required") |
-| `GET /api/referrals` | 809 | Medium |
-| `POST /api/ad-view` | 1387 | **CRITICAL** — earns real money, no middleware |
-| `GET /api/dashboard/stats` | 1505 | Medium |
-| `GET /api/earnings/history` | 1543 | Medium |
-| `GET /api/referrals/leaderboard` | 1570 | Low |
-| `GET /api/referrals/stats/detailed` | 1596 | Low |
-| `GET /api/transactions/history` | 1631 | Medium |
-| `GET /api/chat/stats` | 3278 | Low |
-| `GET /api/chat/history` | 3292 | Low |
-| `GET /api/tasks` | 3480 | Medium |
-| `POST /api/tasks/:id/click` | ~3510 | Medium |
-| `POST /api/tasks/:id/verify` | 3534 | **CRITICAL** — earns real money, no middleware |
-| `GET /api/tasks/completed/today/:type` | 4117 | Low |
+**Finding I — `adjustUserBalance()` Float Math in Ledger**
+- **File:** `server/storage.ts` lines 3424–3425
+- **Code:** `realPkrValue: Math.abs(parseFloat(amount)).toFixed(4)`
+- **Issue:** The `amount` parameter arrives as a string, gets parsed to float, then formatted back to a string for the DB. Intermediate float representation can corrupt the value.
+- **Severity:** MEDIUM
 
 ---
 
-### 2.2 — Rate Limiting Gaps
+### 1.4 Missing Database Transactions
 
-| Endpoint | Current Limiter | Risk |
-|---|---|---|
-| `POST /api/ad-view` | ❌ None (in-handler time check only — has race condition) | Bot farming / point inflation |
-| `POST /api/tasks/:id/click` | ❌ None | Task slot abuse |
-| `POST /api/tasks/:id/verify` | ❌ None | CPA verification spam |
-| `POST /api/guilds/:id/apply` | ❌ None | Spam applications |
-| `POST /api/guilds/:id/chat` | ❌ None | Guild chat flood |
-| `POST /api/guilds/:id/dm/:memberId` | ❌ None | DM spam |
-| `POST /api/support/chat` | ❌ None | Bot abuse of chatbot API |
-| `POST /api/login` | ✅ `authRateLimiter` | OK |
-| `POST /api/register` | ✅ `authRateLimiter` | OK |
-| `POST /api/withdrawals` | ✅ `withdrawalRateLimiter` | OK |
-| `POST /api/withdrawals/referral` | ✅ `withdrawalRateLimiter` | OK |
+**Finding J — `createAdView()` Manual Rollback Instead of Transaction**
+- **File:** `server/storage.ts` lines 1111–1145 (approx)
+- **Issue:** The method inserts into `adViews` table, then calls `recordEarnEvent()`. If `recordEarnEvent()` throws, the code performs a manual `db.delete()` to roll back the ad view insertion. This is a fragile "manual transaction" — if the process crashes between insert and delete, the adView row stays orphaned with no corresponding earn event, corrupting the user's earnings history.
+- **Fix:** Wrap the entire `createAdView()` body in `db.transaction()`.
+- **Severity:** HIGH — data integrity
 
 ---
 
-### 2.3 — Input Validation & Mass Assignment
+### 1.5 Missing onError Handlers
 
-**[C2-01] `PATCH /api/guilds/:id/settings` (line 1133)** — destructures `req.body` with no Zod schema:
-```javascript
-const { name, description, minRankRequired, targetDifficulty, isOpen, memberCapacity } = req.body;
-```
-No type checking, no `maxLength` enforcement on `name`/`description`, no enum allowlist for `targetDifficulty`. A captain could send an excessively long string or an unexpected value for difficulty.
-
-**[C2-02] `POST /api/guilds/:id/chat` (line 1061)** — message content is passed directly to storage with no route-level length cap. Only the DB schema enforces limits, not the application layer.
-
-**[C2-03] `PATCH /api/admin/users/:userId/ps` (line 4500)** — `delta` is parsed with `Number(delta)` and applied directly. No minimum/maximum cap is enforced. An admin could set `delta: 999999` or `delta: -999999` with no validation guardrail.
-
-**[C2-04] `POST /api/admin/guilds/bulk-targets`** — bulk operation rewrites weekly targets for every guild in a rank tier with a single request. No dry-run mode, no confirmation token, no preview step. A single mistyped payload updates all matching guilds irreversibly.
-
-**[C2-05] Free-text `reason` fields lack `maxLength` enforcement** — rejection reasons (`PATCH /api/guilds/:id/applications/:applicationId`), PS adjust reasons (`PATCH /api/admin/users/:userId/ps`), and GPS adjust reasons all go into audit logs and notification bodies with no length cap. Oversized strings could cause notification rendering issues or DB text-field overflow on some environments.
+**Finding K — `logoutMutation` Silent Failure**
+- **File:** `client/src/hooks/useAuth.ts` around line 63
+- **Issue:** `logoutMutation` catches errors inside `mutationFn` but has no `onError` callback. If the server returns a non-2xx (e.g. network error), the user sees nothing — the UI may not clear the session, leaving a ghost login state.
+- **Severity:** LOW
 
 ---
 
-### 2.4 — Missing Database Indexes
-
-| Table | Missing Index | Why It Matters |
-|---|---|---|
-| `activity_feed` | `user_id` column | Feed is frequently filtered by a specific user in admin views |
-| `guild_weekly_snapshots` | `guild_id`, `created_at` | Weekly history query in Captain Portal does ORDER BY on these |
-| `guild_members` | Composite `(guild_id, user_id, status)` | "Active members of a guild" is the most common member query |
-| `score_history` | Composite `(user_id, snapshot_at)` | Exists as two individual indexes; a composite would be faster for range scans |
-
-**Already correctly indexed:** `user_transactions` (composite userId+createdAt, userId+withdrawn), `captain_messages` (composite thread index), `referral_commissions`, `task_records` (composite userId+taskId), and all `users` sort columns (performanceScore, totalEarnings, userRankTier).
+## CATEGORY 2: Million-Dollar Company Standards Gaps
 
 ---
 
-### 2.5 — Scale Bottlenecks
+### 2.1 Security & Authentication
 
-**[C2-06] `refreshLeaderboardCache()` — loads ALL active users into Node.js heap**
-`db.select().from(users).where(and(eq(users.isActive, true), eq(users.role, 'user')))` has no `LIMIT`. On a platform with 10,000+ users this loads the entire users table into Node.js memory, sorts it multiple times in-memory, then batch-inserts. This will cause heap pressure and latency spikes on every leaderboard refresh.
+**Finding L — `POST /api/legacy-register` Has No Rate Limiter**
+- **File:** `server/routes.ts` line 1706
+- **Code:** `app.post("/api/legacy-register", async (req, res) => {`
+- **Issue:** This endpoint creates user accounts with no rate limiting and no `authRateLimiter`. An attacker can register thousands of fake legacy accounts per second. This endpoint is also architecturally dangerous — it sets a hardcoded password hash (`legacy_${Date.now()}`) which is trivially guessable.
+- **Severity:** CRITICAL — account flooding attack vector
 
-**[C2-07] `getGuildDiscoveryList()` — no pagination or LIMIT**
-Returns all discoverable guilds in a single query to every user request. As guild count grows this becomes a full table scan with a full network payload.
+**Finding M — `POST /api/contact` No Rate Limiter, No Input Bounds**
+- **File:** `server/routes.ts` lines 2604–2640
+- **Code:** `app.post("/api/contact", async (req, res) => { const { name, email, description } = req.body;`
+- **Issues:**
+  1. No rate limiter — a bot can spam the contact endpoint and fill the `team_emails` table with millions of rows
+  2. `description` has no max length validation — a 100MB payload is accepted and written to DB
+  3. Raw `req.body` destructure without Zod schema
+- **Severity:** HIGH
 
-**[C2-08] `getActivityFeed()` — has LIMIT but no cursor**
-The admin live-feed returns the most recent N records but provides no cursor-based pagination. Loading older history requires restarting from the top each time.
+**Finding N — `POST /api/chat` No Rate Limiter**
+- **File:** `server/routes.ts` line 3232
+- **Code:** `app.post("/api/chat", async (req, res) => {`
+- **Issue:** The chatbot endpoint performs a DB read (getUserById) per request with no rate limiter. It also accepts anonymous requests. A bot can hammer this endpoint to cause DB read amplification.
+- **Severity:** HIGH
 
-**[C2-09] `processWithdrawal()` — FIFO ledger walk grows with user history**
-The withdrawal process walks all un-withdrawn `user_transactions` records in `createdAt` order. As a user's transaction count grows into the thousands (from daily ad-views), this query grows proportionally in both data scanned and time.
+**Finding O — `...req.body` Spread in Withdrawal Creation**
+- **File:** `server/routes.ts` line 893
+- **Code:** `const withdrawalData = insertWithdrawalSchema.parse({ ...req.body, userId });`
+- **Issue:** The Zod schema parse provides effective protection here, but the spread pattern is the wrong idiom. If a field is ever added to `insertWithdrawalSchema` without careful thought (e.g. `status`), a malicious user could set `status: "approved"` and if Zod passes it through, bypass the approval workflow.
+- **Severity:** MEDIUM (mitigated by Zod, but pattern is dangerous)
 
 ---
 
-### 2.6 — Missing Enterprise Layers
+### 2.2 Input Validation Gaps
 
-**[C2-10] No structured logging**
-Every log statement uses `console.log` / `console.error`. No Winston/Pino JSON logger means logs are not parseable by log aggregators (Datadog, CloudWatch, Logtail). Stack traces are unstructured strings. Background job failures (guild reset, inactivity penalty) are silently swallowed after `console.error`.
+**Finding P — `/api/contact` Raw Destructure, No Zod**
+- **File:** `server/routes.ts` lines 2606–2612
+- **Issue:** Uses manual if-check (`if (!name || !email || !description)`) with no Zod schema, no email format validation, no max length on any field.
 
-**[C2-11] No error tracking**
-No Sentry, Bugsnag, or equivalent integration. Unhandled promise rejections and runtime exceptions are invisible in production.
+**Finding Q — `/api/chat` No Max Length on Message**
+- **File:** `server/routes.ts` line 3234–3236
+- **Issue:** Only checks `!message.trim()`. A 1MB message payload is accepted, passed to `advancedChatbotService.processMessage()`, and potentially processed / logged.
 
-**[C2-12] Zero automated test coverage**
-No `.test.ts` files, no `tests/` directory, no Vitest/Jest config anywhere in the project. The financial engine (`recordEarnEvent`, `processWithdrawal`, `drawThorxCard`) has no unit tests. The invariants can only be verified by manual curl commands.
+---
 
-**[C2-13] No request correlation IDs**
-Requests cannot be traced end-to-end. When a background job or route fails, there is no way to correlate a frontend error with the backend log line that caused it.
+### 2.3 Database Performance & Scale Bottlenecks
 
-**[C2-14] No DB migration rollback strategy**
-`scripts/migrate-v3.ts` applies forward migrations only. `drizzle-kit push --force` is used for schema sync, which is destructive and non-reversible in production. No `down()` migrations exist.
+**Finding R — `getAllUsers()` Unbounded Full Table Scan**
+- **File:** `server/storage.ts` lines 1455–1510
+- **Issue:** Selects ALL columns from the `users` table with no `LIMIT`. On a platform with 10,000+ users, this loads the entire users table (including sensitive fields like `passwordHash`, `verificationToken`) into Node.js heap memory. This is a memory bomb on scale.
+- **Called From:** Any code path that calls `getAllUsers()` (verify in leaderboard sync, risk scan, etc.)
+- **Fix:** Add pagination + field projection. Use `.limit(1000)` minimum, implement cursor pagination.
+- **Severity:** HIGH
 
-**[C2-15] Global body size limit is too permissive for chat endpoints**
-`express.json({ limit: '10mb' })` is set globally. Individual chat and DM message routes don't apply a tighter per-route limit. A single malformed upload to a chat endpoint can consume 10 MB of the request buffer before being rejected.
+**Finding S — Leaderboard Force-Sync Admin Endpoint Potential Bottleneck**
+- **File:** `server/routes.ts` line 454
+- **Code:** `app.post("/api/admin/leaderboard/force-sync", requirePermission("VIEW_ANALYTICS"), ...)`
+- **Issue:** If this calls `getAllUsers()` internally, any admin can trigger a full-table dump at will. Need to verify internal implementation and add a cooldown/lock.
+- **Severity:** MEDIUM (needs verification)
+
+---
+
+### 2.4 Missing Enterprise Layers
+
+**Finding T — Zero Automated Test Coverage**
+- No test files found anywhere in the codebase (no `*.test.ts`, no `*.spec.ts`, no `__tests__/` directory)
+- Money-moving functions (`recordEarnEvent`, `processWithdrawal`, `createWithdrawal`) have zero test coverage
+- Any future refactor can silently break financial calculations
+- **Severity:** CRITICAL for production scale
+
+**Finding U — No Structured JSON Logging**
+- All logging uses `console.log()` / `console.error()` throughout `server/routes.ts` and `server/storage.ts`
+- No log levels, no request IDs, no correlation IDs, no structured fields
+- Impossible to grep production logs meaningfully; impossible to set up log-based alerts
+- **Severity:** HIGH
+
+**Finding V — No Error Tracking / Alerting**
+- No Sentry, no Datadog, no error reporting service integrated
+- Uncaught exceptions and unhandled promise rejections go silently into the void in production
+- A payment processing failure could go unnoticed for hours
+- **Severity:** HIGH
+
+**Finding W — No DB Migration Rollback Strategy**
+- Schema changes are applied via `drizzle-kit push --force` (destructive)
+- No up/down migration files
+- A bad schema push in production cannot be rolled back without data loss
+- **Severity:** HIGH for production deployment
 
 ---
 
@@ -219,274 +193,130 @@ Requests cannot be traced end-to-end. When a background job or route fails, ther
 
 ---
 
-### 3.1 — Ecosystem Sync Gaps
+### 3.1 Missing WebSocket Event Handlers — Features That Require Page Refresh
 
-**[C3-01] Weekly target change — no realtime broadcast to members**
-When a captain changes `targetDifficulty` via `PATCH /api/guilds/:id/settings`, no WS event is emitted. `GuildMemberPanel.tsx` polls guild data on a 30-second interval (line 64). Members will see the updated target with up to a 30-second delay with no visual indication it changed.
+**Finding X — `guild.announcement_posted` Not Even Broadcast**
+- **File:** `server/routes.ts` lines 1152–1163 (`POST /api/guilds/:id/announcement`)
+- **Issue:** Captain posts an announcement → server saves it → does NOT call `broadcastGuildEvent()`. Every guild member must manually refresh the page to see the announcement. This is a broken real-time feature.
+- **Severity:** HIGH
 
-**[C3-02] Captain replacement — no WS broadcast to either party**
-When an admin runs `PATCH /api/admin/guilds/:id/captain`, no WS event fires. The demoted captain continues to see the Captain Portal. The promoted member continues to see the Member Panel. Both must manually refresh to discover their role changed.
+**Finding Y — `guild.gps_updated` Broadcast Has No Frontend Handler**
+- **File:** Server broadcasts `guild.gps_updated` at routes.ts line 4607. `client/src/hooks/useRealtimeSync.ts` has no handler for this event.
+- **Issue:** After an admin adjusts guild GPS, no member or captain sees the updated score until they refresh.
+- **Severity:** MEDIUM
 
-**[C3-03] Withdrawal status change — user receives no realtime notification**
-`PATCH /api/admin/withdrawals/:id` (line 2418) calls `broadcastTeamRefresh("withdrawals_bulk_updated")` — this refreshes the admin view only. No `broadcastToUser` call exists for the withdrawal's owner. The user must refresh manually to see their status change from `pending` to `approved` or `rejected`.
-
-**[C3-04] Admin PS manual adjust — rank-up toast never fires**
-`PATCH /api/admin/users/:userId/ps` (line 4500) broadcasts event name `ps_updated`. The client's `useRealtimeSync` hook listens for `rank_updated` to trigger the rank-up toast. Since the event name is `ps_updated` (not `rank_updated`), the user's rank badge silently updates but no congratulatory toast is shown — even when a rank change occurred.
-
-**[C3-05] `guild.pool_credited` WS event — no frontend subscriber**
-The Sunday reset job broadcasts `guild.pool_credited` after distributing the weekly bonus pool. The frontend `useRealtimeSync` hook has no handler for this event. Members see no in-app notification or UI update when their Sunday bonus is credited — they find out only when their next 30-second poll fires.
-
-**[C3-06] `guild.member_earned` WS event — no frontend subscriber**
-Engine C completions emit no real-time roster update. The Captain Portal roster tab requires a manual refresh to show updated weekly point contributions for each member.
-
-**[C3-07] Captain DMs use 5-second polling — not realtime**
-Both `CaptainPortal.tsx` (line 79) and `GuildMemberPanel.tsx` (line 95) refetch the DM thread on a 5-second interval. This creates a 5-second message delay and generates 12 API requests per minute per open DM thread. At scale with many active guilds, this is significant server load for a feature that should use WS push.
+**Finding Z — Guild Chat (`engine_c:message`) Uses Polling Instead of WS**
+- **File:** `client/src/components/guild/GuildMemberPanel.tsx` line 87, `CaptainPortal.tsx` line 82
+- **Issue:** Server broadcasts `engine_c:message` when a chat message is sent, but `useRealtimeSync.ts` has no handler for it. Both components fall back to aggressive 5-second polling. This means:
+  1. 12 HTTP requests/minute per active user just for chat — unnecessary server load
+  2. Chat feels slow (up to 5s delay before a message appears)
+- **Severity:** MEDIUM
 
 ---
 
-### 3.2 — Mobile Responsiveness & CSS
+### 3.2 Stale Query Invalidations After Mutations
 
-**[C3-08] `AdminDashboard.tsx` line 158 — `grid-cols-3` with no mobile fallback**
-The engine breakdown stat block uses `grid-cols-3` with no `sm:grid-cols-1` or `sm:grid-cols-2` override. On screens below 640px the three cards are squeezed into 33% width each — unreadable.
+**Finding AA — Captain Accept/Kick Doesn't Update Guild Header Count**
+- **File:** `client/src/components/guild/CaptainPortal.tsx` lines 102, 136
+- **Mutations:** `appActionMutation`, `kickMutation`
+- **Issue:** Both mutations invalidate only `["/api/guilds", guildId, "members"]`. They do NOT invalidate `["/api/guilds", guildId]`. The guild header showing "8/20 members" never updates after an accept or kick until full page refresh.
+- **Severity:** MEDIUM — obvious stale data bug visible to captains
 
-**[C3-09] `AdminDashboard.tsx` line 352 — `grid-cols-2 lg:grid-cols-4` skips `md:` breakpoint**
-Jumps from 2 columns (mobile) to 4 columns (large screens) with no `md:grid-cols-3` intermediate. On iPad-sized screens the 4-column layout appears too early.
-
-**[C3-10] `UserManager.tsx` and `GuildManager.tsx` — admin data tables missing `overflow-x-auto`**
-These admin panels contain wide tables with many columns. Several table containers are missing `overflow-x-auto` wrappers, causing horizontal overflow that blows out the page layout on mobile.
-
-**[C3-11] `LeaderboardInsights.tsx` — fixed `w-[xxx]` widths without responsive overrides**
-Fixed-width rank badge and column elements lack `md:` responsive overrides, causing layout blowout when the sidebar is open on tablet-sized screens.
-
-**[C3-12] `CaptainPortal.tsx` applications tab — no scroll container**
-The pending applications list grows unbounded with no `max-h-[xxx] overflow-y-auto` wrapper. On mobile a large application queue pushes all other tab content off-screen.
-
-**[C3-13] `TeamPortal.tsx` admin sidebar — potential scroll freeze on iOS Safari**
-Fixed/sticky sidebar elements inside scrollable parents can cause scroll jank or complete scroll freeze on iOS Safari when the virtual keyboard is open.
+**Finding BB — Task Completion Doesn't Update Weekly Progress Bar**
+- **File:** `client/src/components/guild/GuildMemberPanel.tsx` line 167
+- **Mutation:** `completeTaskMutation`
+- **Issue:** Invalidates only task-related queries. Missing `["/api/guilds", guildId]` and `["/api/guilds/mine"]`. The "Weekly Progress" tab showing current contribution points does not update after a task is completed — user must switch tabs or refresh.
+- **Severity:** HIGH — core user feedback loop is broken
 
 ---
 
-### 3.3 — UX Polish & Loading States
+### 3.3 Mobile Responsiveness Issues
 
-**[C3-14] `GuildDiscoveryPanel.tsx` line 139 — raw text "Loading guilds…" instead of skeleton**
-Shows a plain centered string. Should be a 3-column skeleton card grid matching the loaded layout to prevent jarring layout shift.
+**Finding CC — Guild Chat Fixed Pixel Heights Clip on Mobile**
+- **File:** `client/src/components/guild/CaptainPortal.tsx` lines 444, 498 (`style={{ height: 460 }}`, `style={{ height: 420 }}`)
+- **File:** `client/src/components/guild/GuildMemberPanel.tsx` lines 386, 415 (`style={{ height: 400 }}`)
+- **Issue:** Fixed `px` heights on chat containers cause content to clip or overflow on devices shorter than ~700px (e.g. iPhone SE, older Androids). The containers should use `max-h-[460px] min-h-[240px] flex-1` with proper flex container hierarchy.
+- **Severity:** HIGH — core feature broken on common mobile devices
 
-**[C3-15] `CaptainPortal.tsx` line 217 — raw text "Loading guild data…" instead of skeleton**
-Same issue. Should be a skeleton screen matching the portal card structure.
+**Finding DD — GuildMemberPanel Tabs Can Overflow on Narrow Screens**
+- **File:** `client/src/components/guild/GuildMemberPanel.tsx` line 253
+- **Issue:** Tab bar uses `flex-1` on each tab button. On screens < 350px wide, tab labels clip or overflow. Missing `overflow-x-auto` on the tab container (CaptainPortal has this; GuildMemberPanel does not).
+- **Severity:** MEDIUM
 
-**[C3-16] Multiple mutations in `UserPortal.tsx` — missing `onError` toast handlers**
-Only 2 `onError` handlers found across the entire `UserPortal.tsx` (lines 817, 978). The following mutations have no error feedback at all:
-- Ad-view record mutation
-- Task click mutation
-- Guild chat message mutation
-- Referral link copy mutation (fails silently when clipboard API is blocked by browser)
-- Guild application submit mutation
-- Withdrawal confirm mutation
-
-When these fail, the user sees nothing — the button stops its loading spinner with no explanation.
-
-**[C3-17] `CaptainPortal.tsx` roster tab — empty state is blank space**
-When the guild has no active members, the roster tab renders nothing. No illustration, no guidance text ("Your roster is empty — share your guild link to attract members").
-
-**[C3-18] `GuildMemberPanel.tsx` tasks tab — empty state is blank space**
-When no weekly tasks exist for the current cycle, the tasks tab renders an empty area with no guidance text.
-
-**[C3-19] `GuildDiscoveryPanel.tsx` — no empty state when no guilds exist**
-On a fresh deployment with zero guilds, the discovery panel renders a blank area with no call to action. Should display: "No guilds available yet — reach B-Rank to create one."
-
-**[C3-20] Withdrawal confirm button — no loading state or disabled state**
-The withdrawal confirmation mutation fires but the confirm button has no `disabled={isPending}` or spinner while the request is in-flight. A user can double-click and submit two withdrawal requests before the rate limiter or DB lock can intervene.
-
-**[C3-21] Admin PS/GPS adjust modals — no confirmation step before applying**
-Both PS and GPS manual adjust modals submit immediately on form submission with no "Are you sure?" confirmation step. A mis-typed delta of `10000` instead of `1000` applies instantly with no undo.
+**Finding EE — Admin GuildManager Fixed Widths on Inputs**
+- **File:** `client/src/components/admin/GuildManager.tsx` line 369
+- **Issue:** GPS adjust inputs use `w-28` fixed width. On tablet/mobile admin view this causes cramped or clipped form fields.
+- **Severity:** LOW
 
 ---
 
-## MASTER FIX PLAN
+### 3.4 Client-Side Form Validation Gaps
+
+**Finding FF — Captain Guild Settings: No Client-Side Validation**
+- **File:** `client/src/components/guild/CaptainPortal.tsx` lines 563–569
+- **Issue:** Guild name and description inputs submit directly without checking min 3 chars or max 60/500 chars client-side. User gets a server error after network round-trip, causing confusing UX.
+- **Severity:** MEDIUM
+
+**Finding GG — Announcement Text: No Client-Side Max Length**
+- **File:** `client/src/components/guild/CaptainPortal.tsx` around line 183
+- **Issue:** The announcement textarea has no `maxLength` attribute and no JS validation before calling `mutate()`. Server allows max 500 chars, but user can type 10,000 chars and only learns of the error after submit.
+- **Severity:** MEDIUM
+
+**Finding HH — Guild Chat/DM: Only Trim Check, No Max Length**
+- **File:** `GuildMemberPanel.tsx` and `CaptainPortal.tsx` chat/DM send handlers
+- **Issue:** Messages are sent with only `.trim()` check. No `maxLength` enforced client-side or server-side (chat endpoint). A 1MB message payload is accepted.
+- **Severity:** MEDIUM
 
 ---
 
-### PHASE 1 — CRITICAL SECURITY & FINANCIAL INTEGRITY *(Fix immediately, no exceptions)*
+## SUMMARY TABLE
 
-**P1.1 — Fix Captain DM access control** *(C1-10)*
-In `storage.getCaptainMessageThread()` and `storage.sendCaptainMessage()`, verify the caller's `userId` is either the guild's captain or the exact `memberId` param before executing. In the route, add a membership/captain check before calling storage.
-
-**P1.2 — Add `earnRateLimiter` to ad-view and task-verify routes** *(2.2)*
-Create a new `earnRateLimiter` (10 requests per minute per userId) and apply it to `POST /api/ad-view` and `POST /api/tasks/:id/verify`. These are the highest-value endpoints and must be rate-limited.
-
-**P1.3 — Fix `POST /api/ad-view` race condition** *(C1-08)*
-Wrap the time check and the `ad_views` insert in a DB transaction. Add a unique partial index on `ad_views (user_id, date_trunc('minute', created_at))` to guarantee at-most-one earn per minute at the DB level.
-
-**P1.4 — Wrap task verify in a single transaction** *(C1-09)*
-In `POST /api/tasks/:id/verify`, wrap `updateTaskRecord` and `recordEarnEvent` in a single `db.transaction()` so they succeed or fail atomically.
-
-**P1.5 — Fix rank-up event name mismatch for admin PS adjust** *(C3-04)*
-In `PATCH /api/admin/users/:userId/ps`, when a rank change is detected, broadcast `rank_updated` (not `ps_updated`). OR update `useRealtimeSync` to treat both `ps_updated` and `rank_updated` as rank-change triggers.
-
----
-
-### PHASE 2 — TRANSACTION SAFETY & DOUBLE-SPEND PREVENTION
-
-**P2.1 — Wrap `nudgeGuildMember` in a DB transaction** *(C1-06)*
-Move the cooldown check, the `lastNudgedAt` update, and the notification insert into `db.transaction()`.
-
-**P2.2 — Wrap `sendCaptainMessage` in a DB transaction** *(C1-07)*
-Move the INSERT and the read-status UPDATE into `db.transaction()`.
-
-**P2.3 — Add `disabled={isPending}` and spinner to withdrawal confirm button** *(C3-20)*
-Prevent double-submit by disabling the button and showing a loading indicator while the mutation is in-flight.
-
-**P2.4 — Fix MVP week-lock** *(C1-14)*
-Add logic to check if the guild already has an MVP set this week (`mvpSetAt >= currentWeekStart`). If yes, reject reassignment until Sunday reset. Record `mvpSetWeek` as an ISO week string to make the check explicit.
-
----
-
-### PHASE 3 — AUTH MIDDLEWARE STANDARDIZATION
-
-**P3.1 — Replace manual auth checks with `requireSessionAuth` middleware**
-For every route listed in section 2.1, replace the manual `if (!getThorxPrincipalId) return 401` early-return with `requireSessionAuth` as a proper route middleware argument. Behavior is identical but future middleware enhancements automatically apply.
+| # | Finding | Category | Severity | File |
+|---|---------|----------|----------|------|
+| A | `balanceCashPkr` in session response | PKR Leak | CRITICAL | useAuth.ts:31, routes.ts |
+| B | `grossPkrPerCompletion` sent to frontend | PKR Leak | HIGH | GuildMemberPanel:367 |
+| D | `createWithdrawal()` TOCTOU race | Race Condition | HIGH | storage.ts:1952–1965 |
+| E | `adjustUserBalance()` unlocked SELECT | Race Condition | MEDIUM | storage.ts:3382 |
+| F | `.toNumber()` float conversion in earn event | Float Drift | HIGH | storage.ts:981–983 |
+| G | `parseFloat(earnedAmount)` before earn engine | Float Drift | MEDIUM | storage.ts:1122 |
+| H | `parseFloat(totalEarnings)` in leaderboard | Float Drift | MEDIUM | storage.ts:3036,3053 |
+| I | `parseFloat(amount)` in balance ledger | Float Drift | MEDIUM | storage.ts:3424 |
+| J | `createAdView()` manual rollback not transaction | Missing TX | HIGH | storage.ts:1111 |
+| K | `logoutMutation` no onError | UX | LOW | useAuth.ts:63 |
+| L | `/api/legacy-register` no rate limiter | Security | CRITICAL | routes.ts:1706 |
+| M | `/api/contact` no rate limiter, no Zod | Security | HIGH | routes.ts:2604 |
+| N | `/api/chat` no rate limiter | Security | HIGH | routes.ts:3232 |
+| O | `...req.body` spread in withdrawal | Security | MEDIUM | routes.ts:893 |
+| P | `/api/contact` no Zod schema | Validation | HIGH | routes.ts:2606 |
+| Q | `/api/chat` no max length | Validation | MEDIUM | routes.ts:3234 |
+| R | `getAllUsers()` no LIMIT | Scale | HIGH | storage.ts:1455 |
+| T | Zero test coverage | Enterprise | CRITICAL | entire codebase |
+| U | No structured logging | Enterprise | HIGH | entire codebase |
+| V | No error tracking | Enterprise | HIGH | entire codebase |
+| W | No migration rollback | Enterprise | HIGH | schema |
+| X | Announcement not broadcast via WS | Ecosystem | HIGH | routes.ts:1152 |
+| Y | `guild.gps_updated` no frontend handler | Ecosystem | MEDIUM | useRealtimeSync.ts |
+| Z | Guild chat uses polling not WS | Ecosystem | MEDIUM | GuildMemberPanel, CaptainPortal |
+| AA | Accept/kick doesn't update member count | Stale Data | MEDIUM | CaptainPortal:102,136 |
+| BB | Task complete doesn't update progress | Stale Data | HIGH | GuildMemberPanel:167 |
+| CC | Chat containers fixed px height on mobile | Mobile UX | HIGH | CaptainPortal:444, GuildMemberPanel:386 |
+| DD | GuildMemberPanel tabs no overflow-x-auto | Mobile UX | MEDIUM | GuildMemberPanel:253 |
+| FF | Guild settings no client-side validation | Form UX | MEDIUM | CaptainPortal:563 |
+| GG | Announcement no maxLength | Form UX | MEDIUM | CaptainPortal:183 |
+| HH | Chat/DM no max length enforcement | Form UX | MEDIUM | GuildMemberPanel, CaptainPortal |
 
 ---
 
-### PHASE 4 — REALTIME SYNC COMPLETENESS
+## QUESTIONS FOR BUSINESS LOGIC CLARIFICATION
 
-**P4.1 — Captain replacement WS broadcast** *(C1-15, C3-02)*
-After the DB update in `PATCH /api/admin/guilds/:id/captain`, broadcast:
-- `broadcastToUser(oldCaptainId, 'guild.captain_changed', { demoted: true, guildId })`
-- `broadcastToUser(newCaptainUserId, 'guild.captain_changed', { promoted: true, guildId })`
+1. **`grossPkrPerCompletion` field (Finding B):** Should the server strip this field from the `/api/tasks` response for non-admin users, replacing it with a pre-computed `txPointsReward` field? Or is it acceptable that users can see the raw PKR value in network responses (just not in UI)?
 
-In `useRealtimeSync`, handle `guild.captain_changed` by invalidating `guildMine` and `session-auth`.
+2. **`balanceCashPkr` in session (Finding A):** Should this field be completely omitted from the session/auth response for regular users, or is there a frontend use case I'm missing where a user-facing component needs it?
 
-**P4.2 — Withdrawal status WS broadcast to user** *(C1-16, C3-03)*
-In `PATCH /api/admin/withdrawals/:id`, after status update, add:
-- `broadcastToUser(withdrawal.userId, 'withdrawal_status_changed', { status, withdrawalId })`
+3. **`getAllUsers()` (Finding R):** Is this method currently called on any admin route that runs frequently (e.g. dashboard load)? If yes, should we replace it with paginated lookups or a cached aggregation?
 
-In `useRealtimeSync`, handle `withdrawal_status_changed` by invalidating `withdrawals` and showing a toast.
+4. **`/api/legacy-register` (Finding L):** Is this endpoint still needed? If it's a migration relic, should it be disabled entirely (return 410 Gone), or does the mobile app still call it?
 
-**P4.3 — Subscribe frontend to `guild.pool_credited`** *(C3-05)*
-In `useRealtimeSync`, add a handler for `guild.pool_credited` that invalidates the guild query and shows a toast: "🎉 Your Sunday Bonus has been credited!"
+5. **Announcement WS (Finding X):** Confirming: you want captain announcements to appear instantly on all guild member screens without refresh, correct? (So I add `broadcastGuildEvent()` after saving the announcement.)
 
-**P4.4 — Weekly target change WS broadcast** *(C3-01)*
-In `PATCH /api/guilds/:id/settings`, after saving, call `broadcastGuildEvent(guildId, 'guild.settings_updated', { weeklyTarget })`. In `useRealtimeSync`, handle `guild.settings_updated` by invalidating the guild data query.
-
-**P4.5 — Replace 5-second DM polling with WS push** *(C3-07)*
-After `sendCaptainMessage`, broadcast `broadcastToUser(toUserId, 'guild.dm_received', { guildId, fromUserId })`. On the frontend, replace the `refetchInterval: 5000` with a WS-triggered `queryClient.invalidateQueries(['guild', guildId, 'dm', memberId])`.
-
----
-
-### PHASE 5 — INPUT VALIDATION & SCHEMA HARDENING
-
-**P5.1 — Add Zod schema to `PATCH /api/guilds/:id/settings`** *(C2-01)*
-Validate: `name` (string, 3–60 chars), `description` (string, 0–500 chars), `targetDifficulty` (z.enum(['easy', 'medium', 'hard'])), `isOpen` (z.boolean()), `memberCapacity` (z.number().int().min(10).max(50)).
-
-**P5.2 — Cap admin PS/GPS delta with validation** *(C2-03)*
-In `PATCH /api/admin/users/:userId/ps`, validate `delta` is between -500 and +500 per single operation. Document that larger adjustments require multiple operations.
-
-**P5.3 — Add maxLength to all reason/message free-text fields**
-Enforce `maxLength: 1000` on all rejection reasons, audit log reasons, and notification body strings before they reach the DB.
-
-**P5.4 — Remove `weeklyBonusPool` from guild discovery response** *(C1-01)*
-In `getGuildDiscoveryList()`, omit `weeklyBonusPool` from the SELECT clause or set it to `null` before returning. Replace it with a non-monetary indicator ("Active Pool") if needed by the UI.
-
----
-
-### PHASE 6 — INDEXES & SCALE
-
-**P6.1 — Add missing DB indexes** *(2.4)*
-Add to `shared/schema.ts`:
-```typescript
-index("idx_activity_feed_user_id").on(table.userId, table.createdAt)
-index("idx_guild_weekly_snapshots_guild").on(table.guildId, table.createdAt)
-index("idx_guild_members_composite").on(table.guildId, table.userId, table.status)
-```
-Then run `drizzle-kit push`.
-
-**P6.2 — Paginate `getGuildDiscoveryList()`** *(C2-07)*
-Add `LIMIT 50` with cursor-based pagination (`?cursor=lastGuildId`). Add the cursor param to the route.
-
-**P6.3 — Paginate `refreshLeaderboardCache()` in batches** *(C2-06)*
-Process users in chunks of 500 using cursor pagination on `users.id`. Accumulate scores across batches before the final batch-insert into `leaderboard_cache`. This prevents loading the entire user table into heap at once.
-
----
-
-### PHASE 7 — UX POLISH
-
-**P7.1 — Replace raw text loading states with skeleton screens** *(C3-14, C3-15)*
-- `GuildDiscoveryPanel.tsx`: Replace "Loading guilds…" with a 3-column skeleton card grid.
-- `CaptainPortal.tsx`: Replace "Loading guild data…" with a skeleton matching the portal card layout.
-
-**P7.2 — Add `onError` toast handlers to every mutation** *(C3-16)*
-For every `useMutation` in `UserPortal.tsx`, `CaptainPortal.tsx`, and `GuildMemberPanel.tsx`:
-```typescript
-onError: (err) => toast({ title: "Action failed", description: err.message, variant: "destructive" })
-```
-
-**P7.3 — Add empty states to all three guild panels** *(C3-17, C3-18, C3-19)*
-Each empty list needs an icon + descriptive message:
-- Captain roster tab: "No active members yet — approve applications to build your team."
-- Member tasks tab: "No weekly tasks this cycle yet — check back when the captain publishes them."
-- Guild discovery: "No guilds available yet — reach B-Rank to create one."
-
-**P7.4 — Fix mobile grid breakpoints in AdminDashboard** *(C3-08, C3-09)*
-- `grid-cols-3` → `grid-cols-1 sm:grid-cols-2 md:grid-cols-3`
-- `grid-cols-2 lg:grid-cols-4` → `grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4`
-
-**P7.5 — Add `overflow-x-auto` wrappers to admin tables** *(C3-10)*
-Wrap all `<table>` elements in `UserManager.tsx` and `GuildManager.tsx` in a `<div className="overflow-x-auto">` container.
-
-**P7.6 — Add two-step confirmation to PS/GPS adjust modals** *(C3-21)*
-Step 1: Fill in delta + reason. Step 2: Confirmation screen showing "Apply +500 PS to [Username]?" with Cancel/Confirm buttons.
-
----
-
-### PHASE 8 — ENTERPRISE FOUNDATION *(Long-term — not blocking launch)*
-
-**P8.1** — Replace all `console.log/error` with structured Pino JSON logger. Add `LOG_LEVEL` env var.
-
-**P8.2** — Add Sentry SDK to both server and Vite client with DSN stored in env secrets.
-
-**P8.3** — Add request correlation ID middleware (`x-request-id` header propagation + attach to every log line).
-
-**P8.4** — Write unit tests for `recordEarnEvent`, `processWithdrawal`, and `drawThorxCard` using Vitest + `pg-mem` for in-memory Postgres.
-
-**P8.5** — Write Drizzle `down()` migration functions for every schema change to enable rollback.
-
-**P8.6** — Add a per-route body size limit to chat/message endpoints (e.g., `express.json({ limit: '10kb' })`) instead of relying on the global 10mb limit.
-
----
-
-## CLARIFYING QUESTIONS
-
-Before implementing any fixes, answers are needed on the following business logic decisions:
-
-**Q1 — CONVERSION_RATE intentionality:**
-The spec example shows 648 TX-Points for Rs.6.00 user share (requiring CONVERSION_RATE=1000). The DB is bootstrapped at 100 with the comment "100 points == 1.00 PKR." Are users intentionally earning 10× fewer points than the spec example demonstrates, or is this a bug that should be corrected to 1000?
-
-**Q2 — MVP week-lock strictness:**
-Should a captain be completely prevented from changing the MVP once set within a week? Or is freely reassigning acceptable, with "previous MVP cleared" only referring to the Sunday reset? (The current code allows unlimited reassignment — locking it down is recommended either way.)
-
-**Q3 — Ad inventory & gross PKR values:**
-The `POST /api/ad-view` hard-coded `AD_INVENTORY` dictionary uses static PKR reward values disconnected from HilltopAds network revenue. Should gross PKR per ad-view be: (a) configurable via `system_config`, (b) pulled from a real HilltopAds revenue callback, or (c) remain static?
-
-**Q4 — Guild pool visibility on discovery cards:**
-Should the discovery card show the current `weeklyBonusPool` amount (which violates spec invariant #8), or replace it with a non-monetary indicator like "Active Pool" / "Confidential" to preserve the illusion?
-
-**Q5 — DM access scope:**
-The intended access model for the DM feature needs clarification. Should read/write be restricted to exactly: (a) the guild captain + the specific member named in the URL, or (b) any active guild member can DM any other active member? (Access control must be fixed regardless — this clarifies how strict the fix should be.)
-
----
-
-## SUMMARY COUNT
-
-| Category | Critical | High | Medium | Low |
-|---|---|---|---|---|
-| Category 1 — Bugs & Gaps | 2 (C1-10, C1-08) | 5 | 5 | 5 |
-| Category 2 — Standards Gap | 2 (ad-view, verify no auth) | 4 | 6 | 3 |
-| Category 3 — Ecosystem & UX | 0 | 5 | 10 | 6 |
-| **Total** | **4** | **14** | **21** | **14** |
-
-**4 critical issues require fixes before any user traffic:**
-1. `C1-10` — Captain DM has zero access control (any user can read/write any DM thread)
-2. `C1-08` — `POST /api/ad-view` race condition allows double-earn
-3. `POST /api/ad-view` and `POST /api/tasks/:id/verify` have no rate limiter middleware
-4. `C3-04` — Rank-up event name mismatch means rank-up toasts never fire for admin PS adjustments
+6. **Guild Chat WS (Finding Z):** Should guild chat be fully real-time via WS (sub-second delivery), or is 5-second polling acceptable for now given the polling load on DB?
