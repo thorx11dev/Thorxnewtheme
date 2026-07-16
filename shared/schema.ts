@@ -248,6 +248,9 @@ export const withdrawals = pgTable("withdrawals", {
   rejectionReason: text("rejection_reason"),
   fee: decimal("fee", { precision: 10, scale: 2 }).default("0.00"),
   netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
+  // Referral commission split tracking (Phase 18 — populated on withdrawal approval)
+  thorxFeeShare: decimal("thorx_fee_share", { precision: 10, scale: 2 }).default("0.00"),
+  referralCommissionPaid: decimal("referral_commission_paid", { precision: 10, scale: 2 }).default("0.00"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -1061,12 +1064,15 @@ export const guildMembers = pgTable("guild_members", {
   weeklyPointsContributed: integer("weekly_points_contributed").notNull().default(0), // resets every Sunday
   isMvp: boolean("is_mvp").notNull().default(false),
   mvpSetAt: timestamp("mvp_set_at"),
+  mvpSetWeek: varchar("mvp_set_week", { length: 10 }), // ISO week lock, e.g. "2026-W29"
   lastNudgedAt: timestamp("last_nudged_at"),
   coverLetter: text("cover_letter"),
 }, (table) => [
   index("guild_members_guild_id_idx").on(table.guildId),
   index("guild_members_user_id_idx").on(table.userId),
   index("guild_members_status_idx").on(table.status),
+  // Composite index for "get all active members of guild X" — the most common query
+  index("idx_guild_members_active").on(table.guildId, table.userId, table.status),
   // A user can only hold one non-terminal (pending/active) membership at a time;
   // enforced at the application layer inside the join transaction (see storage.ts) —
   // Postgres partial unique indexes are avoided here to keep Drizzle's push flow simple.
@@ -1364,6 +1370,8 @@ export const guildWeeklySnapshots = pgTable("guild_weekly_snapshots", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   unique("idx_guild_snapshots_unique").on(table.guildId, table.weekStart),
+  // Sort index for weekly history query in Captain Portal (guildId + createdAt)
+  index("idx_guild_weekly_snapshots_guild").on(table.guildId, table.createdAt),
 ]);
 export type GuildWeeklySnapshot = typeof guildWeeklySnapshots.$inferSelect;
 export type InsertGuildWeeklySnapshot = typeof guildWeeklySnapshots.$inferInsert;
@@ -1380,6 +1388,8 @@ export const activityFeed = pgTable("activity_feed", {
 }, (table) => [
   index("idx_activity_feed_created").on(table.createdAt),
   index("idx_activity_feed_type").on(table.eventType, table.createdAt),
+  // User-filtered feed queries in admin views — flagged by 2026-07-16 perf audit
+  index("idx_activity_feed_user_id").on(table.userId, table.createdAt),
 ]);
 export type ActivityFeed = typeof activityFeed.$inferSelect;
 export type InsertActivityFeed = typeof activityFeed.$inferInsert;
