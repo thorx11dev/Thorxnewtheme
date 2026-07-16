@@ -112,3 +112,37 @@ export const guildInteractionRateLimiter = rateLimit({
   },
   validate: false,
 });
+
+// ─── Contact form rate limiter ────────────────────────────────────────────────
+/**
+ * Rate limiter for the public contact form endpoint.
+ * 5 submissions per IP per 15 minutes — prevents bot spam that would
+ * fill team_emails with millions of rows (audit finding M).
+ */
+export const contactRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many contact messages. Please try again later.", error: "RATE_LIMITED" },
+  skip: skipLocalhost,
+  keyGenerator: ipKeyGenerator,
+  validate: false,
+});
+
+// ─── Chatbot rate limiter ─────────────────────────────────────────────────────
+/**
+ * Rate limiter for the AI chatbot endpoint.
+ * 20 messages per IP per minute — prevents DB-read amplification from
+ * anonymous bots hammering the endpoint (audit finding N).
+ */
+export const chatbotRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many messages. Please slow down.", error: "RATE_LIMITED" },
+  skip: skipLocalhost,
+  keyGenerator: ipKeyGenerator,
+  validate: false,
+});

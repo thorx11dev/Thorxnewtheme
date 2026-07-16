@@ -198,6 +198,38 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
           queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId] });
         }
 
+        // ── Audit fix X: Announcement broadcast → instant member refresh ─────
+        if (msg.type === "guild.announcement_posted") {
+          const guildId = (msg as any).guildId;
+          if (guildId) {
+            queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
+            queryClient.invalidateQueries({ queryKey: ["/api/guilds/mine"] });
+            const announcement = (msg as any).announcement;
+            if (announcement) {
+              toast({
+                title: "📣 New Announcement",
+                description: String(announcement).substring(0, 100),
+              });
+            }
+          }
+        }
+
+        // ── Audit fix Z: Guild chat WS push → invalidate chat cache ──────────
+        if (msg.type === "engine_c:message") {
+          const guildId = (msg as any).guildId;
+          if (guildId) {
+            queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "chat"] });
+          }
+        }
+
+        // ── Audit fix Y: GPS updated → invalidate guild score display ─────────
+        if (msg.type === "guild.gps_updated") {
+          const guildId = (msg as any).guildId;
+          if (guildId) {
+            queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
+          }
+        }
+
         // ── Phase 15.9: Withdrawal status (legacy user:updated path) ─────────
         // Already handled above via withdrawal_status_changed; keep the
         // user:updated path for generic cache flush.

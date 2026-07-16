@@ -100,6 +100,8 @@ export function CaptainPortal() {
       setRejectModal(null);
       setRejectReason("");
       queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "members"] });
+      // Refresh guild header member count (audit finding AA — was missing, causing stale "8/20" display).
+      queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });
@@ -134,6 +136,8 @@ export function CaptainPortal() {
       setKickConfirm(null);
       toast({ title: "Member removed." });
       queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "members"] });
+      // Refresh guild header member count (audit finding AA).
+      queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });
@@ -441,7 +445,7 @@ export function CaptainPortal() {
 
       {/* ── GUILD CHAT (Phase 20) ── */}
       {tab === "chat" && (
-        <div className="rounded-xl border border-zinc-200 bg-white flex flex-col" style={{ height: 460 }}>
+        <div className="rounded-xl border border-zinc-200 bg-white flex flex-col h-[460px] max-h-[60vh] min-h-[240px]">
           <div className="p-3 border-b border-zinc-100">
             <div className="font-semibold text-sm">{guild.name} — Guild Chat</div>
             <div className="text-[10px] text-zinc-400">Group chat visible to all active members</div>
@@ -468,9 +472,10 @@ export function CaptainPortal() {
               onChange={e => setChatMsg(e.target.value)}
               placeholder="Message the guild…"
               className="flex-1 h-8 text-sm"
-              onKeyDown={e => { if (e.key === "Enter" && chatMsg.trim()) sendChatMutation.mutate(chatMsg.trim()); }}
+              maxLength={500}
+              onKeyDown={e => { if (e.key === "Enter" && chatMsg.trim() && chatMsg.length <= 500) sendChatMutation.mutate(chatMsg.trim()); }}
             />
-            <Button size="sm" className="h-8 w-8 p-0" aria-label="Send" disabled={!chatMsg.trim() || sendChatMutation.isPending} onClick={() => sendChatMutation.mutate(chatMsg.trim())}>
+            <Button size="sm" className="h-8 w-8 p-0" aria-label="Send" disabled={!chatMsg.trim() || chatMsg.length > 500 || sendChatMutation.isPending} onClick={() => sendChatMutation.mutate(chatMsg.trim())}>
               <Send size={14} />
             </Button>
           </div>
@@ -495,7 +500,7 @@ export function CaptainPortal() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-zinc-200 bg-white flex flex-col" style={{ height: 420 }}>
+            <div className="rounded-xl border border-zinc-200 bg-white flex flex-col h-[420px] max-h-[60vh] min-h-[240px]">
               <div className="p-3 border-b border-zinc-100 flex items-center gap-2">
                 <button className="text-zinc-400 hover:text-zinc-700 text-xs" onClick={() => setSelectedDmMember(null)}>← Back</button>
                 <span className="font-semibold text-sm">{active.find((m: any) => m.userId === selectedDmMember)?.firstName || "Member"}</span>
@@ -511,8 +516,9 @@ export function CaptainPortal() {
               </div>
               <div className="p-3 border-t border-zinc-100 flex gap-2">
                 <Input value={dmMsg} onChange={e => setDmMsg(e.target.value)} placeholder="Message member…" className="flex-1 h-8 text-sm"
-                  onKeyDown={e => { if (e.key === "Enter" && dmMsg.trim()) sendDmMutation.mutate(dmMsg.trim()); }} />
-                <Button size="sm" className="h-8 w-8 p-0" aria-label="Send message" disabled={!dmMsg.trim() || sendDmMutation.isPending} onClick={() => sendDmMutation.mutate(dmMsg.trim())}><Send size={14} /></Button>
+                  maxLength={500}
+                  onKeyDown={e => { if (e.key === "Enter" && dmMsg.trim() && dmMsg.length <= 500) sendDmMutation.mutate(dmMsg.trim()); }} />
+                <Button size="sm" className="h-8 w-8 p-0" aria-label="Send message" disabled={!dmMsg.trim() || dmMsg.length > 500 || sendDmMutation.isPending} onClick={() => sendDmMutation.mutate(dmMsg.trim())}><Send size={14} /></Button>
               </div>
             </div>
           )}
@@ -607,7 +613,15 @@ export function CaptainPortal() {
                 </p>
               </div>
             </div>
-            <Button className="w-full" disabled={settingsMutation.isPending} onClick={() => settingsMutation.mutate(settingsForm)}>
+            <Button className="w-full" disabled={settingsMutation.isPending} onClick={() => {
+              if (!settingsForm.name || settingsForm.name.trim().length < 3) {
+                toast({ title: "Guild name must be at least 3 characters.", variant: "destructive" }); return;
+              }
+              if (settingsForm.name.trim().length > 60) {
+                toast({ title: "Guild name cannot exceed 60 characters.", variant: "destructive" }); return;
+              }
+              settingsMutation.mutate(settingsForm);
+            }}>
               {settingsMutation.isPending ? "Saving…" : "Save Settings"}
             </Button>
           </div>

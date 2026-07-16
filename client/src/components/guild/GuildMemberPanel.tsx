@@ -84,7 +84,7 @@ export function GuildMemberPanel() {
     queryKey: ["/api/guilds", guildId, "chat"],
     queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/chat`); const d = await r.json(); return d.messages ?? d ?? []; },
     enabled: !!guildId && tab === "chat",
-    refetchInterval: 5000,
+    refetchInterval: 30000, // WS push (engine_c:message) handles real-time; poll as fallback (audit fix Z)
   });
 
   // Captain DM
@@ -92,7 +92,7 @@ export function GuildMemberPanel() {
     queryKey: ["/api/guilds", guildId, "dm", guild?.captainId],
     queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/dm/${guild?.captainId}`); const d = await r.json(); return d.messages ?? []; },
     enabled: !!guildId && !!guild?.captainId && tab === "dm",
-    refetchInterval: 5000,
+    refetchInterval: 30000, // WS push handles real-time; 30s fallback poll
   });
 
   // Guild weekly performance history (last 8 cycles)
@@ -165,6 +165,11 @@ export function GuildMemberPanel() {
     onSuccess: () => {
       toast({ title: "Task Completed!", description: "Points and PS awarded." });
       queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "tasks"] });
+      // Refresh guild header + progress bar so weekly contribution updates immediately
+      // (audit finding BB — these were previously missing causing stale progress display).
+      queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/guilds/mine"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings"] });
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err?.message || "Could not complete task.", variant: "destructive" });
@@ -250,7 +255,7 @@ export function GuildMemberPanel() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-100 rounded-lg p-1">
+      <div className="flex gap-1 bg-zinc-100 rounded-lg p-1 overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.id}
@@ -383,7 +388,7 @@ export function GuildMemberPanel() {
       )}
 
       {tab === "chat" && (
-        <div className="rounded-xl border border-zinc-200 bg-white flex flex-col" style={{ height: 400 }}>
+        <div className="rounded-xl border border-zinc-200 bg-white flex flex-col h-[400px] max-h-[60vh] min-h-[200px]">
           <div className="p-3 border-b border-zinc-100 font-semibold text-sm">Guild Chat</div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {chatMessages.map((msg: any, i) => (
@@ -402,9 +407,10 @@ export function GuildMemberPanel() {
               onChange={e => setChatMsg(e.target.value)}
               placeholder="Send a message…"
               className="flex-1 h-8 text-sm"
-              onKeyDown={e => { if (e.key === "Enter" && chatMsg.trim()) sendChatMutation.mutate(chatMsg.trim()); }}
+              maxLength={500}
+              onKeyDown={e => { if (e.key === "Enter" && chatMsg.trim() && chatMsg.length <= 500) sendChatMutation.mutate(chatMsg.trim()); }}
             />
-            <Button size="sm" className="h-8 w-8 p-0" aria-label="Send message" disabled={!chatMsg.trim() || sendChatMutation.isPending} onClick={() => sendChatMutation.mutate(chatMsg.trim())}>
+            <Button size="sm" className="h-8 w-8 p-0" aria-label="Send message" disabled={!chatMsg.trim() || chatMsg.length > 500 || sendChatMutation.isPending} onClick={() => sendChatMutation.mutate(chatMsg.trim())}>
               <Send size={14} />
             </Button>
           </div>
@@ -412,7 +418,7 @@ export function GuildMemberPanel() {
       )}
 
       {tab === "dm" && (
-        <div className="rounded-xl border border-zinc-200 bg-white flex flex-col" style={{ height: 400 }}>
+        <div className="rounded-xl border border-zinc-200 bg-white flex flex-col h-[400px] max-h-[60vh] min-h-[200px]">
           <div className="p-3 border-b border-zinc-100 font-semibold text-sm flex items-center gap-2">
             <MessageCircle size={14} />
             Captain Channel
@@ -436,9 +442,10 @@ export function GuildMemberPanel() {
               onChange={e => setDmMsg(e.target.value)}
               placeholder="Message captain…"
               className="flex-1 h-8 text-sm"
-              onKeyDown={e => { if (e.key === "Enter" && dmMsg.trim()) sendDmMutation.mutate(dmMsg.trim()); }}
+              maxLength={500}
+              onKeyDown={e => { if (e.key === "Enter" && dmMsg.trim() && dmMsg.length <= 500) sendDmMutation.mutate(dmMsg.trim()); }}
             />
-            <Button size="sm" className="h-8 w-8 p-0" aria-label="Send message to captain" disabled={!dmMsg.trim() || sendDmMutation.isPending} onClick={() => sendDmMutation.mutate(dmMsg.trim())}>
+            <Button size="sm" className="h-8 w-8 p-0" aria-label="Send message to captain" disabled={!dmMsg.trim() || dmMsg.length > 500 || sendDmMutation.isPending} onClick={() => sendDmMutation.mutate(dmMsg.trim())}>
               <Send size={14} />
             </Button>
           </div>

@@ -15,7 +15,7 @@ import { hilltopAdsService } from "./hilltopads-service";
 import { runtimeConfig } from "./config/runtime";
 import { handleProxyRequest } from "./modules/proxy/proxy-handler";
 import { processProfilePicture } from "./utils/local-profile-picture";
-import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter, earnRateLimiter, guildInteractionRateLimiter } from "./middleware/auth-rate-limit";
+import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter, earnRateLimiter, guildInteractionRateLimiter, contactRateLimiter, chatbotRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
@@ -451,7 +451,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cooldown guard: prevents admins from triggering repeated full-table scans
+  // within a short window (audit finding S — potential memory bomb at scale).
+  let lastLeaderboardSync = 0;
   app.post("/api/admin/leaderboard/force-sync", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
+    const now = Date.now();
+    if (now - lastLeaderboardSync < 60_000) {
+      return res.status(429).json({ message: "Leaderboard sync is on cooldown. Please wait 60 seconds between syncs.", error: "RATE_LIMITED" });
+    }
+    lastLeaderboardSync = now;
     try {
       await storage.refreshLeaderboardCache();
       const { runFullRiskScan } = await import("./modules/risk-engine");
@@ -640,7 +648,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         guildId: user.guildId || null,
         performanceScore: user.performanceScore ?? 0,
         streakDays: user.streakDays ?? 0,
-        balanceCashPkr: user.balanceCashPkr ?? '0.00',
         txPointsBalance: user.txPointsBalance ?? 0,
         lastActiveAt: user.lastActiveAt,
       });
@@ -1161,6 +1168,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getThorxPrincipalId(req) as string;
       const { text } = z.object({ text: z.string().min(1).max(500) }).parse(req.body);
       const guild = await storage.postGuildAnnouncement(req.params.id, userId, text);
+      // Broadcast to all guild members so they see the announcement instantly
+      // without a manual refresh (audit finding X — was previously missing).
+      broadcastGuildEvent(req.params.id, 'guild.announcement_posted', {
+        guildId: req.params.id,
+        announcement: text,
+        postedAt: new Date().toISOString(),
+      });
       res.json({ guild });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to post announcement";
@@ -1702,60 +1716,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Legacy registration endpoint (keeping for backward compatibility)
-  app.post("/api/legacy-register", async (req, res) => {
-    try {
-      const validatedData = insertRegistrationSchema.parse(req.body);
-
-      // Check if email already exists
-      const existingUser = await storage.getUserByEmail(validatedData.email);
-      if (existingUser) {
-        return res.status(400).json({
-          message: "Email already registered",
-          error: "DUPLICATE_EMAIL"
-        });
-      }
-
-      // Convert registration data to user data format
-      const { email, phone } = validatedData;
-      const emailPrefix = email.split("@")[0] || "legacy";
-      const firstName = emailPrefix.slice(0, 20);
-      const lastName = "User";
-      const passwordHash = `legacy_${Date.now()}`;
-      const identity = `LEGACY_${Date.now()}`;
-      const role = "user";
-
-      const user = await storage.createUser({
-        firstName,
-        lastName,
-        email,
-        phone: phone || "",
-        passwordHash,
-        password: passwordHash || "legacy",
-        identity: identity || `LEGACY_${Date.now()}`,
-        role: role || 'user',
-        name: `${firstName} ${lastName}`
-      });
-
-      res.status(201).json({
-        success: true,
-        referralCode: user.referralCode,
-        message: "Registration successful"
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          message: "Invalid registration data",
-          errors: error.errors
-        });
-      }
-
-      console.error("Legacy registration error:", error);
-      res.status(500).json({
-        message: "Registration failed",
-        error: "INTERNAL_ERROR"
-      });
-    }
+  // Legacy registration permanently disabled — creates accounts with guessable
+  // password hashes and no rate limiting. Returns 410 Gone so old clients get
+  // a clear deprecation error instead of a 404 (audit finding L).
+  app.post("/api/legacy-register", authRateLimiter, async (_req, res) => {
+    res.status(410).json({
+      message: "Legacy registration is no longer supported. Please use /api/register.",
+      error: "ENDPOINT_DEPRECATED",
+    });
   });
 
   // Stats endpoint for live data
@@ -2600,17 +2568,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // was always unreachable dead code — removed to eliminate the shadowing/drift
   // risk the duplicate created (it lacked the permission middleware and broadcast).
 
-  // User contact message endpoint
-  app.post("/api/contact", async (req, res) => {
-    try {
-      const { name, email, description } = req.body;
+  // Contact form Zod schema — validates all fields with bounds before DB write
+  // (audit findings M + P: previously raw req.body destructure, no length limits).
+  const contactSchema = z.object({
+    name: z.string().min(2).max(100),
+    email: z.string().email(),
+    description: z.string().min(10).max(2000),
+  });
 
-      if (!name || !email || !description) {
+  // User contact message endpoint
+  app.post("/api/contact", contactRateLimiter, async (req, res) => {
+    try {
+      const parsed = contactSchema.safeParse(req.body);
+      if (!parsed.success) {
         return res.status(400).json({
-          message: "Name, email, and description are required",
-          error: "MISSING_FIELDS"
+          message: parsed.error.errors[0]?.message || "Invalid contact form data.",
+          error: "VALIDATION_ERROR",
+          errors: parsed.error.flatten().fieldErrors,
         });
       }
+      const { name, email, description } = parsed.data;
 
       // Create a team email entry for the contact message
       const contactEmailData = {
@@ -3087,7 +3064,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         guildId: user.guildId || null,
         performanceScore: user.performanceScore ?? 0,
         streakDays: user.streakDays ?? 0,
-        balanceCashPkr: user.balanceCashPkr ?? '0.00',
         txPointsBalance: user.txPointsBalance ?? 0,
         lastActiveAt: user.lastActiveAt ?? null,
       });
@@ -3207,7 +3183,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           guildId: updatedUser.guildId || null,
           performanceScore: updatedUser.performanceScore ?? 0,
           streakDays: updatedUser.streakDays ?? 0,
-          balanceCashPkr: updatedUser.balanceCashPkr ?? '0.00',
           txPointsBalance: updatedUser.txPointsBalance ?? 0,
           lastActiveAt: updatedUser.lastActiveAt ?? null,
         }
@@ -3229,7 +3204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chatbot API routes - works with or without authentication
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/chat", chatbotRateLimiter, async (req, res) => {
     try {
       const { message, sessionId } = req.body;
 
@@ -3238,6 +3213,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Message is required",
           error: "INVALID_INPUT"
         });
+      }
+
+      // Max length guard — prevents 1MB payloads from being processed/logged
+      // (audit finding Q: previously only a trim check).
+      if (message.length > 1000) {
+        return res.status(400).json({ message: "Message too long. Maximum 1000 characters.", error: "INVALID_INPUT" });
       }
 
       let userId = 'anonymous';

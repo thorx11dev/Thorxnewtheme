@@ -234,7 +234,7 @@ export interface IStorage {
 
   // Team-specific user methods
   getUsersByRole(role: 'user' | 'team' | 'founder'): Promise<User[]>;
-  getAllUsers(): Promise<User[]>; // Added method to fetch all users
+  getAllUsers(limit?: number, offset?: number): Promise<User[]>; // Added method to fetch all users
   getUsersCountInRange(since: Date): Promise<number>;
   getEarningsSumInRange(since: Date): Promise<string>;
   getAnalyticsData(since: Date): Promise<any[]>;
@@ -978,9 +978,10 @@ export class DatabaseStorage implements IStorage {
     }
     // 'Indirect' — no PKR payout, only PS (userPkrShare/thorxProfitPkr stay 0).
 
+    // Convert only userPkrShare to a JS number — drawThorxCard() requires it.
+    // thorxProfitPkrD and guildPoolPkrD stay as Decimal objects all the way
+    // to the SQL write boundary to eliminate IEEE 754 float drift (audit finding F).
     const userPkrShare = userPkrShareD.toNumber();
-    const thorxProfitPkr = thorxProfitPkrD.toNumber();
-    const guildPoolPkr = guildPoolPkrD.toNumber();
 
     // Step 2: Thorx Card draw (if the user has a PKR share to convert).
     // Apply rank-tier bonus to variance bounds (A/S ranks see wider swings).
@@ -1024,8 +1025,8 @@ export class DatabaseStorage implements IStorage {
         pointsCredited: cardResult.pointsCredited,
         realPkrValue: cardResult.realPkrValue.toFixed(4),
         grossPkr: params.grossPkr.toFixed(4),
-        thorxProfitPkr: thorxProfitPkr.toFixed(4),
-        guildPoolPkr: guildPoolPkr.toFixed(4),
+        thorxProfitPkr: thorxProfitPkrD.toFixed(4),
+        guildPoolPkr: guildPoolPkrD.toFixed(4),
         conversionRate: Math.round(conversionRate),
         cardVariance: cardResult.cardVariance.toFixed(4),
         sourceId: params.sourceId,
@@ -1036,7 +1037,7 @@ export class DatabaseStorage implements IStorage {
         await tx
           .update(guilds)
           .set({
-            weeklyBonusPool: sql`${guilds.weeklyBonusPool} + ${guildPoolPkr}`,
+            weeklyBonusPool: sql`${guilds.weeklyBonusPool} + ${guildPoolPkrD.toFixed(4)}`,
             currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${Math.round(params.grossPkr * 100)}`,
           })
           .where(eq(guilds.id, params.guildId));
@@ -1100,8 +1101,8 @@ export class DatabaseStorage implements IStorage {
       type: "earn",
       userId: params.userId,
       guildId: params.guildId,
-      displayMessage: `User '${user.identity}' – ${params.engineType} | Real: Rs.${cardResult.realPkrValue.toFixed(2)} | Points: ${cardResult.pointsCredited} | Thorx: Rs.${thorxProfitPkr.toFixed(2)}`,
-      data: { engineType: params.engineType, grossPkr: params.grossPkr, cardResult, thorxProfitPkr, guildPoolPkr },
+      displayMessage: `User '${user.identity}' – ${params.engineType} | Real: Rs.${cardResult.realPkrValue.toFixed(2)} | Points: ${cardResult.pointsCredited} | Thorx: Rs.${thorxProfitPkrD.toFixed(2)}`,
+      data: { engineType: params.engineType, grossPkr: params.grossPkr, cardResult, thorxProfitPkr: thorxProfitPkrD.toNumber(), guildPoolPkr: guildPoolPkrD.toNumber() },
     });
 
     return { success: true, pointsCredited: cardResult.pointsCredited, realPkrValue: cardResult.realPkrValue, earning };
@@ -1109,23 +1110,21 @@ export class DatabaseStorage implements IStorage {
 
   // Ad views methods
   async createAdView(insertAdView: InsertAdView): Promise<AdView & { pointsBreakdown?: EarnEventBreakdown }> {
-    const [adView] = await db.insert(adViews).values(insertAdView).returning();
-
-    // Ad views are Engine A (spec Part C.1) — record the v3 ledger-based earn
-    // event. If recordEarnEvent throws (e.g. config error), roll back the
-    // adView row so the caller gets a clean error and no orphaned ad_views row exists.
+    // When the ad view carries an earned amount, wrap the insert + earn event
+    // in a single DB transaction — replaces the fragile manual rollback that
+    // could leave an orphaned ad_view row if the process crashed between the
+    // insert and the delete (audit finding J).
     if (insertAdView.completed && insertAdView.earnedAmount) {
-      try {
+      return await db.transaction(async (tx) => {
+        const [adView] = await tx.insert(adViews).values(insertAdView).returning();
         const result = await this.recordEarnEvent({
           userId: insertAdView.userId,
           engineType: "Engine_A",
-          grossPkr: parseFloat(insertAdView.earnedAmount),
+          grossPkr: new Decimal(insertAdView.earnedAmount).toNumber(),
           sourceId: adView.id,
           sourceType: "ad_view",
+          tx,
         });
-        // Map the new Thorx Card result onto the legacy ScratchCardBreakdown
-        // shape the frontend still expects (Phase 4/5 will swap this modal
-        // for the dedicated ThorxCard component from the spec).
         const breakdown: EarnEventBreakdown = {
           basePoints: result.pointsCredited,
           guildBonusPoints: 0,
@@ -1135,13 +1134,10 @@ export class DatabaseStorage implements IStorage {
           guildId: null,
         };
         return { ...adView, pointsBreakdown: breakdown };
-      } catch (err) {
-        // Best-effort rollback — suppress secondary errors so the original propagates.
-        await db.delete(adViews).where(eq(adViews.id, adView.id)).catch(() => {});
-        throw err;
-      }
+      });
     }
 
+    const [adView] = await db.insert(adViews).values(insertAdView).returning();
     return adView;
   }
 
@@ -1451,8 +1447,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Get all users for team data management
-  async getAllUsers(): Promise<User[]> {
+  // Get all users for team data management — paginated to prevent full-table
+  // memory bomb at scale (audit finding R). Sensitive fields (passwordHash,
+  // verificationToken) are projected out so they never reach the admin UI.
+  async getAllUsers(limit = 500, offset = 0): Promise<User[]> {
     try {
       const result = await db
         .select({
@@ -1462,7 +1460,6 @@ export class DatabaseStorage implements IStorage {
           email: users.email,
           identity: users.identity,
           phone: users.phone,
-          passwordHash: users.passwordHash,
           referralCode: users.referralCode,
           referredBy: users.referredBy,
           totalEarnings: users.totalEarnings,
@@ -1472,8 +1469,6 @@ export class DatabaseStorage implements IStorage {
           isActive: users.isActive,
           isVerified: users.isVerified,
           emailVerifiedAt: users.emailVerifiedAt,
-          verificationToken: users.verificationToken,
-          verificationTokenExpiresAt: users.verificationTokenExpiresAt,
           loginStreak: users.loginStreak,
           lastLoginDate: users.lastLoginDate,
           role: users.role,
@@ -1500,9 +1495,11 @@ export class DatabaseStorage implements IStorage {
           balanceCashPkr: users.balanceCashPkr,
         })
         .from(users)
-        .orderBy(desc(users.createdAt));
+        .orderBy(desc(users.createdAt))
+        .limit(limit)
+        .offset(offset);
 
-      return result;
+      return result as any;
     } catch (error) {
       console.error("Error fetching all users:", error);
       throw error;
@@ -1946,32 +1943,32 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Withdrawal amount must be a positive whole number of TX-Points");
     }
 
-    // Read-only pre-flight checks (breakdown, minimum payout, S-Rank status).
-    // Done outside the transaction because they are pure reads — no writes happen
-    // until the transaction below commits the INSERT.
-    const breakdown = await this.calculateWithdrawalBreakdown(insertWithdrawal.userId, pointsRequested);
-
-    const minPayout = await this.getSystemConfigValue<number>("MIN_PAYOUT", 100);
-    if (breakdown.exactPkr < minPayout) {
-      throw new Error(`Minimum payout requirement not met. Threshold: Rs.${minPayout}.`);
-    }
-
-    // THORX v3 (spec E.7, L.8, Appendix A): S-Rank withdrawals are auto-approved immediately.
-    const [withdrawingUser] = await db
-      .select({ userRankTier: users.userRankTier })
-      .from(users)
-      .where(eq(users.id, insertWithdrawal.userId))
-      .limit(1);
-    const initialStatus: string = withdrawingUser?.userRankTier === 'S-Rank' ? 'approved' : 'pending';
-
-    // Wrap the pending-check SELECT and the INSERT in a single serializable
-    // transaction so no concurrent request can slip a second pending row in
-    // between the two statements. The partial unique index
-    // (uniq_withdrawals_one_pending_per_user) is still the final DB-level
-    // backstop — any race that somehow escapes the transaction boundary is
-    // caught here and converted to the same friendly message.
+    // ALL pre-flight checks (balance, minimum payout, S-Rank status) and the
+    // INSERT are now inside a single transaction with a SELECT FOR UPDATE on the
+    // user row — eliminates the TOCTOU race where two concurrent requests both
+    // pass the balance check before either INSERT commits (audit finding D).
     try {
       return await db.transaction(async (tx) => {
+        // Lock the user row — any concurrent withdrawal for the same user
+        // will block here until this transaction commits or rolls back.
+        const [lockedUser] = await tx
+          .select({ userRankTier: users.userRankTier })
+          .from(users)
+          .where(eq(users.id, insertWithdrawal.userId))
+          .for('update');
+
+        if (!lockedUser) throw new Error("User not found");
+
+        // Balance / breakdown check with row locked — safe from concurrent writes.
+        const breakdown = await this.calculateWithdrawalBreakdown(insertWithdrawal.userId, pointsRequested);
+        const minPayout = await this.getSystemConfigValue<number>("MIN_PAYOUT", 100);
+        if (breakdown.exactPkr < minPayout) {
+          throw new Error(`Minimum payout requirement not met. Threshold: Rs.${minPayout}.`);
+        }
+
+        // S-Rank status from the locked row — no second DB trip needed.
+        const initialStatus: string = lockedUser.userRankTier === 'S-Rank' ? 'approved' : 'pending';
+
         const [pending] = await tx
           .select({ id: withdrawals.id })
           .from(withdrawals)
@@ -3033,7 +3030,7 @@ export class DatabaseStorage implements IStorage {
 
     // Pre-sort arrays for percentile normalization (O(n log n) once each)
     const earningsSorted = [...allQualifiedUsers]
-      .map(u => parseFloat(u.totalEarnings || "0"))
+      .map(u => new Decimal(u.totalEarnings || "0").toNumber())
       .sort((a, b) => a - b);
     const referralsSorted = [...allQualifiedUsers]
       .map(u => l1Map.get(u.id) ?? 0)
@@ -3050,7 +3047,7 @@ export class DatabaseStorage implements IStorage {
 
     const scoredUsers = allQualifiedUsers.map(u => {
       const accountAgeDays = Math.max(1, (now.getTime() - new Date(u.createdAt!).getTime()) / 86400000);
-      const earned = parseFloat(u.totalEarnings || "0");
+      const earned = new Decimal(u.totalEarnings || "0").toNumber();
 
       // 1. Earnings Score (0-100) — percentile rank among all qualified users
       const earningsScore = percentileRank(earningsSorted, earned);
@@ -3421,8 +3418,8 @@ export class DatabaseStorage implements IStorage {
           userId,
           engineType: 'Manual' as any,
           pointsCredited: txPointsDelta,
-          realPkrValue: Math.abs(parseFloat(amount)).toFixed(4),
-          grossPkr: Math.abs(parseFloat(amount)).toFixed(4),
+          realPkrValue: new Decimal(amount).abs().toFixed(4),
+          grossPkr: new Decimal(amount).abs().toFixed(4),
           thorxProfitPkr: '0.0000',
           guildPoolPkr: '0.0000',
           conversionRate: 1000,
@@ -5131,7 +5128,7 @@ export class MemStorage {
   async getEarningsSumInRange(since: Date): Promise<string> { throw new Error("Not implemented in MemStorage"); }
   async getAnalyticsData(since: Date): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
   async getEngineRevenue(_since: Date): Promise<{ Engine_A: number; Engine_B: number; Engine_C: number; Indirect: number }> { throw new Error("Not implemented in MemStorage"); }
-  async getAllUsers(): Promise<User[]> { throw new Error("Not implemented in MemStorage"); } // Added for MemStorage
+  async getAllUsers(_limit?: number, _offset?: number): Promise<User[]> { throw new Error("Not implemented in MemStorage"); } // Added for MemStorage
   async createChatMessage(chatMessage: InsertChatMessage): Promise<ChatMessage> { throw new Error("Not implemented in MemStorage"); }
   async getUserChatHistory(userId: string, limit?: number): Promise<ChatMessage[]> { throw new Error("Not implemented in MemStorage"); }
 

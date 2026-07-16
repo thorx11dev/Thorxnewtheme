@@ -28,7 +28,6 @@ export interface User {
   guildId?: string | null;
   performanceScore?: number;
   streakDays?: number;
-  balanceCashPkr?: string;
   txPointsBalance?: number;
   lastActiveAt?: string | null;
 }
@@ -72,6 +71,14 @@ export function useAuth() {
         setIsTransitioning(false);
         setLocation("/");
       }, 600);
+    },
+    onError: () => {
+      // Even on network failure, clear local session state so the UI is not
+      // left in a ghost-login state (audit finding K).
+      queryClient.setQueryData(["session-auth"], null);
+      queryClient.clear();
+      setIsTransitioning(false);
+      setLocation("/");
     },
   });
 
