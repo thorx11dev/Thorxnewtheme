@@ -3046,6 +3046,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rank: (user as any).rank,
         avatar: (user as any).avatar,
         profilePicture: (user as any).profilePicture,
+        // THORX v3 fields (spec Part F — frontend relies on these via useAuth)
+        userRankTier: user.userRankTier || 'E-Rank',
+        guildRole: user.guildRole || 'simple',
+        guildId: user.guildId || null,
+        performanceScore: user.performanceScore ?? 0,
+        streakDays: user.streakDays ?? 0,
+        balanceCashPkr: user.balanceCashPkr ?? '0.00',
+        txPointsBalance: user.txPointsBalance ?? 0,
+        lastActiveAt: user.lastActiveAt ?? null,
       });
     } catch (error) {
       console.error("Get profile error:", error);
@@ -3157,6 +3166,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rank: (updatedUser as any).rank,
           avatar: (updatedUser as any).avatar,
           profilePicture: (updatedUser as any).profilePicture,
+          // THORX v3 fields
+          userRankTier: updatedUser.userRankTier || 'E-Rank',
+          guildRole: updatedUser.guildRole || 'simple',
+          guildId: updatedUser.guildId || null,
+          performanceScore: updatedUser.performanceScore ?? 0,
+          streakDays: updatedUser.streakDays ?? 0,
+          balanceCashPkr: updatedUser.balanceCashPkr ?? '0.00',
+          txPointsBalance: updatedUser.txPointsBalance ?? 0,
+          lastActiveAt: updatedUser.lastActiveAt ?? null,
         }
       });
     } catch (error) {
