@@ -34,11 +34,14 @@ All portal routes are now wrapped with the correct guards:
 
 ## Founder Account
 Created via `scripts/seed-founder.ts`:
-- Email: `thorx11dev@gmail.com`
+- Email: `thorx11dev@gmail.com`, First: `Thorx`, Last: `X`
 - Role: `founder`, Team Key: "Master Founder Key" with `permissions: ["all"]`
 - Use this account to access Team Portal at `/team` or `/team-portal`.
 
-**How to apply:** If DB is wiped, re-run: `FOUNDER_EMAIL="thorx11dev@gmail.com" FOUNDER_PASSWORD="Thorxdidi9426!" npx tsx scripts/seed-founder.ts`
+**How to apply:** If DB is wiped, re-run:
+`FOUNDER_EMAIL="thorx11dev@gmail.com" FOUNDER_PASSWORD="Aonimran777!" npx tsx scripts/seed-founder.ts`
+Then patch last name: `UPDATE users SET last_name = 'X' WHERE email = 'thorx11dev@gmail.com';`
+(seed-founder.ts hardcodes lastName="Founder" — always fix it after seeding)
 (Do NOT commit credentials — stored here only because this is a dev environment.)
 
 ## Rank → Avatar Alignment
