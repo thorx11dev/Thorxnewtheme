@@ -164,7 +164,7 @@ export function RankProgressBar({
                     Progress to <span className={cn("font-semibold", config.color)}>{nextThreshold.name}</span>
                 </span>
                 <span className="text-muted-foreground">
-                    PKR {remaining.toLocaleString()} remaining
+                    {remaining.toLocaleString()} pts remaining
                 </span>
             </div>
             <div className="relative h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">

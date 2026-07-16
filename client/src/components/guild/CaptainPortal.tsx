@@ -67,7 +67,7 @@ export function CaptainPortal() {
   // Weekly history
   const { data: weeklyHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/guilds", guildId, "weekly-history"],
-    queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/weekly-history`); const d = await r.json(); return d.snapshots ?? []; },
+    queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/weekly-history`); const d = await r.json(); return d.history ?? d.snapshots ?? []; },
     enabled: !!guildId && tab === "stats",
   });
 

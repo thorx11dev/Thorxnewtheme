@@ -140,7 +140,7 @@ export const WORK_TABS: TabData[] = [
     id: "player1",
     title: "PLAYER 1",
     icon: PlayCircle,
-    description: "Watch video ads and visit the product page for 30s to convert attention into PKR.",
+    description: "Watch video ads and visit the product page for 30s to convert attention into TX-Points.",
     productUrl: "https://www.binance.com",
   },
   {

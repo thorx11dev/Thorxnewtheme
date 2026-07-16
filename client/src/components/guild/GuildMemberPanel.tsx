@@ -95,6 +95,14 @@ export function GuildMemberPanel() {
     refetchInterval: 5000,
   });
 
+  // Guild weekly performance history (last 8 cycles)
+  const { data: weeklyHistory = [] } = useQuery<any[]>({
+    queryKey: ["/api/guilds", guildId, "weekly-history"],
+    queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/weekly-history`); const d = await r.json(); return d.history ?? d.snapshots ?? []; },
+    enabled: !!guildId && tab === "progress",
+    staleTime: 60000,
+  });
+
   const sendChatMutation = useMutation({
     mutationFn: async (message: string) => {
       const r = await apiRequest("POST", `/api/guilds/${guildId}/chat`, { message });
@@ -308,6 +316,33 @@ export function GuildMemberPanel() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Guild performance history — last 8 cycles */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-4">
+            <h3 className="font-bold text-sm mb-3">Guild History (Last 8 Cycles)</h3>
+            {weeklyHistory.length === 0 ? (
+              <p className="text-xs text-zinc-400 text-center py-4">No completed cycles yet — results appear every Sunday.</p>
+            ) : (
+              <div className="space-y-2">
+                {weeklyHistory.slice(0, 8).map((snap: any, i: number) => {
+                  const pct = snap.targetPoints > 0 ? Math.min(150, (snap.achievedPoints / snap.targetPoints) * 100) : 0;
+                  return (
+                    <div key={snap.id ?? i} className="flex items-center gap-3">
+                      <span className={cn("w-3.5 h-3.5 rounded-full shrink-0", snap.wasSuccessful ? "bg-emerald-500" : "bg-red-400")} />
+                      <div className="flex-1">
+                        <div className="flex justify-between text-xs text-zinc-500 mb-0.5">
+                          <span>Cycle {weeklyHistory.length - i}</span>
+                          <span>{(snap.achievedPoints ?? 0).toLocaleString()} / {(snap.targetPoints ?? 0).toLocaleString()} pts ({pct.toFixed(0)}%)</span>
+                        </div>
+                        <Progress value={Math.min(100, pct)} className="h-1.5" />
+                      </div>
+                      <span className="text-xs shrink-0">{snap.wasSuccessful ? "✅" : "❌"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

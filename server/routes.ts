@@ -7,7 +7,7 @@ import connectPg from "connect-pg-simple";
 import { storage, RANK_NAMES } from "./storage";
 import { pool, db } from "./db";
 import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh, broadcastGuildMessage, broadcastGuildEvent, broadcastToUser } from "./realtime";
-import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, dailyTasks, systemConfig, weeklyTasks, auditLogs } from "@shared/schema";
+import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, dailyTasks, systemConfig, weeklyTasks, auditLogs, insertHilltopAdsConfigSchema, insertHilltopAdsZoneSchema } from "@shared/schema";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "./validation";
@@ -3606,7 +3606,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/hilltopads/config/:id", requireTeamRole, async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = req.body;
+      // Validate and strip unknown keys — prevents mass-assignment against the config table.
+      const updates = insertHilltopAdsConfigSchema.partial().parse(req.body);
 
       const config = await storage.updateHilltopAdsConfig(id, updates);
 
@@ -3616,6 +3617,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(config);
     } catch (error) {
+      if (error instanceof Error && error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid config fields", error: (error as any).errors });
+      }
       console.error("Update HilltopAds config error:", error);
       res.status(500).json({ message: "Failed to update config", error: "INTERNAL_ERROR" });
     }
@@ -3675,7 +3679,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/hilltopads/zones/:id", requireTeamRole, async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = req.body;
+      // Validate and strip unknown keys — prevents mass-assignment against the zones table.
+      const updates = insertHilltopAdsZoneSchema.partial().parse(req.body);
 
       const zone = await storage.updateHilltopAdsZone(id, updates);
 
@@ -3685,6 +3690,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(zone);
     } catch (error) {
+      if (error instanceof Error && error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid zone fields", error: (error as any).errors });
+      }
       console.error("Update HilltopAds zone error:", error);
       res.status(500).json({ message: "Failed to update zone", error: "INTERNAL_ERROR" });
     }
@@ -3834,8 +3842,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isAdminOrFounder) return res.status(403).json({ message: "Insufficient authorization level to issue keys." });
 
       // Find node securely using raw SQL mapping to the existing users table via drizzle
-      const allUsers = await storage.getAllUsers();
-      const targetUser = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+      // Targeted lookup by email — avoids loading the entire users table into memory.
+      const targetUser = await storage.getUserByEmail(email.toLowerCase());
 
       if (!targetUser) {
         return res.status(404).json({ message: "Target email does not belong to any active ecosystem element." });

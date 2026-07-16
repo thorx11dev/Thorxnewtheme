@@ -1168,12 +1168,6 @@ export default function UserPortal() {
     return `${points.toLocaleString()} TX-Points`;
   };
 
-  // Only used inside Conversion Room — never on regular screens
-  const formatPKR = (amount: string | number) => {
-    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return `PKR ${numAmount.toFixed(2)}`;
-  };
-
   // Keep formatCurrency as alias so all existing calls continue to show TX-Points
   const formatCurrency = formatPoints;
 
@@ -1690,14 +1684,14 @@ export default function UserPortal() {
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={isMobile ? 8 : 10}
                     fontFamily="var(--font-sans)"
-                    tickFormatter={(value) => isMobile ? `${value}` : `PKR ${value}`}
+                    tickFormatter={(value) => isMobile ? `${value}` : `${value} pts`}
                     tickLine={false}
                     axisLine={false}
                     hide={isMobile}
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip
-                    formatter={(value) => [`PKR ${value}`, 'Earnings']}
+                    formatter={(value) => [`${value} pts`, 'TX-Points']}
                     labelFormatter={(label) => `Day: ${label}`}
                     contentStyle={{
                       backgroundColor: 'hsl(var(--background))',
