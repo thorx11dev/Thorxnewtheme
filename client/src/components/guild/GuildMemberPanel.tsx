@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Target, Clock, MessageCircle, Star, Send, Users, Zap } from "lucide-react";
+import { Trophy, Target, Clock, MessageCircle, Megaphone, Star, Send, Users, Zap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -208,6 +208,22 @@ export function GuildMemberPanel() {
 
   return (
     <div className="space-y-4">
+      {/* Captain announcement banner — shown whenever the captain has posted one */}
+      {guild.latestAnnouncement && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
+          <Megaphone size={14} className="text-amber-600 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-amber-700 mb-0.5">Captain Announcement</div>
+            <div className="text-xs text-amber-800 break-words">{guild.latestAnnouncement}</div>
+            {guild.announcementPostedAt && (
+              <div className="text-[10px] text-amber-500 mt-0.5">
+                {formatDistanceToNow(new Date(guild.announcementPostedAt), { addSuffix: true })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Guild Header */}
       <div className="rounded-xl border border-zinc-200 bg-white p-4">
         <div className="flex items-center justify-between">

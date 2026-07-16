@@ -305,7 +305,7 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
                 {!isAdmin && (
                   <div className="flex items-center justify-between text-sm uppercase">
                     <span className="text-white/40 text-xs font-bold">Total Earnings</span>
-                    <span className="font-mono font-bold text-sm">PKR {Number(user?.totalEarnings || 0).toFixed(2)}</span>
+                    <span className="font-mono font-bold text-sm">TX-Points: {Number(user?.totalEarnings || 0).toFixed(2)}</span>
                   </div>
                 )}
                 {!isAdmin && (
@@ -322,7 +322,7 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
                       <Wallet className="w-3.5 h-3.5" /> Referral Wallet
                     </span>
                     <div className="flex items-center gap-3">
-                      <span className="font-mono font-bold text-sm">Rs. {Number(user?.balanceCashPkr || 0).toFixed(2)}</span>
+                      <span className="font-mono font-bold text-sm">Cash Balance</span>
                       <button
                         onClick={() => { onClose(); navigate("/referrals"); }}
                         className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"

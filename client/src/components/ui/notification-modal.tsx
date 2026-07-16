@@ -257,7 +257,7 @@ export function NotificationModal({
 
                                                             <div className="mt-2 pl-16">
                                                                 <p className="text-xl font-black tracking-tighter text-white uppercase italic leading-none mb-2">
-                                                                    {isCredit ? '+' : '-'}{parseFloat(notification.amount || "0").toFixed(0)} <span className="text-primary not-italic">PKR</span>
+                                                                    {isCredit ? '+' : '-'}{parseFloat(notification.amount || "0").toFixed(0)} <span className="text-primary not-italic">TX-Points</span>
                                                                 </p>
                                                                 <p className="text-[11px] text-zinc-500 font-bold leading-relaxed max-w-sm">
                                                                     “{notification.message}”

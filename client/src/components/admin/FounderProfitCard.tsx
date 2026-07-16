@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProfitSummary {
   totalProfitEarned: string;
@@ -112,7 +113,9 @@ export function FounderProfitCard() {
         {/* Main number */}
         <div className="mb-5">
           <p className={cn("text-3xl font-black mb-1", isOver ? "text-red-600" : "text-emerald-700")}>
-            {isLoading ? "..." : isOver
+            {isLoading ? (
+              <Skeleton className="h-9 w-36 rounded-lg" />
+            ) : isOver
               ? `−₨${parseFloat(summary?.overWithdrawnAmount ?? "0").toLocaleString()}`
               : `₨${safe.toLocaleString()}`
             }

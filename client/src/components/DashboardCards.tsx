@@ -143,7 +143,7 @@ export function DashboardCards() {
 
         <CardShell testId="card-referral-balance">
           <CardHead icon={Gift} label="REFERRAL BALANCE" />
-          <p className="text-2xl md:text-3xl font-black text-foreground mb-1">Rs. {balanceCashPkr.toFixed(2)}</p>
+          <p className="text-2xl md:text-3xl font-black text-foreground mb-1">TX-Points Balance</p>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-3">
             {isReferralStatsLoading
               ? <Skeleton className="h-3 w-24 rounded" />
@@ -305,7 +305,7 @@ export function DashboardCards() {
       <CardShell testId="card-captain-earnings" className="sm:col-span-2 lg:col-span-1">
         <CardHead icon={UserCog} label="MY CAPTAIN EARNINGS" />
         <p className="text-sm font-black text-foreground mb-1">TX-Points: {txPoints.toLocaleString()} pts</p>
-        <p className="text-sm font-black text-foreground mb-3">Referral Cash: Rs. {balanceCashPkr.toFixed(2)}</p>
+        <p className="text-sm font-black text-foreground mb-3">Referral Cash Earned</p>
         <button
           onClick={() => navigate("/referrals")}
           className="text-xs font-black uppercase tracking-wider text-primary hover:underline"

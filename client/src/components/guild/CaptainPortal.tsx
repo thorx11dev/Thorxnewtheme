@@ -1,7 +1,7 @@
 /**
  * CaptainPortal — THORX v3 (spec F.8)
  * Default Engine C view for guild captains (guildRole='captain').
- * Tabs: Requests | Roster | DM Hub | Weekly Stats | Guild Settings
+ * Tabs: Requests | Roster | DM Hub | Weekly Stats | Settings
  * NEVER shows PKR pool amounts to users — only after distribution.
  */
 import { useState, useRef, useEffect } from "react";
@@ -14,11 +14,21 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target } from "lucide-react";
+import { Megaphone, Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
 type Tab = "requests" | "roster" | "dm" | "stats" | "settings";
+
+// Points target per difficulty, mirroring server/storage.ts DatabaseStorage.DIFFICULTY_TARGETS
+const DIFFICULTY_TARGETS: Record<string, Record<string, number>> = {
+  "E-Rank": { low: 10_000,  medium: 25_000,  high:  50_000 },
+  "D-Rank": { low: 25_000,  medium: 50_000,  high: 100_000 },
+  "C-Rank": { low: 50_000,  medium: 100_000, high: 200_000 },
+  "B-Rank": { low: 100_000, medium: 200_000, high: 400_000 },
+  "A-Rank": { low: 200_000, medium: 400_000, high: 800_000 },
+  "S-Rank": { low: 400_000, medium: 800_000, high: 1_600_000 },
+};
 
 export function CaptainPortal() {
   const { user } = useAuth();
@@ -31,6 +41,7 @@ export function CaptainPortal() {
   const [selectedDmMember, setSelectedDmMember] = useState<string | null>(null);
   const [dmMsg, setDmMsg] = useState("");
   const [settingsForm, setSettingsForm] = useState<any>(null);
+  const [announcementText, setAnnouncementText] = useState("");
   const guildId = user?.guildId;
 
   // Guild info
@@ -147,8 +158,37 @@ export function CaptainPortal() {
       const r = await apiRequest("PATCH", `/api/guilds/${guildId}/settings`, updates);
       return r.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({ title: "Settings saved." });
+      queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
+      // Reflect the server-computed weeklyTarget back into the form
+      if (data?.guild?.weeklyTarget) {
+        setSettingsForm((f: any) => ({ ...f, weeklyTarget: data.guild.weeklyTarget }));
+      }
+    },
+    onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
+  });
+
+  const announcementMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const r = await apiRequest("POST", `/api/guilds/${guildId}/announcement`, { text });
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Announcement posted!", description: "All members will see your announcement." });
+      setAnnouncementText("");
+      queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err?.message ?? "Could not post announcement.", variant: "destructive" }),
+  });
+
+  const clearAnnouncementMutation = useMutation({
+    mutationFn: async () => {
+      const r = await apiRequest("DELETE", `/api/guilds/${guildId}/announcement`);
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Announcement cleared." });
       queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
@@ -156,7 +196,13 @@ export function CaptainPortal() {
 
   useEffect(() => {
     if (guild && !settingsForm) {
-      setSettingsForm({ name: guild.name || "", description: guild.description || "", minRankRequired: guild.minRankRequired || "E-Rank", recruitmentOpen: guild.recruitmentOpen ?? true });
+      setSettingsForm({
+        name: guild.name || "",
+        description: guild.description || "",
+        minRankRequired: guild.minRankRequired || "E-Rank",
+        recruitmentOpen: guild.recruitmentOpen ?? true,
+        targetDifficulty: guild.targetDifficulty || "medium",
+      });
     }
   }, [guild]);
 
@@ -171,6 +217,11 @@ export function CaptainPortal() {
   if (!guildId || !guild) return <div className="text-center py-12 text-zinc-400 text-sm">Loading guild data…</div>;
 
   const RANK_ORDER = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"];
+
+  // Preview the weeklyTarget that would result from the currently-selected difficulty
+  const previewTarget = settingsForm
+    ? ((DIFFICULTY_TARGETS[guild.guildRankTier ?? "E-Rank"] ?? DIFFICULTY_TARGETS["E-Rank"])[settingsForm.targetDifficulty] ?? guild.weeklyTarget)
+    : guild.weeklyTarget;
 
   return (
     <div className="space-y-4">
@@ -190,6 +241,29 @@ export function CaptainPortal() {
           <div>{(guild.guildPerformanceScore || 0).toLocaleString()} GPS</div>
         </div>
       </div>
+
+      {/* Active announcement preview (captain can see their own post) */}
+      {guild.latestAnnouncement && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
+          <Megaphone size={14} className="text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold text-amber-700 mb-0.5">Active Announcement</div>
+            <div className="text-xs text-amber-800 break-words">{guild.latestAnnouncement}</div>
+            {guild.announcementPostedAt && (
+              <div className="text-[10px] text-amber-500 mt-0.5">
+                Posted {formatDistanceToNow(new Date(guild.announcementPostedAt), { addSuffix: true })}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => clearAnnouncementMutation.mutate()}
+            disabled={clearAnnouncementMutation.isPending}
+            className="text-amber-500 hover:text-amber-700 text-[10px] font-semibold shrink-0 mt-0.5"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-zinc-100 rounded-lg p-1 overflow-x-auto">
@@ -335,20 +409,6 @@ export function CaptainPortal() {
       {/* ── WEEKLY STATS ── */}
       {tab === "stats" && (
         <div className="space-y-3">
-          {/* Weekly target control */}
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-2">
-            <div className="font-bold text-sm">Weekly Goal Setting</div>
-            <div className="flex gap-3">
-              {["low", "medium", "high"].map(d => (
-                <label key={d} className="flex items-center gap-1.5 text-sm cursor-pointer capitalize">
-                  <input type="radio" name="difficulty" value={d} checked={settingsForm?.targetDifficulty === d} onChange={() => setSettingsForm((f: any) => ({ ...f, targetDifficulty: d }))} />
-                  {d}
-                </label>
-              ))}
-            </div>
-            <div className="text-xs text-zinc-400">Admin sets the max target per rank tier. Current target: {(guild.weeklyTarget || 0).toLocaleString()} pts</div>
-          </div>
-
           {/* History */}
           <div className="rounded-xl border border-zinc-200 bg-white p-4">
             <div className="font-bold text-sm mb-3">Performance History (Last 8 Weeks)</div>
@@ -380,40 +440,97 @@ export function CaptainPortal() {
 
       {/* ── SETTINGS ── */}
       {tab === "settings" && settingsForm && (
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-4">
-          <div className="font-bold text-sm">Guild Settings</div>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-zinc-500 block mb-1">Guild Name</label>
-              <Input value={settingsForm.name} onChange={e => setSettingsForm((f: any) => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div>
-              <label className="text-xs text-zinc-500 block mb-1">Description (max 200 chars)</label>
-              <textarea maxLength={200} rows={3} value={settingsForm.description} onChange={e => setSettingsForm((f: any) => ({ ...f, description: e.target.value }))}
-                className="w-full border border-zinc-200 rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-black" />
-            </div>
-            <div>
-              <label className="text-xs text-zinc-500 block mb-1">Min Rank to Join</label>
-              <select value={settingsForm.minRankRequired} onChange={e => setSettingsForm((f: any) => ({ ...f, minRankRequired: e.target.value }))}
-                className="w-full h-9 border border-zinc-200 rounded-lg px-2 text-sm bg-white">
-                {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-zinc-500 block mb-1">Recruitment</label>
-              <div className="flex gap-4">
-                {[{ v: true, l: "Open" }, { v: false, l: "Closed" }].map(opt => (
-                  <label key={String(opt.v)} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                    <input type="radio" name="recruitment" checked={settingsForm.recruitmentOpen === opt.v} onChange={() => setSettingsForm((f: any) => ({ ...f, recruitmentOpen: opt.v }))} />
-                    {opt.l}
-                  </label>
-                ))}
+        <div className="space-y-4">
+          {/* Guild settings */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-4">
+            <div className="font-bold text-sm">Guild Settings</div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-zinc-500 block mb-1">Guild Name</label>
+                <Input value={settingsForm.name} onChange={e => setSettingsForm((f: any) => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 block mb-1">Description (max 200 chars)</label>
+                <textarea maxLength={200} rows={3} value={settingsForm.description} onChange={e => setSettingsForm((f: any) => ({ ...f, description: e.target.value }))}
+                  className="w-full border border-zinc-200 rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-black" />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 block mb-1">Min Rank to Join</label>
+                <select value={settingsForm.minRankRequired} onChange={e => setSettingsForm((f: any) => ({ ...f, minRankRequired: e.target.value }))}
+                  className="w-full h-9 border border-zinc-200 rounded-lg px-2 text-sm bg-white">
+                  {RANK_ORDER.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 block mb-1">Recruitment</label>
+                <div className="flex gap-4">
+                  {[{ v: true, l: "Open" }, { v: false, l: "Closed" }].map(opt => (
+                    <label key={String(opt.v)} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input type="radio" name="recruitment" checked={settingsForm.recruitmentOpen === opt.v} onChange={() => setSettingsForm((f: any) => ({ ...f, recruitmentOpen: opt.v }))} />
+                      {opt.l}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Weekly target difficulty */}
+              <div>
+                <label className="text-xs text-zinc-500 block mb-1">Weekly Goal Difficulty</label>
+                <div className="flex gap-3">
+                  {["low", "medium", "high"].map(d => (
+                    <label key={d} className="flex items-center gap-1.5 text-sm cursor-pointer capitalize">
+                      <input type="radio" name="difficulty" value={d}
+                        checked={settingsForm.targetDifficulty === d}
+                        onChange={() => setSettingsForm((f: any) => ({ ...f, targetDifficulty: d }))} />
+                      {d}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-zinc-400 mt-1">
+                  {settingsForm.targetDifficulty !== guild.targetDifficulty
+                    ? <>Setting to <strong>{settingsForm.targetDifficulty}</strong> will change weekly target to <strong>{previewTarget.toLocaleString()} pts</strong>.</>
+                    : <>Current target: <strong>{(guild.weeklyTarget || 0).toLocaleString()} pts</strong>. Admin can override anytime.</>
+                  }
+                </p>
               </div>
             </div>
+            <Button className="w-full" disabled={settingsMutation.isPending} onClick={() => settingsMutation.mutate(settingsForm)}>
+              {settingsMutation.isPending ? "Saving…" : "Save Settings"}
+            </Button>
           </div>
-          <Button className="w-full" disabled={settingsMutation.isPending} onClick={() => settingsMutation.mutate(settingsForm)}>
-            {settingsMutation.isPending ? "Saving…" : "Save Settings"}
-          </Button>
+
+          {/* Announcements */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Megaphone size={14} className="text-amber-500" />
+              <div className="font-bold text-sm">Post Announcement</div>
+            </div>
+            <p className="text-xs text-zinc-500">
+              Pin a message for all guild members. It appears as a banner on their dashboard until you clear it.
+            </p>
+            <textarea
+              rows={3}
+              maxLength={500}
+              value={announcementText}
+              onChange={e => setAnnouncementText(e.target.value)}
+              placeholder="Write an announcement for your guild members…"
+              className="w-full border border-zinc-200 rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            <div className="flex items-center justify-between">
+              <span className={cn("text-[11px]", announcementText.length > 480 ? "text-red-400" : "text-zinc-400")}>
+                {announcementText.length}/500
+              </span>
+              <Button
+                size="sm"
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+                disabled={announcementText.trim().length === 0 || announcementMutation.isPending}
+                onClick={() => announcementMutation.mutate(announcementText.trim())}
+              >
+                <Megaphone size={12} className="mr-1" />
+                {announcementMutation.isPending ? "Posting…" : "Post Announcement"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

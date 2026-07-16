@@ -120,7 +120,7 @@ export function ThorxCard({ payload, onClaim }: ThorxCardProps) {
                   </motion.div>
                   <div className="text-zinc-500 text-sm font-medium mb-1">TX-Points Earned</div>
                   <div className="text-zinc-400 text-xs mb-6">
-                    Saved Value: Rs.&nbsp;{payload.realPkrValue.toFixed(2)}
+                    TX-Points Credited
                   </div>
 
                   <Button

@@ -484,6 +484,9 @@ export interface IStorage {
   adminReassignCaptain(guildId: string, newCaptainUserId: string, adminId: string): Promise<any>;
   adminSetGuildWeeklyTarget(guildId: string, weeklyTarget: number, adminId: string): Promise<any>;
   adminBulkSetWeeklyTargets(weeklyTarget: number, scope: 'all' | 'byDifficulty', difficulty: string | undefined, adminId: string): Promise<number>;
+  updateGuildSettings(guildId: string, captainId: string, settings: { name?: string; description?: string; minRankRequired?: string; recruitmentOpen?: boolean; pinnedMemberId?: string | null; avatarUrl?: string; targetDifficulty?: string; }): Promise<any>;
+  postGuildAnnouncement(guildId: string, captainId: string, text: string): Promise<any>;
+  clearGuildAnnouncement(guildId: string, captainId: string): Promise<any>;
   adminGetInactiveCaptains(inactiveDays?: number): Promise<any[]>;
   adminGetReferralStats(): Promise<any>;
   adminGetReferralLeaderboard(limit?: number): Promise<any[]>;
@@ -1881,22 +1884,9 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Withdrawal amount must be a positive whole number of TX-Points");
     }
 
-    // Fast-path check for a friendly error message — this alone still has a
-    // TOCTOU race window under concurrent requests. The actual guarantee
-    // comes from a partial unique index (one row per user WHERE status =
-    // 'pending') added for Critical finding #4 of the 2026-07-15
-    // production-readiness audit: a double-tapped submit / retried request
-    // can no longer create two pending withdrawals for the same user, no
-    // matter the timing — Postgres rejects the second INSERT outright.
-    const [pending] = await db
-      .select()
-      .from(withdrawals)
-      .where(and(eq(withdrawals.userId, insertWithdrawal.userId), eq(withdrawals.status, "pending")))
-      .limit(1);
-    if (pending) {
-      throw new Error("A pending payout request already exists for this account.");
-    }
-
+    // Read-only pre-flight checks (breakdown, minimum payout, S-Rank status).
+    // Done outside the transaction because they are pure reads — no writes happen
+    // until the transaction below commits the INSERT.
     const breakdown = await this.calculateWithdrawalBreakdown(insertWithdrawal.userId, pointsRequested);
 
     const minPayout = await this.getSystemConfigValue<number>("MIN_PAYOUT", 100);
@@ -1912,23 +1902,41 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     const initialStatus: string = withdrawingUser?.userRankTier === 'S-Rank' ? 'approved' : 'pending';
 
+    // Wrap the pending-check SELECT and the INSERT in a single serializable
+    // transaction so no concurrent request can slip a second pending row in
+    // between the two statements. The partial unique index
+    // (uniq_withdrawals_one_pending_per_user) is still the final DB-level
+    // backstop — any race that somehow escapes the transaction boundary is
+    // caught here and converted to the same friendly message.
     try {
-      const [withdrawal] = await db
-        .insert(withdrawals)
-        .values({
-          ...insertWithdrawal,
-          amount: pointsRequested.toString(),
-          fee: breakdown.platformFee.toFixed(2),
-          netAmount: breakdown.userNetPkr.toFixed(2),
-          status: initialStatus,
-        })
-        .returning();
+      return await db.transaction(async (tx) => {
+        const [pending] = await tx
+          .select({ id: withdrawals.id })
+          .from(withdrawals)
+          .where(and(eq(withdrawals.userId, insertWithdrawal.userId), eq(withdrawals.status, "pending")))
+          .limit(1);
+        if (pending) {
+          throw new Error("A pending payout request already exists for this account.");
+        }
 
-      return withdrawal;
+        const [withdrawal] = await tx
+          .insert(withdrawals)
+          .values({
+            ...insertWithdrawal,
+            amount: pointsRequested.toString(),
+            fee: breakdown.platformFee.toFixed(2),
+            netAmount: breakdown.userNetPkr.toFixed(2),
+            status: initialStatus,
+          })
+          .returning();
+
+        return withdrawal;
+      });
     } catch (err: any) {
       // Postgres unique_violation on uniq_withdrawals_one_pending_per_user —
-      // translate the DB-level guarantee into the same friendly error.
-      if (err?.code === "23505") {
+      // translate the DB-level guarantee into the same friendly error whether
+      // it arrives from the in-transaction check or the index.
+      if (err?.code === "23505" || err?.message?.includes("pending payout")) {
         throw new Error("A pending payout request already exists for this account.");
       }
       throw err;
@@ -4165,9 +4173,22 @@ export class DatabaseStorage implements IStorage {
 
   // ── Engine C: Guild Settings (Captain only) ──────────────────────────────────
 
+  // Points per difficulty tier, keyed by guild rank tier.
+  // When a captain selects a difficulty, this table determines the weeklyTarget
+  // that gets written to the DB. Admins can still override weeklyTarget directly.
+  static readonly DIFFICULTY_TARGETS: Record<string, Record<string, number>> = {
+    "E-Rank": { low: 10_000,  medium: 25_000,  high:  50_000 },
+    "D-Rank": { low: 25_000,  medium: 50_000,  high: 100_000 },
+    "C-Rank": { low: 50_000,  medium: 100_000, high: 200_000 },
+    "B-Rank": { low: 100_000, medium: 200_000, high: 400_000 },
+    "A-Rank": { low: 200_000, medium: 400_000, high: 800_000 },
+    "S-Rank": { low: 400_000, medium: 800_000, high: 1_600_000 },
+  };
+
   async updateGuildSettings(guildId: string, captainId: string, settings: {
     name?: string; description?: string; minRankRequired?: string;
     recruitmentOpen?: boolean; pinnedMemberId?: string | null; avatarUrl?: string;
+    targetDifficulty?: string;
   }): Promise<any> {
     const membership = await this.getUserGuildMembership(captainId);
     if (!membership || membership.guildId !== guildId || membership.role !== "captain") {
@@ -4180,7 +4201,55 @@ export class DatabaseStorage implements IStorage {
     if (settings.recruitmentOpen !== undefined) updates.recruitmentOpen = settings.recruitmentOpen;
     if ("pinnedMemberId" in settings) updates.pinnedMemberId = settings.pinnedMemberId;
     if (settings.avatarUrl !== undefined) updates.avatarUrl = settings.avatarUrl;
+
+    // Difficulty selection: automatically sets weeklyTarget based on guild rank tier.
+    // Admin overrides (adminSetGuildWeeklyTarget) always win — this only fires when
+    // the captain explicitly changes the difficulty knob.
+    if (settings.targetDifficulty !== undefined) {
+      const allowed = ["low", "medium", "high"];
+      if (!allowed.includes(settings.targetDifficulty)) {
+        throw new Error("targetDifficulty must be 'low', 'medium', or 'high'.");
+      }
+      updates.targetDifficulty = settings.targetDifficulty;
+
+      // Look up the current rank tier to choose the right target range.
+      const [current] = await db.select({ guildRankTier: guilds.guildRankTier }).from(guilds).where(eq(guilds.id, guildId)).limit(1);
+      const rankTier = current?.guildRankTier ?? "E-Rank";
+      const tierMap = (DatabaseStorage as any).DIFFICULTY_TARGETS[rankTier] ?? (DatabaseStorage as any).DIFFICULTY_TARGETS["E-Rank"];
+      updates.weeklyTarget = tierMap[settings.targetDifficulty];
+    }
+
     const [guild] = await db.update(guilds).set(updates).where(eq(guilds.id, guildId)).returning();
+    return guild;
+  }
+
+  // Post or update the guild's pinned announcement (captain only).
+  async postGuildAnnouncement(guildId: string, captainId: string, text: string): Promise<any> {
+    const membership = await this.getUserGuildMembership(captainId);
+    if (!membership || membership.guildId !== guildId || membership.role !== "captain") {
+      throw new Error("Only the guild captain can post announcements.");
+    }
+    const trimmed = text.trim();
+    if (trimmed.length === 0) throw new Error("Announcement text cannot be empty.");
+    if (trimmed.length > 500) throw new Error("Announcement must be 500 characters or fewer.");
+
+    const [guild] = await db.update(guilds)
+      .set({ latestAnnouncement: trimmed, announcementPostedAt: new Date() })
+      .where(eq(guilds.id, guildId))
+      .returning();
+    return guild;
+  }
+
+  // Clear (dismiss) the guild's current announcement (captain only).
+  async clearGuildAnnouncement(guildId: string, captainId: string): Promise<any> {
+    const membership = await this.getUserGuildMembership(captainId);
+    if (!membership || membership.guildId !== guildId || membership.role !== "captain") {
+      throw new Error("Only the guild captain can clear announcements.");
+    }
+    const [guild] = await db.update(guilds)
+      .set({ latestAnnouncement: null, announcementPostedAt: null })
+      .where(eq(guilds.id, guildId))
+      .returning();
     return guild;
   }
 
@@ -4922,6 +4991,9 @@ export class MemStorage {
   async adminReassignCaptain(_guildId: string, _newCaptainUserId: string, _adminId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async adminSetGuildWeeklyTarget(_guildId: string, _weeklyTarget: number, _adminId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async adminBulkSetWeeklyTargets(_weeklyTarget: number, _scope: 'all' | 'byDifficulty', _difficulty: string | undefined, _adminId: string): Promise<number> { throw new Error("Not implemented in MemStorage"); }
+  async updateGuildSettings(_guildId: string, _captainId: string, _settings: any): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async postGuildAnnouncement(_guildId: string, _captainId: string, _text: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async clearGuildAnnouncement(_guildId: string, _captainId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async adminGetInactiveCaptains(_inactiveDays?: number): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
   async adminGetReferralStats(): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async adminGetReferralLeaderboard(_limit?: number): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }

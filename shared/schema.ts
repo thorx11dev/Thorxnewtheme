@@ -1030,6 +1030,9 @@ export const guilds = pgTable("guilds", {
   currentWeeklyPoints: integer("current_weekly_points").notNull().default(0),
   weeklyTarget: integer("weekly_target").notNull().default(50000),
   targetDifficulty: text("target_difficulty").notNull().default("medium"), // low | medium | high
+  // ── Announcements ─────────────────────────────────────────────────────────
+  latestAnnouncement: text("latest_announcement"),
+  announcementPostedAt: timestamp("announcement_posted_at"),
   // ── THORX v3: Governance ─────────────────────────────────────────────────
   assistantCaptainId: varchar("assistant_captain_id").references((): any => users.id, { onDelete: "set null" }),
 }, (table) => [

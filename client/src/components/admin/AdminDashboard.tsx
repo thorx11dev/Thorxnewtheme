@@ -455,7 +455,7 @@ export function AdminDashboard() {
       {/* Section 4.5: Engine Revenue (THORX v3) — live from user_transactions */}
       <section className="space-y-3">
         <SectionLabel text={`Engine Revenue · ${rangeLabel}`} />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {([
             { key: "Engine_A" as const, label: "Engine A · Video Ads",   color: "#f97316", sub: "User earnings via ad views" },
             { key: "Engine_B" as const, label: "Engine B · CPA Offers",  color: "#7c3aed", sub: "C-Rank+ CPA completions" },

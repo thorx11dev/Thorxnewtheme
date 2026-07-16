@@ -60,3 +60,28 @@ export const withdrawalRateLimiter = rateLimit({
   },
   validate: false,
 });
+
+/**
+ * Rate limiter for profile/rank/general operations.
+ * 30 requests per IP per 15 minute window (lenient).
+ */
+export const profileRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Try again in 15 minutes.", error: "RATE_LIMITED" },
+  skip: (req) => {
+    if (process.env.NODE_ENV !== 'production') {
+      const ip = req.ip || req.socket?.remoteAddress || '';
+      if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return true;
+    }
+    return false;
+  },
+  keyGenerator: (req) => {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const clientIp = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : (req as any)['ip'];
+    return clientIp || 'unknown-ip';
+  },
+  validate: false,
+});

@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import Decimal from "decimal.js";
 import crypto from "crypto";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -14,7 +15,7 @@ import { hilltopAdsService } from "./hilltopads-service";
 import { runtimeConfig } from "./config/runtime";
 import { handleProxyRequest } from "./modules/proxy/proxy-handler";
 import { processProfilePicture } from "./utils/local-profile-picture";
-import { authRateLimiter, withdrawalRateLimiter } from "./middleware/auth-rate-limit";
+import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
@@ -461,9 +462,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (action === "suspend") {
         await storage.updateUser(id, { isActive: false } as any);
       } else if (action === "adjust_balance" && payload && payload.amount) {
-        const amount = parseFloat(payload.amount);
-        const currentBalance = parseFloat(user.availableBalance || "0");
-        await storage.updateUser(id, { availableBalance: (currentBalance + amount).toString() } as any);
+        // Use Decimal arithmetic to avoid IEEE-754 float drift on ledger values.
+        const amount = new Decimal(String(payload.amount));
+        const currentBalance = new Decimal(user.availableBalance || "0");
+        await storage.updateUser(id, { availableBalance: currentBalance.plus(amount).toFixed(4) } as any);
       } else {
         return res.status(400).json({ message: "Invalid action or missing payload" });
       }
@@ -637,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update own user profile
-  app.patch("/api/users/:id", async (req, res) => {
+  app.patch("/api/users/:id", profileRateLimiter, async (req, res) => {
     try {
       const principalId = getThorxPrincipalId(req);
       if (!principalId) {
@@ -1131,14 +1133,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/guilds/:id/settings", requireSessionAuth, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
-      const { name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl } = req.body;
+      const { name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl, targetDifficulty } = req.body;
       const guild = await storage.updateGuildSettings(req.params.id, userId, {
-        name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl,
+        name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl, targetDifficulty,
       });
       res.json({ guild });
     } catch (error) {
       console.error("Update guild settings error:", error);
       const msg = error instanceof Error ? error.message : "Failed to update guild settings";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  // ── Captain: Post / Clear Announcement ───────────────────────────────────────
+  app.post("/api/guilds/:id/announcement", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const { text } = z.object({ text: z.string().min(1).max(500) }).parse(req.body);
+      const guild = await storage.postGuildAnnouncement(req.params.id, userId, text);
+      res.json({ guild });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to post announcement";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.delete("/api/guilds/:id/announcement", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const guild = await storage.clearGuildAnnouncement(req.params.id, userId);
+      res.json({ guild });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to clear announcement";
       res.status(400).json({ message: msg });
     }
   });
@@ -1684,7 +1710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Manually trigger rank recalculation
-  app.post("/api/rank/refresh", async (req, res) => {
+  app.post("/api/rank/refresh", profileRateLimiter, async (req, res) => {
     try {
       const thorxPid = getThorxPrincipalId(req);
       if (!thorxPid) {
@@ -1861,7 +1887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send team email
-  app.post("/api/team/emails", async (req, res) => {
+  app.post("/api/team/emails", requireTeamRole, async (req, res) => {
     try {
 
       const { recipient, subject, message } = teamEmailSchema.parse(req.body);
@@ -2104,7 +2130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User CRM Management Routes
-  app.post("/api/admin/users/:userId/adjust-balance", requirePermission("MANAGE_USERS"), async (req, res) => {
+  app.post("/api/admin/users/:userId/adjust-balance", requirePermission("MANAGE_USERS"), profileRateLimiter, async (req, res) => {
     try {
       const { userId } = req.params;
       const { amount, type, reason, creditIntent } = req.body;
@@ -2467,17 +2493,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get internal notes
-  app.get("/api/admin/notes/:targetType/:targetId", async (req, res) => {
+  app.get("/api/admin/notes/:targetType/:targetId", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
     try {
-      if (!req.userProfile) return res.status(401).json({ message: "Authentication required" });
-
-      const adminKeys = await storage.getTeamKeysByUser(req.userProfile.id);
-      const isAdmin = adminKeys.some(k => k.accessLevel === 'admin' || k.accessLevel === 'founder');
-
-      if (!isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       const { targetType, targetId } = req.params;
       const notes = await storage.getInternalNotes(targetType, targetId);
       res.json({ notes });
@@ -3920,7 +3937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // rank untouched until an admin unlocks it; all other rank-linked benefits
   // (avatar unlocks, badges, etc.) continue to apply exactly as if the rank
   // had been earned normally — only future automatic *changes* are suppressed.
-  app.patch("/api/admin/users/:id/rank", requirePermission("MANAGE_USERS"), async (req, res) => {
+  app.patch("/api/admin/users/:id/rank", requirePermission("MANAGE_USERS"), profileRateLimiter, async (req, res) => {
     try {
       const { id } = req.params;
       const { rank, locked } = req.body;
@@ -3998,10 +4015,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
-      const { permissions } = req.body;
-
-      if (!Array.isArray(permissions)) {
-        return res.status(400).json({ message: "Permissions must be an array of structural identifiers." });
+      let permissions: string[];
+      try {
+        ({ permissions } = z.object({ permissions: z.array(z.string()) }).parse(req.body));
+      } catch (e: any) {
+        return res.status(400).json({ message: e?.errors?.[0]?.message ?? "Permissions must be an array of structural identifiers." });
       }
 
       const targetUser = await storage.getUserById(id);
@@ -4453,7 +4471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ── THORX v3 (spec E.9): Admin — PS / GPS manual adjustments ─────────────
-  app.patch("/api/admin/users/:userId/ps", requirePermission("MANAGE_USERS"), async (req, res) => {
+  app.patch("/api/admin/users/:userId/ps", requirePermission("MANAGE_USERS"), profileRateLimiter, async (req, res) => {
     try {
       const adminId = getThorxPrincipalId(req) as string;
       const { delta, reason } = req.body;

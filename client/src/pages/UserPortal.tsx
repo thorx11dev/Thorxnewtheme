@@ -1178,10 +1178,13 @@ export default function UserPortal() {
   const formatCurrency = formatPoints;
 
   const copyReferralCode = () => {
-    navigator.clipboard.writeText(displayUser?.referralCode || 'GUEST-CODE');
-    toast({
-      title: "Copied!",
-      description: "Referral code copied to clipboard",
+    navigator.clipboard.writeText(displayUser?.referralCode || 'GUEST-CODE').then(() => {
+      toast({
+        title: "Copied!",
+        description: "Referral code copied to clipboard",
+      });
+    }).catch(() => {
+      toast({ title: "Copy failed", description: "Could not copy to clipboard.", variant: "destructive" });
     });
   };
 
@@ -3084,7 +3087,7 @@ export default function UserPortal() {
                                 {item.status === 'pending' ? 'PENDING' : item.status === 'completed' ? 'TRANSFERRED' : 'REJECTED'}
                               </div>
                             </div>
-                            <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)} PTS <span className="text-muted-foreground font-bold">· Rs. {parseFloat(item.netAmount || "0").toFixed(2)}</span></div>
+                            <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)} PTS</div>
                             <div className="text-[10px] text-muted-foreground">{formatDate(item.createdAt)}</div>
                           </motion.div>
                         ))
@@ -3188,7 +3191,7 @@ export default function UserPortal() {
                               {item.status === 'pending' ? 'PENDING' : item.status === 'completed' ? 'TRANSFERRED' : 'REJECTED'}
                             </div>
                           </div>
-                          <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)} PTS <span className="text-muted-foreground font-bold">· Rs. {parseFloat(item.netAmount || "0").toFixed(2)}</span></div>
+                          <div className="text-sm font-black text-primary mb-0.5">{formatCurrency(item.amount)} PTS</div>
                           <div className="text-[10px] text-muted-foreground">{formatDate(item.createdAt)}</div>
                         </motion.div>
                       ))

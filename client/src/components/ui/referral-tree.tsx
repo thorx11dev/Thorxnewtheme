@@ -284,7 +284,7 @@ function NodeCard({ node, isRoot }: { node: TreeNode; isRoot: boolean }) {
                 {/* Earnings (If any) - Minimal numeric display */}
                 {!isRoot && parseFloat(user.earningsFromUser) > 0 && (
                     <div className="text-[10px] md:text-xs font-mono font-bold text-primary pt-1">
-                        +PKR {parseFloat(user.earningsFromUser).toFixed(2)}
+                        +{parseFloat(user.earningsFromUser).toFixed(2)} pts
                     </div>
                 )}
 

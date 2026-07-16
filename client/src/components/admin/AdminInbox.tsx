@@ -118,8 +118,11 @@ export function AdminInbox() {
     });
 
   const copyEmail = (email: string) => {
-    navigator.clipboard.writeText(email);
-    toast({ title: "Copied", description: "Email address copied to clipboard." });
+    navigator.clipboard.writeText(email).then(() => {
+      toast({ title: "Copied", description: "Email address copied to clipboard." });
+    }).catch(() => {
+      toast({ title: "Copy failed", variant: "destructive" });
+    });
   };
 
   return (
