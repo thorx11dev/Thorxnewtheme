@@ -367,9 +367,9 @@ export function GuildMemberPanel() {
                     )}
                   </div>
                   {task.description && <p className="text-xs text-zinc-500 mt-0.5">{task.description}</p>}
-                  {task.grossPkrPerCompletion && (
+                  {task.txPointsReward > 0 && (
                     <p className="text-xs text-emerald-600 mt-1 font-medium">
-                      ~{Math.round(parseFloat(task.grossPkrPerCompletion) * 0.45 * 100)}–{Math.round(parseFloat(task.grossPkrPerCompletion) * 0.45 * 120)} pts
+                      ~{task.txPointsReward}–{task.txPointsRewardMax} pts
                     </p>
                   )}
                 </div>

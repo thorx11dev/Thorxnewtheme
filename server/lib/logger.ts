@@ -1,5 +1,8 @@
 /**
  * Structured JSON logger for THORX server.
+ * Usage in financial routes:
+ *   import { logger } from '../lib/logger';
+ *   logger.error({ err, userId, amount }, 'Withdrawal processing failed');
  *
  * Uses pino in production (JSON output, queryable by log aggregators) and
  * pino-pretty in development (colourised human-readable format).

@@ -366,7 +366,7 @@ export function GuildManager() {
                       placeholder="delta (e.g. +100 or -50)"
                       value={gpsAdjust[g.id]?.delta || ""}
                       onChange={(e) => setGpsAdjust(prev => ({ ...prev, [g.id]: { ...(prev[g.id] || {}), delta: e.target.value, reason: prev[g.id]?.reason || "" } }))}
-                      className="border-2 border-black h-8 text-sm w-28"
+                      className="border-2 border-black h-8 text-sm w-20 sm:w-28 flex-shrink-0"
                     />
                     <Input
                       placeholder="reason (5+ chars)"

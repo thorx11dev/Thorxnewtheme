@@ -896,9 +896,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Payout always open — minimum balance enforced in storage layer (Blueprint v2026)
+      // Explicitly pick only the user-supplied fields — never spread req.body directly
+      // so an attacker who adds `status: "approved"` or `fee: "0"` to the payload
+      // cannot smuggle those fields past Zod (the schema already omits them, but
+      // the explicit pick makes the intent clear and safe against future schema drift —
+      // audit finding O).
       const withdrawalData = insertWithdrawalSchema.parse({
-        ...req.body,
-        userId
+        amount:         req.body.amount,
+        method:         req.body.method,
+        accountName:    req.body.accountName,
+        accountNumber:  req.body.accountNumber,
+        accountDetails: req.body.accountDetails ?? {},
+        userId,
       });
 
       const withdrawal = await storage.createWithdrawal(withdrawalData);
@@ -1081,7 +1090,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Weekly tasks are only available to active guild members." });
       }
       const tasks = await storage.getActiveWeeklyTasks(userId, membership.guildId);
-      res.json({ tasks });
+
+      // Strip `grossPkrPerCompletion` (raw PKR value) from the user-facing response —
+      // it breaks the TX-Points-only illusion (audit finding B). Replace with a
+      // pre-computed `txPointsReward` / `txPointsRewardMax` range so the frontend
+      // never does PKR math client-side.
+      const [conversionRate, userCutPct] = await Promise.all([
+        storage.getSystemConfigValue<number>("CONVERSION_RATE", 100),
+        storage.getSystemConfigValue<number>("ENGINE_C_USER_CUT_PCT", 45),
+      ]);
+      const userCutRate = userCutPct / 100;
+
+      const safeTasks = (tasks as any[]).map((task) => {
+        const { grossPkrPerCompletion, ...rest } = task;
+        const grossPkr = parseFloat(grossPkrPerCompletion || "0");
+        const isIndirect = task.taskCategory === "indirect" || !grossPkr;
+        const txPointsReward = isIndirect ? 0 : Math.round(grossPkr * userCutRate * conversionRate);
+        const txPointsRewardMax = txPointsReward ? Math.round(txPointsReward * 1.2) : 0;
+        return { ...rest, txPointsReward, txPointsRewardMax };
+      });
+
+      res.json({ tasks: safeTasks });
     } catch (error) {
       console.error("Get weekly tasks error:", error);
       res.status(500).json({ message: "Failed to fetch weekly tasks" });

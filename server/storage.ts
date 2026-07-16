@@ -2437,7 +2437,7 @@ export class DatabaseStorage implements IStorage {
         return user;
       }
 
-      const totalEarnings = parseFloat(user.totalEarnings || "0");
+      const totalEarnings = new Decimal(user.totalEarnings || "0").toNumber();
 
       // Count direct active referrals
       const [{ count: refCount }] = await tx
@@ -3376,7 +3376,10 @@ export class DatabaseStorage implements IStorage {
 
   async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string, creditIntent: 'verified_deposit' | 'admin_credit' = 'admin_credit', txPointsDelta?: number): Promise<User> {
     return await db.transaction(async (tx) => {
-      const [user] = await tx.select().from(users).where(eq(users.id, userId));
+      // Lock the target user row before reading balance — prevents two concurrent
+      // admin adjustments from reading the same stale value and applying double
+      // credits (audit finding E).
+      const [user] = await tx.select().from(users).where(eq(users.id, userId)).for('update');
       if (!user) throw new Error("User not found");
 
       const [admin] = await tx.select().from(users).where(eq(users.id, adminId));
