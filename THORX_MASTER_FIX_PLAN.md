@@ -1,21 +1,53 @@
 # THORX — MASTER FIX PLAN
-**Based on:** Audit Report (THORX_AUDIT_REPORT.md) + Architecture Rewrite Spec (THORX-SYSTEM-ARCHITECTURE-REWRITE-FINAL-SPECIFICATIONS)  
+**Based on:** Audit Report (THORX_AUDIT_REPORT.md) + Architecture Rewrite Spec + User Requirements (2026-07-16)  
 **Date Created:** 2026-07-16  
-**Status:** PLAN ONLY — No code written yet
+**Last Updated:** 2026-07-16  
+**Status:** PLAN FINALIZED — Ready for enterprise execution
+
+---
+
+## DECISIONS MADE (All open decisions resolved before execution)
+
+| # | Decision | Resolution |
+|---|---|---|
+| D1 | CONVERSION_RATE migration for existing users | **Option A** — Accept discrepancy. Old balances stay; new earns mint at rate 1000. Dual-ledger: `real_pkr_balance` is always the source of truth; TX-Points are display-only illusion. |
+| D2 | AD_INVENTORY management | **Option A** — Move to `system_config` JSON key; admin-editable from Team Portal. |
+| D3 | Referrer TX-Points on referral commission | **Option A** — When referrer receives PKR commission, also credit proportional TX-Points (illusion) to referrer's visible balance so dashboard stays consistent. |
+| D4 | PKR visibility to users | **NEVER show real PKR to users** — only TX-Points everywhere in user-facing UI. Real PKR is revealed only on the withdrawal summary screen at payout time. |
+| D5 | Per-engine config granularity | **Per-engine AND per-ad-player** — Each engine has a default ratio + variance; individual ad players / CPA offers within Engine A can override this ratio. |
+| D6 | Guild chat architecture | **Two separate systems** — (1) Guild Group Chat: all members can read/write like a WhatsApp group. (2) Captain Private DM: one-on-one between captain and a specific member, invisible to other members. |
+| D7 | MVP lock scope | **Full week lock** — Once captain sets MVP for the current ISO week, no reassignment is possible until Sunday's automated reset runs. |
+| D8 | Referral commission flow | **15% withdrawal fee split**: configurable % of 15% → referrer's real PKR balance (+ proportional TX-Points illusion); remaining % → Thorx profit ledger. |
+| D9 | Thorx Profit sources | **Two sources tracked separately**: (1) 40% cut on every Engine A/B/C earn event. (2) Net withdrawal fee (15% minus referral commission paid out). Both flow into a unified Thorx Profit Card in Team Portal finance section. |
 
 ---
 
 ## OVERVIEW: WHAT IS CHANGING AND WHY
 
-This plan merges two documents:
+This plan merges three documents:
 1. **Audit Report** — 53 bugs/gaps across security, standards, and UX
 2. **New Architecture Spec** — 4 major feature rewrites that override previous implementation
+3. **Extended Requirements (2026-07-16)** — Full TX-Points illusion, per-player engine config, referral commission, guild chat clarity, profit ledger
 
-The spec overrides these existing systems:
-- **Engine Config** — Global `CONVERSION_RATE` is replaced with per-engine `ratio` + `variance` fields
-- **Withdrawal Flow** — Manual keypad entry is replaced with timeframe-based selection
-- **Manual Balance Adjust** — Single PKR field is replaced with dual PKR + TX-Points fields
-- **DM Access Control** — DM hub must enforce strict captain/member-only access
+### Core Principle: The TX-Points Illusion
+The fundamental UX contract of THORX is:
+- **Users see TX-Points only.** Every earning, balance, and history view shows TX-Points — never PKR.
+- **Backend stores real PKR.** The 60% user share from every earn event is calculated in PKR and stored in `users.real_pkr_balance` (never exposed via API to the user).
+- **TX-Points are a display layer.** When a user earns, the system converts their PKR share to TX-Points using the configured per-engine (or per-ad-player) ratio + random variance within a team-configured band. The exact ratio is invisible to the user.
+- **The reveal happens at withdrawal.** When a user requests a payout, the summary screen converts their real PKR balance to the "equivalent" amount after the 15% platform fee — this is the first and only time they see a PKR figure.
+
+### The 40/60 Earn Rule
+When money arrives from an ad network or CPA network:
+- **40% → Thorx profit** (logged to `thorx_profit_pkr` in `user_transactions`)
+- **60% → User's real PKR balance** (stored in `users.real_pkr_balance`, NEVER shown directly)
+- TX-Points shown on Thorx Card = user's PKR share × (per-engine PKR→TX ratio) × (random variance within ±variance_pct%)
+
+### The Spec overrides these existing systems:
+- **Engine Config** — Global `CONVERSION_RATE` → per-engine + per-ad-player `ratio` + `variance` fields
+- **Withdrawal Flow** — Manual keypad entry → timeframe-based selection + single-screen PKR reveal
+- **Manual Balance Adjust** — Single PKR field → dual (real PKR delta + TX-Points delta), both required
+- **DM Access Control** — Zero auth → strict captain/member-only enforcement
+- **User-facing PKR displays** — Remove all; replace with TX-Points equivalent
 
 Everything in this plan is organized in dependency order. Items that touch the DB schema come first.
 
@@ -901,23 +933,410 @@ Phase 15   →  UX polish (independent, can do any time after Phase 9)
 
 ---
 
-## OPEN DECISIONS (Required Before Execution)
+## PHASE 16 — BACKEND: PER-AD-PLAYER ENGINE CONFIGURATION (Extended Req §1)
 
-**D1 — CONVERSION_RATE migration (Phase 3.3):**
-Existing users' points were minted at rate 100. New spec requires 1000.  
-→ **Option A:** Accept 10× discrepancy going forward (simple, no migration)  
-→ **Option B:** Run a one-time migration to multiply all existing `points_credited` and point balances by 10 (clean, but touches ledger rows)  
-**Decision needed before Phase 3.**
+---
 
-**D2 — AD_INVENTORY management (Phase 3.2):**
-Move ad rewards to `system_config` so admin can configure them, or keep in code?  
-→ **Option A:** Move to `system_config` JSON key (admin-editable)  
-→ **Option B:** Keep in-code but add a dedicated admin endpoint to edit them  
-**Decision needed before Phase 3.**
+### 16.1 — New `system_config` keys for per-ad-player ratios
 
-**D3 — Referrer TX-Points credit (Spec §3.1):**
-When referrer receives PKR commission from a withdrawal, should the system also credit proportional TX-Points to the referrer's dashboard to maintain the illusion?  
-Current implementation: Referral commission goes to `referral_cash_balance` only (no TX-Points credited to referrer's visible balance).  
-→ **Option A:** Yes — credit proportional TX-Points illusion to referrer  
-→ **Option B:** No — referral commission is a separate "cash" balance, not tied to the points illusion  
-**Decision needed before Phase 5.**
+**Why:** Team members need to set different PKR→TX-Point ratios for each individual ad player/offer within Engine A, not just per-engine. Engine B and C operate at engine level only.
+
+**What:** Store per-player config as a JSON blob in `system_config`:
+
+| Key | Default | Description |
+|---|---|---|
+| `ENGINE_A_PLAYERS_JSON` | `[]` | Array of `{ id, name, pkrToPointsRatio, variancePct }` for each Engine A ad player |
+
+**Structure:**
+```json
+[
+  { "id": "player_1", "name": "Ad Network Alpha", "pkrToPointsRatio": 1200, "variancePct": 8 },
+  { "id": "player_2", "name": "Ad Network Beta",  "pkrToPointsRatio": 900,  "variancePct": 15 }
+]
+```
+
+Admin creates/edits/removes players from Team Portal. The `id` field matches the `adNetworkId` field passed to `recordEarnEvent` for Engine A events.
+
+---
+
+### 16.2 — Update `recordEarnEvent` lookup chain
+
+**File:** `server/storage.ts` — `recordEarnEvent()`
+
+**Lookup priority (most specific wins):**
+1. Per-ad-player ratio: check `ENGINE_A_PLAYERS_JSON` for entry matching `params.adNetworkId`
+2. Per-engine ratio: `ENGINE_{type}_PKR_TO_POINTS_RATIO`
+3. Global fallback: `CONVERSION_RATE` (= 1000)
+
+```typescript
+async function resolveEngineRatio(engineType: string, adNetworkId?: string) {
+  if (engineType === 'Engine_A' && adNetworkId) {
+    const playersJson = await storage.getSystemConfigValue<string>('ENGINE_A_PLAYERS_JSON', '[]');
+    const players = JSON.parse(playersJson) as AdPlayer[];
+    const player = players.find(p => p.id === adNetworkId);
+    if (player) return { ratio: player.pkrToPointsRatio, variancePct: player.variancePct };
+  }
+  const engineKey = engineType.replace('Engine_', 'ENGINE_');
+  const ratio = await storage.getSystemConfigValue<number>(`${engineKey}_PKR_TO_POINTS_RATIO`, 1000);
+  const variancePct = await storage.getSystemConfigValue<number>(`${engineKey}_ILLUSION_VARIANCE_PCT`, 10);
+  return { ratio, variancePct };
+}
+```
+
+---
+
+### 16.3 — New admin endpoints for player management
+
+**File:** `server/routes.ts`
+
+```
+GET  /api/admin/engine-a/players          → list all configured ad players
+POST /api/admin/engine-a/players          → add a new player { name, pkrToPointsRatio, variancePct }
+PATCH /api/admin/engine-a/players/:id     → update ratio/variance for a player
+DELETE /api/admin/engine-a/players/:id    → remove a player
+```
+
+All gated behind `requireTeamMemberOrFounder` middleware. The route handlers read/write the `ENGINE_A_PLAYERS_JSON` config key atomically.
+
+---
+
+### 16.4 — Frontend: Per-Ad-Player Config UI in SystemSettingsManager
+
+**File:** `client/src/components/admin/SystemSettingsManager.tsx`
+
+Add a new "Ad Players" tab (or expandable section within Engine A card):
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ENGINE A — AD PLAYERS                              │
+│  ─────────────────────────────────────────────────  │
+│  Name              PKR→TX Ratio    Variance%  [Del] │
+│  Ad Network Alpha  1,200           ±8%        [×]   │
+│  Ad Network Beta   900             ±15%       [×]   │
+│  ─────────────────────────────────────────────────  │
+│  [+ Add New Ad Player]                              │
+└─────────────────────────────────────────────────────┘
+```
+
+Each row is inline-editable. "Add New Ad Player" opens a small form (name + ratio + variance). Save button updates via `PATCH /api/admin/engine-a/players/:id`.
+
+---
+
+## PHASE 17 — FRONTEND: COMPLETE TX-POINTS ILLUSION UI (Extended Req §2)
+
+**Goal:** Remove every PKR figure from user-facing pages. Users only ever see TX-Points. PKR appears exclusively on the withdrawal summary screen.
+
+---
+
+### 17.1 — UserPortal.tsx: Replace all balance displays with TX-Points
+
+**File:** `client/src/pages/UserPortal.tsx`
+
+| Current display | New display |
+|---|---|
+| `Rs. {availableBalance}` on dashboard cards | `{txPointsBalance.toLocaleString()} TX-PTS` |
+| `Rs. {totalEarnings}` on stats card | `{totalEarningsInPoints.toLocaleString()} TX-PTS` (calculated: totalEarnings × engineRatio) |
+| `Balance: Rs. X` in any modal header | `Balance: {txPointsBalance.toLocaleString()} TX-PTS` |
+
+The `totalEarningsInPoints` is computed client-side as `totalEarnings (PKR) × CONVERSION_RATE`. Fetch conversion rate from `GET /api/config/public` (a new public endpoint — see 17.6).
+
+**Important:** The `real_pkr_balance` field must be stripped from `GET /api/user` response entirely — it is never sent to the client. This is already the case in the current `/api/user` route; verify and enforce with an explicit `omit` in the response serializer.
+
+---
+
+### 17.2 — Earnings History: Show TX-Points, not PKR
+
+**File:** `client/src/pages/UserPortal.tsx` — earnings history section  
+**File:** `server/routes.ts` — `GET /api/earnings`
+
+API response currently includes `realPkrValue` per earn event. This field must be **excluded** from the user-facing earnings endpoint. Only return:
+- `pointsCredited` (TX-Points) ✓
+- `engineType` ✓
+- `sourceType` ✓
+- `createdAt` ✓
+- ~~`realPkrValue`~~ — REMOVE from user response (keep in DB for admin use)
+
+UI: Show `+{pointsCredited.toLocaleString()} TX-PTS` per row. No PKR column.
+
+---
+
+### 17.3 — Referral Stats: Replace PKR commission with TX-Points
+
+**File:** `client/src/pages/UserPortal.tsx` — referral section  
+**File:** `server/routes.ts` — `GET /api/referrals`
+
+Current: Shows `referral_cash_balance` in PKR.  
+New: Convert `referral_cash_balance` to TX-Points for display: `Math.round(referralCashBalance × conversionRate)`.  
+Label: `Referral Earnings: {X.toLocaleString()} TX-PTS`
+
+Real PKR value of referral commission is only revealed on the withdrawal summary screen.
+
+---
+
+### 17.4 — Thorx Card: Verify TX-Points only (no PKR leakage)
+
+**File:** `client/src/components/ThxCard.tsx` (or equivalent)
+
+Audit the card draw result display. Ensure:
+- The drawn value shown is always `pointsCredited` (TX-Points), never `realPkrValue`
+- The "random" variance is already applied by `recordEarnEvent` in backend — frontend just displays what comes back
+- No tooltip or subtitle accidentally reveals PKR
+
+---
+
+### 17.5 — Transaction History: TX-Points only
+
+**File:** `client/src/pages/UserPortal.tsx` — transaction history  
+**File:** `server/routes.ts` — `GET /api/transactions/history`
+
+Remove `realPkrValue` from user-facing transaction history response. Show only `pointsCredited`. Format: `+X TX-PTS` for credits, `-X TX-PTS` for deductions.
+
+---
+
+### 17.6 — New public endpoint: `GET /api/config/public`
+
+**File:** `server/routes.ts`
+
+A **no-auth-required** endpoint that returns the display parameters needed for client-side TX-Points conversion. Never returns per-engine secrets or PKR values.
+
+```json
+{
+  "conversionRate": 1000,
+  "platformName": "THORX",
+  "withdrawalFeePct": 15
+}
+```
+
+Used by frontend to convert displayed values and show the fee on the withdrawal summary screen without exposing business logic.
+
+---
+
+## PHASE 18 — BACKEND: REFERRAL COMMISSION FLOW (Extended Req §3)
+
+*Expands and supersedes the basic referral note in Phase 5.*
+
+---
+
+### 18.1 — Two new `system_config` keys for referral commission
+
+| Key | Default | Description |
+|---|---|---|
+| `REFERRAL_FEE_SHARE_PCT` | 50 | % of the 15% withdrawal fee paid to referrer as real PKR |
+| `REFERRAL_TX_ILLUSION_RATE` | `ENGINE_A_PKR_TO_POINTS_RATIO` | PKR→TX ratio used when crediting referrer's illusion balance |
+
+These are already partially present — confirm both keys are seeded and editable from Team Portal SystemSettingsManager.
+
+---
+
+### 18.2 — Update `processWithdrawal` to split fee correctly
+
+**File:** `server/storage.ts` — withdrawal approval handler (called when team member approves payout)
+
+**Fee split logic:**
+```typescript
+const platformFeePct = 15;
+const referralSharePct = await storage.getSystemConfigValue<number>('REFERRAL_FEE_SHARE_PCT', 50);
+
+const grossFee = withdrawalAmount * (platformFeePct / 100);
+const referralCommission = grossFee * (referralSharePct / 100);  // → referrer's real PKR
+const thorxFeeShare = grossFee - referralCommission;              // → Thorx profit
+
+if (referrerId && referralCommission > 0) {
+  // 1. Add real PKR to referrer's real_pkr_balance
+  await tx.update(users).set({
+    real_pkr_balance: sql`real_pkr_balance + ${referralCommission}`
+  }).where(eq(users.id, referrerId));
+
+  // 2. Credit TX-Points illusion to referrer (D3 decision: Option A)
+  const illusionRate = await storage.getSystemConfigValue<number>('REFERRAL_TX_ILLUSION_RATE', 1000);
+  const illusionPoints = Math.round(referralCommission * illusionRate);
+  await storage.recordEarnEvent({
+    userId: referrerId,
+    engineType: 'Referral',
+    pointsCredited: illusionPoints,
+    realPkrValue: referralCommission,
+    sourceType: 'referral_commission',
+    sourceId: withdrawalId,
+  });
+}
+
+// 3. Log thorxFeeShare to profit ledger
+await tx.update(withdrawals).set({
+  thorx_fee_share: thorxFeeShare,
+  referral_commission_paid: referralCommission,
+}).where(eq(withdrawals.id, withdrawalId));
+```
+
+---
+
+### 18.3 — Add `thorx_fee_share` + `referral_commission_paid` columns to `withdrawals` table
+
+**File:** `shared/schema.ts` — `withdrawals` table
+
+```typescript
+thorxFeeShare: numeric("thorx_fee_share", { precision: 10, scale: 2 }).default("0"),
+referralCommissionPaid: numeric("referral_commission_paid", { precision: 10, scale: 2 }).default("0"),
+```
+
+Required for the Thorx Profit Card to correctly account for fee revenue vs referral payouts.
+
+---
+
+## PHASE 19 — BACKEND + FRONTEND: THORX PROFIT LEDGER (Extended Req §4)
+
+*Supersedes Phase 12 with full implementation detail.*
+
+---
+
+### 19.1 — New endpoint: `GET /api/admin/profit-ledger`
+
+**File:** `server/routes.ts`  
+**Auth:** `requireFounder`
+
+```json
+{
+  "engineCuts": {
+    "A": 12500.00,
+    "B": 8300.00,
+    "C": 4100.00,
+    "Referral": 200.00
+  },
+  "withdrawalFeeRevenue": 3800.00,
+  "referralCommissionsPaid": 1200.00,
+  "netWithdrawalFeeShare": 2600.00,
+  "totalProfit": 27700.00,
+  "daily30Days": [
+    { "date": "2026-07-16", "engineCut": 850.00, "feeShare": 120.00, "total": 970.00 }
+  ]
+}
+```
+
+**Storage queries:**
+- `engineCuts`: `SELECT engine_type, SUM(thorx_profit_pkr) FROM user_transactions GROUP BY engine_type`
+- `withdrawalFeeRevenue`: `SELECT SUM(thorx_fee_share + referral_commission_paid) FROM withdrawals WHERE status = 'approved'`
+- `netWithdrawalFeeShare`: `SELECT SUM(thorx_fee_share) FROM withdrawals WHERE status = 'approved'`
+- `daily30Days`: Group above by `date_trunc('day', created_at)` for last 30 days
+
+---
+
+### 19.2 — Update FounderProfitCard.tsx with full ledger
+
+**File:** `client/src/components/admin/FounderProfitCard.tsx`
+
+**Layout:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  THORX PROFIT LEDGER                                    │
+│  ───────────────────────────────────────────────────── │
+│  ENGINE CUTS (40% per earn event)                       │
+│    Engine A (Ad Slots):    Rs. 12,500                   │
+│    Engine B (CPA/Tasks):   Rs.  8,300                   │
+│    Engine C (Guild Pool):  Rs.  4,100                   │
+│    Referral Bonus Credit:  Rs.    200                   │
+│  ───────────────────────────────────────────────────── │
+│  WITHDRAWAL FEE REVENUE (15% platform fee)              │
+│    Gross Fee Collected:    Rs.  5,000                   │
+│    Referral Payouts:      -Rs.  1,200                   │
+│    Net Fee Share:          Rs.  3,800                   │
+│  ───────────────────────────────────────────────────── │
+│  TOTAL THORX PROFIT:       Rs. 27,700                   │
+│  ═══════════════════════════════════════════════════════│
+│  [30-Day Bar Chart: Daily engine cut + fee share]       │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## PHASE 20 — FRONTEND: GUILD CHAT ARCHITECTURE CLARITY (Extended Req §5)
+
+*Supersedes Phase 13 with complete scope.*
+
+---
+
+### 20.1 — Confirm two-chat-system architecture
+
+**Backend already has:**
+- `GET/POST /api/guilds/:id/chat` — group chat (all members)
+- `GET/POST /api/guilds/:id/dm/:memberId` — captain ↔ member private thread
+
+**Frontend gap:** UI labels are confusing and captain cannot access group chat from their portal.
+
+**Changes required:**
+
+**GuildMemberPanel.tsx:**
+- Tab 1: **"Guild Chat"** — group icon — shows group messages, any member can post
+- Tab 2: **"Captain Private"** — lock icon — shows DM thread between this member and captain only. Label: *"🔒 Only you and your Captain can see this conversation"*
+
+**CaptainPortal.tsx:**
+- Tab: **"Guild Chat"** — captain participates in group chat (same `/api/guilds/:id/chat` endpoint)
+- Tab: **"DM Hub"** — captain selects a member → opens private thread. Label: *"All conversations are private between you and each member individually"*
+
+---
+
+### 20.2 — Remove 5s polling; replace with WS push (Phase 15.7 reconfirmed)
+
+Already in Phase 15.7. Ensure this covers **both** the group chat AND the DM hub:
+- Group chat: `broadcastGuildEvent(guildId, 'guild.chat_message', { fromUserId })` → invalidate group chat query for all guild members
+- DM: `broadcastToUser(toUserId, 'guild.dm_received', { guildId, fromUserId })` → invalidate DM query for recipient only
+
+---
+
+## EXECUTION ORDER (UPDATED — CRITICAL PATH)
+
+```
+Phase 1    → DB Schema (mvpSetWeek + indexes)
+Phase 18.3 → DB Schema addendum (withdrawal fee columns)
+    ↓
+Phase 2    → Critical Security (DM access, rate limiters, race condition)
+    ↓
+Phase 3    → Engine Config Backend (per-engine ratio) ← feeds Phase 16
+Phase 16   → Per-Ad-Player Backend (ENGINE_A_PLAYERS_JSON, lookup chain)
+    ↓ (Phase 3 + 16 must both finish before Phase 4)
+Phase 4    → Withdrawal Backend (timeframe breakdown endpoint)
+Phase 18   → Referral Commission Backend (fee split, TX illusion credit)
+    ↓
+Phase 5    → Manual Balance Backend (dual PKR + TX delta)
+    ↓
+Phases 6–8 → Realtime Sync + Auth Hardening + MVP Week-Lock (parallelizable)
+    ↓
+Phase 9    → Withdrawal UI (timeframe selector + PKR reveal summary)
+Phase 10   → Manual Balance Adjust UI (dual-field modal)
+Phase 17   → Full Illusion UI (remove all PKR from user-facing pages)
+    ↓
+Phase 11   → Engine Config UI (per-engine cards in SystemSettingsManager)
+Phase 16.4 → Per-Ad-Player Config UI
+Phase 19   → Thorx Profit Ledger (endpoint + FounderProfitCard)
+    ↓
+Phase 12   → (absorbed into Phase 19 — skip)
+Phase 13   → (absorbed into Phase 20 — skip)
+Phase 20   → Guild Chat Clarity (labels + captain group chat access)
+Phase 14   → Guild Discovery Pool (remove PKR illusion from discovery)
+    ↓
+Phase 15   → UX Polish (skeletons, empty states, error toasts, mobile grids)
+```
+
+---
+
+## FILE-LEVEL CHANGE SUMMARY (UPDATED)
+
+| File | Phases | Type of Change |
+|---|---|---|
+| `shared/schema.ts` | 1.1–1.5, 18.3 | Add `mvpSetWeek` column, 4 indexes, withdrawal fee columns |
+| `server/storage.ts` | 2.6, 2.7, 3.1, 4.1, 4.2, 5.2, 8.1, 16.2, 18.2 | Transaction wraps, per-engine+per-player config, withdrawal fee split, referral commission credit |
+| `server/routes.ts` | 2.1–2.5, 3.2, 4.3, 5.1, 6.1–6.4, 7.1–7.5, 16.3, 17.6, 19.1 | Security, new endpoints, auth middleware, Zod schemas, WS events, player CRUD, profit ledger, public config |
+| `client/src/pages/UserPortal.tsx` | 9.1, 9.2, 15.2, 17.1, 17.2, 17.3, 17.5 | Full withdrawal modal + all PKR→TX-Points display replacements |
+| `client/src/components/admin/UserManager.tsx` | 10.1, 15.5, 15.6 | Dual-field balance modal + table overflow + PS confirm step |
+| `client/src/components/admin/SystemSettingsManager.tsx` | 11.1, 16.4 | Per-engine config UI + per-ad-player management table |
+| `client/src/components/admin/FounderProfitCard.tsx` | 19.2 | Full profit ledger with engine cuts + fee share + 30-day chart |
+| `client/src/components/guild/CaptainPortal.tsx` | 20.1, 20.2, 15.1, 15.2, 15.7 | Group Chat tab + DM labels + skeleton + WS push |
+| `client/src/components/guild/GuildMemberPanel.tsx` | 20.1, 20.2, 15.2, 15.3, 15.7 | DM labels + group chat + onError + empty state + WS push |
+| `client/src/components/guild/GuildDiscoveryPanel.tsx` | 14.1, 15.1, 15.3 | Remove pool PKR + skeleton + empty state |
+| `client/src/components/admin/AdminDashboard.tsx` | 15.4 | Mobile grid breakpoints |
+| `client/src/hooks/useRealtimeSync.ts` (or equiv) | 15.8–15.10, 20.2 | WS event subscriptions for chat, DM, captain changes, pool credits |
+| `client/src/components/ThxCard.tsx` (or equiv) | 17.4 | Verify zero PKR leakage on card draw display |
+
+---
+
+## ALL DECISIONS RESOLVED — NO OPEN ITEMS
+
+All previously open decisions (D1–D9) have been resolved above. Execution can begin immediately with Phase 1 (DB schema changes).
