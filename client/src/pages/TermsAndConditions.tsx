@@ -159,8 +159,9 @@ export default function TermsAndConditions() {
 
                         <Section title="4. Ranking & Referrals" id="rankings" icon={Users} trigger={triggers["rankings"]}>
                             <p className="mb-6">
-                                THORX utilizes a performance-based ranking system. Upgrading your rank requires meeting
-                                both referral count and total earnings thresholds.
+                                THORX uses a Performance Score (PS) system to determine user rank. PS is earned by
+                                completing Engine A, B, and C tasks — higher ranks unlock additional platform features.
+                                No referral counts or earnings thresholds are required to advance.
                             </p>
 
                             <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-none mb-8">
@@ -168,24 +169,23 @@ export default function TermsAndConditions() {
                                     <thead className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
                                         <tr>
                                             <th className="p-4 font-black">Rank</th>
-                                            <th className="p-4 font-black">Referrals</th>
-                                            <th className="p-4 font-black">Earnings (PKR)</th>
-                                            <th className="p-4 font-black">Daily Ads</th>
+                                            <th className="p-4 font-black">PS Required</th>
+                                            <th className="p-4 font-black">Key Unlocks</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                                         {[
-                                            { r: "Nawa Aya",      ref: "0",   pkr: "0",     ads: "50"  },
-                                            { r: "Chota Don",    ref: "10",  pkr: "25k",   ads: "75"  },
-                                            { r: "Bawa Ji",      ref: "15",  pkr: "35k",   ads: "100" },
-                                            { r: "Haji Sab",     ref: "20",  pkr: "50k",   ads: "125" },
-                                            { r: "Chacha Supreme", ref: "25+", pkr: "100k+", ads: "150" },
+                                            { r: "E-Rank", ps: "0",      unlock: "Engine A access"                    },
+                                            { r: "D-Rank", ps: "1,000",  unlock: "Referral tracking begins"           },
+                                            { r: "C-Rank", ps: "3,000",  unlock: "Engine B (CPA tasks)"               },
+                                            { r: "B-Rank", ps: "6,000",  unlock: "Guild creation"                     },
+                                            { r: "A-Rank", ps: "10,000", unlock: "Wider Thorx Card variance bonus"    },
+                                            { r: "S-Rank", ps: "20,000", unlock: "Instant withdrawal approval"        },
                                         ].map((row) => (
                                             <tr key={row.r} className="hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
                                                 <td className="p-4 font-bold">{row.r}</td>
-                                                <td className="p-4">{row.ref}</td>
-                                                <td className="p-4">{row.pkr}</td>
-                                                <td className="p-4">{row.ads}</td>
+                                                <td className="p-4">{row.ps}</td>
+                                                <td className="p-4">{row.unlock}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -193,21 +193,20 @@ export default function TermsAndConditions() {
                             </div>
 
                             <p className="italic text-sm">
-                                Referral Commission: Level 1 (15%) and Level 2 (7.5%) are credited to User A only when the
-                                respective payout request from User B/C is processed and approved.
+                                Referral Commission: THORX operates a single-tier referral system. When a user you referred
+                                makes a withdrawal, a share of the platform's 15% withdrawal fee is credited to your
+                                Referral Cash Balance as real PKR. There are no Level 2 or multi-tier splits.
                             </p>
                         </Section>
 
-                        <Section title="5. Payouts & Mandatory Tasks" id="payments" icon={Wallet} trigger={triggers["payments"]}>
+                        <Section title="5. Payouts" id="payments" icon={Wallet} trigger={triggers["payments"]}>
                             <p>
                                 Payouts are facilitated through <strong>JazzCash</strong> and <strong>EasyPaisa</strong>.
-                                To qualify for any withdrawal, users must complete their mandatory daily tasks, which include:
+                                Withdrawals are open at any time — no daily task completion is required to qualify.
+                                A flat 15% platform fee is deducted from each payout; the exact breakdown is shown on
+                                the preview screen before you confirm. S-Rank users receive instant auto-approval on
+                                every withdrawal request.
                             </p>
-                            <ul className="list-disc pl-5 mt-4 space-y-2">
-                                <li>Watching the required number of video ads based on current rank.</li>
-                                <li>Watching designated YouTube content for at least 30 seconds.</li>
-                                <li>Submitting verification codes from specific media content.</li>
-                            </ul>
                         </Section>
 
                         <Section title="6. Prohibited Actions" id="prohibited" icon={AlertTriangle} trigger={triggers["prohibited"]}>
