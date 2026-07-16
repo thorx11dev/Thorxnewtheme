@@ -328,6 +328,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Explicit health check endpoint for Railway
+  // ── Public config endpoint — no auth required (Spec §17.6) ──────────────────
+  // Returns only the display parameters the frontend needs for TX-Points conversion.
+  // NEVER exposes per-engine ratios, PKR values, or business secrets.
+  app.get("/api/config/public", async (_req, res) => {
+    try {
+      const [conversionRate, withdrawalFeePct] = await Promise.all([
+        storage.getSystemConfigValue<number>("CONVERSION_RATE", 1000),
+        storage.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15),
+      ]);
+      res.json({ conversionRate, platformName: "THORX", withdrawalFeePct });
+    } catch (error) {
+      res.json({ conversionRate: 1000, platformName: "THORX", withdrawalFeePct: 15 });
+    }
+  });
+
   app.get("/api/health", (_req, res) => {
     res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
   });
@@ -833,6 +848,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Withdrawal timeframe breakdown (Spec §4.1) ────────────────────────────────
+  // Returns how many TX-Points (and equivalent PKR) the user has earned in each
+  // time bucket — used by the withdrawal timeframe selector UI. Never exposes PKR
+  // until the user reaches the summary screen.
+  app.get("/api/withdrawals/timeframe-breakdown", requireSessionAuth, async (req, res) => {
+    try {
+      const userId = getThorxPrincipalId(req) as string;
+      const breakdown = await storage.getWithdrawalTimeframeBreakdowns(userId);
+      res.json(breakdown);
+    } catch (error) {
+      console.error("Timeframe breakdown error:", error);
+      res.status(500).json({ message: "Failed to fetch timeframe breakdown" });
+    }
+  });
+
   // High-severity finding (2026-07-15 audit): these two routes used getThorxPrincipalId
   // directly, bypassing requireSessionAuth's team-key suspension enforcement — a suspended
   // account could still read/create withdrawals. requireSessionAuth + withdrawalRateLimiter
@@ -1094,6 +1124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const guild = await storage.updateGuildSettings(req.params.id, userId, {
         name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl, targetDifficulty,
       });
+      // Notify all guild members of settings change (Phase 6.3)
+      broadcastGuildEvent(req.params.id, 'guild.settings_updated', { weeklyTarget: targetDifficulty, guildId: req.params.id });
       res.json({ guild });
     } catch (error) {
       console.error("Update guild settings error:", error);
@@ -2024,21 +2056,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/users/:userId/adjust-balance", requirePermission("MANAGE_USERS"), profileRateLimiter, async (req, res) => {
     try {
       const { userId } = req.params;
-      const { amount, type, reason, creditIntent } = req.body;
+      const { realPkrDelta, txPointsDelta, amount, type, reason, creditIntent } = req.body;
       const adminId = req.userProfile.id;
 
-      // Appendix A invariant #10: every admin balance adjustment must be
-      // logged to audit_logs with a required reason — no silent defaults.
       if (!reason || String(reason).trim().length < 5) {
         return res.status(400).json({ message: "reason (≥5 chars) required." });
       }
 
-      // When adding credit, a creditIntent is required to distinguish verified deposits from manual adjustments
-      if (type === 'add' && creditIntent && !['verified_deposit', 'admin_credit'].includes(creditIntent)) {
-        return res.status(400).json({ message: "Invalid creditIntent value" });
+      let pkrAmount: string;
+      let adjustType: 'add' | 'subtract';
+      let pointsDelta: number | undefined;
+
+      if (realPkrDelta !== undefined) {
+        // New dual-field API (Spec §5.1): realPkrDelta + txPointsDelta both required
+        const dualSchema = z.object({
+          realPkrDelta: z.number().min(-10000).max(10000),
+          txPointsDelta: z.number().int().min(-10000000).max(10000000),
+          type: z.enum(["add", "deduct"]),
+          reason: z.string().min(5).max(500),
+        });
+        const parsed = dualSchema.safeParse(req.body);
+        if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Validation failed" });
+        pkrAmount = Math.abs(realPkrDelta).toFixed(2);
+        adjustType = req.body.type === 'deduct' ? 'subtract' : 'add';
+        pointsDelta = txPointsDelta;
+      } else {
+        // Legacy single-field API (backward compat)
+        pkrAmount = amount;
+        adjustType = type as 'add' | 'subtract';
+        if (adjustType === 'add' && creditIntent && !['verified_deposit', 'admin_credit'].includes(creditIntent)) {
+          return res.status(400).json({ message: "Invalid creditIntent value" });
+        }
       }
 
-      const user = await storage.adjustUserBalance(userId, amount, type, adminId, reason, creditIntent ?? 'admin_credit');
+      const user = await storage.adjustUserBalance(userId, pkrAmount, adjustType, adminId, reason, creditIntent ?? 'admin_credit', pointsDelta);
       broadcastUserUpdated(userId, "balance_adjusted");
       res.json(sanitizeUser(user));
 
@@ -2062,7 +2113,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ── Founder Profit Ledger ────────────────────────────────────────────────────
+  // ── Thorx Profit Ledger (Spec §19.1) ────────────────────────────────────────
+  // Full profit breakdown: engine cuts + withdrawal fee revenue + 30-day chart.
+  // Restricted to founder role.
+  app.get("/api/admin/profit-ledger", requireTeamRole, async (req, res) => {
+    try {
+      if (req.userProfile!.role !== 'founder') {
+        return res.status(403).json({ message: "Founder access required" });
+      }
+      const ledger = await storage.getProfitLedger();
+      res.json(ledger);
+    } catch (error) {
+      console.error("Profit ledger error:", error);
+      res.status(500).json({ message: "Failed to fetch profit ledger" });
+    }
+  });
+
+  // ── Per-Ad-Player Config CRUD (Spec §16.3) ────────────────────────────────
+  // Manages ENGINE_A_PLAYERS_JSON system_config key. Each player overrides
+  // Engine A's default PKR→TX-Points ratio for their specific ad network.
+  app.get("/api/admin/engine-a/players", requireTeamRole, async (req, res) => {
+    try {
+      const json = await storage.getSystemConfigValue<string>("ENGINE_A_PLAYERS_JSON", "[]");
+      res.json({ players: JSON.parse(json) });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch ad players" });
+    }
+  });
+
+  app.post("/api/admin/engine-a/players", requireTeamRole, async (req, res) => {
+    try {
+      const schema = z.object({ name: z.string().min(1).max(100), pkrToPointsRatio: z.number().int().min(1), variancePct: z.number().min(0).max(100) });
+      const parsed = schema.parse(req.body);
+      const json = await storage.getSystemConfigValue<string>("ENGINE_A_PLAYERS_JSON", "[]");
+      const players = JSON.parse(json) as any[];
+      const newPlayer = { id: `player_${Date.now()}`, ...parsed };
+      players.push(newPlayer);
+      await storage.setSystemConfigValue("ENGINE_A_PLAYERS_JSON", JSON.stringify(players));
+      res.json({ player: newPlayer });
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to add player" });
+    }
+  });
+
+  app.patch("/api/admin/engine-a/players/:id", requireTeamRole, async (req, res) => {
+    try {
+      const schema = z.object({ name: z.string().min(1).max(100).optional(), pkrToPointsRatio: z.number().int().min(1).optional(), variancePct: z.number().min(0).max(100).optional() });
+      const updates = schema.parse(req.body);
+      const json = await storage.getSystemConfigValue<string>("ENGINE_A_PLAYERS_JSON", "[]");
+      const players = JSON.parse(json) as any[];
+      const idx = players.findIndex((p: any) => p.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ message: "Player not found" });
+      players[idx] = { ...players[idx], ...updates };
+      await storage.setSystemConfigValue("ENGINE_A_PLAYERS_JSON", JSON.stringify(players));
+      res.json({ player: players[idx] });
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to update player" });
+    }
+  });
+
+  app.delete("/api/admin/engine-a/players/:id", requireTeamRole, async (req, res) => {
+    try {
+      const json = await storage.getSystemConfigValue<string>("ENGINE_A_PLAYERS_JSON", "[]");
+      const players = (JSON.parse(json) as any[]).filter((p: any) => p.id !== req.params.id);
+      await storage.setSystemConfigValue("ENGINE_A_PLAYERS_JSON", JSON.stringify(players));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete player" });
+    }
+  });
+
+  // ── Founder Profit Ledger (legacy endpoint kept for backward compat) ──────────
 
   app.get("/api/admin/founder/profit-summary", requireTeamRole, async (req, res) => {
     try {
@@ -2306,7 +2427,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress: req.ip
       });
 
+      // Broadcast generic user update (invalidates all OWN_DATA_QUERY_KEYS)
       broadcastUserUpdated(updated.userId, `withdrawal_${status}`);
+      // Also broadcast specific event so frontend can show targeted toast (Phase 6.2)
+      broadcastToUser(updated.userId, 'withdrawal_status_changed', { status, withdrawalId });
       res.json({ success: true, withdrawal: updated });
     } catch (error) {
       console.error("Update withdrawal error:", error);
@@ -4314,6 +4438,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // A captain sends to the member; the member sends back to the captain.
       const toUserId = isCaptain ? memberId : captainId;
       const msg = await storage.sendCaptainMessage(guildId, userId, toUserId, message.trim());
+      // Push DM notification to recipient so they don't need to poll (Phase 15.7)
+      broadcastToUser(toUserId, 'guild.dm_received', { fromUserId: userId, guildId, messageId: msg.id });
       res.status(201).json({ message: msg });
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "Failed to send message";
@@ -4466,6 +4592,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { newCaptainUserId } = req.body;
       if (!newCaptainUserId) return res.status(400).json({ message: "newCaptainUserId is required." });
       const guild = await storage.adminReassignCaptain(req.params.id, newCaptainUserId, adminId);
+      // Notify old captain (demoted) + new captain (promoted) + all guild members (Phase 6.1)
+      if (guild.captainId) {
+        broadcastToUser(guild.captainId, 'guild.captain_changed', { promoted: true, guildId: req.params.id });
+      }
+      broadcastGuildEvent(req.params.id, 'guild.captain_changed', { newCaptainId: guild.captainId });
       res.json({ guild });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to reassign captain";

@@ -887,6 +887,7 @@ export default function UserPortal() {
   // Payout section states
   const [currentStep, setCurrentStep] = useState(1);
   const [withdrawAmount, setWithdrawAmount] = useState(""); // TX-Points requested (not PKR)
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null); // Phase 9.1
   const [selectedMethod, setSelectedMethod] = useState("");
   const [paymentDetails, setPaymentDetails] = useState({
     name: "",
@@ -910,6 +911,33 @@ export default function UserPortal() {
     const t = setTimeout(() => setStep3MinDisplayElapsed(true), 2000);
     return () => clearTimeout(t);
   }, [currentStep]);
+
+  // Phase 9.1: Timeframe breakdown — shows how many TX-Points the user has
+  // in each window without revealing PKR until step 3.
+  const { data: timeframeBreakdown } = useQuery<{
+    today: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+    thisWeek: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+    thisMonth: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+    last3Months: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+    allTime: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+  }>({
+    queryKey: ["/api/withdrawals/timeframe-breakdown"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/withdrawals/timeframe-breakdown");
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 60000,
+  });
+
+  const TIMEFRAME_OPTIONS = [
+    { key: "today", label: "Today" },
+    { key: "thisWeek", label: "This Week" },
+    { key: "thisMonth", label: "This Month" },
+    { key: "last3Months", label: "Last 3 Months" },
+    { key: "allTime", label: "All Time" },
+  ];
 
   // THORX v3: live withdrawal preview — the amount the user types is a count
   // of TX-Points; the real PKR value is computed server-side from the FIFO
@@ -2708,7 +2736,7 @@ export default function UserPortal() {
               {/* Step Content Container - Mobile Optimized */}
               <div className="min-h-[300px] md:min-h-[400px] flex flex-col justify-center overflow-hidden">
                 <AnimatePresence mode="wait">
-                  {/* Step 1: Amount Input with Numeric Keypad - Mobile Optimized */}
+                  {/* Step 1: Timeframe Selector (Phase 9.1) — replaced keypad */}
                   {currentStep === 1 && (
                     <motion.div
                       key="step1"
@@ -2717,46 +2745,62 @@ export default function UserPortal() {
                       exit={{ opacity: 0, x: -20 }}
                       className="w-full max-w-sm md:max-w-lg mx-auto px-2 md:px-0"
                     >
-                      <div className="text-center mb-4 md:mb-8">
-                        <div className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground mb-2">
-                          TX-Points to Withdraw
+                      <div className="text-center mb-4 md:mb-6">
+                        <div className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">
+                          Select Earning Period
                         </div>
-                        <div className="text-2xl md:text-4xl lg:text-5xl font-black text-foreground mb-3 md:mb-4 min-h-[40px] md:min-h-[60px] flex items-center justify-center border-b-2 border-muted-foreground/30 pb-2 md:pb-4">
-                          {withdrawAmount || "0"} <span className="text-base md:text-xl text-muted-foreground ml-2">PTS</span>
+                        <div className="text-xs text-muted-foreground/60 font-medium">
+                          Choose which period's TX-Points to withdraw
                         </div>
                       </div>
 
-                      {/* Enhanced Numeric Keypad - Mobile Responsive */}
-                      <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-6 max-w-xs md:max-w-sm mx-auto">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                          <motion.button
-                            key={num}
-                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(var(--primary-rgb), 0.1)' }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleNumberInput(num.toString())}
-                            className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-background border-2 border-black text-lg md:text-xl lg:text-2xl font-black text-foreground transition-all duration-200"
-                          >
-                            {num}
-                          </motion.button>
-                        ))}
-                        <motion.button
-                          whileHover={{ scale: 1.02, backgroundColor: 'rgba(var(--primary-rgb), 0.1)' }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => handleNumberInput("0")}
-                          className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-background border-2 border-black text-lg md:text-xl lg:text-2xl font-black text-foreground transition-all duration-200 col-span-2"
-                        >
-                          0
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05, backgroundColor: 'rgba(var(--destructive-rgb), 0.1)' }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={handleBackspace}
-                          aria-label="Backspace"
-                          className="industrial-keypad-button h-12 md:h-14 lg:h-16 bg-destructive/10 border-2 border-destructive text-destructive transition-all duration-200 flex items-center justify-center"
-                        >
-                          ⌫
-                        </motion.button>
+                      <div className="space-y-2 mb-4">
+                        {TIMEFRAME_OPTIONS.map(({ key, label }) => {
+                          const data = timeframeBreakdown?.[key as keyof typeof timeframeBreakdown];
+                          const pts = data?.points ?? 0;
+                          const isSelected = selectedTimeframe === key;
+                          const isEmpty = pts === 0;
+                          return (
+                            <motion.button
+                              key={key}
+                              whileHover={isEmpty ? {} : { scale: 1.01, x: 4 }}
+                              whileTap={isEmpty ? {} : { scale: 0.99 }}
+                              disabled={isEmpty}
+                              onClick={() => {
+                                if (!isEmpty) {
+                                  setSelectedTimeframe(key);
+                                  setWithdrawAmount(String(pts));
+                                }
+                              }}
+                              className={`w-full flex items-center justify-between p-3 md:p-4 border-2 rounded-xl transition-all duration-200 ${
+                                isSelected
+                                  ? "border-foreground bg-foreground text-background"
+                                  : isEmpty
+                                  ? "border-muted-foreground/20 bg-muted/30 text-muted-foreground cursor-not-allowed opacity-50"
+                                  : "border-black bg-background hover:shadow-[4px_4px_0px_#000]"
+                              }`}
+                            >
+                              <div className="text-left">
+                                <div className={`text-xs font-black uppercase tracking-widest ${isSelected ? "text-background" : "text-foreground"}`}>{label}</div>
+                                <div className={`text-[10px] font-bold mt-0.5 ${isSelected ? "text-background/70" : "text-muted-foreground"}`}>
+                                  {pts > 0 ? `${pts.toLocaleString()} TX-Points` : "No points in this period"}
+                                </div>
+                              </div>
+                              {isSelected && <span className="text-lg">✓</span>}
+                              {!isSelected && pts > 0 && (
+                                <span className="text-xs font-black text-muted-foreground">→</span>
+                              )}
+                            </motion.button>
+                          );
+                        })}
                       </div>
+
+                      {selectedTimeframe && withdrawAmount && (
+                        <div className="p-3 bg-muted/30 rounded-xl text-center border border-muted">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Selected</div>
+                          <div className="text-2xl font-black text-foreground">{parseInt(withdrawAmount).toLocaleString()} <span className="text-base text-muted-foreground">PTS</span></div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
 

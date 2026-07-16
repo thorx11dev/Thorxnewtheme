@@ -189,7 +189,7 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
       .set({ weeklyBonusPool: "0.0000", currentWeeklyPoints: 0 })
       .where(eq(guilds.id, guild.id));
     await db.update(guildMembers)
-      .set({ weeklyPointsContributed: 0, isMvp: false })
+      .set({ weeklyPointsContributed: 0, isMvp: false, mvpSetWeek: null as any })
       .where(eq(guildMembers.guildId, guild.id));
   }
 

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrendingUp, Plus, History, AlertTriangle, CheckCircle, DollarSign, X, Calendar } from "lucide-react";
+import { TrendingUp, Plus, History, AlertTriangle, CheckCircle, DollarSign, X, Calendar, BarChart2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,9 +46,17 @@ export function FounderProfitCard() {
   const [wdDate, setWdDate] = useState(new Date().toISOString().split("T")[0]);
   const [description, setDescription] = useState("");
 
+  const [showProfitLedger, setShowProfitLedger] = useState(false);
+
   const { data: summary, isLoading } = useQuery<ProfitSummary>({
     queryKey: ["/api/admin/founder/profit-summary"],
     refetchInterval: 60000,
+  });
+
+  const { data: profitLedger } = useQuery<any>({
+    queryKey: ["/api/admin/profit-ledger"],
+    enabled: showProfitLedger,
+    refetchInterval: showProfitLedger ? 120000 : false,
   });
 
   const { data: withdrawalsData } = useQuery<{ withdrawals: FounderWithdrawal[]; total: number }>({
@@ -157,6 +165,31 @@ export function FounderProfitCard() {
           </div>
         )}
 
+        {/* Engine Cuts Breakdown (Phase 19.2) */}
+        {showProfitLedger && profitLedger && (
+          <div className="mb-4 p-3 bg-white/70 border border-zinc-200 rounded-2xl space-y-2">
+            <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-2">Engine Cut Breakdown</div>
+            {[
+              { label: "Engine A (Video Ads)", val: profitLedger.engineCuts?.A },
+              { label: "Engine B (CPA Tasks)", val: profitLedger.engineCuts?.B },
+              { label: "Engine C (Guild)", val: profitLedger.engineCuts?.C },
+            ].map(({ label, val }) => (
+              <div key={label} className="flex justify-between text-[10px]">
+                <span className="text-zinc-500 font-bold">{label}</span>
+                <span className="font-black text-zinc-900">₨{Number(val ?? 0).toFixed(2)}</span>
+              </div>
+            ))}
+            <div className="border-t border-zinc-200 pt-2 flex justify-between text-[10px]">
+              <span className="text-zinc-500 font-bold">Withdrawal Fee Revenue</span>
+              <span className="font-black text-emerald-700">₨{Number(profitLedger.netWithdrawalFeeShare ?? 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-[10px]">
+              <span className="font-black text-zinc-900">Total Profit</span>
+              <span className="font-black text-emerald-700">₨{Number(profitLedger.totalProfit ?? 0).toFixed(2)}</span>
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2">
           <button
@@ -164,6 +197,13 @@ export function FounderProfitCard() {
             className="flex-1 flex items-center justify-center gap-1.5 h-10 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-black/80 transition-colors"
           >
             <Plus className="w-3 h-3" /> Log Withdrawal
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowProfitLedger(v => !v); }}
+            className={`h-10 px-4 flex items-center gap-1.5 border-[1.5px] text-[10px] font-black uppercase tracking-widest rounded-full transition-colors ${showProfitLedger ? "bg-black text-white border-black" : "border-black hover:bg-black/5"}`}
+            title="Engine Cuts Breakdown"
+          >
+            <BarChart2 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}

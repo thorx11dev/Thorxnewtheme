@@ -134,7 +134,7 @@ import { encryptCredential, decryptCredential, isEncrypted } from "./utils/crede
 // ── Points Ledger config defaults ────────────────────────────────────────────
 // Real values are read via getSystemConfigValue() from system_config at runtime
 // (team/admin editable); these are only the fallback if a key was never set.
-const DEFAULT_CONVERSION_RATE = 100; // 100 points == 1.00 PKR
+const DEFAULT_CONVERSION_RATE = 1000; // 1000 points == 1.00 PKR (spec §1.1)
 
 // Fixed UTC week boundary: Monday 00:00:00 UTC through Sunday 23:59:59.999 UTC.
 // Not user-configurable in v1 (see design notes in shared/schema.ts).
@@ -179,6 +179,7 @@ export interface IStorage {
 
   // System config helper
   getSystemConfigValue<T>(key: string, defaultValue: T): Promise<T>;
+  setSystemConfigValue(key: string, value: any): Promise<void>;
 
   // Earnings methods
   createEarning(earning: InsertEarning): Promise<Earning>;
@@ -349,7 +350,9 @@ export interface IStorage {
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
   createInternalNote(note: InsertInternalNote): Promise<InternalNote>;
   getInternalNotes(targetType: string, targetId: string): Promise<Array<InternalNote & { admin: { firstName: string, lastName: string } }>>;
-  adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string, creditIntent?: 'verified_deposit' | 'admin_credit'): Promise<User>;
+  adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string, creditIntent?: 'verified_deposit' | 'admin_credit', txPointsDelta?: number): Promise<User>;
+  getWithdrawalTimeframeBreakdowns(userId: string): Promise<{ today: any; thisWeek: any; thisMonth: any; last3Months: any; allTime: any }>;
+  getProfitLedger(): Promise<any>;
   deleteUser(userId: string): Promise<void>;
 
   // Founder Profit Ledger
@@ -525,7 +528,16 @@ export class DatabaseStorage implements IStorage {
       { key: "MIN_PAYOUT", value: 100, description: "Minimum PKR required for withdrawal" },
       { key: "WITHDRAWAL_FEE_PCT", value: 15, description: "Total percentage fee deducted from every payout" },
       { key: "REFERRAL_FEE_SHARE_PCT", value: 50, description: "Share of the withdrawal fee (above) carved out to the withdrawing user's direct referrer; the rest stays with the platform" },
-      { key: "CONVERSION_RATE", value: 100, description: "Points shown per 1.00 PKR earned (Points Ledger)" },
+      { key: "CONVERSION_RATE", value: 1000, description: "Points shown per 1.00 PKR earned (global fallback; per-engine keys take precedence)" },
+      // ── Per-Engine TX-Points illusion ratios (Spec §1.1) ─────────────────
+      { key: "ENGINE_A_PKR_TO_POINTS_RATIO", value: 1000, description: "Engine A (Ad Slots): TX-Points credited per 1.00 PKR of user share" },
+      { key: "ENGINE_A_ILLUSION_VARIANCE_PCT", value: 10, description: "Engine A: ±variance % applied to Thorx Card draw (10 = ±10%)" },
+      { key: "ENGINE_B_PKR_TO_POINTS_RATIO", value: 1000, description: "Engine B (CPA/Tasks): TX-Points per 1.00 PKR" },
+      { key: "ENGINE_B_ILLUSION_VARIANCE_PCT", value: 10, description: "Engine B: ±variance %" },
+      { key: "ENGINE_C_PKR_TO_POINTS_RATIO", value: 1000, description: "Engine C (Guild): TX-Points per 1.00 PKR" },
+      { key: "ENGINE_C_ILLUSION_VARIANCE_PCT", value: 10, description: "Engine C: ±variance %" },
+      // ── Per-Ad-Player overrides (ENGINE_A only) ────────────────────────────
+      { key: "ENGINE_A_PLAYERS_JSON", value: "[]", description: "JSON array of {id,name,pkrToPointsRatio,variancePct} for Engine A ad players; overrides ENGINE_A_PKR_TO_POINTS_RATIO when matched" },
       { 
         key: "AD_NETWORKS", 
         value: [
@@ -620,6 +632,12 @@ export class DatabaseStorage implements IStorage {
     const config = await this.getSystemConfig(key);
     if (!config) return defaultValue;
     return config.value as T;
+  }
+
+  async setSystemConfigValue(key: string, value: any): Promise<void> {
+    await db.update(systemConfig)
+      .set({ value, updatedAt: new Date() })
+      .where(eq(systemConfig.key, key));
   }
 
   // Legacy registration methods
@@ -894,9 +912,8 @@ export class DatabaseStorage implements IStorage {
       engineCThorxCutPct,
       engineCGuildPoolPct,
       engineCUserCutPct,
-      conversionRate,
-      cardVarianceMin,
-      cardVarianceMax,
+      globalConversionRate,
+      engineAPlayersJson,
     ] = await Promise.all([
       this.getSystemConfigValue<number>("ENGINE_A_THORX_CUT_PCT", 40),
       this.getSystemConfigValue<number>("ENGINE_B_THORX_CUT_PCT", 40),
@@ -904,8 +921,38 @@ export class DatabaseStorage implements IStorage {
       this.getSystemConfigValue<number>("ENGINE_C_GUILD_POOL_PCT", 35),
       this.getSystemConfigValue<number>("ENGINE_C_USER_CUT_PCT", 45),
       this.getSystemConfigValue<number>("CONVERSION_RATE", DEFAULT_CONVERSION_RATE),
-      this.getSystemConfigValue<number>("CARD_VARIANCE_MIN", 0.80),
-      this.getSystemConfigValue<number>("CARD_VARIANCE_MAX", 1.20),
+      this.getSystemConfigValue<string>("ENGINE_A_PLAYERS_JSON", "[]"),
+    ]);
+
+    // Resolve per-engine ratio + variance (Spec §1.1 / §16.2).
+    // Priority: per-ad-player override → per-engine key → global CONVERSION_RATE fallback.
+    let conversionRate = globalConversionRate;
+    let illusioncVariancePct = 10; // default ±10%
+    const engineKey = params.engineType.replace("Engine_", "ENGINE_");
+    if (params.engineType === "Engine_A" && (params as any).adNetworkId) {
+      try {
+        const players = JSON.parse(engineAPlayersJson) as Array<{ id: string; pkrToPointsRatio: number; variancePct: number }>;
+        const matched = players.find(p => p.id === (params as any).adNetworkId);
+        if (matched) { conversionRate = matched.pkrToPointsRatio; illusioncVariancePct = matched.variancePct; }
+      } catch { /* malformed JSON — fall through to per-engine key */ }
+    }
+    if (conversionRate === globalConversionRate) {
+      // No per-player match; try per-engine key
+      const [perEngineRatio, perEngineVariance] = await Promise.all([
+        this.getSystemConfigValue<number>(`${engineKey}_PKR_TO_POINTS_RATIO`, globalConversionRate),
+        this.getSystemConfigValue<number>(`${engineKey}_ILLUSION_VARIANCE_PCT`, 10),
+      ]);
+      conversionRate = perEngineRatio;
+      illusioncVariancePct = perEngineVariance;
+    }
+
+    // Convert illusion variance % (e.g. 10) to min/max multiplier bounds (e.g. 0.90 / 1.10).
+    // A-Rank and S-Rank users get an additional bonus to their bounds.
+    const baseVarianceMin = 1 - illusioncVariancePct / 100;
+    const baseVarianceMax = 1 + illusioncVariancePct / 100;
+    const [aRankBonusPct, sRankBonusPct] = await Promise.all([
+      this.getSystemConfigValue<number>("A_RANK_CARD_BONUS_PCT", 5),
+      this.getSystemConfigValue<number>("S_RANK_CARD_BONUS_PCT", 10),
     ]);
 
     const user = await this.getUserById(params.userId);
@@ -936,14 +983,16 @@ export class DatabaseStorage implements IStorage {
     const guildPoolPkr = guildPoolPkrD.toNumber();
 
     // Step 2: Thorx Card draw (if the user has a PKR share to convert).
+    // Apply rank-tier bonus to variance bounds (A/S ranks see wider swings).
     let cardResult = { pointsCredited: 0, realPkrValue: 0, cardVariance: 1.0, targetPoints: 0 };
     if (userPkrShare > 0) {
+      const rankBonus = user.userRankTier === "S-Rank" ? sRankBonusPct / 100 : user.userRankTier === "A-Rank" ? aRankBonusPct / 100 : 0;
       cardResult = drawThorxCard({
         userPkrShare,
         conversionRate,
         userRankTier: user.userRankTier,
-        varianceMin: cardVarianceMin,
-        varianceMax: cardVarianceMax,
+        varianceMin: Math.max(0, baseVarianceMin - rankBonus),
+        varianceMax: baseVarianceMax + rankBonus,
       });
     }
 
@@ -2009,6 +2058,8 @@ export class DatabaseStorage implements IStorage {
       const pointsRequested = parseInt(withdrawal.amount, 10);
       breakdown = await this.calculateWithdrawalBreakdown(withdrawal.userId, pointsRequested, tx);
 
+      // thorxFeeShare = platformFee - referralCommission (Spec §18.2)
+      const thorxShare = breakdown.platformFee - breakdown.referralCommission;
       const [updatedWithdrawal] = await tx
         .update(withdrawals)
         .set({
@@ -2016,6 +2067,8 @@ export class DatabaseStorage implements IStorage {
           transactionId: transactionId || null,
           fee: breakdown.platformFee.toFixed(2),
           netAmount: breakdown.userNetPkr.toFixed(2),
+          thorxFeeShare: thorxShare.toFixed(2),
+          referralCommissionPaid: breakdown.referralCommission.toFixed(2),
           processedAt: new Date(),
           updatedAt: new Date(),
         })
@@ -2181,6 +2234,7 @@ export class DatabaseStorage implements IStorage {
         weeklyPointsContributed: guildMembers.weeklyPointsContributed,
         isMvp: guildMembers.isMvp,
         mvpSetAt: guildMembers.mvpSetAt,
+        mvpSetWeek: guildMembers.mvpSetWeek,
         lastNudgedAt: guildMembers.lastNudgedAt,
         coverLetter: guildMembers.coverLetter,
         user: {
@@ -3205,7 +3259,125 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string, creditIntent: 'verified_deposit' | 'admin_credit' = 'admin_credit'): Promise<User> {
+  async getWithdrawalTimeframeBreakdowns(userId: string): Promise<{
+    today: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+    thisWeek: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+    thisMonth: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+    last3Months: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+    allTime: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+  }> {
+    const feePct = await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15);
+    const now = new Date();
+
+    const cutoffs = {
+      today: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())),
+      thisWeek: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); d.setUTCHours(0,0,0,0); return d; })(),
+      thisMonth: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+      last3Months: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+    };
+
+    const calc = (points: number, pkr: number) => {
+      const fee = pkr * (feePct / 100);
+      return { points, exactPkr: pkr, platformFee: parseFloat(fee.toFixed(2)), netPkr: parseFloat((pkr - fee).toFixed(2)) };
+    };
+
+    const query = async (since?: Date) => {
+      const [row] = await db
+        .select({
+          points: sql<number>`COALESCE(SUM(${userTransactions.pointsCredited}), 0)::int`,
+          pkr: sql<number>`COALESCE(SUM(${userTransactions.realPkrValue}::numeric), 0)`,
+        })
+        .from(userTransactions)
+        .where(and(
+          eq(userTransactions.userId, userId),
+          eq(userTransactions.withdrawn, false),
+          since ? gte(userTransactions.createdAt, since) : undefined as any
+        ) as any);
+      return { points: Number(row.points), pkr: Number(row.pkr) };
+    };
+
+    const [today, thisWeek, thisMonth, last3, allTime] = await Promise.all([
+      query(cutoffs.today),
+      query(cutoffs.thisWeek),
+      query(cutoffs.thisMonth),
+      query(cutoffs.last3Months),
+      query(),
+    ]);
+
+    return {
+      today: calc(today.points, today.pkr),
+      thisWeek: calc(thisWeek.points, thisWeek.pkr),
+      thisMonth: calc(thisMonth.points, thisMonth.pkr),
+      last3Months: calc(last3.points, last3.pkr),
+      allTime: calc(allTime.points, allTime.pkr),
+    };
+  }
+
+  async getProfitLedger(): Promise<{
+    engineCuts: { A: number; B: number; C: number; Referral: number; Manual: number; Indirect: number };
+    withdrawalFeeRevenue: number;
+    referralCommissionsPaid: number;
+    netWithdrawalFeeShare: number;
+    totalProfit: number;
+    daily30Days: { date: string; engineCut: number; feeShare: number; total: number }[];
+  }> {
+    const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [cutRows, wdRow, daily] = await Promise.all([
+      db.select({
+        engine: userTransactions.engineType,
+        cut: sql<number>`COALESCE(SUM(${userTransactions.thorxProfitPkr}::numeric), 0)`,
+      }).from(userTransactions).groupBy(userTransactions.engineType),
+
+      db.execute(sql`
+        SELECT
+          COALESCE(SUM((thorx_fee_share)::numeric), 0) AS fee_revenue,
+          COALESCE(SUM((referral_commission_paid)::numeric), 0) AS ref_paid
+        FROM withdrawals WHERE status = 'approved'
+      `),
+
+      db.execute(sql`
+        SELECT
+          date_trunc('day', created_at)::date AS day,
+          COALESCE(SUM(thorx_profit_pkr::numeric), 0) AS engine_cut
+        FROM user_transactions
+        WHERE created_at >= ${since30}
+        GROUP BY 1
+        ORDER BY 1
+      `),
+    ]);
+
+    const engineCuts = { A: 0, B: 0, C: 0, Referral: 0, Manual: 0, Indirect: 0 } as any;
+    for (const r of cutRows) {
+      const key = r.engine === 'Engine_A' ? 'A' : r.engine === 'Engine_B' ? 'B' : r.engine === 'Engine_C' ? 'C' : r.engine ?? 'Indirect';
+      engineCuts[key] = (engineCuts[key] ?? 0) + Number(r.cut);
+    }
+    const totalEngineCuts = Object.values(engineCuts).reduce((a: number, b: any) => a + Number(b), 0) as number;
+
+    const wdData = (wdRow as any).rows?.[0] ?? (wdRow as any)[0] ?? {};
+    const withdrawalFeeRevenue = Number(wdData.fee_revenue ?? 0) + Number(wdData.ref_paid ?? 0);
+    const referralCommissionsPaid = Number(wdData.ref_paid ?? 0);
+    const netWithdrawalFeeShare = Number(wdData.fee_revenue ?? 0);
+
+    const dailyRows = ((daily as unknown) as { rows: any[] }).rows ?? [];
+    const daily30Days = dailyRows.map((r: any) => ({
+      date: String(r.day).slice(0, 10),
+      engineCut: Number(r.engine_cut),
+      feeShare: 0, // per-day fee share requires withdrawal-date join — aggregated at top level
+      total: Number(r.engine_cut),
+    }));
+
+    return {
+      engineCuts,
+      withdrawalFeeRevenue,
+      referralCommissionsPaid,
+      netWithdrawalFeeShare,
+      totalProfit: totalEngineCuts + netWithdrawalFeeShare,
+      daily30Days,
+    };
+  }
+
+  async adjustUserBalance(userId: string, amount: string, type: 'add' | 'subtract', adminId: string, reason: string, creditIntent: 'verified_deposit' | 'admin_credit' = 'admin_credit', txPointsDelta?: number): Promise<User> {
     return await db.transaction(async (tx) => {
       const [user] = await tx.select().from(users).where(eq(users.id, userId));
       if (!user) throw new Error("User not found");
@@ -3239,6 +3411,25 @@ export class DatabaseStorage implements IStorage {
           description: reason || 'Admin balance adjustment',
           status: 'completed',
           metadata: { source: 'admin_adjustment', adminId, creditIntent },
+        });
+      }
+
+      // If txPointsDelta is provided, insert a user_transactions row to keep
+      // the TX-Points visible ledger in sync with the PKR adjustment (Spec §5.2).
+      if (txPointsDelta !== undefined && txPointsDelta !== 0) {
+        await tx.insert(userTransactions).values({
+          userId,
+          engineType: 'Manual' as any,
+          pointsCredited: txPointsDelta,
+          realPkrValue: Math.abs(parseFloat(amount)).toFixed(4),
+          grossPkr: Math.abs(parseFloat(amount)).toFixed(4),
+          thorxProfitPkr: '0.0000',
+          guildPoolPkr: '0.0000',
+          conversionRate: 1000,
+          cardVariance: '1.0000',
+          sourceId: `manual_${adminId}_${Date.now()}`,
+          sourceType: 'manual_adjustment' as any,
+          withdrawn: false,
         });
       }
 
@@ -4475,8 +4666,28 @@ export class DatabaseStorage implements IStorage {
       if (!membership) throw new Error("This user is not an active member of your guild.");
       if (membership.isMvp) throw new Error("This member is already this week's MVP.");
 
-      await tx.update(guildMembers).set({ isMvp: false }).where(eq(guildMembers.guildId, guildId));
-      await tx.update(guildMembers).set({ isMvp: true, mvpSetAt: new Date() }).where(eq(guildMembers.id, membership.id));
+      // Week-lock: once any member in this guild has been assigned MVP for the
+      // current ISO week, no reassignment is possible until Sunday's reset.
+      const now = new Date();
+      const isoYear = now.getUTCFullYear();
+      // ISO week number: days since nearest Monday, adjusted for ISO year start
+      const dayOfWeek = now.getUTCDay() === 0 ? 7 : now.getUTCDay(); // Mon=1…Sun=7
+      const nearestMonday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (dayOfWeek - 1)));
+      const jan4 = new Date(Date.UTC(isoYear, 0, 4));
+      const jan4DayOfWeek = jan4.getUTCDay() === 0 ? 7 : jan4.getUTCDay();
+      const week1Monday = new Date(jan4.getTime() - (jan4DayOfWeek - 1) * 86400000);
+      const isoWeek = Math.round((nearestMonday.getTime() - week1Monday.getTime()) / (7 * 86400000)) + 1;
+      const currentWeek = `${isoYear}-W${String(isoWeek).padStart(2, "0")}`;
+
+      const [existingMvpThisWeek] = await tx
+        .select({ id: guildMembers.id })
+        .from(guildMembers)
+        .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.mvpSetWeek as any, currentWeek)))
+        .limit(1);
+      if (existingMvpThisWeek) throw new Error("MVP already set this week. Cannot reassign until Sunday's reset.");
+
+      await tx.update(guildMembers).set({ isMvp: false, mvpSetWeek: null as any }).where(eq(guildMembers.guildId, guildId));
+      await tx.update(guildMembers).set({ isMvp: true, mvpSetAt: new Date(), mvpSetWeek: currentWeek as any }).where(eq(guildMembers.id, membership.id));
     });
     await awardMVPGPS(guildId);
   }
@@ -4962,6 +5173,9 @@ export class MemStorage {
   async createFounderWithdrawal(data: any): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async getFounderWithdrawals(limit?: number, offset?: number): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async getFounderProfitSummary(): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async getWithdrawalTimeframeBreakdowns(_userId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async getProfitLedger(): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async setSystemConfigValue(_key: string, _value: any): Promise<void> { throw new Error("Not implemented in MemStorage"); }
   async saveHealthSnapshot(data: any): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async getLatestHealthSnapshot(): Promise<any> { return null; }
   async getHealthHistory(hours?: number): Promise<any[]> { return []; }

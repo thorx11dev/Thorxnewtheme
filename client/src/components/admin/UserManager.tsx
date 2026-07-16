@@ -104,6 +104,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
   const [creditIntent, setCreditIntent] = useState<'verified_deposit' | 'admin_credit' | null>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
+  const [adjustmentTxPoints, setAdjustmentTxPoints] = useState("");
   const [adjustmentReason, setAdjustmentReason] = useState("");
   // THORX v3: PS override
   const [psDelta, setPsDelta] = useState("");
@@ -155,8 +156,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
   });
 
   const adjustBalanceMutation = useMutation({
-    mutationFn: async ({ userId, amount, type, reason, creditIntent }: { userId: string, amount: string, type: string, reason: string, creditIntent?: string }) => {
-      return await apiRequest("POST", `/api/admin/users/${userId}/adjust-balance`, { amount, type, reason, creditIntent });
+    mutationFn: async ({ userId, realPkrDelta, txPointsDelta, type, reason, creditIntent }: { userId: string, realPkrDelta: number, txPointsDelta: number, type: string, reason: string, creditIntent?: string }) => {
+      return await apiRequest("POST", `/api/admin/users/${userId}/adjust-balance`, { realPkrDelta, txPointsDelta, type, reason, creditIntent });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team/users'] });
@@ -232,6 +233,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
     setSelectedUser(null);
     setModalType(null);
     setAdjustmentAmount("");
+    setAdjustmentTxPoints("");
     setAdjustmentReason("");
     setCreditIntent(null);
     setNewNote("");
@@ -758,7 +760,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   </div>
                 )}
                 <div className="space-y-3">
-                  <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">Amount (₨)</Label>
+                  <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">Amount (₨ PKR)</Label>
                   <Input 
                     type="number"
                     placeholder="0.00" 
@@ -766,6 +768,17 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                     value={adjustmentAmount}
                     onChange={(e) => setAdjustmentAmount(e.target.value)}
                   />
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">TX-Points Credit / Debit</Label>
+                  <Input 
+                    type="number"
+                    placeholder="0"
+                    className="rounded-[1.5rem] border border-zinc-200 focus:border-[#111] focus:ring-0 font-mono text-xl font-black h-16 px-6 bg-white transition-colors"
+                    value={adjustmentTxPoints}
+                    onChange={(e) => setAdjustmentTxPoints(e.target.value)}
+                  />
+                  <p className="text-[9px] text-zinc-400 font-medium ml-2">Visible points balance updated in TX ledger (separate from PKR)</p>
                 </div>
                 <div className="space-y-3">
                   <Label className="text-[10px] font-black tracking-widest uppercase text-zinc-500 ml-2">Operation Reason</Label>
@@ -787,8 +800,9 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                  if (adjustmentType === 'add' && !creditIntent) return;
                  adjustBalanceMutation.mutate({
                    userId: selectedUser!.id,
-                   amount: adjustmentAmount,
-                   type: adjustmentType,
+                   realPkrDelta: parseFloat(adjustmentAmount) || 0,
+                   txPointsDelta: parseInt(adjustmentTxPoints) || 0,
+                   type: adjustmentType === 'subtract' ? 'deduct' : 'add',
                    reason: adjustmentReason || "No reason provided",
                    creditIntent: adjustmentType === 'add' ? (creditIntent ?? 'admin_credit') : undefined,
                  });

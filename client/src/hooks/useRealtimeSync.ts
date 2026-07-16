@@ -149,6 +149,58 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
           queryClient.invalidateQueries({ queryKey: ["session-auth"] });
           queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
         }
+
+        // ── Phase 6.2: Withdrawal status changed ────────────────────────────
+        if (msg.type === "withdrawal_status_changed" && msg.userId === user.id) {
+          queryClient.invalidateQueries({ queryKey: ["/api/withdrawals"] });
+          const status = (msg.data as any)?.status;
+          toast({
+            title: status === "approved" ? "✅ Withdrawal Approved" : status === "rejected" ? "❌ Withdrawal Rejected" : "Withdrawal Update",
+            description: status === "approved"
+              ? "Your payout has been approved and is being processed."
+              : status === "rejected"
+              ? "Your withdrawal was rejected. Please contact support."
+              : `Your withdrawal status changed to ${status}.`,
+            variant: status === "rejected" ? "destructive" : undefined,
+          });
+        }
+
+        // ── Phase 6.1: Guild captain changed ────────────────────────────────
+        if (msg.type === "guild.captain_changed" && msg.userId === user.id) {
+          queryClient.invalidateQueries({ queryKey: ["/api/guilds/mine"] });
+          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
+          const promoted = (msg.data as any)?.promoted;
+          const demoted = (msg.data as any)?.demoted;
+          if (promoted) toast({ title: "⚔️ You are now Guild Captain!", description: "Congratulations — you have been promoted to captain." });
+          if (demoted) toast({ title: "Guild Captain Change", description: "You have been replaced as Guild Captain.", variant: "destructive" });
+        }
+
+        // ── Phase 15.8: Sunday guild pool credited ───────────────────────────
+        if (msg.type === "guild.pool_credited") {
+          queryClient.invalidateQueries({ queryKey: ["/api/guilds/mine"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+          if (msg.userId === user.id || !msg.userId) {
+            toast({ title: "🎉 Sunday Bonus Credited!", description: "Your weekly guild pool bonus has been distributed to your balance." });
+          }
+        }
+
+        // ── Phase 15.7: DM received — invalidate the DM thread ───────────────
+        if (msg.type === "guild.dm_received" && msg.userId === user.id) {
+          queryClient.invalidateQueries({
+            predicate: (q) => typeof q.queryKey[0] === "string" && (q.queryKey[0] as string).includes("/dm/"),
+          });
+        }
+
+        // ── Phase 6.3: Guild settings updated ────────────────────────────────
+        if (msg.type === "guild.settings_updated") {
+          queryClient.invalidateQueries({ queryKey: ["/api/guilds/mine"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId] });
+        }
+
+        // ── Phase 15.9: Withdrawal status (legacy user:updated path) ─────────
+        // Already handled above via withdrawal_status_changed; keep the
+        // user:updated path for generic cache flush.
       };
 
       ws.onclose = () => {

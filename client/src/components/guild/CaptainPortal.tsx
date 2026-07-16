@@ -14,11 +14,11 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target } from "lucide-react";
+import { Megaphone, Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target, MessagesSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
-type Tab = "requests" | "roster" | "dm" | "stats" | "settings";
+type Tab = "requests" | "roster" | "chat" | "dm" | "stats" | "settings";
 
 // Points target per difficulty, mirroring server/storage.ts DatabaseStorage.DIFFICULTY_TARGETS
 const DIFFICULTY_TARGETS: Record<string, Record<string, number>> = {
@@ -71,12 +71,22 @@ export function CaptainPortal() {
     enabled: !!guildId && tab === "stats",
   });
 
-  // DM messages
+  // Guild Chat (group chat — same endpoint members use)
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [chatMsg, setChatMsg] = useState("");
+  const { data: chatMessages = [], refetch: refetchChat } = useQuery<any[]>({
+    queryKey: ["/api/guilds", guildId, "chat"],
+    queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/chat`); const d = await r.json(); return d.messages ?? []; },
+    enabled: !!guildId && tab === "chat",
+    refetchInterval: tab === "chat" ? 15000 : false,
+  });
+
+  // DM messages — rely on WS push for real-time; poll only as fallback (Phase 15.7)
   const { data: dmMessages = [] } = useQuery<any[]>({
     queryKey: ["/api/guilds", guildId, "dm", selectedDmMember],
     queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/dm/${selectedDmMember}`); const d = await r.json(); return d.messages ?? []; },
     enabled: !!guildId && !!selectedDmMember && tab === "dm",
-    refetchInterval: 5000,
+    refetchInterval: 60000, // WS push handles real-time; poll every 60s as safety net
   });
 
   const appActionMutation = useMutation({
@@ -206,10 +216,34 @@ export function CaptainPortal() {
     }
   }, [guild]);
 
+  const sendChatMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const r = await apiRequest("POST", `/api/guilds/${guildId}/chat`, { message });
+      return r.json();
+    },
+    onMutate: async (message: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/guilds", guildId, "chat"] });
+      const prev = queryClient.getQueryData<any[]>(["/api/guilds", guildId, "chat"]);
+      queryClient.setQueryData(["/api/guilds", guildId, "chat"], (old: any[] = []) => [
+        ...old, { message, userId: user?.id, senderName: user?.firstName || "You", createdAt: new Date().toISOString(), _optimistic: true },
+      ]);
+      setChatMsg("");
+      return { prev };
+    },
+    onError: (_err: any, _msg: string, context: any) => {
+      if (context?.prev !== undefined) queryClient.setQueryData(["/api/guilds", guildId, "chat"], context.prev);
+      toast({ title: "Message not sent", variant: "destructive" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "chat"] });
+    },
+  });
+
   const TABS: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: "requests", label: "Requests", icon: <Sword size={14} />, badge: pending.length },
     { id: "roster",   label: "Roster",   icon: <Users size={14} /> },
-    { id: "dm",       label: "DM Hub",   icon: <MessageCircle size={14} /> },
+    { id: "chat",     label: "Guild Chat", icon: <MessagesSquare size={14} /> },
+    { id: "dm",       label: "DM Hub",   icon: <MessageCircle size={14} />, },
     { id: "stats",    label: "Stats",    icon: <BarChart3 size={14} /> },
     { id: "settings", label: "Settings", icon: <Settings size={14} /> },
   ];
@@ -360,6 +394,44 @@ export function CaptainPortal() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── GUILD CHAT (Phase 20) ── */}
+      {tab === "chat" && (
+        <div className="rounded-xl border border-zinc-200 bg-white flex flex-col" style={{ height: 460 }}>
+          <div className="p-3 border-b border-zinc-100">
+            <div className="font-semibold text-sm">{guild.name} — Guild Chat</div>
+            <div className="text-[10px] text-zinc-400">Group chat visible to all active members</div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {chatMessages.length === 0 ? (
+              <div className="text-center text-zinc-400 text-sm py-8">No messages yet. Say hello to your guild!</div>
+            ) : chatMessages.map((msg: any, i: number) => {
+              const isMe = msg.userId === user?.id || msg.fromUserId === user?.id;
+              return (
+                <div key={i} className={cn("flex", isMe ? "justify-end" : "justify-start")}>
+                  <div className={cn("max-w-[75%] rounded-2xl px-3 py-2 text-sm", isMe ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-800")}>
+                    {!isMe && <div className="text-[10px] font-bold text-zinc-500 mb-0.5">{msg.senderName || msg.firstName || "Member"}</div>}
+                    {msg.message}
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={chatEndRef} />
+          </div>
+          <div className="p-3 border-t border-zinc-100 flex gap-2">
+            <Input
+              value={chatMsg}
+              onChange={e => setChatMsg(e.target.value)}
+              placeholder="Message the guild…"
+              className="flex-1 h-8 text-sm"
+              onKeyDown={e => { if (e.key === "Enter" && chatMsg.trim()) sendChatMutation.mutate(chatMsg.trim()); }}
+            />
+            <Button size="sm" className="h-8 w-8 p-0" aria-label="Send" disabled={!chatMsg.trim() || sendChatMutation.isPending} onClick={() => sendChatMutation.mutate(chatMsg.trim())}>
+              <Send size={14} />
+            </Button>
           </div>
         </div>
       )}
