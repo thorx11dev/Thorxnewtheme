@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target, MessagesSquare, ListTodo } from "lucide-react";
+import { Megaphone, Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target, MessagesSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";

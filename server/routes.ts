@@ -1137,7 +1137,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl, targetDifficulty } = parsed.data;
       const guild = await storage.updateGuildSettings(req.params.id, userId, {
-        name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl, targetDifficulty,
+        name,
+        description: description ?? undefined,
+        minRankRequired,
+        recruitmentOpen,
+        pinnedMemberId: pinnedMemberId ?? undefined,
+        avatarUrl: avatarUrl ?? undefined,
+        targetDifficulty,
       });
       // Notify all guild members of settings change (Phase 6.3)
       broadcastGuildEvent(req.params.id, 'guild.settings_updated', { weeklyTarget: targetDifficulty, guildId: req.params.id });
@@ -1348,7 +1354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const adminGuildStrikeSchema = z.object({
-    reason: z.string().min(5, "Reason must be at least 5 characters."),
+    reason: z.string().min(5, "Reason must be at least 5 characters.").max(1000),
   });
 
   app.post("/api/admin/guilds/:id/strikes", requireTeamRole, async (req, res) => {
@@ -1415,7 +1421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adConfig = AD_INVENTORY[adId] || AD_INVENTORY["hilltop_fallback"];
 
       let adViewRow: any;
-      let thorxCard: { pointsCredited: number; realPkrValue: number; engineType: string } | null = null;
+      let thorxCard: { pointsCredited: number; engineType: string } | null = null;
       let timingFailed = false;
 
       try {
@@ -1466,7 +1472,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (earnResult.pointsCredited > 0) {
             thorxCard = {
               pointsCredited: earnResult.pointsCredited,
-              realPkrValue: earnResult.realPkrValue,
               engineType: 'Engine_A',
             };
           }
@@ -1820,8 +1825,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Team email endpoints
   const teamEmailSchema = z.object({
     recipient: z.string().email("Invalid email address"),
-    subject: z.string().min(1, "Subject is required"),
-    message: z.string().min(1, "Message is required")
+    subject: z.string().min(1, "Subject is required").max(500),
+    message: z.string().min(1, "Message is required").max(5000),
   });
 
   // Send team email
@@ -3615,7 +3620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ── Atomicity fix: wrap task completion + earn event in a single transaction.
       // Either both commit or neither does — no more "task done but no points" crash gap.
       let updatedRecord: any;
-      let thorxCard: { pointsCredited: number; realPkrValue: number; engineType: string } | null = null;
+      let thorxCard: { pointsCredited: number; engineType: string } | null = null;
       try {
         await db.transaction(async (tx) => {
           // Mark as completed (only reached if rank gate passed)
@@ -3635,7 +3640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             tx, // ← threads the outer transaction through so both writes are atomic
           });
           if (isCpaTask && earnResult.pointsCredited > 0) {
-            thorxCard = { pointsCredited: earnResult.pointsCredited, realPkrValue: earnResult.realPkrValue, engineType: 'Engine_B' };
+            thorxCard = { pointsCredited: earnResult.pointsCredited, engineType: 'Engine_B' };
           }
         });
       } catch (err) {
@@ -4323,6 +4328,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!coverLetter || typeof coverLetter !== "string" || coverLetter.trim().length < 50) {
         return res.status(400).json({ message: "Cover letter must be at least 50 characters." });
       }
+      if (coverLetter.trim().length > 1000) {
+        return res.status(400).json({ message: "Cover letter cannot exceed 1000 characters." });
+      }
       const membership = await storage.applyToGuildWithCoverLetter(req.params.id, userId, coverLetter.trim());
       broadcastGuildEvent(req.params.id, 'guild.application_received', { userId, guildId: req.params.id });
       res.status(201).json({ membership });
@@ -4338,6 +4346,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { action, rejectionReason } = req.body;
       if (!["accept", "reject"].includes(action)) {
         return res.status(400).json({ message: "action must be 'accept' or 'reject'." });
+      }
+      if (rejectionReason && (typeof rejectionReason !== "string" || rejectionReason.length > 500)) {
+        return res.status(400).json({ message: "Rejection reason cannot exceed 500 characters." });
       }
       const membership = await storage.decideGuildApplication(
         req.params.id, req.params.applicationId, captainId, action, rejectionReason
