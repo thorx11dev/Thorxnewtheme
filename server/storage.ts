@@ -886,6 +886,7 @@ export class DatabaseStorage implements IStorage {
     sourceId: string; // ad_view.id or task_record.id
     sourceType: "ad_view" | "weekly_task" | "daily_task";
     guildId?: string; // required for Engine_C
+    tx?: any; // optional outer transaction — when provided, no inner db.transaction() is opened
   }): Promise<{ success: boolean; pointsCredited: number; realPkrValue: number; earning?: Earning }> {
     const [
       engineAThorxCutPct,
@@ -954,9 +955,14 @@ export class DatabaseStorage implements IStorage {
     // websocket / feed side-effects intentionally stay outside the
     // transaction (Step 7) — they're not part of the financial-consistency
     // contract and shouldn't hold a DB transaction open.
+    //
+    // When params.tx is provided (e.g. from the task-verify route that wraps
+    // both updateTaskRecord + recordEarnEvent in a single outer transaction),
+    // we skip our own db.transaction() wrapper and use the caller's tx so
+    // both the task-completion write and the earn event are fully atomic.
     let earning: Earning | undefined;
-    try {
-    await db.transaction(async (tx) => {
+
+    const runEarnTx = async (tx: any) => {
       // Step 3: Persist user_transactions — the immutable source of truth for
       // withdrawal math (Appendix A #1/#2). real_pkr_value is write-once.
       // uniq_user_transactions_source (sourceId, sourceType) rejects a
@@ -1025,7 +1031,14 @@ export class DatabaseStorage implements IStorage {
       }
       await processStreak(params.userId, tx);
       await checkAndUpdateRankTier(params.userId, tx);
-    });
+    };
+
+    try {
+      if (params.tx) {
+        await runEarnTx(params.tx);
+      } else {
+        await db.transaction(runEarnTx);
+      }
     } catch (err: any) {
       if (err?.code === "23505") {
         throw new Error("This earn event has already been recorded (duplicate submission).");
@@ -4421,27 +4434,30 @@ export class DatabaseStorage implements IStorage {
 
   // Rate-limited to once per member per 24h — spec E.9 "nudge" action.
   async nudgeGuildMember(guildId: string, captainId: string, memberUserId: string): Promise<void> {
-    const [guild] = await db.select().from(guilds).where(eq(guilds.id, guildId));
-    if (!guild) throw new Error("Guild not found");
-    if (guild.captainId !== captainId) throw new Error("Only the guild captain can nudge members.");
+    // Atomic: cooldown check + update + notification must all commit or all roll back.
+    await db.transaction(async (tx) => {
+      const [guild] = await tx.select().from(guilds).where(eq(guilds.id, guildId));
+      if (!guild) throw new Error("Guild not found");
+      if (guild.captainId !== captainId) throw new Error("Only the guild captain can nudge members.");
 
-    const [membership] = await db
-      .select()
-      .from(guildMembers)
-      .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.userId, memberUserId), eq(guildMembers.status, "active")))
-      .limit(1);
-    if (!membership) throw new Error("This user is not an active member of your guild.");
+      const [membership] = await tx
+        .select()
+        .from(guildMembers)
+        .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.userId, memberUserId), eq(guildMembers.status, "active")))
+        .limit(1);
+      if (!membership) throw new Error("This user is not an active member of your guild.");
 
-    if (membership.lastNudgedAt && Date.now() - membership.lastNudgedAt.getTime() < 24 * 60 * 60 * 1000) {
-      throw new Error("You already nudged this member in the last 24 hours.");
-    }
+      if (membership.lastNudgedAt && Date.now() - membership.lastNudgedAt.getTime() < 24 * 60 * 60 * 1000) {
+        throw new Error("You already nudged this member in the last 24 hours.");
+      }
 
-    await db.update(guildMembers).set({ lastNudgedAt: new Date() }).where(eq(guildMembers.id, membership.id));
-    await this.createNotification({
-      userId: memberUserId,
-      title: "Your captain is nudging you!",
-      message: `${guild.name} needs your help to hit this week's target.`,
-      type: "system",
+      await tx.update(guildMembers).set({ lastNudgedAt: new Date() }).where(eq(guildMembers.id, membership.id));
+      await tx.insert(notifications).values({
+        userId: memberUserId,
+        title: "Your captain is nudging you!",
+        message: `${guild.name} needs your help to hit this week's target.`,
+        type: "system",
+      });
     });
   }
 
@@ -4756,24 +4772,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async sendCaptainMessage(guildId: string, fromUserId: string, toUserId: string, message: string): Promise<any> {
-    const [msg] = await db.insert(captainMessages).values({
-      guildId,
-      fromUserId,
-      toUserId,
-      message,
-    }).returning();
-    // Mark incoming messages from the recipient as read now that we're in thread.
-    await db.update(captainMessages)
-      .set({ isRead: true })
-      .where(
-        and(
-          eq(captainMessages.guildId, guildId),
-          eq(captainMessages.fromUserId, toUserId),
-          eq(captainMessages.toUserId, fromUserId),
-          eq(captainMessages.isRead, false),
-        )
-      );
-    return msg;
+    // Atomic: insert + read-status update must commit together.
+    return await db.transaction(async (tx) => {
+      const [msg] = await tx.insert(captainMessages).values({
+        guildId,
+        fromUserId,
+        toUserId,
+        message,
+      }).returning();
+      // Mark incoming messages from the recipient as read now that we're in thread.
+      await tx.update(captainMessages)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(captainMessages.guildId, guildId),
+            eq(captainMessages.fromUserId, toUserId),
+            eq(captainMessages.toUserId, fromUserId),
+            eq(captainMessages.isRead, false),
+          )
+        );
+      return msg;
+    });
   }
 
   // Creates the weekly task record WITHOUT updating txPointsBalance —

@@ -1,4 +1,21 @@
 import rateLimit from "express-rate-limit";
+import type { Request } from "express";
+
+// Shared skip helper: bypass rate limiting for localhost in development.
+const skipLocalhost = (req: Request) => {
+  if (process.env.NODE_ENV !== 'production') {
+    const ip = req.ip || req.socket?.remoteAddress || '';
+    if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return true;
+  }
+  return false;
+};
+
+// Shared IP-based key generator (used for auth / withdrawal limiters).
+const ipKeyGenerator = (req: Request): string => {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const clientIp = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : (req as any).ip;
+  return clientIp || 'unknown-ip';
+};
 
 /**
  * Rate limiter for authentication endpoints (login, register, forgot-password).
@@ -13,20 +30,8 @@ export const authRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many authentication attempts. Try again in 15 minutes.", error: "RATE_LIMITED" },
-  skip: (req) => {
-    // Bypass rate limiting for localhost in development (testing only)
-    if (process.env.NODE_ENV !== 'production') {
-      const ip = req.ip || req.socket?.remoteAddress || '';
-      if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return true;
-    }
-    return false;
-  },
-  keyGenerator: (req) => {
-    // Robust IP detection that won't crash behind proxies
-    const forwardedFor = req.headers['x-forwarded-for'];
-    const clientIp = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : (req as any)['ip'];
-    return clientIp || 'unknown-ip';
-  },
+  skip: skipLocalhost,
+  keyGenerator: ipKeyGenerator,
   validate: false,
 });
 
@@ -46,18 +51,8 @@ export const withdrawalRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many withdrawal requests. Try again in 15 minutes.", error: "RATE_LIMITED" },
-  skip: (req) => {
-    if (process.env.NODE_ENV !== 'production') {
-      const ip = req.ip || req.socket?.remoteAddress || '';
-      if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return true;
-    }
-    return false;
-  },
-  keyGenerator: (req) => {
-    const forwardedFor = req.headers['x-forwarded-for'];
-    const clientIp = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : (req as any)['ip'];
-    return clientIp || 'unknown-ip';
-  },
+  skip: skipLocalhost,
+  keyGenerator: ipKeyGenerator,
   validate: false,
 });
 
@@ -71,17 +66,49 @@ export const profileRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests. Try again in 15 minutes.", error: "RATE_LIMITED" },
-  skip: (req) => {
-    if (process.env.NODE_ENV !== 'production') {
-      const ip = req.ip || req.socket?.remoteAddress || '';
-      if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return true;
-    }
-    return false;
+  skip: skipLocalhost,
+  keyGenerator: ipKeyGenerator,
+  validate: false,
+});
+
+// ─── Earn-route rate limiter ──────────────────────────────────────────────────
+/**
+ * Rate limiter for earning endpoints (ad-view, task click, task verify).
+ * 15 attempts per user per minute — keyed by userId (not IP) so that
+ * shared-IP environments (mobile NAT, office proxies) are not unfairly blocked.
+ * Falls back to IP if the session cookie has not been set yet (pre-auth hit).
+ */
+export const earnRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many earn attempts. Try again in a minute.", error: "RATE_LIMITED" },
+  skip: skipLocalhost,
+  keyGenerator: (req: Request) => {
+    const userId = (req.session as any)?.userId;
+    if (userId) return `earn:${userId}`;
+    return `earn-ip:${ipKeyGenerator(req)}`;
   },
-  keyGenerator: (req) => {
-    const forwardedFor = req.headers['x-forwarded-for'];
-    const clientIp = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : (req as any)['ip'];
-    return clientIp || 'unknown-ip';
+  validate: false,
+});
+
+// ─── Guild interaction rate limiter ──────────────────────────────────────────
+/**
+ * Rate limiter for guild interaction endpoints (apply, group chat, captain DM).
+ * 20 requests per user per minute.
+ */
+export const guildInteractionRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many guild interactions. Slow down and try again.", error: "RATE_LIMITED" },
+  skip: skipLocalhost,
+  keyGenerator: (req: Request) => {
+    const userId = (req.session as any)?.userId;
+    if (userId) return `guild:${userId}`;
+    return `guild-ip:${ipKeyGenerator(req)}`;
   },
   validate: false,
 });

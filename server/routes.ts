@@ -7,7 +7,7 @@ import connectPg from "connect-pg-simple";
 import { storage, RANK_NAMES } from "./storage";
 import { pool, db } from "./db";
 import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh, broadcastGuildMessage, broadcastGuildEvent, broadcastToUser } from "./realtime";
-import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, dailyTasks, systemConfig, weeklyTasks, auditLogs, insertHilltopAdsConfigSchema, insertHilltopAdsZoneSchema } from "@shared/schema";
+import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, taskRecords, adViews, dailyTasks, systemConfig, weeklyTasks, auditLogs, insertHilltopAdsConfigSchema, insertHilltopAdsZoneSchema } from "@shared/schema";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "./validation";
@@ -15,7 +15,7 @@ import { hilltopAdsService } from "./hilltopads-service";
 import { runtimeConfig } from "./config/runtime";
 import { handleProxyRequest } from "./modules/proxy/proxy-handler";
 import { processProfilePicture } from "./utils/local-profile-picture";
-import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter } from "./middleware/auth-rate-limit";
+import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter, earnRateLimiter, guildInteractionRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
@@ -753,15 +753,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user notifications (financial alerts from admins)
-  app.get("/api/notifications", async (req, res) => {
+  app.get("/api/notifications", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json([]);
-      }
+      const thorxPid = getThorxPrincipalId(req) as string;
       const userNotifications = await storage.getUserNotifications(thorxPid);
       res.json(userNotifications);
     } catch (error) {
@@ -770,25 +764,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user earnings endpoint (no auth required)
-  app.get("/api/earnings", async (req, res) => {
+  // Get user earnings endpoint
+  app.get("/api/earnings", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      // Check if it's an anonymous user
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json({
-          earnings: [],
-          total: "0.00"
-        });
-      }
-
+      const thorxPid = getThorxPrincipalId(req) as string;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const earnings = await storage.getUserEarnings(thorxPid, limit);
 
@@ -805,25 +784,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user referrals endpoint (no auth required)
-  app.get("/api/referrals", async (req, res) => {
+  // Get user referrals endpoint
+  app.get("/api/referrals", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      // Check if it's an anonymous user
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json({
-          referrals: [],
-          stats: { count: 0, totalEarned: "0.00" }
-        });
-      }
-
+      const thorxPid = getThorxPrincipalId(req) as string;
       const referrals = await storage.getUserReferrals(thorxPid);
       const stats = await storage.getReferralStats(thorxPid);
 
@@ -841,16 +805,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get commissions endpoint
-  app.get("/api/commissions", async (req, res) => {
+  app.get("/api/commissions", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json({ commissions: [] });
-      }
-
+      const thorxPid = getThorxPrincipalId(req) as string;
       const commissions = await storage.getCommissionLogsByBeneficiary(thorxPid);
       res.json({ commissions });
     } catch (error) {
@@ -1058,7 +1015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/guilds/:id/chat", requireSessionAuth, async (req, res) => {
+  app.post("/api/guilds/:id/chat", requireSessionAuth, guildInteractionRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
       const membership = await storage.getUserGuildMembership(userId);
@@ -1384,15 +1341,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create ad view endpoint (no auth required)
-  app.post("/api/ad-view", async (req, res) => {
+  // POST /api/ad-view — requireSessionAuth ensures suspended accounts are blocked;
+  // earnRateLimiter caps at 15/min per user.
+  //
+  // Race-condition fix: timing check + ad_view insert + earn event are all inside
+  // a single db.transaction() with pg_advisory_xact_lock. Drizzle uses one DB
+  // connection per transaction, so the xact-level advisory lock is guaranteed to be
+  // on the same session as the INSERT — preventing concurrent submissions from the
+  // same user from both passing the timing check before either row is committed.
+  app.post("/api/ad-view", requireSessionAuth, earnRateLimiter, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
+      const thorxPid = getThorxPrincipalId(req) as string;
 
       // 🏆 REAL-TIME AD REWARD REGISTRY (Server-Side Only)
       // This is the source of truth for all ad rewards.
@@ -1408,56 +1367,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { adId } = req.body;
       const adConfig = AD_INVENTORY[adId] || AD_INVENTORY["hilltop_fallback"];
 
-      // Verify the user actually waited long enough since their LAST ad view
-      const lastViews = await storage.getUserAdViews(thorxPid, 1);
-      if (lastViews.length > 0 && lastViews[0].createdAt) {
-          const lastViewTime = new Date(lastViews[0].createdAt).getTime();
-          const timeSinceLastAd = (Date.now() - lastViewTime) / 1000;
-
-          // Enforce ad duration + 2 second buffer for network latency
-          if (timeSinceLastAd < (adConfig.duration - 2)) {
-            return res.status(429).json({
-              message: "Protocol Interruption: Ad watch duration insufficient.",
-              error: "RATE_LIMITED"
-            });
-          }
-      }
-
-      const adViewData = {
-        userId: thorxPid,
-        adId: adId,
-        adType: adConfig.type,
-        duration: adConfig.duration,
-        completed: true, // Only rewards on completion
-        earnedAmount: adConfig.reward,
-      };
-
-      const adView = await storage.createAdView(adViewData);
-
-      // THORX v3 (spec E.6, I.1): Route earn through recordEarnEvent for
-      // Engine A split (60% user / 40% Thorx), Thorx Card draw, PS award, and feed event.
+      let adViewRow: any;
       let thorxCard: { pointsCredited: number; realPkrValue: number; engineType: string } | null = null;
+      let timingFailed = false;
+
       try {
-        const earnResult = await storage.recordEarnEvent({
-          userId: thorxPid,
-          engineType: 'Engine_A',
-          grossPkr: parseFloat(adConfig.reward),
-          sourceId: adView.id,
-          sourceType: 'ad_view',
+        await db.transaction(async (tx) => {
+          // pg_advisory_xact_lock holds the lock on this connection for the entire
+          // transaction — timing check, insert, and earn event are all protected.
+          await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${thorxPid})::bigint)`);
+
+          // Verify the user actually waited long enough since their LAST ad view
+          const lastViews = await tx
+            .select({ createdAt: adViews.createdAt })
+            .from(adViews)
+            .where(eq(adViews.userId, thorxPid))
+            .orderBy(desc(adViews.createdAt))
+            .limit(1);
+
+          if (lastViews.length > 0 && lastViews[0].createdAt) {
+            const timeSinceLastAd = (Date.now() - new Date(lastViews[0].createdAt).getTime()) / 1000;
+            // Enforce ad duration + 2 second buffer for network latency
+            if (timeSinceLastAd < (adConfig.duration - 2)) {
+              timingFailed = true;
+              throw new Error("TIMING_FAIL");
+            }
+          }
+
+          // Insert the ad_view row within the locked transaction
+          const [inserted] = await tx.insert(adViews).values({
+            userId: thorxPid,
+            adId,
+            adType: adConfig.type,
+            duration: adConfig.duration,
+            completed: true,
+            earnedAmount: adConfig.reward,
+          }).returning();
+          adViewRow = inserted;
+
+          // Record the Engine A earn event in the same transaction via tx passthrough.
+          // uniq_user_transactions_source prevents a duplicate ledger row if this
+          // same sourceId is ever submitted twice (defense-in-depth).
+          const earnResult = await storage.recordEarnEvent({
+            userId: thorxPid,
+            engineType: 'Engine_A',
+            grossPkr: parseFloat(adConfig.reward),
+            sourceId: adViewRow.id,
+            sourceType: 'ad_view',
+            tx,
+          });
+          if (earnResult.pointsCredited > 0) {
+            thorxCard = {
+              pointsCredited: earnResult.pointsCredited,
+              realPkrValue: earnResult.realPkrValue,
+              engineType: 'Engine_A',
+            };
+          }
         });
-        thorxCard = {
-          pointsCredited: earnResult.pointsCredited,
-          realPkrValue: earnResult.realPkrValue,
-          engineType: 'Engine_A',
-        };
-      } catch (earnErr) {
-        console.error("[ad-view] recordEarnEvent failed:", earnErr);
-        // Don't fail the response — ad view is already recorded
+      } catch (err: any) {
+        if (timingFailed) {
+          return res.status(429).json({
+            message: "Protocol Interruption: Ad watch duration insufficient.",
+            error: "RATE_LIMITED"
+          });
+        }
+        throw err;
       }
 
       res.status(201).json({
         success: true,
-        adView,
+        adView: adViewRow,
         thorxCard,
         message: `Authentication Successful: ${adConfig.reward} PKR credited to pending.`
       });
@@ -1470,22 +1449,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get today's ad views count (no auth required)
-  app.get("/api/ad-views/today", async (req, res) => {
+  // Get today's ad views count
+  app.get("/api/ad-views/today", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      // Check if it's an anonymous user
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json({ count: 0 });
-      }
-
+      const thorxPid = getThorxPrincipalId(req) as string;
       const count = await storage.getTodayAdViews(thorxPid);
       res.json({ count });
     } catch (error) {
@@ -1502,32 +1469,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
 
   // Get comprehensive dashboard statistics
-  app.get("/api/dashboard/stats", async (req, res) => {
+  app.get("/api/dashboard/stats", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json({
-          totalEarnings: "0.00",
-          availableBalance: "0.00",
-          pendingBalance: "0.00",
-          todayEarnings: "0.00",
-          weeklyEarnings: "0.00",
-          monthlyEarnings: "0.00",
-          referralCount: 0,
-          referralEarnings: "0.00",
-          adsWatchedToday: 0,
-          adsWatchedTotal: 0,
-          dailyGoalProgress: 0
-        });
-      }
-
+      const thorxPid = getThorxPrincipalId(req) as string;
       const stats = await storage.getDashboardStats(thorxPid);
       res.json(stats);
     } catch (error) {
@@ -1540,20 +1484,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get earnings history for charts
-  app.get("/api/earnings/history", async (req, res) => {
+  app.get("/api/earnings/history", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json([]);
-      }
-
+      const thorxPid = getThorxPrincipalId(req) as string;
       const period = (req.query.period as 'week' | 'month' | 'year') || 'week';
       const history = await storage.getEarningsHistory(thorxPid, period);
       res.json(history);
@@ -1567,20 +1500,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get referral leaderboard
-  app.get("/api/referrals/leaderboard", async (req, res) => {
+  app.get("/api/referrals/leaderboard", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json([]);
-      }
-
+      const thorxPid = getThorxPrincipalId(req) as string;
       const leaderboard = await storage.getReferralLeaderboard(thorxPid);
       res.json(leaderboard);
     } catch (error) {
@@ -1593,29 +1515,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get detailed referral stats with L1/L2 breakdown
-  app.get("/api/referrals/stats/detailed", async (req, res) => {
+  app.get("/api/referrals/stats/detailed", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json({
-          totalReferrals: 0,
-          level1Count: 0,
-          level2Count: 0,
-          totalCommissionEarnings: "0.00",
-          level1Earnings: "0.00",
-          level2Earnings: "0.00",
-          pendingCommissions: "0.00",
-          paidCommissions: "0.00"
-        });
-      }
-
+      const thorxPid = getThorxPrincipalId(req) as string;
       const stats = await storage.getReferralStatsDetailed(thorxPid);
       res.json(stats);
     } catch (error) {
@@ -1628,20 +1530,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get transaction history
-  app.get("/api/transactions/history", async (req, res) => {
+  app.get("/api/transactions/history", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json([]);
-      }
-
+      const thorxPid = getThorxPrincipalId(req) as string;
       const limit = parseInt(req.query.limit as string) || 50;
       const history = await storage.getTransactionHistory(thorxPid, limit);
       res.json(history);
@@ -3275,7 +3166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/chat/stats", async (req, res) => {
+  app.get("/api/chat/stats", requireSessionAuth, async (req, res) => {
     try {
       const { advancedChatbotService } = await import('./chatbot/advanced-chatbot-service');
       const stats = advancedChatbotService.getStats();
@@ -3289,15 +3180,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/chat/history", async (req, res) => {
+  app.get("/api/chat/history", requireSessionAuth, async (req, res) => {
     try {
-      // Try to get authenticated user from session
-      const userId = getThorxPrincipalId(req);
-
-      if (!userId) {
-        return res.json({ messages: [] });
-      }
-
+      const userId = getThorxPrincipalId(req) as string;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const messages = await storage.getUserChatHistory(userId, limit);
 
@@ -3477,11 +3362,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // --- User Tasks Endpoints ---
-  app.get("/api/tasks", async (req, res) => {
+  app.get("/api/tasks", requireSessionAuth, async (req, res) => {
     try {
-      const userId = getThorxPrincipalId(req);
-      if (!userId) return res.status(401).json({ message: "Not authenticated" });
-
+      const userId = getThorxPrincipalId(req) as string;
       const user = await storage.getUserById(userId);
       const userRankTier = (user?.userRankTier || "E-Rank").toLowerCase();
 
@@ -3501,10 +3384,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/tasks/:id/click", async (req, res) => {
+  app.post("/api/tasks/:id/click", requireSessionAuth, earnRateLimiter, async (req, res) => {
     try {
-      const userId = getThorxPrincipalId(req);
-      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      const userId = getThorxPrincipalId(req) as string;
 
       const taskId = req.params.id;
       let record = await storage.getTaskRecord(userId, taskId);
@@ -3531,11 +3413,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/tasks/:id/verify", async (req, res) => {
+  // POST /api/tasks/:id/verify — requireSessionAuth + earnRateLimiter.
+  // Atomic: task completion record + earn event are wrapped in a single DB transaction
+  // so a crash between the two can no longer leave the task "done" with no points credited.
+  app.post("/api/tasks/:id/verify", requireSessionAuth, earnRateLimiter, async (req, res) => {
     try {
-      const userId = getThorxPrincipalId(req);
-      if (!userId) return res.status(401).json({ message: "Not authenticated" });
-
+      const userId = getThorxPrincipalId(req) as string;
       const taskId = req.params.id;
       const { code } = req.body;
 
@@ -3572,7 +3455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // THORX v3 (spec B.2, L.3): Engine B CPA tasks require C-Rank.
-      // Gate check is BEFORE updateTaskRecord so a failed rank check does not
+      // Gate check is BEFORE the transaction so a failed rank check does not
       // consume the task slot — spec invariant L.3: "E-Rank user → 403 RANK_GATE".
       const isCpaTask = task.taskCategory === 'cpa_offer' && task.grossPkrPerCompletion && parseFloat(task.grossPkrPerCompletion) > 0;
 
@@ -3590,28 +3473,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Mark as completed (only reached if rank gate passed)
-      const updatedRecord = await storage.updateTaskRecord(record.id, {
-        status: 'completed',
-        completedAt: new Date()
-      } as any);
-
-      // Fire earn event (Engine_B for CPA, Indirect for social tasks).
-      // Fire-and-forget — don't block the verify response on earn failures.
+      // ── Atomicity fix: wrap task completion + earn event in a single transaction.
+      // Either both commit or neither does — no more "task done but no points" crash gap.
+      let updatedRecord: any;
       let thorxCard: { pointsCredited: number; realPkrValue: number; engineType: string } | null = null;
       try {
-        const earnResult = await storage.recordEarnEvent({
-          userId,
-          engineType: isCpaTask ? 'Engine_B' : 'Indirect',
-          grossPkr: isCpaTask ? parseFloat(task.grossPkrPerCompletion!) : 0,
-          sourceId: updatedRecord?.id ?? taskId,
-          sourceType: 'daily_task',
+        await db.transaction(async (tx) => {
+          // Mark as completed (only reached if rank gate passed)
+          [updatedRecord] = await tx
+            .update(taskRecords)
+            .set({ status: 'completed', completedAt: new Date() })
+            .where(eq(taskRecords.id, record.id))
+            .returning();
+
+          // Fire earn event inside the same transaction via tx passthrough.
+          const earnResult = await storage.recordEarnEvent({
+            userId,
+            engineType: isCpaTask ? 'Engine_B' : 'Indirect',
+            grossPkr: isCpaTask ? parseFloat(task.grossPkrPerCompletion!) : 0,
+            sourceId: updatedRecord?.id ?? taskId,
+            sourceType: 'daily_task',
+            tx, // ← threads the outer transaction through so both writes are atomic
+          });
+          if (isCpaTask && earnResult.pointsCredited > 0) {
+            thorxCard = { pointsCredited: earnResult.pointsCredited, realPkrValue: earnResult.realPkrValue, engineType: 'Engine_B' };
+          }
         });
-        if (isCpaTask && earnResult.pointsCredited > 0) {
-          thorxCard = { pointsCredited: earnResult.pointsCredited, realPkrValue: earnResult.realPkrValue, engineType: 'Engine_B' };
-        }
       } catch (err) {
-        console.error("[tasks/verify] recordEarnEvent failed:", err);
+        console.error("[tasks/verify] atomic transaction failed:", err);
+        return res.status(500).json({ message: "Verification failed" });
       }
 
       res.json({ success: true, record: updatedRecord, thorxCard });
@@ -4114,10 +4004,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/tasks/completed/today/:type", async (req, res) => {
+  app.get("/api/tasks/completed/today/:type", requireSessionAuth, async (req, res) => {
     try {
-      const userId = getThorxPrincipalId(req);
-      if (!userId || userId.startsWith('anonymous_')) return res.status(401).json({ message: "Not authenticated" });
+      const userId = getThorxPrincipalId(req) as string;
       const count = await storage.getTodayCompletedTasksByType(userId, req.params.type);
       res.json({ count });
     } catch (error) {
@@ -4288,7 +4177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/guilds/:id/apply", requireSessionAuth, async (req, res) => {
+  app.post("/api/guilds/:id/apply", requireSessionAuth, guildInteractionRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
       const { coverLetter } = req.body;
@@ -4370,19 +4259,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ── THORX v3 (spec E.9): Captain DM ──────────────────────────────────────
+  // Access control: only the guild captain OR the addressed member may read/write
+  // this thread. Thread is always captain↔memberId — callers are resolved to their
+  // correct role so there is no self-self thread regardless of who calls.
   app.get("/api/guilds/:id/dm/:memberId", requireSessionAuth, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
-      const messages = await storage.getCaptainMessageThread(req.params.id, userId, req.params.memberId);
+      const guildId = req.params.id;
+      const memberId = req.params.memberId;
+
+      const guild = await storage.getGuildById(guildId);
+      if (!guild) return res.status(404).json({ message: "Guild not found" });
+
+      const captainId = guild.captainId;
+      const isCaptain = captainId === userId;
+      const isMember = userId === memberId;
+      if (!isCaptain && !isMember) {
+        return res.status(403).json({ message: "Access denied: only the guild captain or the addressed member may view this thread." });
+      }
+
+      // Thread is always (captainId ↔ memberId) regardless of who is reading.
+      const messages = await storage.getCaptainMessageThread(guildId, captainId, memberId);
       res.json({ messages });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch messages" });
     }
   });
 
-  app.post("/api/guilds/:id/dm/:memberId", requireSessionAuth, async (req, res) => {
+  app.post("/api/guilds/:id/dm/:memberId", requireSessionAuth, guildInteractionRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
+      const guildId = req.params.id;
+      const memberId = req.params.memberId;
+
+      const guild = await storage.getGuildById(guildId);
+      if (!guild) return res.status(404).json({ message: "Guild not found" });
+
+      const captainId = guild.captainId;
+      const isCaptain = captainId === userId;
+      const isMember = userId === memberId;
+      if (!isCaptain && !isMember) {
+        return res.status(403).json({ message: "Access denied: only the guild captain or the addressed member may send messages in this thread." });
+      }
+
       const { message } = req.body;
       if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ message: "Message cannot be empty." });
@@ -4390,9 +4309,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (message.trim().length > 1000) {
         return res.status(400).json({ message: "Message cannot exceed 1000 characters." });
       }
-      const msg = await storage.sendCaptainMessage(
-        req.params.id, userId, req.params.memberId, message.trim()
-      );
+
+      // Resolve fromUserId/toUserId so the thread is always captain↔memberId.
+      // A captain sends to the member; the member sends back to the captain.
+      const toUserId = isCaptain ? memberId : captainId;
+      const msg = await storage.sendCaptainMessage(guildId, userId, toUserId, message.trim());
       res.status(201).json({ message: msg });
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "Failed to send message";
@@ -4502,11 +4423,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adminId = getThorxPrincipalId(req) as string;
       const { delta, reason } = req.body;
       if (!Number.isFinite(delta)) return res.status(400).json({ message: "delta must be a number." });
+      // Cap delta to ±500 to prevent runaway rank manipulation via the admin panel.
+      if (delta < -500 || delta > 500) {
+        return res.status(400).json({ message: "delta must be in the range -500 to +500." });
+      }
       if (!reason || String(reason).trim().length < 5) {
         return res.status(400).json({ message: "reason (≥5 chars) required." });
       }
+      // Capture rank before the adjust so we can broadcast the right WS event type.
+      const userBefore = await storage.getUserById(req.params.userId);
       const user = await storage.adminAdjustUserPS(req.params.userId, delta, String(reason).trim(), adminId);
-      broadcastUserUpdated(req.params.userId, 'ps_updated', { delta, newPs: user.performanceScore });
+      // Broadcast rank_updated when the rank actually changed, ps_updated otherwise.
+      const eventType = user.rank !== userBefore?.rank ? 'rank_updated' : 'ps_updated';
+      broadcastUserUpdated(req.params.userId, eventType, { delta, newPs: user.performanceScore, newRank: user.rank });
       res.json({ user });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to adjust PS";
