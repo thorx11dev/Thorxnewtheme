@@ -13,3 +13,4 @@
 - [THORX v3 verification](thorx-v3-verification.md) — Full spec audit 2026-07-16; CONVERSION_RATE=100 intentional (business decision, not spec's 1000); REFERRAL_FEE_SHARE_PCT=50 intentional; all 57 system_config keys seeded; commission_logs write-frozen (fn exists but not called).
 - [Master Fix Plan Progress](master-fix-plan.md) — ALL PHASES COMPLETE 2026-07-16; 7.2 Zod guild settings, 15.1 skeletons, 15.3 empty states, 15.6 two-step PS, 16.4 ad-player UI.
 - [Audit Fix Plan Complete](audit-fix-plan.md) — All 14 audit findings implemented 2026-07-16; pino logger added; key patterns: Decimal-through-SQL-boundary, FOR-UPDATE TOCTOU lock, db.transaction() for createAdView, per-endpoint rate limiters.
+- [Million-Dollar Audit 2026-07-17](million-dollar-audit.md) — 28 findings across 3 categories; full report at docs/THORX_AUDIT_REPORT_2026-07-17.md; Tasks 1-4 CRITICAL implemented same day.

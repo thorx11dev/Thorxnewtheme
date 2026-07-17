@@ -67,18 +67,8 @@ export function DashboardCards() {
   const performanceScore = (user as any)?.performanceScore ?? 0;
   const userRankTier = (user as any)?.userRankTier ?? "E-Rank";
   const streakDays = (user as any)?.streakDays ?? 0;
-  const balanceCashPkr = parseFloat((user as any)?.balanceCashPkr ?? "0");
-
-  // Withdrawal value preview — real PKR value read from the ledger via the
-  // preview endpoint (invariant 2), never computed client-side from a flat rate.
-  const { data: withdrawalPreview, isLoading: isWithdrawalPreviewLoading } = useQuery<{ exactPkr: number; platformFee: number; userNetPkr: number }>({
-    queryKey: ["/api/withdrawals/preview", "dashboard-card", txPoints],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/withdrawals/preview?points=${txPoints}`);
-      return res.json();
-    },
-    enabled: guildRole === "simple" && txPoints > 0,
-  });
+  // balanceCashPkr removed — field not sent by /api/user and PKR values must
+  // only appear inside the Conversion Room / payout flow (audit finding 1-A, 1-B).
 
   const { data: referralStats, isLoading: isReferralStatsLoading } = useQuery<{ count: number; totalEarned: string }>({
     queryKey: ["/api/referrals", "dashboard-card"],
@@ -125,15 +115,11 @@ export function DashboardCards() {
 
         <CardShell testId="card-withdrawal-value">
           <CardHead icon={Wallet} label="WITHDRAWAL VALUE" />
-          <p className="text-2xl md:text-3xl font-black text-foreground mb-1">
-            {isWithdrawalPreviewLoading
-              ? <Skeleton className="h-8 w-28 rounded" />
-              : withdrawalPreview ? `Rs. ${withdrawalPreview.exactPkr.toFixed(2)}` : "—"}
-          </p>
+          {/* Audit finding 1-A: Rs. PKR values must only appear inside the payout
+              flow (Conversion Room). Show a neutral prompt here instead. */}
+          <p className="text-2xl md:text-3xl font-black text-foreground mb-1">—</p>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-            {isWithdrawalPreviewLoading
-              ? <Skeleton className="h-3 w-40 rounded mt-1" />
-              : withdrawalPreview ? `After fee: Rs. ${withdrawalPreview.userNetPkr.toFixed(2)}` : "Earn points to see value"}
+            Enter Payout to see value
           </p>
         </CardShell>
 

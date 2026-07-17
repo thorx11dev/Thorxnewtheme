@@ -9,6 +9,7 @@ import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { ProtectedRoute, PublicOnlyRoute, TeamProtectedRoute } from "@/components/auth/ProtectedRoute";
 import ThorxLoadingScreen from "@/components/ui/thorx-loading-screen";
 import ComicClickEffect from "@/components/ui/ComicClickEffect";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const Home = lazy(() => import("@/pages/home"));
 const Auth = lazy(() => import("@/features/auth/AuthPage"));
@@ -53,9 +54,17 @@ function Router() {
     if (!isAuthenticated) return <Home />;
 
     if (user?.role === 'team' || user?.role === 'founder' || user?.role === 'admin') {
-      return <TeamPortal />;
+      return (
+        <ErrorBoundary scope="Admin Portal">
+          <TeamPortal />
+        </ErrorBoundary>
+      );
     } else {
-      return <UserPortal />;
+      return (
+        <ErrorBoundary scope="User Portal">
+          <UserPortal />
+        </ErrorBoundary>
+      );
     }
   };
 

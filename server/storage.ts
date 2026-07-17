@@ -472,6 +472,7 @@ export interface IStorage {
   getCaptainMessageThread(guildId: string, userId1: string, userId2: string): Promise<any[]>;
   sendCaptainMessage(guildId: string, fromUserId: string, toUserId: string, message: string): Promise<any>;
   prepareWeeklyTaskCompletion(userId: string, guildId: string, taskId: string): Promise<{ record: any; task: any }>;
+  completeWeeklyTaskAtomic(userId: string, guildId: string, taskId: string): Promise<{ record: any; task: any; earnResult: any }>;
   getActivityFeedEvents(limit: number, eventType?: string): Promise<any[]>;
 
   // ── THORX v3 (spec E.9): Withdrawal preview & referral cash ──────────────
@@ -1019,11 +1020,14 @@ export class DatabaseStorage implements IStorage {
       // duplicate ledger row outright if this same ad_view/task completion
       // is ever submitted twice — defense-in-depth for Critical finding #4
       // of the 2026-07-15 production-readiness audit.
+      // Audit fix 1-F: use userPkrShareD (Decimal) directly for all DB writes
+      // instead of cardResult.realPkrValue (which is userPkrShareD.toNumber() —
+      // a float). This eliminates IEEE 754 drift at the ledger write boundary.
       await tx.insert(userTransactions).values({
         userId: params.userId,
         engineType: params.engineType,
         pointsCredited: cardResult.pointsCredited,
-        realPkrValue: cardResult.realPkrValue.toFixed(4),
+        realPkrValue: userPkrShareD.toFixed(4),
         grossPkr: params.grossPkr.toFixed(4),
         thorxProfitPkr: thorxProfitPkrD.toFixed(4),
         guildPoolPkr: guildPoolPkrD.toFixed(4),
@@ -1049,7 +1053,7 @@ export class DatabaseStorage implements IStorage {
           .update(users)
           .set({
             txPointsBalance: sql`${users.txPointsBalance} + ${cardResult.pointsCredited}`,
-            totalEarnings: sql`${users.totalEarnings} + ${cardResult.realPkrValue.toFixed(2)}`,
+            totalEarnings: sql`${users.totalEarnings} + ${userPkrShareD.toFixed(2)}`,
             lastActiveAt: new Date(),
           })
           .where(eq(users.id, params.userId));
@@ -1059,7 +1063,7 @@ export class DatabaseStorage implements IStorage {
           .values({
             userId: params.userId,
             type: params.engineType,
-            amount: cardResult.realPkrValue.toFixed(2),
+            amount: userPkrShareD.toFixed(2),
             description: `${params.engineType} task completion`,
             status: "completed",
           })
@@ -4358,22 +4362,8 @@ export class DatabaseStorage implements IStorage {
     return task;
   }
 
-  async completeWeeklyTask(userId: string, guildId: string, taskId: string): Promise<any> {
-    const [task] = await db.select().from(weeklyTasks).where(eq(weeklyTasks.id, taskId));
-    if (!task || !task.isActive) throw new Error("Task not found or inactive.");
-    const now = new Date();
-    if (now < task.weekStart || now > task.weekEnd) throw new Error("Task is not available this week.");
-    const [existing] = await db
-      .select()
-      .from(weeklyTaskRecords)
-      .where(and(eq(weeklyTaskRecords.userId, userId), eq(weeklyTaskRecords.taskId, taskId)));
-    if (existing) throw new Error("Task already completed.");
-    const [record] = await db.insert(weeklyTaskRecords).values({ userId, guildId, taskId }).returning();
-    await db.update(users)
-      .set({ txPointsBalance: sql`${users.txPointsBalance} + ${task.pointReward}`, updatedAt: new Date() })
-      .where(eq(users.id, userId));
-    return record;
-  }
+  // completeWeeklyTask() was removed — it directly updated txPointsBalance bypassing
+  // the recordEarnEvent pipeline. Use completeWeeklyTaskAtomic() instead.
 
   // ── Engine C: Guild Settings (Captain only) ──────────────────────────────────
 
@@ -5022,6 +5012,70 @@ export class DatabaseStorage implements IStorage {
     return { record, task };
   }
 
+  /**
+   * THORX v3 Audit Fix (finding 1-D):
+   * Wraps the duplicate-check, record insert, and recordEarnEvent into a single
+   * db.transaction() with a FOR UPDATE lock on the user row. This eliminates the
+   * double-point race that existed when prepareWeeklyTaskCompletion() and
+   * recordEarnEvent() were called as two separate unguarded DB operations from
+   * the route handler. All points route through recordEarnEvent (Q3 decision).
+   */
+  async completeWeeklyTaskAtomic(
+    userId: string,
+    guildId: string,
+    taskId: string,
+  ): Promise<{ record: any; task: any; earnResult: any }> {
+    return await db.transaction(async (tx) => {
+      // Lock the user row — serialises concurrent completion attempts for the
+      // same user. The second concurrent request will block here until the first
+      // transaction commits, then see `existing` and throw "Task already completed."
+      const [lockedUser] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, userId))
+        .for("update");
+      if (!lockedUser) throw new Error("User not found.");
+
+      const [task] = await tx.select().from(weeklyTasks).where(eq(weeklyTasks.id, taskId));
+      if (!task || !task.isActive) throw new Error("Task not found or inactive.");
+      const now = new Date();
+      if (now < task.weekStart || now > task.weekEnd) throw new Error("Task not available this week.");
+
+      // Duplicate check INSIDE the lock — both concurrent requests can no longer
+      // both pass this; the second will see the row committed by the first.
+      const [existing] = await tx
+        .select({ id: weeklyTaskRecords.id })
+        .from(weeklyTaskRecords)
+        .where(and(eq(weeklyTaskRecords.userId, userId), eq(weeklyTaskRecords.taskId, taskId)))
+        .limit(1);
+      if (existing) throw new Error("Task already completed.");
+
+      const [record] = await tx
+        .insert(weeklyTaskRecords)
+        .values({ userId, guildId, taskId })
+        .returning();
+
+      // Q3 decision: route ALL points through recordEarnEvent so every earn
+      // event goes through the Thorx Card draw + ledger pipeline.
+      const grossPkr =
+        task.taskCategory === "indirect"
+          ? 0
+          : new Decimal(task.grossPkrPerCompletion ?? "0").toNumber();
+      const engineType: "Engine_C" | "Indirect" = grossPkr > 0 ? "Engine_C" : "Indirect";
+      const earnResult = await this.recordEarnEvent({
+        userId,
+        engineType,
+        grossPkr,
+        sourceId: record.id,
+        sourceType: "weekly_task",
+        guildId,
+        tx,
+      });
+
+      return { record, task, earnResult };
+    });
+  }
+
   async getActivityFeedEvents(limit = 50, eventType?: string): Promise<any[]> {
     const conditions = eventType ? eq(activityFeed.eventType, eventType) : undefined;
     const query = db
@@ -5213,6 +5267,7 @@ export class MemStorage {
   async getCaptainMessageThread(_guildId: string, _userId1: string, _userId2: string): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
   async sendCaptainMessage(_guildId: string, _fromUserId: string, _toUserId: string, _message: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async prepareWeeklyTaskCompletion(_userId: string, _guildId: string, _taskId: string): Promise<{ record: any; task: any }> { throw new Error("Not implemented in MemStorage"); }
+  async completeWeeklyTaskAtomic(_userId: string, _guildId: string, _taskId: string): Promise<{ record: any; task: any; earnResult: any }> { throw new Error("Not implemented in MemStorage"); }
   async getActivityFeedEvents(_limit: number, _eventType?: string): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }
   async previewWithdrawal(_userId: string, _points: number): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async getReferralCashBalance(_userId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }

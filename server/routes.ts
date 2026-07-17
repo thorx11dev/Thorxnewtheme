@@ -1117,7 +1117,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/guilds/weekly-tasks/:taskId/complete", requireSessionAuth, async (req, res) => {
+  // earnRateLimiter caps at 15 earn events/min per user — added per audit finding 1-E.
+  // completeWeeklyTaskAtomic wraps the duplicate-check + insert + recordEarnEvent in a
+  // single db.transaction() with a FOR UPDATE user lock (audit finding 1-D).
+  app.post("/api/guilds/weekly-tasks/:taskId/complete", requireSessionAuth, earnRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
       const membership = await storage.getUserGuildMembership(userId);
@@ -1127,20 +1130,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!["member", "captain"].includes(membership.role)) {
         return res.status(403).json({ message: "Only members and captains can complete weekly tasks." });
       }
-      // THORX v3 (spec E.9): Creates the record (with dup/date checks) then calls
-      // recordEarnEvent for the engine split, Thorx Card draw, PS, GPS, and feed event.
-      const { record, task } = await storage.prepareWeeklyTaskCompletion(userId, membership.guildId, req.params.taskId);
-      // Indirect tasks (taskCategory='indirect' or no grossPkrPerCompletion) → PS only, no PKR.
-      const grossPkr = task.taskCategory === 'indirect' ? 0 : parseFloat(task.grossPkrPerCompletion ?? "0");
-      const engineType: "Engine_C" | "Indirect" = grossPkr > 0 ? "Engine_C" : "Indirect";
-      const earnResult = await storage.recordEarnEvent({
+      // Single atomic call: duplicate-check + insert + recordEarnEvent inside one transaction.
+      const { record, task, earnResult } = await storage.completeWeeklyTaskAtomic(
         userId,
-        engineType,
-        grossPkr,
-        sourceId: record.id,
-        sourceType: 'weekly_task',
-        guildId: membership.guildId,
-      });
+        membership.guildId,
+        req.params.taskId,
+      );
       broadcastGuildEvent(membership.guildId, 'guild.weekly_points', {
         userId, guildId: membership.guildId, pointsCredited: earnResult?.pointsCredited ?? 0
       });

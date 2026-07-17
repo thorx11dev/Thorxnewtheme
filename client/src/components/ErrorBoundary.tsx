@@ -1,0 +1,105 @@
+import { Component, ReactNode } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+
+interface Props {
+  children: ReactNode;
+  /** Optional custom fallback UI. If omitted, the default THORX error card is shown. */
+  fallback?: ReactNode;
+  /** Scope label shown in the error card (e.g. "User Portal", "Admin Panel") */
+  scope?: string;
+}
+
+interface State {
+  hasError: boolean;
+  error?: Error;
+}
+
+/**
+ * React ErrorBoundary — catches any unhandled runtime error in the component
+ * tree and renders a recovery UI instead of white-screening the entire app.
+ *
+ * Audit finding 2-H: no ErrorBoundary existed anywhere in the application.
+ *
+ * Usage:
+ *   <ErrorBoundary scope="User Portal">
+ *     <UserPortal />
+ *   </ErrorBoundary>
+ */
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    // Structured log — structured logger will pick this up in production
+    console.error("[ErrorBoundary] Caught error:", {
+      scope: this.props.scope ?? "unknown",
+      message: error.message,
+      stack: error.stack,
+      componentStack: info.componentStack,
+    });
+  }
+
+  private handleReset = () => {
+    this.setState({ hasError: false, error: undefined });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
+
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+          <div className="max-w-md w-full border-2 border-black rounded-2xl p-8 bg-white shadow-[4px_4px_0px_#000]">
+            <div className="flex items-center justify-center w-16 h-16 bg-red-100 border-2 border-red-500 rounded-full mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-black uppercase tracking-tight text-zinc-900 mb-2">
+              Something went wrong
+            </h2>
+            <p className="text-sm text-zinc-500 mb-1">
+              {this.props.scope
+                ? `The ${this.props.scope} encountered an unexpected error.`
+                : "An unexpected error occurred."}
+            </p>
+            <p className="text-xs text-zinc-400 mb-6">
+              Your data is safe. Please refresh the page to continue.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={this.handleReset}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-black uppercase bg-primary text-white rounded-lg border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Try Again
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-black uppercase bg-white text-zinc-900 rounded-lg border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
+              >
+                Full Refresh
+              </button>
+            </div>
+            {process.env.NODE_ENV !== "production" && this.state.error && (
+              <details className="mt-4 text-left">
+                <summary className="text-xs font-bold text-zinc-400 cursor-pointer">
+                  Error details (dev only)
+                </summary>
+                <pre className="mt-2 text-[10px] text-red-500 bg-red-50 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                  {this.state.error.message}
+                </pre>
+              </details>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
