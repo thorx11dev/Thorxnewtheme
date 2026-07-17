@@ -78,6 +78,8 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - 2026-07-16 (re-import, fresh empty DB): `npm install` + `npx drizzle-kit push --force` (no conflicts, clean apply). Workflow restarted on port 5000, landing page renders correctly (only expected 401 from unauthenticated session check on load). Full auth regression passed — unauthenticated `/api/user` (401 NO_SESSION) → register QA account with `identity` field (201) → `/api/user` (200, full user object) → logout (200 Logout successful) → `/api/user` (401 NO_SESSION) → wrong-password login (401 UNAUTHORIZED) → correct-password login (200 Login successful, user nested under `user` key) → duplicate email rejected (400 DUPLICATE_EMAIL) → QA account deleted from DB. Founder (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder`; verified login (200) → `/api/user` (200, role: founder) → `/api/admin/config` (200, keys returned correctly) → `/api/team/members` (200, shows founder) → logout (200) → `/api/user` (401 NO_SESSION). Only founder account remains in `users` table.
 
+- 2026-07-17 (re-import): `node_modules/.bin/tsx` missing after import. Ran `npm install` + `npx drizzle-kit push --force` (no conflicts, clean apply). Workflow restarted, landing page renders correctly on port 5000 (only expected 401 from unauthenticated session check on load). Founder account (Thorx X / thorx11dev@gmail.com, role: founder) already exists in the database from the previous import.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
