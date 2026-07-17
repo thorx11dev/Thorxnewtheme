@@ -7,6 +7,7 @@
  * boundary. runWeeklyGuildReset() is idempotent per (guild, week).
  */
 import { runWeeklyGuildReset } from "../modules/guild-reset";
+import { logger } from "../lib/logger";
 
 export function startGuildWeeklyResetJob(): void {
   const THIRTY_MINUTES = 30 * 60 * 1000;
@@ -15,14 +16,14 @@ export function startGuildWeeklyResetJob(): void {
     try {
       const summary = await runWeeklyGuildReset();
       if (summary.distributed > 0 || summary.voided > 0) {
-        console.log(`[GuildReset] Processed ${summary.guildsProcessed} guild(s): ${summary.distributed} distributed, ${summary.voided} voided, ${summary.skipped} already resolved.`);
+        logger.info({ summary }, "[GuildReset] Weekly reset sweep complete.");
       }
     } catch (error) {
-      console.error("[GuildReset] Weekly reset sweep failed:", error);
+      logger.error({ err: error }, "[GuildReset] Weekly reset sweep failed.");
     }
   };
 
   setTimeout(run, 20_000); // stagger after guild-vault-resolution's 15s startup delay
   setInterval(run, THIRTY_MINUTES);
-  console.log("[GuildReset] Sunday guild reset job started.");
+  logger.info("[GuildReset] Sunday guild reset job started.");
 }

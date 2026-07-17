@@ -7,6 +7,7 @@
  * applies penalties once per rolling 24h window, tracked via system_config.
  */
 import { applyInactivityPenalties } from "../modules/ps-engine";
+import { logger } from "../lib/logger";
 import { storage } from "../storage";
 import { db } from "../db";
 import { systemConfig } from "@shared/schema";
@@ -36,13 +37,13 @@ export function startInactivityPenaltyJob(): void {
 
       const penalized = await applyInactivityPenalties();
       await markLastRun();
-      console.log(`[InactivityPenalty] Applied to ${penalized} user(s).`);
+      logger.info({ penalized }, "[InactivityPenalty] Daily sweep complete.");
     } catch (error) {
-      console.error("[InactivityPenalty] Daily sweep failed:", error);
+      logger.error({ err: error }, "[InactivityPenalty] Daily sweep failed.");
     }
   };
 
   setTimeout(run, 25_000);
   setInterval(run, ONE_HOUR);
-  console.log("[InactivityPenalty] Daily inactivity penalty job started.");
+  logger.info("[InactivityPenalty] Daily inactivity penalty job started.");
 }

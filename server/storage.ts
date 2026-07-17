@@ -1662,7 +1662,9 @@ export class DatabaseStorage implements IStorage {
 
   // --- Daily Tasks Methods ---
   async getDailyTasks(): Promise<DailyTask[]> {
-    return await db.select().from(dailyTasks).orderBy(desc(dailyTasks.createdAt));
+    // Limit to 500 — an unbounded query grows to a full-table scan as the task
+    // library grows. Admin task management screens paginate separately.
+    return await db.select().from(dailyTasks).orderBy(desc(dailyTasks.createdAt)).limit(500);
   }
 
   async getDailyTask(id: string): Promise<DailyTask | undefined> {
@@ -1759,7 +1761,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getHilltopAdsZones(): Promise<HilltopAdsZone[]> {
-    return await db.select().from(hilltopAdsZones).orderBy(desc(hilltopAdsZones.createdAt));
+    // Limit to 100 active zones — full table scan grows unbounded otherwise.
+    return await db.select().from(hilltopAdsZones).orderBy(desc(hilltopAdsZones.createdAt)).limit(100);
   }
 
   async getHilltopAdsZoneById(zoneId: string): Promise<HilltopAdsZone | undefined> {
@@ -2846,17 +2849,14 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     const now = new Date();
+    // Q4 architectural decision (2026-07-17): leaderboard refresh is now driven
+    // exclusively by the 5-minute cron in server/jobs/leaderboard-refresh.ts.
+    // Triggering refresh on every getLeaderboard() call (or earn event) caused
+    // full-table heap allocation at scale — a memory bomb. The cron approach
+    // gives a maximum 5-minute staleness window with zero per-request overhead.
     const isStale = !lastCacheEntry.length || (now.getTime() - new Date(lastCacheEntry[0].recordedAt!).getTime() > 3600000);
-
     if (isStale) {
-      await this.refreshLeaderboardCache();
-      // Keep the risk watchlist current automatically on the same cadence as
-      // the leaderboard recompute — fire-and-forget so it never blocks the
-      // admin's read. Dynamic import avoids a circular module dependency
-      // (risk-engine imports storage).
-      import("./modules/risk-engine")
-        .then((mod) => mod.runFullRiskScan({ broadcastAlerts: true }))
-        .catch((err) => logger.error({ err }, "[RiskEngine] Auto scan on leaderboard refresh failed"));
+      logger.warn("[Leaderboard] Cache is stale — cron will refresh within 5 minutes.");
     }
 
     // Search filters at the DB level so it applies across the *entire*
@@ -3575,9 +3575,9 @@ export class DatabaseStorage implements IStorage {
     const [unverRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(earnings).where(eq(earnings.type, 'admin_credit'));
     const [pendRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(withdrawals).where(eq(withdrawals.status, 'pending'));
 
-    const realBacking = parseFloat(realRow?.total ?? '0');
-    const pendingLiability = parseFloat(pendRow?.total ?? '0');
-    const netLiquidity = realBacking - pendingLiability;
+    const realBacking = new Decimal(realRow?.total ?? '0');
+    const pendingLiability = new Decimal(pendRow?.total ?? '0');
+    const netLiquidity = realBacking.minus(pendingLiability);
 
     // Fetch admin credit earnings with recipient user info
     const adminCreditRows = await db
@@ -3661,7 +3661,7 @@ export class DatabaseStorage implements IStorage {
 
     // Pending withdrawals
     const pendingRows = await db.select({ id: withdrawals.id, amount: withdrawals.amount, createdAt: withdrawals.createdAt }).from(withdrawals).where(eq(withdrawals.status, 'pending'));
-    const pendingTotal = pendingRows.reduce((s, w) => s + parseFloat(w.amount), 0);
+    const pendingTotal = pendingRows.reduce((s, w) => s.plus(new Decimal(w.amount ?? "0")), new Decimal(0));
     const oldestPending = pendingRows.reduce((oldest, w) => (!w.createdAt ? oldest : !oldest || w.createdAt < oldest ? w.createdAt : oldest), null as Date | null);
     const oldestPendingDays = oldestPending ? Math.floor((now.getTime() - oldestPending.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
@@ -3803,10 +3803,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(userId: string): Promise<void> {
     const [user] = await db.select().from(users).where(eq(users.id, userId));
-    if (user && user.role === 'founder') {
+    if (!user) throw new Error("User not found.");
+    if (user.role === 'founder') {
       throw new Error("Protected Node Error: Founder accounts cannot be terminated from the directory.");
     }
-    await db.delete(users).where(eq(users.id, userId));
+    // Q2 architectural decision (2026-07-17): soft-delete + PII anonymization.
+    // Financial records (earnings, withdrawals, commissions) are RETAINED in the
+    // database for financial auditing and tax law compliance (minimum 7 years).
+    // Only personal identifying information is erased; the user row stays intact
+    // with isActive=false so FK references remain valid.
+    await db.update(users)
+      .set({
+        isActive: false,
+        email: `deleted_${userId}@thorx.void`,
+        firstName: "Deleted",
+        lastName: "Account",
+        phone: null,
+        identity: null,
+        profilePicture: null,
+        referralCode: `DELETED_${userId.slice(0, 8)}`,
+      } as any)
+      .where(eq(users.id, userId));
   }
 
   async getUsersPaginated(params: { page: number, limit: number, search?: string, sort?: string, sortOrder?: 'asc' | 'desc', role?: string, ids?: string[] }): Promise<{ users: User[], totalCount: number }> {
@@ -4729,8 +4746,8 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.referredBy, userId));
     return {
-      balanceCashPkr: parseFloat(user?.balanceCashPkr ?? "0"),
-      totalEarnedAllTime: parseFloat(totals?.total ?? "0"),
+      balanceCashPkr: new Decimal(user?.balanceCashPkr ?? "0").toNumber(),
+      totalEarnedAllTime: new Decimal(totals?.total ?? "0").toNumber(),
       referralCount: Number(count) || 0,
     };
   }
@@ -4743,8 +4760,8 @@ export class DatabaseStorage implements IStorage {
     return await db.transaction(async (tx) => {
       const [user] = await tx.select().from(users).where(eq(users.id, userId));
       if (!user) throw new Error("User not found");
-      const balance = parseFloat(user.balanceCashPkr);
-      if (balance < amount) throw new Error(`Insufficient referral balance. Available: Rs.${balance.toFixed(2)}.`);
+      const balanceD = new Decimal(user.balanceCashPkr ?? "0");
+      if (balanceD.lt(new Decimal(amount))) throw new Error(`Insufficient referral balance. Available: Rs.${balanceD.toFixed(2)}.`);
 
       const [pending] = await tx
         .select()
@@ -4948,7 +4965,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(referralCommissions);
     return {
-      totalCommissionsPaid: parseFloat(row?.total ?? "0"),
+      totalCommissionsPaid: new Decimal(row?.total ?? "0").toNumber(),
       totalReferrers: Number(row?.referrers) || 0,
       totalCommissionCount: Number(row?.count) || 0,
     };

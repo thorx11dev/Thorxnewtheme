@@ -40,7 +40,7 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
           setIsLoading(false);
         }
       } catch (error) {
-        console.error("Failed to fetch ad waterfall config:", error);
+        // Ad config fetch failure — silently degrade (ad player will show nothing)
         setIsLoading(false);
       }
     };
@@ -51,7 +51,7 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
   const loadAdForNetwork = useCallback(async (network: AdNetwork) => {
     try {
       setIsLoading(true);
-      console.log(`[Waterfall] Attempting to load ad from: ${network.name} (Zone: ${network.zoneId})`);
+      if (import.meta.env.DEV) console.log(`[Waterfall] Loading ad from: ${network.name} (Zone: ${network.zoneId})`);
       
       // Generic anti-adblock fetcher
       const response = await apiRequest("GET", `/api/hilltopads/anti-adblock/${network.zoneId}`);
@@ -59,7 +59,7 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
       setAdCode(data.code);
       setIsLoading(false);
     } catch (error) {
-      console.warn(`[Waterfall] ${network.name} failed. Moving to next provider.`);
+      if (import.meta.env.DEV) console.warn(`[Waterfall] ${network.name} failed. Moving to next provider.`);
       handleFallback();
     }
   }, [currentIndex, networks]);
@@ -68,7 +68,7 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
     if (currentIndex + 1 < networks.length) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      console.error("[Waterfall] All ad networks exhausted.");
+      // All ad networks exhausted — toast shown below
       setIsLoading(false);
       toast({
         title: "Monetization Error",
@@ -99,7 +99,7 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
       if (script.src) {
         newScript.src = script.src;
         newScript.onerror = () => {
-          console.error("[Waterfall] Script load failed for network", networks[currentIndex].name);
+          if (import.meta.env.DEV) console.warn("[Waterfall] Script load failed for network", networks[currentIndex].name);
           handleFallback();
         };
       } else {
@@ -124,7 +124,7 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
 
         onComplete?.();
       } catch (error) {
-        console.error("Failed to track ad completion:", error);
+        // Ad completion tracking failure is non-critical — silently ignore
       }
     };
 

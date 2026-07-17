@@ -37,12 +37,15 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     // Structured log — structured logger will pick this up in production
-    console.error("[ErrorBoundary] Caught error:", {
-      scope: this.props.scope ?? "unknown",
-      message: error.message,
-      stack: error.stack,
-      componentStack: info.componentStack,
-    });
+    // Only log details in development — never expose stack traces in production console
+    if (import.meta.env.DEV) {
+      console.error("[ErrorBoundary] Caught error:", {
+        scope: this.props.scope ?? "unknown",
+        message: error.message,
+        stack: error.stack,
+        componentStack: info.componentStack,
+      });
+    }
   }
 
   private handleReset = () => {

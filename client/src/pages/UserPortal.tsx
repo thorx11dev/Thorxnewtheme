@@ -232,7 +232,6 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
         window.open(`mailto:?subject=${encodeURIComponent('Invitation to Join THORX!')}&body=${encodeURIComponent(`${shareMessage}\n\nClick here to join: ${shareUrl}`)}`, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
-      console.error("Sharing error:", error);
       toast({ title: "Sharing Failed", description: "Could not share via this platform. Please try again." });
     }
   };
@@ -244,7 +243,6 @@ function ShareModal({ isOpen, onClose, referralCode, userName, toast }: { isOpen
       toast({ title: "Link Copied!", description: "Referral link copied to clipboard." });
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error("Copy error:", error);
       toast({ title: "Copy Failed", description: "Could not copy link. Please try again." });
     }
   };
@@ -809,6 +807,7 @@ export default function UserPortal() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["ad-views"] });
       queryClient.invalidateQueries({ queryKey: ["session-auth"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings"] });
       const breakdown = data?.adView?.pointsBreakdown;
       if (breakdown) {
         setScratchCardBreakdown(breakdown);
@@ -1033,8 +1032,7 @@ export default function UserPortal() {
       };
       setChatMessages(prev => [...prev, supportMessage]);
     },
-    onError: (error) => {
-      console.error("Chat error:", error);
+    onError: (_error) => {
       const errorMessage = {
         id: chatMessages.length + 2,
         text: "Sorry, I'm having trouble connecting right now. Please try again or use the Contact section to reach our team.",
@@ -1096,8 +1094,7 @@ export default function UserPortal() {
 
     try {
       await chatMutation.mutateAsync(messageToSend);
-    } catch (error) {
-      console.error("Failed to send message:", error);
+    } catch (_error) {
       // Add an error message to the chat
       const errorMessage = {
         id: Date.now() + 1,
@@ -2669,8 +2666,7 @@ export default function UserPortal() {
             variant: "destructive"
           });
         }
-      } catch (error) {
-        console.error("Withdrawal error:", error);
+      } catch (_error) {
         toast({
           title: "Error",
           description: "An unexpected error occurred.",

@@ -409,7 +409,7 @@ export default function EnhancedVideoPlayer({
           }
         }
       } catch (error) {
-        console.error('Failed to enter fullscreen:', error);
+        // Fullscreen is non-critical — silently ignore browser-level rejections
       }
     } else {
       // Exit fullscreen
@@ -449,7 +449,7 @@ export default function EnhancedVideoPlayer({
           }
         }
       } catch (error) {
-        console.error('Failed to exit fullscreen:', error);
+        // Fullscreen exit is non-critical — silently ignore
         // Ensure cleanup
         document.body.classList.remove('video-fullscreen-active');
         document.documentElement.style.overflow = '';

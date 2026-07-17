@@ -48,5 +48,9 @@ COPY --from=builder /app/dist ./dist
 # Set production environment
 ENV NODE_ENV=production
 
+# Run as non-root user for container security (Finding 2-O)
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup nodejs thorx
+USER thorx
+
 # Start the server with strict memory limits to prevent Railway 500MB OOM crashes
 CMD ["node", "--max-old-space-size=256", "dist/index.js"]

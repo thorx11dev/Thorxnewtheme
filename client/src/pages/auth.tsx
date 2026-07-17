@@ -483,7 +483,6 @@ export default function Auth() {
       toast({ title: "Registration Successful!", description: `Welcome to THORX, ${firstName}!` });
       setLocation(data.role === 'team' || data.role === 'founder' || data.role === 'admin' ? "/team-portal" : "/user-portal");
     } catch (error: any) {
-      console.error("Registration error:", error);
       toast({ title: "Registration Failed", description: error.message || "Failed to create account.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -512,7 +511,6 @@ export default function Auth() {
       const role = result.user?.role;
       setLocation(role === 'team' || role === 'founder' || role === 'admin' ? "/team-portal" : "/user-portal");
     } catch (error: any) {
-      console.error("Login error:", error);
       toast({ title: "Login Failed", description: error.message || "Invalid email or password", variant: "destructive" });
     } finally {
       setIsSubmitting(false);

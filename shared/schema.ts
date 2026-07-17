@@ -235,6 +235,8 @@ export const referrals = pgTable("referrals", {
   index("referrals_referrer_id_idx").on(table.referrerId),
   index("referrals_referred_id_idx").on(table.referredId),
   index("referrals_status_idx").on(table.status),
+  // Composite index for commission lookups that filter by referrer + status
+  index("referrals_referrer_status_idx").on(table.referrerId, table.status),
 ]);
 
 

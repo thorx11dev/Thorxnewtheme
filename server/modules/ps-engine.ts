@@ -9,6 +9,7 @@ import { db } from "../db";
 import { eq, lt, sql as drizzleSql } from "drizzle-orm";
 import { users, rankLogs } from "@shared/schema";
 import { storage } from "../storage";
+import { logger } from "../lib/logger";
 
 const RANK_TIERS = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"] as const;
 export type RankTier = (typeof RANK_TIERS)[number];
@@ -97,19 +98,24 @@ export async function applyInactivityPenalties(): Promise<number> {
   const { emitFeedEvent } = await import("./live-feed");
 
   for (const u of stale) {
-    await db.update(users)
-      .set({
-        performanceScore: drizzleSql`GREATEST(0, ${users.performanceScore} - ${penalty})`,
-        inactivityPenaltyAt: new Date(),
-      })
-      .where(eq(users.id, u.id));
-    await checkAndUpdateRankTier(u.id);
-    await emitFeedEvent({
-      type: "inactivity",
-      userId: u.id,
-      displayMessage: `User '${u.identity}' inactivity penalty: -${penalty} PS`,
-      data: { penalty, hoursInactive: hours },
-    });
+    try {
+      await db.update(users)
+        .set({
+          performanceScore: drizzleSql`GREATEST(0, ${users.performanceScore} - ${penalty})`,
+          inactivityPenaltyAt: new Date(),
+        })
+        .where(eq(users.id, u.id));
+      await checkAndUpdateRankTier(u.id);
+      await emitFeedEvent({
+        type: "inactivity",
+        userId: u.id,
+        displayMessage: `User '${u.identity}' inactivity penalty: -${penalty} PS`,
+        data: { penalty, hoursInactive: hours },
+      });
+    } catch (err) {
+      // One user failing must never abort the entire penalty batch
+      logger.error({ err, userId: u.id }, "[PSEngine] Inactivity penalty failed for user — continuing.");
+    }
   }
   return stale.length;
 }
@@ -161,7 +167,7 @@ export async function checkAndUpdateRankTier(userId: string, tx?: DbClient): Pro
     const { broadcastUserUpdated } = await import("../realtime");
     broadcastUserUpdated(userId, "rank_tier_updated", { oldRank: user.userRankTier, newRank });
   } catch (e) {
-    console.error("Failed to broadcast rank tier update:", e);
+    logger.error({ err: e, userId }, "[PSEngine] Failed to broadcast rank tier update — continuing.");
   }
 
   const { emitFeedEvent } = await import("./live-feed");

@@ -68,11 +68,36 @@ export function initRealtime(
         ws.on("error", () => sockets.delete(ws));
         // Handle client-initiated guild registration so broadcastGuildEvent
         // can route guild-scoped events to individual members.
-        ws.on("message", (raw) => {
+        // Per-socket WS rate limiter: max 10 messages per 10-second window.
+        let wsMessageCount = 0;
+        let wsRateLimitResetAt = Date.now() + 10_000;
+
+        ws.on("message", async (raw) => {
+          // Rate limit enforcement
+          const now = Date.now();
+          if (now > wsRateLimitResetAt) {
+            wsMessageCount = 0;
+            wsRateLimitResetAt = now + 10_000;
+          }
+          wsMessageCount++;
+          if (wsMessageCount > 10) {
+            ws.close(1008, "Rate limit exceeded");
+            return;
+          }
+
           try {
             const msg = JSON.parse(raw.toString());
             if (msg.type === "join_guild" && typeof msg.guildId === "string") {
-              setSocketGuild(ws, msg.guildId);
+              // Verify server-side that this user actually belongs to the requested guild
+              // before routing them into that guild's real-time channel.
+              const socketMeta = sockets.get(ws);
+              if (socketMeta?.userId) {
+                const user = await storage.getUserById(socketMeta.userId);
+                if (user?.guildId === msg.guildId) {
+                  setSocketGuild(ws, msg.guildId);
+                }
+                // Silently ignore unauthorized join_guild attempts
+              }
             } else if (msg.type === "leave_guild") {
               setSocketGuild(ws, null);
             }
@@ -114,14 +139,17 @@ export function broadcastTeamRefresh(reason?: string) {
 }
 
 /**
- * Broadcast a message to all connected WebSocket clients.
- * Used for Engine C real-time guild chat — clients filter by guildId.
+ * Broadcast a message exclusively to sockets subscribed to a specific guild channel.
+ * Security: only clients that passed the server-side membership check (join_guild handler)
+ * and were registered via setSocketGuild() will receive this message.
  */
 export function broadcastGuildMessage(guildId: string, payload: unknown) {
   if (!wss) return;
   const message = JSON.stringify({ ...(payload as object), guildId });
-  sockets.forEach((_meta, ws) => {
-    if (ws.readyState === WebSocket.OPEN) ws.send(message);
+  sockets.forEach((meta, ws) => {
+    if (meta.guildId === guildId && ws.readyState === WebSocket.OPEN) {
+      ws.send(message);
+    }
   });
 }
 

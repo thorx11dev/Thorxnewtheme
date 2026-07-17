@@ -13,6 +13,7 @@
  */
 
 import { db } from "../db";
+import { logger } from "../lib/logger";
 import {
   users,
   riskCases,
@@ -369,7 +370,7 @@ async function backfillLatestRiskScore(userId: string, riskScore: number): Promi
       await db.update(scoreHistory).set({ riskScore: riskScore.toFixed(2) }).where(eq(scoreHistory.id, latest.id));
     }
   } catch (err) {
-    console.error(`[RiskEngine] Failed to backfill score_history for ${userId}:`, err);
+    logger.error({ err, userId }, "[RiskEngine] Failed to backfill score_history — skipping.");
   }
 }
 
@@ -409,10 +410,10 @@ export async function runFullRiskScan(options?: { broadcastAlerts?: boolean }): 
         }
       }
     } catch (err) {
-      console.error(`[RiskEngine] Failed to score user ${u.id}:`, err);
+      logger.error({ err, userId: u.id }, "[RiskEngine] Failed to score user — continuing to next.");
     }
   }
 
-  console.log(`[RiskEngine] Scan complete — ${allUsers.length} users, ${flagged} flagged, ${critical} critical.`);
+  logger.info({ scanned: allUsers.length, flagged, critical }, "[RiskEngine] Scan complete.");
   return { scanned: allUsers.length, flagged, critical };
 }

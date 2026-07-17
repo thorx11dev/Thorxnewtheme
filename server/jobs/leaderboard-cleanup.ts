@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { leaderboardCache } from "@shared/schema";
 import { sql } from "drizzle-orm";
+import { logger } from "../lib/logger";
 
 /**
  * Periodically prune leaderboard_cache rows older than 7 days.
@@ -16,10 +17,10 @@ export function startLeaderboardCleanup(): void {
         .where(sql`recorded_at < NOW() - INTERVAL '7 days'`);
       
       if (result.rowCount && result.rowCount > 0) {
-        console.log(`[cleanup] Pruned ${result.rowCount} stale leaderboard_cache rows`);
+        logger.info({ pruned: result.rowCount }, "[cleanup] Pruned stale leaderboard_cache rows");
       }
     } catch (error) {
-      console.error("[cleanup] Leaderboard cache cleanup failed:", error);
+      logger.error({ err: error }, "[cleanup] Leaderboard cache cleanup failed");
     }
   };
 

@@ -369,7 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // --- Team Invitation Endpoints ---
 
-  app.post("/api/team/invitations", requirePermission("MANAGE_TEAM"), async (req, res) => {
+  app.post("/api/team/invitations", requirePermission("MANAGE_TEAM"), contactRateLimiter, async (req, res) => {
     try {
       const result = inviteSchema.safeParse(req.body);
       if (!result.success) {
@@ -435,9 +435,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/admin/config/:key", requirePermission("MANAGE_SYSTEM"), async (req, res) => {
+  app.patch("/api/admin/config/:key", requirePermission("MANAGE_SYSTEM"), profileRateLimiter, async (req, res) => {
     try {
-      const { value } = req.body;
+      const { value } = z.object({
+        value: z.union([z.string(), z.number(), z.boolean(), z.array(z.unknown())]),
+      }).parse(req.body);
       const config = await storage.updateSystemConfig(req.params.key, value, getThorxPrincipalId(req) as string);
       
       // Audit log for critical system change
@@ -495,7 +497,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/users/:id/action", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
     try {
       const { id } = req.params;
-      const { action, payload } = req.body;
+      const { action, payload } = z.object({
+        action: z.enum(["suspend", "adjust_balance"]),
+        payload: z.object({ amount: z.union([z.number(), z.string()]) }).optional(),
+      }).parse(req.body);
 
       const user = await storage.getUserById(id);
       if (!user) {
@@ -683,7 +688,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Cannot update other users" });
       }
 
-      const { name, avatar, profilePicture } = req.body;
+      const { name, avatar, profilePicture } = z.object({
+        name: z.string().min(1).max(200).optional(),
+        avatar: z.string().max(100).optional(),
+        profilePicture: z.string().max(2_000_000).optional().nullable(),
+      }).parse(req.body);
       const updates: any = {};
 
       if (name) {
@@ -970,7 +979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/guilds", requireSessionAuth, async (req, res) => {
+  app.post("/api/guilds", requireSessionAuth, guildInteractionRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
       const { name, description } = req.body;
@@ -1273,9 +1282,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const weeklyTaskUpdateSchema = z.object({
+    title: z.string().min(1).max(200).optional(),
+    description: z.string().max(1000).optional().nullable(),
+    pointReward: z.number().int().min(0).optional(),
+    isActive: z.boolean().optional(),
+    targetGuildRank: z.enum(["E", "D", "C", "B", "A", "S"]).optional(),
+  });
+
   app.patch("/api/admin/weekly-tasks/:id", requireTeamRole, async (req, res) => {
     try {
-      const task = await storage.updateWeeklyTask(req.params.id, req.body);
+      const updates = weeklyTaskUpdateSchema.parse(req.body);
+      const task = await storage.updateWeeklyTask(req.params.id, updates);
       res.json({ task });
     } catch (error) {
       res.status(500).json({ message: "Failed to update weekly task" });

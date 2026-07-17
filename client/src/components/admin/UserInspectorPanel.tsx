@@ -40,7 +40,19 @@ interface UserInspectorProps {
 }
 
 export function UserInspectorPanel({ user, isOpen, onClose, onViewInCRM }: UserInspectorProps) {
-  if (!user) return null;
+  if (!user) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-lg border border-zinc-200 bg-white rounded-2xl shadow-xl [&>button]:hidden">
+          <div className="flex flex-col items-center justify-center py-16 text-zinc-400">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-4 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <p className="text-sm font-semibold text-zinc-500">Select a user to inspect</p>
+            <p className="text-xs mt-1 text-zinc-400">Click any row in the user list</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const handleViewCRM = () => {
     onClose();

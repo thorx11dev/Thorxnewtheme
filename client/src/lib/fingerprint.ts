@@ -45,7 +45,7 @@ export async function getDeviceFingerprint(): Promise<string> {
     const fingerprintString = components.join('|||');
     return await hashString(fingerprintString);
   } catch (error) {
-    console.error("Failed to generate fingerprint:", error);
+    // Fingerprint failure is non-fatal — silently fall back to empty string
     // Fallback if APIs are completely blocked
     return "fallback-" + Math.random().toString(36).substring(2, 15);
   }

@@ -30,7 +30,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export default function CallToAction({ isActive }: CallToActionProps) {
-  const [referralCode, setReferralCode] = useState<string>("THORX-XXXX");
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<FormData>({
@@ -47,7 +48,8 @@ export default function CallToAction({ isActive }: CallToActionProps) {
       return response.json();
     },
     onSuccess: (data) => {
-      setReferralCode(data.referralCode);
+      setReferralCode(data.referralCode ?? null);
+      setRegistrationComplete(true);
       toast({
         title: "Registration Successful!",
         description: `Your referral code is ${data.referralCode}`,
@@ -133,17 +135,19 @@ export default function CallToAction({ isActive }: CallToActionProps) {
                 )}
               />
 
-              {/* Referral Code Display */}
-              <div className="bg-primary p-4 md:p-6 text-center">
-                <TechnicalLabel text="YOUR-REFERRAL-CODE" className="text-white/70 mb-2" />
-                <div
-                  className="text-2xl md:text-3xl font-black tracking-wider"
-                  data-testid="text-referral-code"
-                >
-                  {referralCode}
+              {/* Referral Code Display — only shown after successful registration */}
+              {registrationComplete && referralCode && (
+                <div className="bg-primary p-4 md:p-6 text-center">
+                  <TechnicalLabel text="YOUR-REFERRAL-CODE" className="text-white/70 mb-2" />
+                  <div
+                    className="text-2xl md:text-3xl font-black tracking-wider"
+                    data-testid="text-referral-code"
+                  >
+                    {referralCode}
+                  </div>
+                  <Barcode className="w-24 md:w-32 h-8 md:h-10 bg-white mx-auto mt-4" />
                 </div>
-                <Barcode className="w-24 md:w-32 h-8 md:h-10 bg-white mx-auto mt-4" />
-              </div>
+              )}
 
               {/* Submit Button */}
               <Button

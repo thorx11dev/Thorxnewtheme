@@ -237,6 +237,12 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
 
       ws.onclose = () => {
         if (cancelled) return;
+        // Notify the user that live features are paused (Finding 3-E / Task 17)
+        toast({
+          title: "Live connection lost",
+          description: "Real-time features paused — reconnecting…",
+          variant: "destructive",
+        });
         // Reconnect with a short fixed backoff; sessions are long-lived so
         // this only triggers on network blips or server restarts.
         reconnectTimer.current = setTimeout(connect, 3000);

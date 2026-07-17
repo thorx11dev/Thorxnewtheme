@@ -7,6 +7,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { isOriginAllowed, runtimeConfig } from "./config/runtime";
 import { csrfProtection } from "./middleware/csrf";
 import { startLeaderboardCleanup } from "./jobs/leaderboard-cleanup";
+import { startLeaderboardRefreshJob } from "./jobs/leaderboard-refresh";
 import { startHealthSnapshotJob } from "./jobs/health-snapshot";
 import { startGuildWeeklyResetJob } from "./jobs/guild-weekly-reset";
 import { startInactivityPenaltyJob } from "./jobs/inactivity-penalty";
@@ -24,11 +25,43 @@ import { logger } from "./lib/logger";
 process.on('unhandledRejection', (reason, promise) => {
   logger.error({ promise, reason }, 'Unhandled promise rejection — continuing');
 });
+// Startup environment validation — fail fast with a clear message rather than
+// crashing silently on the first DB query (Finding 2-P).
+function validateRequiredEnv(): void {
+  const required: Array<{ key: string; hint: string }> = [
+    { key: "DATABASE_URL", hint: "Add a PostgreSQL database to this Replit" },
+    { key: "SESSION_SECRET", hint: "Generate with: openssl rand -hex 32" },
+  ];
+  const missing = required.filter(({ key }) => !process.env[key]);
+  if (missing.length > 0) {
+    logger.fatal({ missing: missing.map((m) => m.key) }, "THORX FATAL: missing required env vars — refusing to start");
+    missing.forEach(({ key, hint }) => console.error(`  • ${key} — ${hint}`));
+    process.exit(1);
+  }
+}
+validateRequiredEnv();
+
 process.on('uncaughtException', (error) => {
-  // Audit finding 2-B: graceful shutdown on uncaught exception.
-  // Node.js process state is undefined after this — flush logs and exit.
-  logger.fatal({ err: error }, 'Uncaught exception — shutting down');
-  process.exit(1);
+  // Finding 2-R: drain active connections before exiting on uncaught exception.
+  // The server reference is set after listen(); on very early crashes (before listen)
+  // the process exits immediately — which is correct since no connections are open.
+  logger.fatal({ err: error }, 'Uncaught exception — draining connections before exit');
+  const exitTimeout = setTimeout(() => {
+    logger.fatal('Graceful shutdown timeout — forcing exit');
+    process.exit(1);
+  }, 5_000).unref();
+  // `server` is defined below in the async IIFE — if we're here before listen()
+  // the reference won't exist yet, so guard it.
+  if (typeof (global as any).__thorxServer?.close === "function") {
+    (global as any).__thorxServer.close(() => {
+      clearTimeout(exitTimeout);
+      logger.fatal('Server closed — exiting');
+      process.exit(1);
+    });
+  } else {
+    clearTimeout(exitTimeout);
+    process.exit(1);
+  }
 });
 
 const app = express();
@@ -134,6 +167,8 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on Railway's injected port, strictly binding to 0.0.0.0
   server.listen(runtimeConfig.port, "0.0.0.0", () => {
     log(`serving on port ${runtimeConfig.port}`);
+    // Expose server ref for graceful shutdown in the uncaughtException handler
+    (global as any).__thorxServer = server;
 
     // Start background jobs
     if (runtimeConfig.isProd) {
@@ -143,5 +178,7 @@ app.use((req, res, next) => {
     startHealthSnapshotJob();
     startGuildWeeklyResetJob();
     startInactivityPenaltyJob();
+    // 5-minute leaderboard + risk-scan cron (decoupled from earn events per Q4 decision)
+    startLeaderboardRefreshJob();
   });
 })();
