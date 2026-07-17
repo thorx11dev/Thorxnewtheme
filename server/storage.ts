@@ -1,4 +1,5 @@
 import Decimal from "decimal.js";
+import { logger } from "./lib/logger";
 import {
   users,
   earnings,
@@ -520,7 +521,7 @@ const RANK_DEFAULT_AVATARS: Record<string, string> = {
 export class DatabaseStorage implements IStorage {
   constructor() {
     this.bootstrapConfig().catch(err => {
-      console.error("Critical: Failed to bootstrap system configuration:", err);
+      logger.error({ err }, "Critical: Failed to bootstrap system configuration");
     });
   }
 
@@ -733,7 +734,7 @@ export class DatabaseStorage implements IStorage {
       const isValid = await bcrypt.compare(password, user.passwordHash);
       return isValid ? user : undefined;
     } catch (error) {
-      console.error(`Bcrypt comparison failed for ${email}:`, error);
+      logger.error({ err: error, email }, "Bcrypt comparison failed");
       return undefined;
     }
   }
@@ -1276,7 +1277,7 @@ export class DatabaseStorage implements IStorage {
           });
         }
       } catch (notifyError) {
-        console.warn("Non-fatal: Failed to sync notification for outbound email.", notifyError);
+        logger.warn({ err: notifyError }, "Non-fatal: Failed to sync notification for outbound email");
       }
     }
 
@@ -1449,7 +1450,7 @@ export class DatabaseStorage implements IStorage {
 
       return result as Array<UserCredential & { user: User }>;
     } catch (error) {
-      console.error("Error fetching user credentials:", error);
+      logger.error({ err: error }, "Error fetching user credentials");
       throw error;
     }
   }
@@ -1508,7 +1509,7 @@ export class DatabaseStorage implements IStorage {
 
       return result as any;
     } catch (error) {
-      console.error("Error fetching all users:", error);
+      logger.error({ err: error }, "Error fetching all users");
       throw error;
     }
   }
@@ -2502,7 +2503,7 @@ export class DatabaseStorage implements IStorage {
           const { broadcastUserUpdated } = await import("./realtime");
           broadcastUserUpdated(userId, "rank_updated", { oldRank: user.rank || "Nawa Aya", newRank });
         } catch (e) {
-          console.error("Failed to broadcast rank update:", e);
+          logger.error({ err: e }, "Failed to broadcast rank update");
         }
 
         return updatedUser;
@@ -2765,7 +2766,7 @@ export class DatabaseStorage implements IStorage {
 
       return combined;
     } catch (error) {
-      console.error("[ReferralTree] Error fetching leaderboard:", error);
+      logger.error({ err: error }, "[ReferralTree] Error fetching leaderboard");
       // Return empty array instead of throwing to prevent loading loop
       return [];
     }
@@ -2855,7 +2856,7 @@ export class DatabaseStorage implements IStorage {
       // (risk-engine imports storage).
       import("./modules/risk-engine")
         .then((mod) => mod.runFullRiskScan({ broadcastAlerts: true }))
-        .catch((err) => console.error("[RiskEngine] Auto scan on leaderboard refresh failed:", err));
+        .catch((err) => logger.error({ err }, "[RiskEngine] Auto scan on leaderboard refresh failed"));
     }
 
     // Search filters at the DB level so it applies across the *entire*

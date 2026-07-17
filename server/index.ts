@@ -48,7 +48,7 @@ app.use(cors({
     if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked: ${origin}`);
+      logger.warn({ origin }, "CORS blocked");
       callback(null, false);
     }
   },
@@ -110,7 +110,7 @@ app.use((req, res, next) => {
       ? "Internal Server Error"
       : (err.message || "Internal Server Error");
 
-    console.error("Server error:", err);
+    logger.error({ err, status }, "Express error handler");
     res.status(status).json({ message });
   });
 

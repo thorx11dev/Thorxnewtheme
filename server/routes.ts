@@ -97,7 +97,7 @@ export const requireSessionAuth = async (req: Request, res: Response, next: Next
           // Hard Lockout: If the key is suspended, destroy their session entirely.
           return new Promise<void>((resolve) => {
             req.session.destroy((err) => {
-              if (err) console.error("Error destroying session:", err);
+              if (err) logger.error({ err: err }, "Error destroying session:");
               res.status(401).json({
                 message: "Account suspended: Your cryptographic key has been revoked.",
                 error: "UNAUTHORIZED"
@@ -127,12 +127,12 @@ export const requireSessionAuth = async (req: Request, res: Response, next: Next
       db.update(users)
         .set({ lastActiveAt: new Date() })
         .where(eq(users.id, userProfile.id))
-        .catch((err) => console.error("[lastActiveAt] update failed:", err));
+        .catch((err) => logger.error({ err: err }, "[lastActiveAt] update failed:"));
     });
 
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    logger.error({ err: error }, 'Auth middleware error:');
     return res.status(401).json({
       message: "Authentication failed",
       error: "UNAUTHORIZED"
@@ -247,7 +247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
     `);
   } catch (err) {
-    console.error("Failed to pre-create session table (non-fatal):", err);
+    logger.error({ err: err }, "Failed to pre-create session table (non-fatal):");
   }
 
   // Setup session management
@@ -317,8 +317,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   
   // Custom session debugger middleware for development only.
+  // Scoped to /api/* only — static Vite assets generate hundreds of spurious lines.
   if (!isProd) {
-    app.use((req, res, next) => {
+    app.use("/api", (req, res, next) => {
       debugLog("Session Debug:", {
         path: req.path,
         sessionID: req.sessionID,
@@ -378,7 +379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inviteUrl: `${req.protocol}://${req.get('host')}/auth?invite=${token}`
       });
     } catch (error) {
-      console.error("Invite error:", error);
+      logger.error({ err: error }, "Invite error:");
       res.status(500).json({ message: "Failed to generate invitation" });
     }
   });
@@ -447,7 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const insights = await storage.getLeaderboardInsights(limit, offset, search);
       res.json(insights);
     } catch (error: any) {
-      console.error("Leaderboard insights error:", error?.message || error);
+      logger.error({ err: error }, "Leaderboard insights error:");
       res.status(500).json({ message: "Failed to fetch leaderboard insights" });
     }
   });
@@ -468,7 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const insights = await storage.getLeaderboardInsights(50, 0);
       res.json(insights);
     } catch (error: any) {
-      console.error("Force sync error:", error?.message || error);
+      logger.error({ err: error }, "Force sync error:");
       res.status(500).json({ message: "Failed to force sync matrix" });
     }
   });
@@ -498,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastUserUpdated(id, `admin_action_${action}`);
       res.json(updatedUser ? sanitizeUser(updatedUser) : null);
     } catch (error) {
-      console.error("User admin action error:", error);
+      logger.error({ err: error }, "User admin action error:");
       res.status(500).json({ message: "Failed to execute user action" });
     }
   });
@@ -507,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) {
-        console.error("Logout error:", err);
+        logger.error({ err: err }, "Logout error:");
         return res.status(500).json({
           message: "Logout failed",
           error: "INTERNAL_ERROR"
@@ -599,7 +600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!activeKey.isActive && user.role !== 'founder') {
             return new Promise<void>((resolve) => {
               req.session.destroy((err) => {
-                if (err) console.error("Error destroying session:", err);
+                if (err) logger.error({ err: err }, "Error destroying session:");
                 res.status(401).json({
                   message: "Account suspended: Your cryptographic key has been revoked or frozen.",
                   error: "UNAUTHORIZED"
@@ -653,7 +654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastActiveAt: user.lastActiveAt,
       });
     } catch (error) {
-      console.error("Get user error:", error);
+      logger.error({ err: error }, "Get user error:");
       res.status(500).json({
         message: "Failed to fetch user data",
         error: "INTERNAL_ERROR"
@@ -770,7 +771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       debugLog(`[PATCH] DB Update Result:`, { id: user?.id, newAvatar: user?.avatar });
       res.json(user ? sanitizeUser(user) : null);
     } catch (error) {
-      console.error("Update profile error:", error);
+      logger.error({ err: error }, "Update profile error:");
       res.status(500).json({ message: "Failed to update profile" });
     }
   });
@@ -782,7 +783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userNotifications = await storage.getUserNotifications(thorxPid);
       res.json(userNotifications);
     } catch (error) {
-      console.error("Get notifications error:", error);
+      logger.error({ err: error }, "Get notifications error:");
       res.status(500).json({ message: "Failed to fetch notifications" });
     }
   });
@@ -799,7 +800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         total: await storage.getUserTotalEarnings(thorxPid)
       });
     } catch (error) {
-      console.error("Get earnings error:", error);
+      logger.error({ err: error }, "Get earnings error:");
       res.status(500).json({
         message: "Failed to fetch earnings",
         error: "INTERNAL_ERROR"
@@ -819,7 +820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stats
       });
     } catch (error) {
-      console.error("Get referrals error:", error);
+      logger.error({ err: error }, "Get referrals error:");
       res.status(500).json({
         message: "Failed to fetch referrals",
         error: "INTERNAL_ERROR"
@@ -834,7 +835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const commissions = await storage.getCommissionLogsByBeneficiary(thorxPid);
       res.json({ commissions });
     } catch (error) {
-      console.error("Get commissions error:", error);
+      logger.error({ err: error }, "Get commissions error:");
       res.status(500).json({ message: "Failed to fetch commissions" });
     }
   });
@@ -851,7 +852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.getUsersPaginated({ page, limit, search, sort, sortOrder, role });
       res.json(result);
     } catch (error) {
-      console.error("Fetch users error:", error);
+      logger.error({ err: error }, "Fetch users error:");
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
@@ -866,7 +867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const breakdown = await storage.getWithdrawalTimeframeBreakdowns(userId);
       res.json(breakdown);
     } catch (error) {
-      console.error("Timeframe breakdown error:", error);
+      logger.error({ err: error }, "Timeframe breakdown error:");
       res.status(500).json({ message: "Failed to fetch timeframe breakdown" });
     }
   });
@@ -944,7 +945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.listGuilds({ search, limit, offset });
       res.json(result);
     } catch (error) {
-      console.error("List guilds error:", error);
+      logger.error({ err: error }, "List guilds error:");
       res.status(500).json({ message: "Failed to fetch guilds" });
     }
   });
@@ -955,7 +956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const membership = await storage.getUserGuildMembership(userId);
       res.json({ membership: membership ?? null });
     } catch (error) {
-      console.error("Get my guild membership error:", error);
+      logger.error({ err: error }, "Get my guild membership error:");
       res.status(500).json({ message: "Failed to fetch guild membership" });
     }
   });
@@ -976,7 +977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const guild = await storage.createGuild({ name: name.trim(), description, captainId: userId });
       res.status(201).json({ guild });
     } catch (error) {
-      console.error("Create guild error:", error);
+      logger.error({ err: error }, "Create guild error:");
       const message = error instanceof Error ? error.message : "Failed to create guild";
       res.status(400).json({ message });
     }
@@ -999,7 +1000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const members = await storage.getGuildMembers(req.params.id);
       res.json({ guild, members });
     } catch (error) {
-      console.error("Get guild error:", error);
+      logger.error({ err: error }, "Get guild error:");
       res.status(500).json({ message: "Failed to fetch guild" });
     }
   });
@@ -1026,7 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.leaveGuild(req.params.id, userId);
       res.json({ success: true });
     } catch (error) {
-      console.error("Leave guild error:", error);
+      logger.error({ err: error }, "Leave guild error:");
       const message = error instanceof Error ? error.message : "Failed to leave guild";
       res.status(400).json({ message });
     }
@@ -1038,7 +1039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.removeGuildMember(req.params.id, req.params.userId, captainId);
       res.json({ success: true });
     } catch (error) {
-      console.error("Remove guild member error:", error);
+      logger.error({ err: error }, "Remove guild member error:");
       const message = error instanceof Error ? error.message : "Failed to remove member";
       res.status(400).json({ message });
     }
@@ -1057,7 +1058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const messages = await storage.getEngineCMessages(req.params.id, limit, before);
       res.json({ messages });
     } catch (error) {
-      console.error("Get guild chat error:", error);
+      logger.error({ err: error }, "Get guild chat error:");
       res.status(500).json({ message: "Failed to fetch chat messages" });
     }
   });
@@ -1077,7 +1078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastGuildMessage(req.params.id, { type: "engine_c:message", payload: saved });
       res.status(201).json({ message: saved });
     } catch (error) {
-      console.error("Send guild chat error:", error);
+      logger.error({ err: error }, "Send guild chat error:");
       res.status(500).json({ message: "Failed to send message" });
     }
   });
@@ -1113,7 +1114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ tasks: safeTasks });
     } catch (error) {
-      console.error("Get weekly tasks error:", error);
+      logger.error({ err: error }, "Get weekly tasks error:");
       res.status(500).json({ message: "Failed to fetch weekly tasks" });
     }
   });
@@ -1142,7 +1143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.status(201).json({ record, earnResult });
     } catch (error) {
-      console.error("Complete weekly task error:", error);
+      logger.error({ err: error }, "Complete weekly task error:");
       const msg = error instanceof Error ? error.message : "Failed to complete task";
       res.status(400).json({ message: msg });
     }
@@ -1181,7 +1182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastGuildEvent(req.params.id, 'guild.settings_updated', { weeklyTarget: targetDifficulty, guildId: req.params.id });
       res.json({ guild });
     } catch (error) {
-      console.error("Update guild settings error:", error);
+      logger.error({ err: error }, "Update guild settings error:");
       const msg = error instanceof Error ? error.message : "Failed to update guild settings";
       res.status(400).json({ message: msg });
     }
@@ -1227,7 +1228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.json({ guild });
     } catch (error) {
-      console.error("Pin member error:", error);
+      logger.error({ err: error }, "Pin member error:");
       const msg = error instanceof Error ? error.message : "Failed to pin member";
       res.status(400).json({ message: msg });
     }
@@ -1258,7 +1259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.status(201).json({ task });
     } catch (error) {
-      console.error("Create weekly task error:", error);
+      logger.error({ err: error }, "Create weekly task error:");
       res.status(500).json({ message: "Failed to create weekly task" });
     }
   });
@@ -1301,7 +1302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.getPointsLedgerForUser(userId, limit, offset);
       res.json(result);
     } catch (error) {
-      console.error("Get points ledger error:", error);
+      logger.error({ err: error }, "Get points ledger error:");
       res.status(500).json({ message: "Failed to fetch points ledger" });
     }
   });
@@ -1316,7 +1317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.listGuildsAdmin({ status, search, limit, offset });
       res.json(result);
     } catch (error) {
-      console.error("Admin list guilds error:", error);
+      logger.error({ err: error }, "Admin list guilds error:");
       res.status(500).json({ message: "Failed to fetch guilds" });
     }
   });
@@ -1343,7 +1344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const count = await storage.adminBulkSetWeeklyTargets(weeklyTarget, scope ?? "all", difficulty, adminId);
       res.json({ updated: count });
     } catch (error) {
-      console.error("Bulk set weekly targets error:", error);
+      logger.error({ err: error }, "Bulk set weekly targets error:");
       const msg = error instanceof Error ? error.message : "Failed to bulk set targets";
       res.status(400).json({ message: msg });
     }
@@ -1386,7 +1387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const guild = await storage.setGuildStatus(req.params.id, parsed.data.status);
       res.json({ guild });
     } catch (error) {
-      console.error("Admin set guild status error:", error);
+      logger.error({ err: error }, "Admin set guild status error:");
       const message = error instanceof Error ? error.message : "Failed to update guild status";
       res.status(400).json({ message });
     }
@@ -1406,7 +1407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.addManualGuildStrike(req.params.id, parsed.data.reason.trim(), adminId);
       res.status(201).json(result);
     } catch (error) {
-      console.error("Admin add guild strike error:", error);
+      logger.error({ err: error }, "Admin add guild strike error:");
       res.status(500).json({ message: "Failed to add guild strike" });
     }
   });
@@ -1417,7 +1418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const guild = await storage.clearGuildStrikes(req.params.id, adminId);
       res.json({ guild });
     } catch (error) {
-      console.error("Admin clear guild strikes error:", error);
+      logger.error({ err: error }, "Admin clear guild strikes error:");
       res.status(500).json({ message: "Failed to clear guild strikes" });
     }
   });
@@ -1427,7 +1428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await runWeeklyGuildReset();
       res.json(result);
     } catch (error) {
-      console.error("Admin run guild resolution error:", error);
+      logger.error({ err: error }, "Admin run guild resolution error:");
       res.status(500).json({ message: "Failed to run guild weekly resolution" });
     }
   });
@@ -1547,7 +1548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const count = await storage.getTodayAdViews(thorxPid);
       res.json({ count });
     } catch (error) {
-      console.error("Get today ad views error:", error);
+      logger.error({ err: error }, "Get today ad views error:");
       res.status(500).json({
         message: "Failed to fetch ad views",
         error: "INTERNAL_ERROR"
@@ -1566,7 +1567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getDashboardStats(thorxPid);
       res.json(stats);
     } catch (error) {
-      console.error("Get dashboard stats error:", error);
+      logger.error({ err: error }, "Get dashboard stats error:");
       res.status(500).json({
         message: "Failed to fetch dashboard statistics",
         error: "INTERNAL_ERROR"
@@ -1582,7 +1583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const history = await storage.getEarningsHistory(thorxPid, period);
       res.json(history);
     } catch (error) {
-      console.error("Get earnings history error:", error);
+      logger.error({ err: error }, "Get earnings history error:");
       res.status(500).json({
         message: "Failed to fetch earnings history",
         error: "INTERNAL_ERROR"
@@ -1597,7 +1598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const leaderboard = await storage.getReferralLeaderboard(thorxPid);
       res.json(leaderboard);
     } catch (error) {
-      console.error("Get referral leaderboard error:", error);
+      logger.error({ err: error }, "Get referral leaderboard error:");
       res.status(500).json({
         message: "Failed to fetch referral leaderboard",
         error: "INTERNAL_ERROR"
@@ -1612,7 +1613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getReferralStatsDetailed(thorxPid);
       res.json(stats);
     } catch (error) {
-      console.error("Get detailed referral stats error:", error);
+      logger.error({ err: error }, "Get detailed referral stats error:");
       res.status(500).json({
         message: "Failed to fetch detailed referral statistics",
         error: "INTERNAL_ERROR"
@@ -1644,7 +1645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await handleProxyRequest(req, res);
 
     } catch (error) {
-      console.error("Proxy wrapper error:", error);
+      logger.error({ err: error }, "Proxy wrapper error:");
       res.status(500).send("Internal Proxy Error");
     }
   });
@@ -1683,7 +1684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentRank: user.rank || "Nawa Aya"
       });
     } catch (error) {
-      console.error("Get rank history error:", error);
+      logger.error({ err: error }, "Get rank history error:");
       res.status(500).json({
         message: "Failed to fetch rank history",
         error: "INTERNAL_ERROR"
@@ -1733,7 +1734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : "Rank is current"
       });
     } catch (error) {
-      console.error("Rank refresh error:", error);
+      logger.error({ err: error }, "Rank refresh error:");
       res.status(500).json({
         message: "Failed to refresh rank",
         error: "INTERNAL_ERROR"
@@ -1773,7 +1774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         securityScore: 99
       });
     } catch (error) {
-      console.error("Get live stats error:", error);
+      logger.error({ err: error }, "Get live stats error:");
       // Fallback to static numbers if db fails
       res.json({
         totalPaid: 2.5,
@@ -1807,7 +1808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(extended ?? {}),
       });
     } catch (error) {
-      console.error("Get team metrics error:", error);
+      logger.error({ err: error }, "Get team metrics error:");
       res.status(500).json({
         message: "Failed to fetch team metrics",
         error: "INTERNAL_ERROR"
@@ -1845,7 +1846,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Email sent successfully"
       });
     } catch (error) {
-      console.error("Send team email error:", error);
+      logger.error({ err: error }, "Send team email error:");
       if (error instanceof z.ZodError) {
         return res.status(400).json({
           message: "Invalid email data",
@@ -1873,7 +1874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         total: emails.length
       });
     } catch (error) {
-      console.error("Get team emails error:", error);
+      logger.error({ err: error }, "Get team emails error:");
       res.status(500).json({
         message: "Failed to fetch team emails",
         error: "INTERNAL_ERROR"
@@ -1897,7 +1898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, email: updated });
     } catch (error) {
-      console.error("Update team email error:", error);
+      logger.error({ err: error }, "Update team email error:");
       res.status(500).json({ message: "Failed to update email status" });
     }
   });
@@ -1909,7 +1910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteTeamEmail(id);
       res.json({ success: true, message: "Correspondence permanently removed" });
     } catch (error) {
-      console.error("Delete team email error:", error);
+      logger.error({ err: error }, "Delete team email error:");
       res.status(500).json({ message: "Failed to delete correspondence" });
     }
   });
@@ -1934,7 +1935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         total: decrypted.length
       });
     } catch (error) {
-      console.error("Get user credentials error:", error);
+      logger.error({ err: error }, "Get user credentials error:");
       res.status(500).json({
         message: "Failed to fetch user credentials",
         error: "INTERNAL_ERROR"
@@ -1984,7 +1985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(50);
       res.json({ trail });
     } catch (error) {
-      console.error("Fetch withdrawal audit trail error:", error);
+      logger.error({ err: error }, "Fetch withdrawal audit trail error:");
       res.status(500).json({ message: "Failed to fetch audit trail" });
     }
   });
@@ -2060,7 +2061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getReferralStats(userId);
       res.json({ referrals, stats });
     } catch (error) {
-      console.error("Get user network error:", error);
+      logger.error({ err: error }, "Get user network error:");
       res.status(500).json({ message: "Failed to fetch user network" });
     }
   });
@@ -2116,12 +2117,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await upsertRiskCase(result);
             console.log(`[RiskEngine] Re-scored ${userId} after admin credit — score: ${result.riskScore}, severity: ${result.severity}`);
           } catch (e) {
-            console.error(`[RiskEngine] Post-credit rescore failed for ${userId}:`, e);
+            logger.error({ err: e, userId }, "[RiskEngine] Post-credit rescore failed");
           }
         });
       }
     } catch (error) {
-      console.error("Adjust balance error:", error);
+      logger.error({ err: error }, "Adjust balance error:");
       res.status(500).json({ message: "Failed to adjust balance" });
     }
   });
@@ -2137,7 +2138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ledger = await storage.getProfitLedger();
       res.json(ledger);
     } catch (error) {
-      console.error("Profit ledger error:", error);
+      logger.error({ err: error }, "Profit ledger error:");
       res.status(500).json({ message: "Failed to fetch profit ledger" });
     }
   });
@@ -2206,7 +2207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const summary = await storage.getFounderProfitSummary();
       res.json(summary);
     } catch (error) {
-      console.error("Founder profit summary error:", error);
+      logger.error({ err: error }, "Founder profit summary error:");
       res.status(500).json({ message: "Failed to fetch profit summary" });
     }
   });
@@ -2228,7 +2229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.json(fw);
     } catch (error) {
-      console.error("Create founder withdrawal error:", error);
+      logger.error({ err: error }, "Create founder withdrawal error:");
       res.status(500).json({ message: "Failed to log withdrawal" });
     }
   });
@@ -2243,7 +2244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.getFounderWithdrawals(limit, offset);
       res.json(result);
     } catch (error) {
-      console.error("Get founder withdrawals error:", error);
+      logger.error({ err: error }, "Get founder withdrawals error:");
       res.status(500).json({ message: "Failed to fetch withdrawals" });
     }
   });
@@ -2259,7 +2260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ageMinutes = snap.recordedAt ? (Date.now() - new Date(snap.recordedAt).getTime()) / 60000 : 9999;
       res.json({ ...snap, isStale: ageMinutes > 90 });
     } catch (error) {
-      console.error("System health error:", error);
+      logger.error({ err: error }, "System health error:");
       res.status(500).json({ message: "Failed to fetch system health" });
     }
   });
@@ -2270,7 +2271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const history = await storage.getHealthHistory(hours);
       res.json(history);
     } catch (error) {
-      console.error("System health history error:", error);
+      logger.error({ err: error }, "System health history error:");
       res.status(500).json({ message: "Failed to fetch health history" });
     }
   });
@@ -2283,7 +2284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ageMinutes = snap?.recordedAt ? (Date.now() - new Date(snap.recordedAt).getTime()) / 60000 : 0;
       res.json({ ...snap, isStale: ageMinutes > 90 });
     } catch (error) {
-      console.error("Recalculate health error:", error);
+      logger.error({ err: error }, "Recalculate health error:");
       res.status(500).json({ message: "Failed to recalculate health" });
     }
   });
@@ -2295,7 +2296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = await storage.getReconciliationData();
       res.json(data);
     } catch (error) {
-      console.error("Reconciliation error:", error);
+      logger.error({ err: error }, "Reconciliation error:");
       res.status(500).json({ message: "Failed to fetch reconciliation data" });
     }
   });
@@ -2313,7 +2314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.reclassifyEarning(earningId, type, req.userProfile!.id);
       res.json({ success: true });
     } catch (error) {
-      console.error("Reclassify earning error:", error);
+      logger.error({ err: error }, "Reclassify earning error:");
       res.status(500).json({ message: "Failed to reclassify earning" });
     }
   });
@@ -2324,7 +2325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const notes = await storage.getInternalNotes("user", id);
       res.json({ notes });
     } catch (error) {
-      console.error("Fetch notes error:", error);
+      logger.error({ err: error }, "Fetch notes error:");
       res.status(500).json({ message: "Failed to fetch internal notes" });
     }
   });
@@ -2342,7 +2343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.json(note);
     } catch (error) {
-      console.error("Create note error:", error);
+      logger.error({ err: error }, "Create note error:");
       res.status(500).json({ message: "Failed to create internal note" });
     }
   });
@@ -2385,7 +2386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.send(csvContent);
     } catch (error) {
-      console.error("Export users error:", error);
+      logger.error({ err: error }, "Export users error:");
       res.status(500).json({ message: "Failed to export user directory" });
     }
   });
@@ -2411,7 +2412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastUserUpdated(id, "account_deleted");
       res.json({ message: "User deleted successfully" });
     } catch (error) {
-      console.error("Delete user error:", error);
+      logger.error({ err: error }, "Delete user error:");
       res.status(500).json({ message: "Failed to delete user" });
     }
   });
@@ -2462,7 +2463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.getAuditLogsPaginated({ page, limit, search, period, ids });
       res.json(result);
     } catch (error) {
-      console.error("Fetch audit logs error:", error);
+      logger.error({ err: error }, "Fetch audit logs error:");
       res.status(500).json({ message: "Failed to fetch audit logs" });
     }
   });
@@ -2515,7 +2516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.send(csvContent);
     } catch (error) {
-      console.error("Export audit logs error:", error);
+      logger.error({ err: error }, "Export audit logs error:");
       res.status(500).json({ message: "Failed to export audit report" });
     }
   });
@@ -2527,7 +2528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const notes = await storage.getInternalNotes(targetType, targetId);
       res.json({ notes });
     } catch (error) {
-      console.error("Fetch notes error:", error);
+      logger.error({ err: error }, "Fetch notes error:");
       res.status(500).json({ message: "Failed to fetch notes" });
     }
   });
@@ -2545,7 +2546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, note });
     } catch (error) {
-      console.error("Create note error:", error);
+      logger.error({ err: error }, "Create note error:");
       res.status(500).json({ message: "Failed to create note" });
     }
   });
@@ -2562,7 +2563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const revenue = await storage.getEngineRevenue(since);
       res.json(revenue);
     } catch (error) {
-      console.error("Engine revenue error:", error);
+      logger.error({ err: error }, "Engine revenue error:");
       res.status(500).json({ message: "Failed to fetch engine revenue" });
     }
   });
@@ -2581,7 +2582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(data);
     } catch (error) {
-      console.error("Fetch analytics error:", error);
+      logger.error({ err: error }, "Fetch analytics error:");
       res.status(500).json({ message: "Failed to fetch analytics" });
     }
   });
@@ -2633,7 +2634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messageId: contactEmail.id
       });
     } catch (error) {
-      console.error("Contact message error:", error);
+      logger.error({ err: error }, "Contact message error:");
       res.status(500).json({
         message: "Failed to send contact message",
         error: "INTERNAL_ERROR"
@@ -2746,7 +2747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Bootstrap founder error:", error);
+      logger.error({ err: error }, "Bootstrap founder error:");
       res.status(500).json({
         message: "Failed to create founder account"
       });
@@ -2831,7 +2832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ipAddress: req.ip || null,
           });
         } catch (fpErr) {
-          console.error("Device fingerprint storage failed (non-blocking):", fpErr);
+          logger.error({ err: fpErr }, "Device fingerprint storage failed (non-blocking):");
         }
       }
 
@@ -2875,11 +2876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Registration error details:", {
-        error: error instanceof Error ? error.message : error,
-        stack: error instanceof Error ? error.stack : undefined,
-        body: req.body
-      });
+      logger.error({ err: error, body: { email: req.body?.email, role: req.body?.role } }, "Registration error");
       res.status(500).json({
         message: "Registration failed",
         error: "INTERNAL_ERROR"
@@ -2925,7 +2922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.markUserEmailVerified(user.id);
       res.json({ success: true, message: "Email verification confirmed" });
     } catch (error) {
-      console.error("Mark verified error:", error);
+      logger.error({ err: error }, "Mark verified error:");
       res.status(500).json({ message: "Failed to mark verification", error: "INTERNAL_ERROR" });
     }
   });
@@ -2945,7 +2942,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.validateUserPassword(email, password);
       if (!user) {
-        console.warn(`[POST /api/login] Password validation failed for ${email}`);
+        logger.warn({ email }, "[POST /api/login] Password validation failed");
       }
 
       if (!user) {
@@ -2990,7 +2987,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ipAddress: req.ip || null,
           });
         } catch (fpErr) {
-          console.error("Login fingerprint storage failed (non-blocking):", fpErr);
+          logger.error({ err: fpErr }, "Login fingerprint storage failed (non-blocking):");
         }
       }
 
@@ -3034,7 +3031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ipAddress: req.ip
           });
         } catch (e) {
-          console.error("Failed to write access log", e);
+          logger.error({ err: e }, "Failed to write access log");
         }
       }
 
@@ -3049,7 +3046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Login error:", error);
+      logger.error({ err: error }, "Login error:");
       res.status(500).json({ message: "Login failed" });
     }
   });
@@ -3093,7 +3090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastActiveAt: user.lastActiveAt ?? null,
       });
     } catch (error) {
-      console.error("Get profile error:", error);
+      logger.error({ err: error }, "Get profile error:");
       res.status(500).json({
         message: "Failed to fetch profile data",
         error: "INTERNAL_ERROR"
@@ -3213,7 +3210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Update profile error:", error);
+      logger.error({ err: error }, "Update profile error:");
       if (error instanceof z.ZodError) {
         return res.status(400).json({
           message: "Invalid profile data",
@@ -3294,7 +3291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
         } catch (dbError) {
-          console.error('Failed to save chat messages:', dbError);
+          logger.error({ err: dbError }, 'Failed to save chat messages:');
         }
       }
 
@@ -3308,7 +3305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isEscalation: botResponse.isEscalation
       });
     } catch (error) {
-      console.error("Chatbot error:", error);
+      logger.error({ err: error }, "Chatbot error:");
       res.status(500).json({
         message: "Failed to process message",
         error: "INTERNAL_ERROR"
@@ -3322,7 +3319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = advancedChatbotService.getStats();
       res.json(stats);
     } catch (error) {
-      console.error("Chat stats error:", error);
+      logger.error({ err: error }, "Chat stats error:");
       res.status(500).json({
         message: "Failed to fetch chat stats",
         error: "INTERNAL_ERROR"
@@ -3340,7 +3337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messages: messages.reverse()
       });
     } catch (error) {
-      console.error("Chat history error:", error);
+      logger.error({ err: error }, "Chat history error:");
       res.status(500).json({
         message: "Failed to fetch chat history",
         error: "INTERNAL_ERROR"
@@ -3366,7 +3363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(config);
     } catch (error) {
-      console.error("Create HilltopAds config error:", error);
+      logger.error({ err: error }, "Create HilltopAds config error:");
       res.status(500).json({ message: "Failed to create config", error: "INTERNAL_ERROR" });
     }
   });
@@ -3376,7 +3373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const config = await storage.getHilltopAdsConfig();
       res.json(config || null);
     } catch (error) {
-      console.error("Get HilltopAds config error:", error);
+      logger.error({ err: error }, "Get HilltopAds config error:");
       res.status(500).json({ message: "Failed to fetch config", error: "INTERNAL_ERROR" });
     }
   });
@@ -3401,7 +3398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const value = await storage.getSystemConfigValue(key, null);
       res.json({ key, value });
     } catch (error) {
-      console.error(`Error fetching config ${req.params.key}:`, error);
+      logger.error({ err: error, key: req.params.key }, "Error fetching config");
       res.status(500).json({ message: "Failed to fetch configuration" });
     }
   });
@@ -3429,9 +3426,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(task);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        console.error("[ADMIN_TASK_POST] Validation Error:", JSON.stringify(error.errors, null, 2));
+        logger.error({ errors: error.errors }, "[ADMIN_TASK_POST] Validation Error");
       } else {
-        console.error("[ADMIN_TASK_POST] Database/Internal Error:", error);
+        logger.error({ err: error }, "[ADMIN_TASK_POST] Database/Internal Error:");
       }
       res.status(400).json({ 
         message: "Invalid task data", 
@@ -3447,7 +3444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!task) return res.status(404).json({ message: "Task not found" });
       res.json(task);
     } catch (error) {
-      console.error("[ADMIN_TASK_PATCH] Error:", error);
+      logger.error({ err: error }, "[ADMIN_TASK_PATCH] Error:");
       res.status(400).json({ message: "Failed to update task" });
     }
   });
@@ -3600,7 +3597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       } catch (err) {
-        console.error("[tasks/verify] atomic transaction failed:", err);
+        logger.error({ err: err }, "[tasks/verify] atomic transaction failed:");
         return res.status(500).json({ message: "Verification failed" });
       }
 
@@ -3628,7 +3625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof Error && error.name === "ZodError") {
         return res.status(400).json({ message: "Invalid config fields", error: (error as any).errors });
       }
-      console.error("Update HilltopAds config error:", error);
+      logger.error({ err: error }, "Update HilltopAds config error:");
       res.status(500).json({ message: "Failed to update config", error: "INTERNAL_ERROR" });
     }
   });
@@ -3653,7 +3650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(zone);
     } catch (error) {
-      console.error("Create HilltopAds zone error:", error);
+      logger.error({ err: error }, "Create HilltopAds zone error:");
       res.status(500).json({ message: "Failed to create zone", error: "INTERNAL_ERROR" });
     }
   });
@@ -3663,7 +3660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const zones = await storage.getHilltopAdsZones();
       res.json(zones);
     } catch (error) {
-      console.error("Get HilltopAds zones error:", error);
+      logger.error({ err: error }, "Get HilltopAds zones error:");
       res.status(500).json({ message: "Failed to fetch zones", error: "INTERNAL_ERROR" });
     }
   });
@@ -3679,7 +3676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(zone);
     } catch (error) {
-      console.error("Get HilltopAds zone error:", error);
+      logger.error({ err: error }, "Get HilltopAds zone error:");
       res.status(500).json({ message: "Failed to fetch zone", error: "INTERNAL_ERROR" });
     }
   });
@@ -3701,7 +3698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof Error && error.name === "ZodError") {
         return res.status(400).json({ message: "Invalid zone fields", error: (error as any).errors });
       }
-      console.error("Update HilltopAds zone error:", error);
+      logger.error({ err: error }, "Update HilltopAds zone error:");
       res.status(500).json({ message: "Failed to update zone", error: "INTERNAL_ERROR" });
     }
   });
@@ -3722,7 +3719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(stats);
     } catch (error) {
-      console.error("Get HilltopAds stats error:", error);
+      logger.error({ err: error }, "Get HilltopAds stats error:");
       res.status(500).json({ message: "Failed to fetch stats", error: "INTERNAL_ERROR" });
     }
   });
@@ -3732,7 +3729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalRevenue = await storage.getTotalHilltopAdsRevenue();
       res.json({ totalRevenue });
     } catch (error) {
-      console.error("Get HilltopAds revenue error:", error);
+      logger.error({ err: error }, "Get HilltopAds revenue error:");
       res.status(500).json({ message: "Failed to fetch revenue", error: "INTERNAL_ERROR" });
     }
   });
@@ -3756,7 +3753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rewardAmount = (config.settings as any).rewardPerAd;
         }
       } catch (e) {
-        console.error("Failed to fetch hilltop ads config for reward amount", e);
+        logger.error({ err: e }, "Failed to fetch hilltop ads config for reward amount");
       }
 
       const adView = await storage.createAdView({
@@ -3774,7 +3771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Ad completion recorded"
       });
     } catch (error) {
-      console.error("HilltopAds ad completion error:", error);
+      logger.error({ err: error }, "HilltopAds ad completion error:");
       res.status(500).json({ message: "Failed to record ad completion", error: "INTERNAL_ERROR" });
     }
   });
@@ -3785,7 +3782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await hilltopAdsService.syncInventory();
       res.json({ success: true, message: "Inventory synced successfully" });
     } catch (error) {
-      console.error("Sync inventory error:", error);
+      logger.error({ err: error }, "Sync inventory error:");
       res.status(500).json({ message: "Failed to sync inventory", error: "INTERNAL_ERROR" });
     }
   });
@@ -3796,7 +3793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await hilltopAdsService.syncStats(startDate, endDate);
       res.json({ success: true, message: "Stats synced successfully" });
     } catch (error) {
-      console.error("Sync stats error:", error);
+      logger.error({ err: error }, "Sync stats error:");
       res.status(500).json({ message: "Failed to sync stats", error: "INTERNAL_ERROR" });
     }
   });
@@ -3806,7 +3803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const balance = await hilltopAdsService.getBalance();
       res.json({ balance });
     } catch (error) {
-      console.error("Get balance error:", error);
+      logger.error({ err: error }, "Get balance error:");
       res.status(500).json({ message: "Failed to fetch balance", error: "INTERNAL_ERROR" });
     }
   });
@@ -3817,7 +3814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const code = await hilltopAdsService.getAntiAdBlockCode(zoneId);
       res.json({ code });
     } catch (error) {
-      console.error("Get anti-adblock code error:", error);
+      logger.error({ err: error }, "Get anti-adblock code error:");
       res.status(500).json({ message: "Failed to fetch anti-adblock code", error: "INTERNAL_ERROR" });
     }
   });
@@ -3890,7 +3887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, message: "Cryptographic Key successfully minted." });
     } catch (error) {
-       console.error("Team key creation error:", error);
+       logger.error({ err: error }, "Team key creation error:");
        res.status(500).json({ message: "Failed to mint key." });
     }
   });
@@ -3943,7 +3940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastTeamRefresh("team_member_updated");
       res.json({ success: true, message: "Matrix privileges updated." });
     } catch (e) {
-      console.error(e);
+      logger.error({ err: e }, "Matrix privileges update failed");
       res.status(500).json({ message: "Modification failed." });
     }
   });
@@ -3979,7 +3976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastUserUpdated(id, "rank_manually_set", { oldRank: targetUser.rank || "Nawa Aya", newRank: rank });
       res.json(sanitizeUser(updatedUser));
     } catch (error) {
-      console.error("Manual rank update error:", error);
+      logger.error({ err: error }, "Manual rank update error:");
       res.status(500).json({ message: "Failed to update rank" });
     }
   });
@@ -4018,7 +4015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastUserUpdated(id, "trust_status_updated");
       res.json(sanitizeUser(updatedUser));
     } catch (error) {
-      console.error("Trust status update error:", error);
+      logger.error({ err: error }, "Trust status update error:");
       res.status(500).json({ message: "Failed to update trust status" });
     }
   });
@@ -4061,7 +4058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastTeamRefresh("team_permissions_updated");
       res.json({ success: true, message: "Node access matrix reconfigured." });
     } catch (e) {
-      console.error(e);
+      logger.error({ err: e }, "Matrix reconfiguration failed");
       res.status(500).json({ message: "Matrix reconfiguration failed." });
     }
   });
@@ -4099,7 +4096,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, message: "Node detached and wiped." });
     } catch (e) {
-      console.error(e);
+      logger.error({ err: e }, "Team member removal failed");
       res.status(500).json({ message: "Operation failed." });
     }
   });
@@ -4169,7 +4166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.json(result);
     } catch (err) {
-      console.error("[RiskCases] listRiskCases error:", err);
+      logger.error({ err: err }, "[RiskCases] listRiskCases error:");
       res.status(500).json({ message: "Failed to load risk cases" });
     }
   });
@@ -4179,7 +4176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getRiskSignalStats();
       res.json(stats);
     } catch (err) {
-      console.error("[RiskCases] getRiskSignalStats error:", err);
+      logger.error({ err: err }, "[RiskCases] getRiskSignalStats error:");
       res.status(500).json({ message: "Failed to load signal stats" });
     }
   });
@@ -4190,7 +4187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!riskCase) return res.status(404).json({ message: "Case not found" });
       res.json(riskCase);
     } catch (err) {
-      console.error("[RiskCases] getRiskCase error:", err);
+      logger.error({ err: err }, "[RiskCases] getRiskCase error:");
       res.status(500).json({ message: "Failed to load case" });
     }
   });
@@ -4233,14 +4230,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               adminId
             );
           } catch (trustErr) {
-            console.error("[RiskCases] setUserTrustStatus error:", trustErr);
+            logger.error({ err: trustErr }, "[RiskCases] setUserTrustStatus error:");
           }
         }
       }
 
       res.json(updated);
     } catch (err) {
-      console.error("[RiskCases] updateRiskCase error:", err);
+      logger.error({ err: err }, "[RiskCases] updateRiskCase error:");
       res.status(500).json({ message: "Failed to update case" });
     }
   });
@@ -4251,7 +4248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await runFullRiskScan({ broadcastAlerts: true });
       res.json({ ok: true, ...result });
     } catch (err) {
-      console.error("[RiskCases] runFullRiskScan error:", err);
+      logger.error({ err: err }, "[RiskCases] runFullRiskScan error:");
       res.status(500).json({ message: "Risk scan failed" });
     }
   });
@@ -4261,7 +4258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const history = await storage.getScoreHistory(req.params.userId, 30);
       res.json(history);
     } catch (err) {
-      console.error("[RiskCases] getScoreHistory error:", err);
+      logger.error({ err: err }, "[RiskCases] getScoreHistory error:");
       res.status(500).json({ message: "Failed to load score history" });
     }
   });

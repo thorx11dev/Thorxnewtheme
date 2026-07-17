@@ -136,8 +136,7 @@ export default function ValueProposition({ isActive }: { isActive: boolean }) {
                 {/* Grid Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border-[3px] border-black/10 dark:border-white/10 rounded-xl overflow-hidden bg-white/5 backdrop-blur-sm mb-12">
                     {stakeholders.map((stakeholder, index) => (
-                        <React.Fragment key={stakeholder.label}>
-                            <div className="relative flex flex-col h-full">
+                            <div key={stakeholder.label} className="relative flex flex-col h-full">
                                 <ContentBlock {...stakeholder} isActive={isActive} />
 
                                 {/* Vertical Divider (Desktop only, except for the last one) */}
@@ -156,7 +155,6 @@ export default function ValueProposition({ isActive }: { isActive: boolean }) {
                                     />
                                 )}
                             </div>
-                        </React.Fragment>
                     ))}
                 </div>
 
