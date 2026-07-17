@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import TechnicalLabel from "@/components/ui/technical-label";
 import Barcode from "@/components/ui/barcode";
 import { useToast } from "@/hooks/use-toast";
-import { Delete, Eye, EyeOff, Info } from "lucide-react";
+import { Delete, Eye, EyeOff, Info, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -1154,7 +1154,9 @@ export default function Auth() {
                           className="w-full bg-black text-white text-lg md:text-xl font-black py-4 md:py-5 hover:bg-primary transition-colors border-2 border-black disabled:opacity-50 disabled:cursor-not-allowed"
                           data-testid="button-register-submit"
                         >
-                          {isSubmitting ? "PROCESSING..." : "Enter"}
+                          {isSubmitting ? (
+                            <><Loader2 className="mr-2 h-5 w-5 animate-spin inline" />PROCESSING</>
+                          ) : "Enter"}
                         </Button>
                       </div>
                     </form>
@@ -1273,7 +1275,9 @@ export default function Auth() {
                             className="w-full bg-primary text-white text-lg md:text-xl font-black py-4 md:py-5 hover:bg-black transition-colors border-2 border-black disabled:opacity-50 disabled:cursor-not-allowed"
                             data-testid="button-login-submit"
                           >
-                            {isSubmitting ? "LOGGING IN..." : "Enter"}
+                            {isSubmitting ? (
+                              <><Loader2 className="mr-2 h-5 w-5 animate-spin inline" />LOGGING IN</>
+                            ) : "Enter"}
                           </Button>
                         </div>
                       </form>

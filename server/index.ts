@@ -18,11 +18,16 @@ process.emitWarning = ((warning: string | Error, ...args: any[]) => {
   return (originalEmitWarning as any).call(process, warning, ...args);
 }) as typeof process.emitWarning;
 
+import { logger } from "./lib/logger";
+
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error({ promise, reason }, 'Unhandled promise rejection — continuing');
 });
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+  // Audit finding 2-B: graceful shutdown on uncaught exception.
+  // Node.js process state is undefined after this — flush logs and exit.
+  logger.fatal({ err: error }, 'Uncaught exception — shutting down');
+  process.exit(1);
 });
 
 const app = express();

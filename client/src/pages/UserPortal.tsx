@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { z } from "zod";
 import { useAuth, type User as AuthUser } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -2601,7 +2602,31 @@ export default function UserPortal() {
       }
     };
 
+    // Audit finding 1-J: Zod schema for payment details — inline validation
+    // before the network call gives the user immediate field-level feedback.
+    const paymentDetailsSchema = z.object({
+      name: z.string().min(2, "Account name must be at least 2 characters").max(100, "Name too long"),
+      number: z.string()
+        .min(10, "Account/mobile number must be at least 10 digits")
+        .max(20, "Number too long")
+        .regex(/^[0-9+\-\s]+$/, "Only digits, spaces, + and - are allowed"),
+      email: z.string().email("Enter a valid email address"),
+      iban: z.string().optional(),
+    });
+
     const handleSubmit = async () => {
+      // Validate payment details before hitting the network
+      const validation = paymentDetailsSchema.safeParse(paymentDetails);
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        toast({
+          title: "Invalid Payment Details",
+          description: firstError?.message || "Please check your payment details.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setIsProcessing(true);
       try {
         const payload = {

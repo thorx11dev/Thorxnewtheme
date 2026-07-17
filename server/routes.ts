@@ -1628,7 +1628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const history = await storage.getTransactionHistory(thorxPid, limit);
       res.json(history);
     } catch (error) {
-      console.error("Get transaction history error:", error);
+      logger.error({ err: error }, "Get transaction history error");
       res.status(500).json({
         message: "Failed to fetch transaction history",
         error: "INTERNAL_ERROR"
@@ -2031,7 +2031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Content-Disposition", `attachment; filename=${filename}-${new Date().toISOString().split('T')[0]}.csv`);
       res.send(csvContent);
     } catch (error) {
-      console.error("Export withdrawals error:", error);
+      logger.error({ err: error }, "Export withdrawals error");
       res.status(500).json({ message: "Failed to export withdrawals" });
     }
   });
@@ -2903,7 +2903,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     password: z.string().min(8, "Password must be at least 8 characters")
   });
 
-  app.post("/api/reset-password", async (req, res) => {
+  app.post("/api/reset-password", authRateLimiter, async (req, res) => {
     res.status(410).json({
       message: "Self-service password reset is not available. Please contact support.",
       error: "NOT_AVAILABLE"
