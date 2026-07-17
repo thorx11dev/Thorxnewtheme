@@ -87,6 +87,9 @@ export const users = pgTable("users", {
   index("users_performance_score_idx").on(table.performanceScore),
   index("users_personal_rank_idx").on(table.personalRank),
   index("users_total_earnings_idx").on(table.totalEarnings),
+  // Audit finding 2-D: referral commission lookups and inactivity scans filter
+  // by referred_by on every run — missing index caused full users table scan.
+  index("users_referred_by_idx").on(table.referredBy),
   // Financial integrity constraints
   sql`CONSTRAINT check_positive_earnings CHECK (total_earnings >= 0)`,
   sql`CONSTRAINT check_positive_balance CHECK (available_balance >= 0)`,
@@ -169,6 +172,9 @@ export const earnings = pgTable("earnings", {
   index("earnings_type_idx").on(table.type),
   index("earnings_status_idx").on(table.status),
   index("earnings_created_at_idx").on(table.createdAt),
+  // Audit finding 2-F: leaderboard analytics filter by userId + type together —
+  // composite index replaces two separate single-column scans.
+  index("earnings_user_id_type_idx").on(table.userId, table.type),
 ]);
 
 // Leaderboard cache for high-performance enterprise analytics
@@ -258,6 +264,9 @@ export const withdrawals = pgTable("withdrawals", {
   index("withdrawals_status_idx").on(table.status),
   index("withdrawals_method_idx").on(table.method),
   index("withdrawals_created_at_idx").on(table.createdAt),
+  // Audit finding 2-E: "pending withdrawal?" FOR UPDATE check intersects userId
+  // + status — composite index collapses two scans into one, shortening lock hold time.
+  index("withdrawals_user_id_status_idx").on(table.userId, table.status),
   // Minimum withdrawal amount (e.g., 100 PKR minimum)
   sql`CONSTRAINT check_min_withdrawal CHECK (CAST(amount AS DECIMAL) >= 100)`,
   sql`CONSTRAINT check_positive_amount CHECK (CAST(amount AS DECIMAL) > 0)`,

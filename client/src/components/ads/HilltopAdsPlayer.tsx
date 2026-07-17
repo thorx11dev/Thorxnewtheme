@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Zap } from "lucide-react";
 
 interface AdNetwork {
   id: string;
@@ -139,6 +140,22 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
       <div className="flex flex-col items-center justify-center p-12 bg-zinc-50 border-2 border-black/5 rounded-2xl animate-pulse">
         <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/40">Synchronizing Network...</p>
+      </div>
+    );
+  }
+
+  // Audit finding 3-E: when no ad networks are active, render a meaningful
+  // empty state instead of an invisible blank hole in the UI.
+  if (networks.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl">
+        <Zap className="w-10 h-10 text-zinc-300 mb-4" />
+        <p className="text-sm font-black uppercase tracking-wider text-zinc-400 mb-1">
+          Ad Earning Unavailable
+        </p>
+        <p className="text-xs text-zinc-400 text-center max-w-xs">
+          No ad networks are currently active. Check back soon — earnings resume automatically when networks come online.
+        </p>
       </div>
     );
   }

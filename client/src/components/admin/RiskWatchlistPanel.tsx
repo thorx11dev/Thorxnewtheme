@@ -616,7 +616,23 @@ function SignalAccuracyPanel() {
   });
 
   if (isLoading) return <div className="h-24 bg-zinc-50 rounded-[1.5rem] animate-pulse" />;
-  if (!stats.length) return null;
+  // Audit finding 3-F: returning null on empty data made admins unable to
+  // distinguish "no resolved cases yet" from "panel failed to load".
+  if (!stats.length) {
+    return (
+      <div className="bg-white border-[1.5px] border-[#111]/10 rounded-[1.5rem] p-5">
+        <div className="flex items-center gap-2 mb-2">
+          <ShieldQuestion size={16} className="text-zinc-300" />
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+            Signal Accuracy — from resolved cases
+          </p>
+        </div>
+        <p className="text-[11px] text-zinc-400">
+          No resolved cases yet. Accuracy stats appear here once risk cases are actioned or cleared.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white border-[1.5px] border-[#111]/10 rounded-[1.5rem] p-5 space-y-3">

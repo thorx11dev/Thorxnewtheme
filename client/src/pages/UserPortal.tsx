@@ -895,6 +895,35 @@ export default function UserPortal() {
     email: "",
     iban: ""
   });
+  // Audit finding 1-J: field-level validation errors — shown on blur so the
+  // user gets immediate inline hints instead of a server-side round-trip error.
+  const [paymentErrors, setPaymentErrors] = useState<{ name?: string; number?: string; email?: string }>({});
+
+  const validatePaymentField = (field: "name" | "number" | "email", value: string): string => {
+    if (field === "name") {
+      if (!value.trim()) return "Full name is required";
+      if (value.trim().length < 3) return "Name must be at least 3 characters";
+      if (!/^[a-zA-Z\s'-]+$/.test(value.trim())) return "Name can only contain letters, spaces, hyphens, or apostrophes";
+      return "";
+    }
+    if (field === "number") {
+      if (!value.trim()) return "Phone number is required";
+      const normalized = value.replace(/\s/g, "");
+      if (!/^03\d{9}$/.test(normalized)) return "Enter a valid Pakistani number (e.g. 03001234567)";
+      return "";
+    }
+    if (field === "email") {
+      if (!value.trim()) return "Email is required";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "Enter a valid email address";
+      return "";
+    }
+    return "";
+  };
+
+  const handlePaymentBlur = (field: "name" | "number" | "email") => {
+    const err = validatePaymentField(field, paymentDetails[field]);
+    setPaymentErrors(prev => ({ ...prev, [field]: err }));
+  };
   const [isProcessing, setIsProcessing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -2595,7 +2624,13 @@ export default function UserPortal() {
               ? `Your withdrawal of ${formatCurrency(withdrawAmount)} PTS (Rs. ${withdrawalPreview.userNetPkr.toFixed(2)} net) has been submitted for processing.`
               : `Your withdrawal of ${formatCurrency(withdrawAmount)} PTS has been submitted for processing.`,
           });
-          queryClient.invalidateQueries({ queryKey: ["earnings"] }); // Refresh balance
+          queryClient.invalidateQueries({ queryKey: ["earnings"] });
+          // Audit finding 1-K: 3 missing invalidations that left the portal showing
+          // stale data after withdrawal submission (unchanged balance, missing history
+          // entry, stale preview value).
+          queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/withdrawals"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/withdrawals/preview"] });
           // Reset form
           setCurrentStep(1);
           setWithdrawAmount("");

@@ -20,6 +20,7 @@ import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
 import { runWeeklyGuildReset } from "./modules/guild-reset";
+import { logger } from "./lib/logger";
 
 /** Authenticated user id from session cookie. */
 export function getThorxPrincipalId(req: Request): string | undefined {
@@ -918,7 +919,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Withdrawal request submitted successfully"
       });
     } catch (error) {
-      console.error("Create withdrawal error:", error);
+      logger.error({ err: error }, "Create withdrawal error");
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
@@ -1531,7 +1532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Authentication Successful: ${adConfig.reward} PKR credited to pending.`
       });
     } catch (error) {
-      console.error("Create ad view error:", error);
+      logger.error({ err: error }, "Create ad view error");
       res.status(500).json({
         message: "Failed to record ad view",
         error: "INTERNAL_ERROR"
@@ -1951,7 +1952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.getWithdrawalsPaginated({ page, limit, search, status });
       res.json(result);
     } catch (error) {
-      console.error("Fetch withdrawals error:", error);
+      logger.error({ err: error }, "Fetch withdrawals error");
       res.status(500).json({ message: "Failed to fetch withdrawals" });
     }
   });
@@ -2046,7 +2047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastTeamRefresh("withdrawals_bulk_updated");
       res.json({ message: `Successfully updated ${ids.length} withdrawals to ${status}` });
     } catch (error) {
-      console.error("Bulk update withdrawals error:", error);
+      logger.error({ err: error }, "Bulk update withdrawals error");
       res.status(500).json({ message: "Failed to update withdrawals" });
     }
   });
@@ -2445,7 +2446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastToUser(updated.userId, 'withdrawal_status_changed', { status, withdrawalId });
       res.json({ success: true, withdrawal: updated });
     } catch (error) {
-      console.error("Update withdrawal error:", error);
+      logger.error({ err: error }, "Update withdrawal error");
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update withdrawal" });
     }
   });
@@ -3405,60 +3406,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // --- Admin System Configuration Management ---
-  app.get("/api/admin/config", requireTeamRole, async (req, res) => {
-    try {
-      const configs = await db.select().from(systemConfig).orderBy(systemConfig.key);
-      res.json({ configs });
-    } catch (error) {
-      console.error("Error fetching admin configs:", error);
-      res.status(500).json({ message: "Failed to fetch configurations" });
-    }
-  });
-
-  app.patch("/api/admin/config/:key", requireTeamRole, async (req, res) => {
-    try {
-      const { key } = req.params;
-      const { value } = req.body;
-      const allowedKeys = [
-        "AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT",
-        "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT",
-        "CONVERSION_RATE",
-      ];
-
-      if (!allowedKeys.includes(key)) {
-        return res.status(403).json({ message: "Access to this configuration key is restricted." });
-      }
-      if (value === undefined || value === null) {
-        return res.status(400).json({ message: "Value is required." });
-      }
-
-      // Upsert: update if exists, insert if not
-      const existing = await db.select().from(systemConfig).where(eq(systemConfig.key, key)).limit(1);
-      if (existing.length > 0) {
-        await db.update(systemConfig).set({ value, updatedAt: new Date() }).where(eq(systemConfig.key, key));
-      } else {
-        await db.insert(systemConfig).values({ key, value, updatedAt: new Date() });
-      }
-
-      // Audit log the configuration change
-      if (req.userProfile) {
-        await storage.createAuditLog({
-          adminId: req.userProfile.id,
-          action: `CONFIG_UPDATE_${key}`,
-          targetType: "system_config",
-          targetId: key,
-          details: { key, newValue: value },
-          ipAddress: req.ip
-        });
-      }
-
-      res.json({ key, value, message: "Configuration synchronized successfully" });
-    } catch (error) {
-      console.error(`Error updating config ${req.params.key}:`, error);
-      res.status(500).json({ message: "Failed to update configuration" });
-    }
-  });
+  // Audit finding 2-A: The GET /api/admin/config and PATCH /api/admin/config/:key routes
+  // below were dead code — Express matched the first-registered handlers at lines 399/418
+  // (requirePermission("MANAGE_SYSTEM")) before ever reaching the requireTeamRole versions
+  // here. The allowedKeys safety list in the dead PATCH was never enforced. Both removed.
 
   // --- Daily Tasks Management (Admin) ---
   app.get("/api/admin/tasks", requireTeamRole, async (req, res) => {

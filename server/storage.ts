@@ -1193,7 +1193,10 @@ export class DatabaseStorage implements IStorage {
       .from(referrals)
       .innerJoin(users, eq(referrals.referredId, users.id))
       .where(eq(referrals.referrerId, userId))
-      .orderBy(desc(referrals.createdAt));
+      .orderBy(desc(referrals.createdAt))
+      // Audit finding 1-L: unbounded query — cap at 100 to avoid loading full
+      // join into Node.js heap for high-referral users.
+      .limit(100);
   }
 
   async getReferralStats(userId: string): Promise<{ count: number; totalEarned: string }> {
@@ -3091,8 +3094,14 @@ export class DatabaseStorage implements IStorage {
       };
     });
 
-    // Sort by performance and assign global rank
-    scoredUsers.sort((a, b) => parseFloat(b.performanceScore) - parseFloat(a.performanceScore));
+    // Sort by performance and assign global rank.
+    // Audit finding 1-H: use Decimal comparison instead of float subtraction —
+    // float subtraction below 1e-12 produces 0 → unstable sort → wrong ranks.
+    scoredUsers.sort((a, b) => {
+      const da = new Decimal(b.performanceScore ?? '0');
+      const db_ = new Decimal(a.performanceScore ?? '0');
+      return da.comparedTo(db_);
+    });
 
     const cacheEntries = scoredUsers.map((u, index) => ({
       ...u,
@@ -3511,12 +3520,18 @@ export class DatabaseStorage implements IStorage {
     const feeConfigs = await db.select().from(systemConfig).where(eq(systemConfig.key, 'WITHDRAWAL_FEE_PCT'));
     const feeRate = feeConfigs[0]?.value ?? 15;
 
-    const totalIn = parseFloat(totalProfitRow?.total ?? '0');
-    const monthIn = parseFloat(monthProfitRow?.total ?? '0');
-    const totalOut = parseFloat(totalOutRow?.total ?? '0');
-    const monthOut = parseFloat(monthOutRow?.total ?? '0');
-    const safe = totalIn - totalOut;
-    const monthBalance = monthIn - monthOut;
+    // Audit finding 1-G: replace parseFloat with Decimal arithmetic to prevent
+    // IEEE 754 drift in PKR aggregations shown in the founder reconciliation panel.
+    const totalInD = new Decimal(totalProfitRow?.total ?? '0');
+    const monthInD = new Decimal(monthProfitRow?.total ?? '0');
+    const totalOutD = new Decimal(totalOutRow?.total ?? '0');
+    const monthOutD = new Decimal(monthOutRow?.total ?? '0');
+    const totalIn = totalInD.toNumber();
+    const monthIn = monthInD.toNumber();
+    const totalOut = totalOutD.toNumber();
+    const monthOut = monthOutD.toNumber();
+    const safe = totalInD.minus(totalOutD).toNumber();
+    const monthBalance = monthInD.minus(monthOutD).toNumber();
     const daysSinceLast = lastWd?.createdAt ? Math.floor((Date.now() - new Date(lastWd.createdAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
 
     return {
