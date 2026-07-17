@@ -624,7 +624,7 @@ export class DatabaseStorage implements IStorage {
           description: def.description,
           updatedAt: new Date()
         });
-        console.log(`[Bootstrap] Initialized missing config key: ${def.key}`);
+        logger.info({ key: def.key }, '[Bootstrap] Initialized missing config key');
       }
     }
   }
@@ -2665,7 +2665,7 @@ export class DatabaseStorage implements IStorage {
 
   async getReferralLeaderboard(userId: string) {
     try {
-      console.log(`[ReferralTree] Fetching network for user: ${userId}`);
+      logger.info({ userId }, '[ReferralTree] Fetching network for user');
 
       // 1. Get Top Level 1 Referees (Directly referred by userId)
       //    Only real, active members count toward the leaderboard — team/admin/
@@ -2692,7 +2692,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(users.totalEarnings))
         .limit(100);
 
-      console.log(`[ReferralTree] Found ${level1Users.length} L1 users (capped at 100)`);
+      logger.info({ count: level1Users.length }, '[ReferralTree] Found L1 users (capped at 100)');
 
       // 2. Get Top Level 2 Referees (Referred by Level 1 users)
       const level1Ids = level1Users.map(u => u.id);
@@ -2721,7 +2721,7 @@ export class DatabaseStorage implements IStorage {
           .orderBy(desc(users.totalEarnings))
           .limit(200);
 
-        console.log(`[ReferralTree] Found ${level2Users.length} L2 users (capped at 200)`);
+        logger.info({ count: level2Users.length }, '[ReferralTree] Found L2 users (capped at 200)');
       }
 
       // 3. Pull real per-referee commission totals in one batch query instead

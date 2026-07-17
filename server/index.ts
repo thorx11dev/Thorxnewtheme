@@ -10,6 +10,7 @@ import { startLeaderboardCleanup } from "./jobs/leaderboard-cleanup";
 import { startHealthSnapshotJob } from "./jobs/health-snapshot";
 import { startGuildWeeklyResetJob } from "./jobs/guild-weekly-reset";
 import { startInactivityPenaltyJob } from "./jobs/inactivity-penalty";
+import { initSentry, sentryErrorHandler } from "./lib/sentry";
 
 // Suppress pg v8 SSL deprecation warning (Railway injects sslmode=require in DATABASE_URL)
 const originalEmitWarning = process.emitWarning;
@@ -31,6 +32,9 @@ process.on('uncaughtException', (error) => {
 });
 
 const app = express();
+
+// Task 21 — Sentry error tracking (no-op if SENTRY_DSN not set)
+initSentry(app);
 
 // Railway runs behind a reverse proxy — trust the first proxy for correct req.ip
 app.set("trust proxy", 1);
@@ -103,6 +107,10 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+
+  // Sentry must come BEFORE the generic error handler so it can capture errors
+  // Cast needed: Sentry's error handler signature matches Express error middleware at runtime
+  app.use(sentryErrorHandler() as any);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
