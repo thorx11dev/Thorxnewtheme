@@ -1638,7 +1638,7 @@ export class DatabaseStorage implements IStorage {
     const result: Record<string, number> = { Engine_A: 0, Engine_B: 0, Engine_C: 0, Indirect: 0 };
     for (const row of rows) {
       const key = row.engineType;
-      if (key && key in result) result[key] = parseFloat(row.total);
+      if (key && key in result) result[key] = new Decimal(row.total ?? "0").toNumber();
     }
     return result as { Engine_A: number; Engine_B: number; Engine_C: number; Indirect: number };
   }
@@ -3296,8 +3296,14 @@ export class DatabaseStorage implements IStorage {
     };
 
     const calc = (points: number, pkr: number) => {
-      const fee = pkr * (feePct / 100);
-      return { points, exactPkr: pkr, platformFee: parseFloat(fee.toFixed(2)), netPkr: parseFloat((pkr - fee).toFixed(2)) };
+      const pkrD = new Decimal(pkr);
+      const feeD = pkrD.times(feePct).dividedBy(100);
+      return {
+        points,
+        exactPkr: pkrD.toNumber(),
+        platformFee: feeD.toDecimalPlaces(2).toNumber(),
+        netPkr: pkrD.minus(feeD).toDecimalPlaces(2).toNumber(),
+      };
     };
 
     const query = async (since?: Date) => {
