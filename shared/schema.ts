@@ -23,7 +23,7 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
-  identity: text("identity").notNull(),
+  identity: text("identity").notNull().unique(),
   phone: text("phone").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
@@ -206,7 +206,7 @@ export const leaderboardCache = pgTable("leaderboard_cache", {
 // Ad views tracking table
 export const adViews = pgTable("ad_views", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   adId: varchar("ad_id"), // Nullable; advertisements table removed
   adType: text("ad_type").notNull(),
   adNetwork: text("ad_network").default("internal"),
@@ -359,7 +359,7 @@ export type InsertLeaderboardCache = typeof leaderboardCache.$inferInsert;
 // Records of task completions by users
 export const taskRecords = pgTable("task_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   taskId: varchar("task_id").notNull().references(() => dailyTasks.id, { onDelete: "cascade" }),
   status: text("status").default("completed"),
   clickedAt: timestamp("clicked_at"), // track when they clicked for the delay verification
@@ -524,12 +524,13 @@ export const notifications = pgTable("notifications", {
   index("notifications_user_id_idx").on(table.userId),
   index("notifications_type_idx").on(table.type),
   index("notifications_created_at_idx").on(table.createdAt),
+  index("notifications_user_id_is_read_idx").on(table.userId, table.isRead),
 ]);
 
 // Risk cases — persistent case management for flagged accounts
 export const riskCases = pgTable("risk_cases", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   riskScore: decimal("risk_score", { precision: 5, scale: 2 }).notNull().default("0"),
   severity: text("severity").notNull().default("Low"), // Low | Medium | High | Critical
   status: text("status").notNull().default("Open"),    // Open | Investigating | Cleared | Actioned
@@ -1170,7 +1171,7 @@ export type GuildWeeklyCycle = typeof guildWeeklyCycles.$inferSelect;
 // The bulletproof points/PKR valuation ledger — append-only, see design notes above.
 export const pointsLedger = pgTable("points_ledger", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   guildId: varchar("guild_id").references(() => guilds.id, { onDelete: "set null" }), // guild active at earn time, if any
   sourceType: text("source_type").notNull(), // ad_view | cpa_offer | daily_task | referral | guild_release
   sourceRefId: varchar("source_ref_id"), // e.g. the adViews.id / taskRecords.id / guildWeeklyCycles.id this row is derived from

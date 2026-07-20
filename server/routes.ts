@@ -6,7 +6,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { storage, RANK_NAMES } from "./storage";
 import { pool, db } from "./db";
-import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh, broadcastGuildMessage, broadcastGuildEvent, broadcastToUser } from "./realtime";
+import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh, broadcastGuildMessage, broadcastGuildEvent, broadcastToUser, closeUserSockets } from "./realtime";
 import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, taskRecords, adViews, dailyTasks, systemConfig, weeklyTasks, auditLogs, insertHilltopAdsConfigSchema, insertHilltopAdsZoneSchema } from "@shared/schema";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { z } from "zod";
@@ -363,8 +363,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/health", (_req, res) => {
-    res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
+  app.get("/api/health", async (_req, res) => {
+    try {
+      await db.execute(sql`SELECT 1`);
+      res.json({ status: "healthy", db: "connected", uptime: process.uptime(), timestamp: new Date().toISOString() });
+    } catch (err) {
+      logger.error({ err }, "[Health] DB connectivity check failed");
+      res.status(503).json({ status: "unhealthy", db: "disconnected", timestamp: new Date().toISOString() });
+    }
   });
 
   // --- Team Invitation Endpoints ---
@@ -499,7 +505,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { action, payload } = z.object({
         action: z.enum(["suspend", "adjust_balance"]),
-        payload: z.object({ amount: z.union([z.number(), z.string()]) }).optional(),
+        payload: z.object({
+          amount: z.union([z.number(), z.string()]).optional(),
+          reason: z.string().min(1).max(500).optional(),
+        }).optional(),
       }).parse(req.body);
 
       const user = await storage.getUserById(id);
@@ -509,11 +518,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (action === "suspend") {
         await storage.updateUser(id, { isActive: false } as any);
-      } else if (action === "adjust_balance" && payload && payload.amount) {
-        // Use Decimal arithmetic to avoid IEEE-754 float drift on ledger values.
+        // Immediately close any active WS connections for this user (Finding 1-F)
+        closeUserSockets(id, 4003, "Account suspended");
+      } else if (action === "adjust_balance" && payload && payload.amount !== undefined) {
+        // Route through adjustUserBalance so every balance change creates an audit log (Finding 1-D)
         const amount = new Decimal(String(payload.amount));
-        const currentBalance = new Decimal(user.availableBalance || "0");
-        await storage.updateUser(id, { availableBalance: currentBalance.plus(amount).toFixed(4) } as any);
+        const type = amount.isNegative() ? "subtract" : "add";
+        const adminId = getThorxPrincipalId(req) as string;
+        await storage.adjustUserBalance(id, amount.abs().toFixed(4), type, adminId, payload.reason ?? "Admin balance adjustment");
       } else {
         return res.status(400).json({ message: "Invalid action or missing payload" });
       }
@@ -677,12 +689,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update own user profile
-  app.patch("/api/users/:id", profileRateLimiter, async (req, res) => {
+  app.patch("/api/users/:id", requireSessionAuth, profileRateLimiter, async (req, res) => {
     try {
-      const principalId = getThorxPrincipalId(req);
-      if (!principalId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
+      // requireSessionAuth already rejects unauthenticated and suspended users (Finding 1-E)
+      const principalId = getThorxPrincipalId(req) as string;
 
       if (principalId !== req.params.id) {
         return res.status(403).json({ message: "Cannot update other users" });

@@ -694,15 +694,23 @@ export class DatabaseStorage implements IStorage {
       userData.id = insertUser.id;
     }
 
-    const [user] = await db.insert(users).values(userData).returning();
+    // Wrap user creation + referral insert in a single transaction so that
+    // a referral-insert failure rolls back the whole registration (Finding 1-A).
+    const user = await db.transaction(async (tx) => {
+      const [newUser] = await tx.insert(users).values(userData).returning();
 
-    // If user was referred, create referral record
-    if (insertUser.referredBy) {
-      await this.createReferral({
-        referrerId: insertUser.referredBy,
-        referredId: user.id,
-      });
-    }
+      if (insertUser.referredBy) {
+        await tx.insert(referrals).values({
+          referrerId: insertUser.referredBy,
+          referredId: newUser.id,
+          status: "active",
+          tier: 1,
+          totalEarned: "0.00",
+        });
+      }
+
+      return newUser;
+    });
 
     return user;
   }

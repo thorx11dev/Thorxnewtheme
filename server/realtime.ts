@@ -224,3 +224,16 @@ export function setSocketGuild(ws: WebSocket, guildId: string | null) {
   if (guildId) meta.guildId = guildId;
   else delete meta.guildId;
 }
+
+/**
+ * Close all open WebSocket connections belonging to a specific user.
+ * Called immediately after an account is suspended so the user is disconnected
+ * in real-time rather than waiting for their next HTTP request (Finding 1-F).
+ */
+export function closeUserSockets(userId: string, code: number, reason: string): void {
+  sockets.forEach((meta, ws) => {
+    if (meta.userId === userId && ws.readyState === WebSocket.OPEN) {
+      ws.close(code, reason);
+    }
+  });
+}

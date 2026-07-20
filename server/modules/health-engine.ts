@@ -27,6 +27,7 @@ import {
   systemConfig,
 } from "@shared/schema";
 import { eq, and, sql, desc, gte, lt, lte, inArray, count, sum, avg } from "drizzle-orm";
+import { logger } from "../lib/logger";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -630,8 +631,8 @@ export async function computeAndSaveHealthSnapshot(): Promise<void> {
       delta24h: delta24h !== null ? delta24h.toFixed(2) : null,
     });
 
-    console.log(`[HealthEngine] Snapshot saved — overall: ${result.overallScore}, reason: ${result.topReason.slice(0, 80)}`);
+    logger.info({ overallScore: result.overallScore, topReason: result.topReason.slice(0, 80) }, "[HealthEngine] Snapshot saved");
   } catch (err) {
-    console.error("[HealthEngine] Failed to compute/save snapshot:", err);
+    logger.error({ err }, "[HealthEngine] Failed to compute/save snapshot");
   }
 }

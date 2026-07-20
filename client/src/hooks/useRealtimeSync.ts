@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getApiOrigin } from "@/lib/apiOrigin";
 import type { User } from "@/hooks/useAuth";
@@ -51,6 +51,7 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
   const { toast } = useToast();
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -63,6 +64,7 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
       socketRef.current = ws;
 
       ws.onopen = () => {
+        setWsConnected(true);
         // Register this socket's active guild so broadcastGuildEvent routes correctly
         if (guildId) ws.send(JSON.stringify({ type: "join_guild", guildId }));
       };
@@ -236,6 +238,7 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
       };
 
       ws.onclose = () => {
+        setWsConnected(false);
         if (cancelled) return;
         // Notify the user that live features are paused (Finding 3-E / Task 17)
         toast({
@@ -249,6 +252,7 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
       };
 
       ws.onerror = () => {
+        setWsConnected(false);
         ws.close();
       };
     };
@@ -261,4 +265,6 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
       socketRef.current?.close();
     };
   }, [user?.id, guildId, queryClient]);
+
+  return { wsConnected };
 }

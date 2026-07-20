@@ -14,6 +14,7 @@
 
 import { db } from "../db";
 import { logger } from "../lib/logger";
+import Decimal from "decimal.js";
 import {
   users,
   riskCases,
@@ -63,7 +64,7 @@ async function signalEarningsVelocity(userId: string): Promise<RiskSignal> {
     .select({ total: sql<string>`COALESCE(SUM(${earnings.amount}), '0')` })
     .from(earnings)
     .where(and(eq(earnings.userId, userId), gte(earnings.createdAt, since)));
-  const earned24h = parseFloat(row?.total ?? "0");
+  const earned24h = new Decimal(row?.total ?? "0").toNumber();
   const score = Math.min(25, (earned24h / Math.max(1, threshold)) * 25);
   return {
     name: "Earnings Velocity",
@@ -287,7 +288,7 @@ export async function scoreUser(userId: string): Promise<RiskResult> {
     .from(users)
     .where(eq(users.id, userId));
 
-  const totalEarnings = parseFloat(user?.totalEarnings ?? "0");
+  const totalEarnings = new Decimal(user?.totalEarnings ?? "0").toNumber();
   const referralCount = user?.referralCount ?? 0;
 
   const signals = await Promise.all([

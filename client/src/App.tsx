@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { WsStatusBanner } from "@/components/ui/WsStatusBanner";
 import { ProtectedRoute, PublicOnlyRoute, TeamProtectedRoute } from "@/components/auth/ProtectedRoute";
 import ThorxLoadingScreen from "@/components/ui/thorx-loading-screen";
 import ComicClickEffect from "@/components/ui/ComicClickEffect";
@@ -32,7 +33,7 @@ function Router() {
 
   // Real-time sync: pushes admin-side changes (balance, rank, status) to this
   // session instantly so the portal never shows stale data.
-  useRealtimeSync(isAuthenticated ? user : null, user?.guildId);
+  const { wsConnected } = useRealtimeSync(isAuthenticated ? user : null, user?.guildId);
 
   useEffect(() => {
     if (!isLoading) {
@@ -70,6 +71,7 @@ function Router() {
 
   return (
     <Suspense fallback={<PageLoader />}>
+      {isAuthenticated && <WsStatusBanner wsConnected={wsConnected} />}
       <Switch>
         <Route path="/">
           {getPortalComponent()}
