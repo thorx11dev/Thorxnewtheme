@@ -52,6 +52,8 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  // Prevents reconnection attempts when the account has been suspended (Q3)
+  const suspendedRef = useRef(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -74,6 +76,20 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
         try {
           msg = JSON.parse(event.data);
         } catch {
+          return;
+        }
+
+        // Q3 business decision: server sends SUSPENDED message before closing socket
+        // so the client can show a clear reason rather than a generic disconnect toast.
+        if (msg.type === "SUSPENDED") {
+          suspendedRef.current = true; // block reconnection loop
+          toast({
+            title: "⛔ Account Suspended",
+            description: (msg as any).message ?? "Your account has been suspended. Please contact support.",
+            variant: "destructive",
+          });
+          // Invalidate session so ProtectedRoute redirects to /auth
+          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
           return;
         }
 
@@ -240,6 +256,8 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
       ws.onclose = () => {
         setWsConnected(false);
         if (cancelled) return;
+        // Don't reconnect if the server suspended this account (Q3)
+        if (suspendedRef.current) return;
         // Notify the user that live features are paused (Finding 3-E / Task 17)
         toast({
           title: "Live connection lost",

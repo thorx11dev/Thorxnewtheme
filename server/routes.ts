@@ -2446,8 +2446,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      broadcastUserUpdated(id, "account_deleted");
-      res.json({ message: "User deleted successfully" });
+      // closeUserSockets handles active WS sessions for deactivated accounts
+      closeUserSockets(id, 4003, "Account deactivated");
+      broadcastUserUpdated(id, "account_deactivated");
+      res.json({ message: "User account deactivated successfully" });
     } catch (error) {
       logger.error({ err: error }, "Delete user error:");
       res.status(500).json({ message: "Failed to delete user" });

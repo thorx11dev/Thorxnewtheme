@@ -3829,7 +3829,10 @@ export class DatabaseStorage implements IStorage {
     if (user.role === 'founder') {
       throw new Error("Protected Node Error: Founder accounts cannot be terminated from the directory.");
     }
-    // Q2 architectural decision (2026-07-17): soft-delete + PII anonymization.
+    // Q1 business decision (2026-07-20): SOFT-DELETE ONLY. Hard-deletes are permanently
+    // prohibited — the users row must never be removed from the database. Financial records
+    // (earnings, withdrawals, commissions, audit logs) are retained for compliance and
+    // FK integrity. Only PII is anonymized; isActive=false prevents all access.
     // Financial records (earnings, withdrawals, commissions) are RETAINED in the
     // database for financial auditing and tax law compliance (minimum 7 years).
     // Only personal identifying information is erased; the user row stays intact

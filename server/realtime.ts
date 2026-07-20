@@ -227,12 +227,23 @@ export function setSocketGuild(ws: WebSocket, guildId: string | null) {
 
 /**
  * Close all open WebSocket connections belonging to a specific user.
- * Called immediately after an account is suspended so the user is disconnected
- * in real-time rather than waiting for their next HTTP request (Finding 1-F).
+ * Per Q3 business decision: sends an explicit SUSPENDED message payload
+ * BEFORE closing so the client receives clear UX feedback, not just a close code.
+ * Called immediately after an account is suspended (Finding 1-F).
  */
 export function closeUserSockets(userId: string, code: number, reason: string): void {
   sockets.forEach((meta, ws) => {
     if (meta.userId === userId && ws.readyState === WebSocket.OPEN) {
+      // Send the suspension notice first so the client can show a clear message
+      // before the connection drops (Q3 business decision).
+      try {
+        ws.send(JSON.stringify({
+          type: "SUSPENDED",
+          message: "Your account has been suspended. Please contact support if you believe this is an error.",
+        }));
+      } catch {
+        // If send fails, proceed to close anyway
+      }
       ws.close(code, reason);
     }
   });
