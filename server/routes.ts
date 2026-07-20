@@ -2107,7 +2107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User CRM Management Routes
-  app.post("/api/admin/users/:userId/adjust-balance", requirePermission("MANAGE_USERS"), profileRateLimiter, async (req, res) => {
+  app.post("/api/admin/users/:userId/adjust-balance", requirePermission("MANAGE_USERS"), withdrawalRateLimiter, async (req, res) => {
     try {
       const { userId } = req.params;
       const { realPkrDelta, txPointsDelta, amount, type, reason, creditIntent } = req.body;
@@ -2576,24 +2576,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       logger.error({ err: error }, "Fetch notes error:");
       res.status(500).json({ message: "Failed to fetch notes" });
-    }
-  });
-
-  // Create internal note
-  app.post("/api/admin/notes", requirePermission("MANAGE_USERS"), async (req, res) => {
-    try {
-      const noteSchema = z.object({
-        targetType: z.enum(["user", "withdrawal", "guild", "risk_case"]),
-        targetId:   z.string().min(1),
-        content:    z.string().min(1).max(2000),
-      });
-      const parsed = noteSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid note data" });
-      const note = await storage.createInternalNote({ adminId: req.userProfile.id, ...parsed.data });
-      res.json({ success: true, note });
-    } catch (error) {
-      logger.error({ err: error }, "Create note error:");
-      res.status(500).json({ message: "Failed to create note" });
     }
   });
 

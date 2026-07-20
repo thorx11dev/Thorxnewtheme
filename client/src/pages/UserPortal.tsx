@@ -812,6 +812,12 @@ export default function UserPortal() {
       if (breakdown) {
         setScratchCardBreakdown(breakdown);
         setShowScratchCard(true);
+      } else {
+        // Fallback toast when scratch card breakdown is absent
+        toast({
+          title: "Points Earned",
+          description: "Your ad view has been recorded and points credited.",
+        });
       }
     },
     onError: (err: any) => {
@@ -1041,6 +1047,11 @@ export default function UserPortal() {
         avatar: "TS"
       };
       setChatMessages(prev => [...prev, errorMessage]);
+      toast({
+        title: "Message Failed",
+        description: "Could not reach support. Check your connection and try again.",
+        variant: "destructive",
+      });
     }
   });
 

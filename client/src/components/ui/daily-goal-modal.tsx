@@ -63,7 +63,9 @@ export function DailyGoalModal({
             return res.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks });
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.earnings });
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
         }
     });
 
