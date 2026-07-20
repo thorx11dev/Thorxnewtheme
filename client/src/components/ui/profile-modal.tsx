@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { QUERY_KEYS } from "@/lib/queryKeys";
 import { useLocation } from "wouter";
 import { ElasticStack } from "@/components/ui/elastic-stack";
 import { PSProgressCard } from "@/components/PSProgressCard";
@@ -116,16 +117,16 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
       return res.json(); // { message, user }
     },
     onMutate: async (newData) => {
-      // ["session-auth"] is the key used by useAuth
-      await queryClient.cancelQueries({ queryKey: ["session-auth"] });
-      const previousUser = queryClient.getQueryData(["session-auth"]);
+      // QUERY_KEYS.sessionAuth is the canonical key used by useAuth
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.sessionAuth });
+      const previousUser = queryClient.getQueryData(QUERY_KEYS.sessionAuth);
 
       // Split name the same way the server does so firstName/lastName stay correct
       const parts = newData.name.trim().split(/\s+/);
       const firstName = parts[0];
       const lastName = parts.length > 1 ? parts.slice(1).join(" ") : parts[0];
 
-      queryClient.setQueryData(["session-auth"], (old: any) => ({
+      queryClient.setQueryData(QUERY_KEYS.sessionAuth, (old: any) => ({
         ...old,
         name: newData.name,
         firstName,
@@ -143,16 +144,16 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
     onSuccess: (response) => {
       // Server returns { message, user } — write the user object into the cache
       const updatedUser = response?.user ?? response;
-      if (updatedUser) queryClient.setQueryData(["session-auth"], updatedUser);
-      queryClient.invalidateQueries({ queryKey: ["session-auth"] });
-      queryClient.invalidateQueries({ queryKey: ["referrals"] });
-      queryClient.invalidateQueries({ queryKey: ["referrals", "leaderboard"] });
-      queryClient.invalidateQueries({ queryKey: ["earnings"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      if (updatedUser) queryClient.setQueryData(QUERY_KEYS.sessionAuth, updatedUser);
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.referrals });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.referralsLeaderboard });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.earnings });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardStats });
       toast({ title: "Profile Updated", description: "Your changes have been saved." });
     },
     onError: (_err, _newData, context: any) => {
-      if (context?.previousUser) queryClient.setQueryData(["session-auth"], context.previousUser);
+      if (context?.previousUser) queryClient.setQueryData(QUERY_KEYS.sessionAuth, context.previousUser);
       toast({ title: "Error", description: "Could not save changes.", variant: "destructive" });
     },
   });

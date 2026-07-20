@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getApiOrigin } from "@/lib/apiOrigin";
 import type { User } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { QUERY_KEYS } from "@/lib/queryKeys";
 
 /**
  * Query keys that represent "this user's own data". Any of these must be
@@ -10,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
  * rank, status, etc.) so the user portal never shows a stale state.
  */
 const OWN_DATA_QUERY_KEYS: unknown[][] = [
-  ["session-auth"],
+  QUERY_KEYS.sessionAuth,
   ["dashboard", "stats"],
   ["earnings"],
   ["earnings", "history", "week"],

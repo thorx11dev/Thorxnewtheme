@@ -12,6 +12,7 @@
 export const QUERY_KEYS = {
   // Auth / session
   user:               ["/api/user"]                         as const,
+  sessionAuth:        ["session-auth"]                      as const,
 
   // Earnings / financial
   earnings:           ["/api/earnings"]                     as const,

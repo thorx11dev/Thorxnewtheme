@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { QUERY_KEYS } from "@/lib/queryKeys";
 import { DailyTask, TaskRecord } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -73,7 +74,10 @@ export function DailyGoalModal({
         },
         onSuccess: (data) => {
             if (data.success) {
-                queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks });
+                // Invalidate earnings + session in case task completion awarded points.
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.earnings });
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
                 toast({
                     title: "Access Granted",
                     description: "Secret code verified. Requirement met.",

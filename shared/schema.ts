@@ -177,6 +177,7 @@ export const earnings = pgTable("earnings", {
   // Audit finding 2-F: leaderboard analytics filter by userId + type together —
   // composite index replaces two separate single-column scans.
   index("earnings_user_id_type_idx").on(table.userId, table.type),
+  index("earnings_user_id_created_at_idx").on(table.userId, table.createdAt),
 ]);
 
 // Leaderboard cache for high-performance enterprise analytics
@@ -368,7 +369,8 @@ export const taskRecords = pgTable("task_records", {
   index("task_records_user_id_idx").on(table.userId),
   index("task_records_task_id_idx").on(table.taskId),
   // Composite index for "has user completed task X?" lookup — 2026-07-15 perf audit
-  index("task_records_user_task_idx").on(table.userId, table.taskId)
+  index("task_records_user_task_idx").on(table.userId, table.taskId),
+  index("task_records_user_completed_at_idx").on(table.userId, table.completedAt),
 ]);
 
 // Chat messages for support chatbot

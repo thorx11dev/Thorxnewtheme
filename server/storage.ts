@@ -2021,11 +2021,13 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]> {
+  async getWithdrawalsByUserId(userId: string, limit = 50, offset = 0): Promise<Withdrawal[]> {
     return await db.select()
       .from(withdrawals)
       .where(eq(withdrawals.userId, userId))
-      .orderBy(desc(withdrawals.createdAt));
+      .orderBy(desc(withdrawals.createdAt))
+      .limit(limit)
+      .offset(offset);
   }
 
   async getWithdrawalById(withdrawalId: string): Promise<Withdrawal | undefined> {
@@ -3156,7 +3158,7 @@ export class DatabaseStorage implements IStorage {
     return Number(result[0]?.count || 0);
   }
 
-  async getAdminWithdrawals(): Promise<Array<Withdrawal & { user: User }>> {
+  async getAdminWithdrawals(limit = 100, offset = 0): Promise<Array<Withdrawal & { user: User }>> {
     const results = await db
       .select({
         withdrawal: withdrawals,
@@ -3164,7 +3166,9 @@ export class DatabaseStorage implements IStorage {
       })
       .from(withdrawals)
       .innerJoin(users, eq(withdrawals.userId, users.id))
-      .orderBy(desc(withdrawals.createdAt));
+      .orderBy(desc(withdrawals.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     return results.map(r => ({
       ...r.withdrawal,

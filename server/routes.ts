@@ -1677,7 +1677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
   // PROXY ENDPOINT FOR AD WEB PANEL
   // ============================================
-  app.get("/api/proxy", async (req, res) => {
+  app.get("/api/proxy", requireTeamRole, async (req, res) => {
     try {
       await handleProxyRequest(req, res);
 
@@ -2074,7 +2074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/withdrawals/bulk", requirePermission("MANAGE_PAYOUTS"), async (req, res) => {
+  app.post("/api/admin/withdrawals/bulk", requirePermission("MANAGE_PAYOUTS"), withdrawalRateLimiter, async (req, res) => {
     try {
       const { ids, status } = req.body;
       if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -2249,7 +2249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/founder/withdrawals", requireTeamRole, async (req, res) => {
+  app.post("/api/admin/founder/withdrawals", requireTeamRole, withdrawalRateLimiter, async (req, res) => {
     try {
       if (req.userProfile!.role !== 'founder') {
         return res.status(403).json({ message: "Founder access required" });
@@ -3479,7 +3479,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/tasks/:id", requireTeamRole, async (req, res) => {
     try {
       debugLog(`[ADMIN_TASK_PATCH] ID: ${req.params.id}. Payload:`, req.body);
-      const task = await storage.updateDailyTask(req.params.id, req.body);
+      // T-2 audit fix: whitelist permitted fields — prevents mass-assignment of internal columns.
+      const updateTaskSchema = z.object({
+        title:           z.string().min(1).max(200).optional(),
+        description:     z.string().max(1000).optional(),
+        pointReward:     z.number().int().min(0).max(10000).optional(),
+        isActive:        z.boolean().optional(),
+        weekStart:       z.string().datetime().optional(),
+        weekEnd:         z.string().datetime().optional(),
+        targetGuildRank: z.string().optional(),
+        taskType:        z.enum(["daily", "weekly", "special"]).optional(),
+        requirements:    z.record(z.unknown()).optional(),
+      });
+      const parsed = updateTaskSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid input", errors: parsed.error.flatten() });
+      }
+      const task = await storage.updateDailyTask(req.params.id, parsed.data);
       if (!task) return res.status(404).json({ message: "Task not found" });
       res.json(task);
     } catch (error) {

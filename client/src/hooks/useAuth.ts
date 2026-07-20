@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useState } from "react";
+import { QUERY_KEYS } from "@/lib/queryKeys";
 
 export interface User {
   id: string;
@@ -38,7 +39,7 @@ export function useAuth() {
   const queryClient = useQueryClient();
 
   const { data: user, isLoading } = useQuery<User | null>({
-    queryKey: ["session-auth"],
+    queryKey: QUERY_KEYS.sessionAuth,
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/profile");
@@ -66,7 +67,7 @@ export function useAuth() {
     },
     onSuccess: () => {
       setTimeout(() => {
-        queryClient.setQueryData(["session-auth"], null);
+        queryClient.setQueryData(QUERY_KEYS.sessionAuth, null);
         queryClient.clear();
         setIsTransitioning(false);
         setLocation("/");
@@ -75,7 +76,7 @@ export function useAuth() {
     onError: () => {
       // Even on network failure, clear local session state so the UI is not
       // left in a ghost-login state (audit finding K).
-      queryClient.setQueryData(["session-auth"], null);
+      queryClient.setQueryData(QUERY_KEYS.sessionAuth, null);
       queryClient.clear();
       setIsTransitioning(false);
       setLocation("/");
