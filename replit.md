@@ -88,6 +88,14 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 - 2026-07-20 (re-import): `node_modules/.bin/tsx` missing after import. Ran `npm install` + `npx drizzle-kit push --force` (no conflicts, clean apply — all tables present from prior import). Workflow restarted, landing page renders correctly on port 5000 (only expected 401 from unauthenticated session check on load).
 - 2026-07-20 (auth regression + founder provisioning): Full auth regression passed against live dev domain — unauthenticated `/api/user` (401 NO_SESSION) → register QA account with `identity` field (201, role: user, rank: Nawa Aya, full user object) → `/api/user` (200, full session) → logout (200 Logout successful) → `/api/user` (401 NO_SESSION) → wrong-password login (401 UNAUTHORIZED) → correct-password login (200 Login successful, user nested under `user` key) → duplicate email rejected (400 DUPLICATE_EMAIL) → QA account deleted from DB. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder`; verified login (200) → `/api/user` (200, role: founder, firstName: Thorx, lastName: X) → `/api/admin/config` (200, configs array returned) → `/api/team/members` (200, 1 member: Thorx X, accessLevel: founder) → logout (200) → `/api/user` (401 NO_SESSION). Only the founder account remains in the `users` table.
 
+- 2026-07-20 (re-import, this session): `node_modules/.bin/tsx` missing after import. Steps taken:
+  1. `npm install` — all 655 packages installed cleanly (node >=22 engine warning is harmless; project runs on Node 20).
+  2. `npx drizzle-kit push --force` — schema applied with no conflicts ("Changes applied").
+  3. Restored `postgresql-16` to `.replit` modules (had been dropped during import auto-generation).
+  4. Workflow restarted; app running on port 5000 — landing page renders correctly.
+  5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder) provisioned via `POST /api/bootstrap-founder` with user-supplied password.
+  6. Full auth regression passed: unauthenticated 401 → register new user (201) → session check (200) → logout (200) → 401 confirmed → correct-password login (200, Login successful) → founder login (200, role: founder). All POST routes require the `thorx.csrf.v2` double-submit cookie token echoed as `x-csrf-token` header.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
