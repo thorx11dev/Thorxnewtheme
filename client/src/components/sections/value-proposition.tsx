@@ -97,7 +97,7 @@ export default function ValueProposition({ isActive }: { isActive: boolean }) {
     const stakeholders = [
         {
             label: "FOR EARNERS",
-            description: "Turn genuine attention into real PKR earnings — no hidden deductions, no surprises. Our Net-First wallet always shows exactly what you can withdraw. Watch verified ads, complete curated tasks, build a referral team, and cash out directly to JazzCash or EasyPaisa."
+            description: "Turn genuine attention into real rewards — no hidden deductions, no surprises. Our Net-First wallet always shows exactly what you can withdraw. Watch verified ads, complete curated tasks, build a referral team, and withdraw directly to your account."
         },
         {
             label: "FOR ADVERTISERS",

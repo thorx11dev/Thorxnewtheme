@@ -3007,6 +3007,12 @@ export class DatabaseStorage implements IStorage {
     // replaced with a single GROUP BY aggregate run in parallel with the main query.
     // Note: level2Count is hardcoded 0 below per spec H.5 (L2 writes frozen) — so no
     // L2 aggregate is needed here.
+    // Task 2 / Finding 1-E: cap in-memory allocation at TOP_N users.
+    // Pre-sort by the already-stored performanceScore so we load only the
+    // competitive range into Node heap. At 100k users this keeps peak
+    // heap cost to ~5 MB instead of ~50 MB per refresh cycle.
+    const TOP_N = 10_000;
+
     const [allQualifiedUsers, l1Rows] = await Promise.all([
       db.select({
         id: users.id,
@@ -3018,7 +3024,9 @@ export class DatabaseStorage implements IStorage {
         guildRole: users.guildRole,
       })
       .from(users)
-      .where(and(eq(users.isActive, true), eq(users.role, "user"))),
+      .where(and(eq(users.isActive, true), eq(users.role, "user")))
+      .orderBy(desc(users.performanceScore))
+      .limit(TOP_N),
 
       // One aggregate query for all L1 counts (replaces per-row correlated subquery)
       db.select({

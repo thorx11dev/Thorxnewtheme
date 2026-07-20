@@ -160,7 +160,9 @@ export type InsertSystemConfig = z.infer<typeof insertSystemConfigSchema>;
 // Earnings transactions table
 export const earnings = pgTable("earnings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Finding 2-Q: financial audit records must survive user deletion (soft-delete pattern).
+  // onDelete: "restrict" prevents accidental cascade wipe of earnings history.
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   type: text("type").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   description: text("description").notNull(),
@@ -225,8 +227,9 @@ export const adViews = pgTable("ad_views", {
 // Referrals tracking table
 export const referrals = pgTable("referrals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  referrerId: varchar("referrer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  referredId: varchar("referred_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Finding 2-Q: referral linkage is financial — must survive user soft-delete.
+  referrerId: varchar("referrer_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  referredId: varchar("referred_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   status: text("status").default("active"),
   tier: integer("tier").default(1),
   totalEarned: decimal("total_earned", { precision: 10, scale: 2 }).default("0.00"),
@@ -244,7 +247,8 @@ export const referrals = pgTable("referrals", {
 // Withdrawals/Payouts table
 export const withdrawals = pgTable("withdrawals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Finding 2-Q: withdrawal records are financial audit trail — must survive user soft-delete.
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   method: text("method").notNull(),
   accountName: text("account_name").notNull(),
@@ -469,8 +473,9 @@ export const hilltopAdsStats = pgTable("hilltop_ads_stats", {
 // Commission Logs table for Multi-Level Referral System
 export const commissionLogs = pgTable("commission_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  beneficiaryId: varchar("beneficiary_id").notNull().references(() => users.id, { onDelete: "cascade" }), // User receiving the commission
-  sourceUserId: varchar("source_user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // User who requested payout
+  // Finding 2-Q: commission logs are financial audit trail — must survive user soft-delete.
+  beneficiaryId: varchar("beneficiary_id").notNull().references(() => users.id, { onDelete: "restrict" }), // User receiving the commission
+  sourceUserId: varchar("source_user_id").notNull().references(() => users.id, { onDelete: "restrict" }), // User who requested payout
   triggerWithdrawalId: varchar("trigger_withdrawal_id").references(() => withdrawals.id, { onDelete: "set null" }), // Link to the payout request
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   rate: decimal("rate", { precision: 5, scale: 4 }).notNull(), // 0.1500 or 0.0750
@@ -1302,7 +1307,8 @@ export type InsertWeeklyTaskRecord = typeof weeklyTaskRecords.$inferInsert;
 // INVARIANT: real_pkr_value is write-once; never UPDATE it after insert.
 export const userTransactions = pgTable("user_transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Finding 2-Q: immutable PKR ledger must survive user soft-delete.
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   engineType: text("engine_type").notNull(), // Engine_A | Engine_B | Engine_C | Indirect
   pointsCredited: integer("points_credited").notNull(), // randomized display value (Thorx Card)
   realPkrValue: decimal("real_pkr_value", { precision: 10, scale: 4 }).notNull(), // IMMUTABLE
