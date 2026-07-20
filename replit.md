@@ -96,6 +96,8 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
   5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder) provisioned via `POST /api/bootstrap-founder` with user-supplied password.
   6. Full auth regression passed: unauthenticated 401 → register new user (201) → session check (200) → logout (200) → 401 confirmed → correct-password login (200, Login successful) → founder login (200, role: founder). All POST routes require the `thorx.csrf.v2` double-submit cookie token echoed as `x-csrf-token` header.
 
+- 2026-07-20 (re-import): `node_modules/.bin/tsx` missing after import. Ran `npm install` + `npx drizzle-kit push --force` (no conflicts, "Changes applied"). Restored `postgresql-16` to `.replit` modules. Workflow restarted, landing page renders correctly on port 5000. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder`; verified login (200, Login successful) → `/api/user` (200, role: founder, firstName: Thorx, lastName: X) → `/api/admin/config` (200, configs returned) → logout (200). Only the founder account remains in the `users` table.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
