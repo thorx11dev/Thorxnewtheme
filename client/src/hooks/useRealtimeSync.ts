@@ -10,7 +10,7 @@ import { QUERY_KEYS } from "@/lib/queryKeys";
  * refetched the instant an admin action changes that user's record (balance,
  * rank, status, etc.) so the user portal never shows a stale state.
  */
-const OWN_DATA_QUERY_KEYS: unknown[][] = [
+const OWN_DATA_QUERY_KEYS: ReadonlyArray<readonly unknown[]> = [
   QUERY_KEYS.sessionAuth,
   ["dashboard", "stats"],
   ["earnings"],

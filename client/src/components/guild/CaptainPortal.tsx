@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Megaphone, Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target, MessagesSquare } from "lucide-react";
+import { Megaphone, Users, MessageCircle, BarChart3, Settings, CheckCircle, XCircle, Star, Send, Bell, Sword, Crown, Target, MessagesSquare, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -420,15 +420,15 @@ export function CaptainPortal() {
                   </div>
                   {!isCaptain && !isMe && (
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-zinc-400 hover:text-blue-600" title="Nudge" onClick={() => nudgeMutation.mutate(m.userId)}>
-                        <Bell size={12} />
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-zinc-400 hover:text-blue-600" title="Nudge" disabled={nudgeMutation.isPending} onClick={() => nudgeMutation.mutate(m.userId)}>
+                        {nudgeMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Bell size={12} />}
                       </Button>
                       <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-zinc-400 hover:text-purple-600" title="DM" onClick={() => { setSelectedDmMember(m.userId); setTab("dm"); }}>
                         <MessageCircle size={12} />
                       </Button>
                       {!m.isMvp && (
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-zinc-400 hover:text-yellow-500" title="Set MVP" onClick={() => mvpMutation.mutate(m.userId)}>
-                          <Star size={12} />
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-zinc-400 hover:text-yellow-500" title="Set MVP" disabled={mvpMutation.isPending} onClick={() => mvpMutation.mutate(m.userId)}>
+                          {mvpMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Star size={12} />}
                         </Button>
                       )}
                       <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-zinc-400 hover:text-red-600" title="Kick" onClick={() => setKickConfirm(m.userId)}>
@@ -622,7 +622,7 @@ export function CaptainPortal() {
               }
               settingsMutation.mutate(settingsForm);
             }}>
-              {settingsMutation.isPending ? "Saving…" : "Save Settings"}
+              {settingsMutation.isPending ? <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Saving…</span> : "Save Settings"}
             </Button>
           </div>
 
@@ -654,7 +654,7 @@ export function CaptainPortal() {
                 onClick={() => announcementMutation.mutate(announcementText.trim())}
               >
                 <Megaphone size={12} className="mr-1" />
-                {announcementMutation.isPending ? "Posting…" : "Post Announcement"}
+                {announcementMutation.isPending ? <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Posting…</span> : "Post Announcement"}
               </Button>
             </div>
           </div>

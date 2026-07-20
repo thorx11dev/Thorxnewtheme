@@ -2076,10 +2076,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/withdrawals/bulk", requirePermission("MANAGE_PAYOUTS"), withdrawalRateLimiter, async (req, res) => {
     try {
-      const { ids, status } = req.body;
-      if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        return res.status(400).json({ message: "No withdrawal IDs provided" });
-      }
+      const bulkWithdrawalSchema = z.object({
+        ids:    z.array(z.string().uuid()).min(1, "At least one withdrawal ID required"),
+        status: z.enum(["completed", "rejected", "pending"]),
+      });
+      const parsed = bulkWithdrawalSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input" });
+      const { ids, status } = parsed.data;
 
       await storage.bulkUpdateWithdrawalStatus(ids, status, req.userProfile.id);
       broadcastTeamRefresh("withdrawals_bulk_updated");
@@ -2254,10 +2257,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.userProfile!.role !== 'founder') {
         return res.status(403).json({ message: "Founder access required" });
       }
-      const { amount, withdrawalDate, description } = req.body;
-      if (!amount || !withdrawalDate) {
-        return res.status(400).json({ message: "amount and withdrawalDate are required" });
-      }
+      const founderWithdrawalSchema = z.object({
+        amount:          z.string().regex(/^\d+(\.\d{1,4})?$/, "amount must be a positive decimal string"),
+        withdrawalDate:  z.string().datetime({ message: "withdrawalDate must be an ISO datetime string" }),
+        description:     z.string().max(500).optional(),
+      });
+      const parsed = founderWithdrawalSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input" });
+      const { amount, withdrawalDate, description } = parsed.data;
       const fw = await storage.createFounderWithdrawal({
         amount: String(amount),
         withdrawalDate: new Date(withdrawalDate),
@@ -2369,15 +2376,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/notes", requirePermission("MANAGE_USERS"), async (req, res) => {
     try {
-      const { targetType, targetId, content } = req.body;
-      const adminId = req.userProfile.id;
-
-      const note = await storage.createInternalNote({
-        adminId,
-        targetType,
-        targetId,
-        content
+      const noteSchema = z.object({
+        targetType: z.enum(["user", "withdrawal", "guild", "risk_case"]),
+        targetId:   z.string().min(1),
+        content:    z.string().min(1).max(2000),
       });
+      const parsed = noteSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid note data" });
+      const adminId = req.userProfile.id;
+      const note = await storage.createInternalNote({ adminId, ...parsed.data });
       res.json(note);
     } catch (error) {
       logger.error({ err: error }, "Create note error:");
@@ -2575,14 +2582,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create internal note
   app.post("/api/admin/notes", requirePermission("MANAGE_USERS"), async (req, res) => {
     try {
-      const { targetType, targetId, content } = req.body;
-      const note = await storage.createInternalNote({
-        adminId: req.userProfile.id,
-        targetType,
-        targetId,
-        content
+      const noteSchema = z.object({
+        targetType: z.enum(["user", "withdrawal", "guild", "risk_case"]),
+        targetId:   z.string().min(1),
+        content:    z.string().min(1).max(2000),
       });
-
+      const parsed = noteSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid note data" });
+      const note = await storage.createInternalNote({ adminId: req.userProfile.id, ...parsed.data });
       res.json({ success: true, note });
     } catch (error) {
       logger.error({ err: error }, "Create note error:");
@@ -4249,7 +4256,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/risk-cases/:id", requirePermission("MANAGE_USERS"), async (req, res) => {
     try {
-      const { status, assignedTo, notes, resolution, trustStatusOutcome } = req.body;
+      const riskCaseUpdateSchema = z.object({
+        status:             z.enum(["Open", "Under Review", "Cleared", "Actioned"]).optional(),
+        assignedTo:         z.string().uuid().nullable().optional(),
+        notes:              z.string().max(5000).optional(),
+        resolution:         z.string().max(1000).optional(),
+        trustStatusOutcome: z.enum(["Special", "Trusted", "Normal", "Dangerous"]).optional(),
+      });
+      const parsed = riskCaseUpdateSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input" });
+      const { status, assignedTo, notes, resolution, trustStatusOutcome } = parsed.data;
       const adminId = getThorxPrincipalId(req);
 
       // Stamp note attribution so team members can see who last wrote the notes and when
@@ -4510,13 +4526,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/withdrawals/referral", requireSessionAuth, withdrawalRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
-      const { amount, method, accountName, accountNumber, accountDetails } = req.body;
-      if (!Number.isFinite(amount) || amount < 50) {
-        return res.status(400).json({ message: "Minimum referral cash withdrawal is Rs. 50." });
-      }
-      if (!method || !accountName || !accountNumber) {
-        return res.status(400).json({ message: "method, accountName, and accountNumber are required." });
-      }
+      const referralWithdrawalSchema = z.object({
+        amount:         z.number().finite().min(50, "Minimum referral cash withdrawal is Rs. 50."),
+        method:         z.string().min(1).max(100),
+        accountName:    z.string().min(1).max(200),
+        accountNumber:  z.string().min(1).max(100),
+        accountDetails: z.record(z.unknown()).optional(),
+      });
+      const parsed = referralWithdrawalSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input" });
+      const { amount, method, accountName, accountNumber, accountDetails } = parsed.data;
       const withdrawal = await storage.createReferralCashWithdrawal(
         userId, amount, method, accountName, accountNumber, accountDetails ?? {}
       );

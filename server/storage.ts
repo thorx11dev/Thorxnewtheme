@@ -293,7 +293,7 @@ export interface IStorage {
 
   // Withdrawals
   createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal>;
-  getWithdrawalsByUserId(userId: string): Promise<Withdrawal[]>;
+  getWithdrawalsByUserId(userId: string, limit?: number, offset?: number): Promise<Withdrawal[]>;
   getWithdrawalById(withdrawalId: string): Promise<Withdrawal | undefined>;
   getCheckPendingWithdrawal(userId: string): Promise<Withdrawal | undefined>;
   processWithdrawal(withdrawalId: string, adminId: string, transactionId?: string): Promise<Withdrawal>;
@@ -345,7 +345,7 @@ export interface IStorage {
     lastUpdated: Date;
   }>;
   refreshLeaderboardCache(): Promise<void>;
-  getAdminWithdrawals(): Promise<Array<Withdrawal & { user: User }>>;
+  getAdminWithdrawals(limit?: number, offset?: number): Promise<Array<Withdrawal & { user: User }>>;
   updateWithdrawalStatus(id: string, status: string, adminId: string, transactionId?: string, rejectionReason?: string): Promise<Withdrawal>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(limit?: number): Promise<AuditLog[]>;

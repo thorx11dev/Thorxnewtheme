@@ -49,6 +49,10 @@ export const QUERY_KEYS = {
 
   // Referrals
   referrals:          ["/api/referrals"]                    as const,
+  referralsLeaderboard: ["/api/referrals/leaderboard"]      as const,
+
+  // Dashboard stats (user dashboard summary card)
+  dashboardStats:     ["/api/user/dashboard-stats"]         as const,
 
   // Notifications
   notifications:      ["/api/notifications"]                as const,

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import { Zap, TrendingUp, TrendingDown, Minus, RefreshCw, X, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -125,7 +126,7 @@ export function SystemHealthCard() {
         {/* Score hero */}
         <div className="flex items-end gap-3 mb-1">
           <p className={cn("text-4xl font-black leading-none", isLoading ? "text-zinc-300" : scoreColor(overall))}>
-            {isLoading ? "—" : Math.round(overall)}
+            {isLoading ? <Skeleton className="inline-block h-8 w-12 rounded align-bottom" /> : Math.round(overall)}
             <span className="text-lg font-bold text-muted-foreground">/100</span>
           </p>
         </div>

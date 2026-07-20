@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   CreditCard, 
@@ -729,7 +730,7 @@ export function PayoutControl() {
                  onClick={() => updateStatusMutation.mutate({ id: selectedWithdrawal!.id, status: 'completed', transactionId })}
                  disabled={updateStatusMutation.isPending || !transactionId}
                >
-                 {updateStatusMutation.isPending ? "Processing..." : "Finalize Payout"}
+                 {updateStatusMutation.isPending ? <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Processing…</span> : "Finalize Payout"}
                </Button>
                <button
                  type="button"
@@ -764,7 +765,7 @@ export function PayoutControl() {
                  onClick={() => updateStatusMutation.mutate({ id: selectedWithdrawal!.id, status: 'rejected', rejectionReason })}
                  disabled={updateStatusMutation.isPending || !rejectionReason}
                >
-                 {updateStatusMutation.isPending ? "Processing..." : "Decline Entry"}
+                 {updateStatusMutation.isPending ? <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Processing…</span> : "Decline Entry"}
                </Button>
                <button
                  type="button"
