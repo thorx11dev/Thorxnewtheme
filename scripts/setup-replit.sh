@@ -16,7 +16,7 @@ echo "=== [2/3] Pushing database schema ==="
 npx drizzle-kit push --force
 
 echo ""
-echo "=== [3/3] Verifying setup ==="
+echo "=== [3/3] Verifying database connectivity ==="
 node -e "
 const { Pool } = require('pg');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -30,7 +30,6 @@ echo "=== Setup complete ==="
 echo ""
 echo "Next: start the app with  npm run dev"
 echo ""
-echo "Founder account provisioning (first run only):"
-echo "  POST /api/bootstrap-founder"
-echo '  Body: {"firstName":"Thorx","lastName":"X","email":"thorx11dev@gmail.com","password":"Aonimran777!"}'
-echo "  (Requires X-CSRF-Token header — obtain by hitting any GET /api/* endpoint first)"
+echo "To provision the first founder account (one-time, only works before any team"
+echo "members exist), POST to /api/bootstrap-founder with your chosen credentials."
+echo "See SETUP_NEW_ACCOUNT.md for the full provisioning walkthrough."
