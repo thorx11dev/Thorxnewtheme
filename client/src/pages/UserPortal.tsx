@@ -601,7 +601,7 @@ export default function UserPortal() {
 
   // Fetch user data
   const { data: earningsData } = useQuery({
-    queryKey: ["earnings"],
+    queryKey: QUERY_KEYS.earnings,
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/earnings?limit=10");
       return await response.json() as { earnings: Earning[]; total: string };
@@ -610,7 +610,7 @@ export default function UserPortal() {
   });
 
   const { data: referralsData } = useQuery({
-    queryKey: ["referrals"],
+    queryKey: QUERY_KEYS.referrals,
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/referrals");
       return await response.json() as {
@@ -668,7 +668,7 @@ export default function UserPortal() {
   const commissions = commissionsData?.commissions || [];
 
   const { data: notificationsData, isLoading: isLoadingNotifications } = useQuery({
-    queryKey: ["notifications"],
+    queryKey: QUERY_KEYS.notifications,
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/notifications");
       return await response.json() as any[];
@@ -806,9 +806,9 @@ export default function UserPortal() {
       return await response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["ad-views"] });
-      queryClient.invalidateQueries({ queryKey: ["session-auth"] });
-      queryClient.invalidateQueries({ queryKey: ["earnings"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adViews });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.earnings });
       const breakdown = data?.adView?.pointsBreakdown;
       if (breakdown) {
         setScratchCardBreakdown(breakdown);
@@ -1038,6 +1038,7 @@ export default function UserPortal() {
         avatar: "TS"
       };
       setChatMessages(prev => [...prev, supportMessage]);
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.chatHistory });
     },
     onError: (_error) => {
       const errorMessage = {
@@ -2658,13 +2659,11 @@ export default function UserPortal() {
               ? `Your withdrawal of ${formatCurrency(withdrawAmount)} PTS (Rs. ${withdrawalPreview.userNetPkr.toFixed(2)} net) has been submitted for processing.`
               : `Your withdrawal of ${formatCurrency(withdrawAmount)} PTS has been submitted for processing.`,
           });
-          queryClient.invalidateQueries({ queryKey: ["earnings"] });
-          // Audit finding 1-K: 3 missing invalidations that left the portal showing
-          // stale data after withdrawal submission (unchanged balance, missing history
-          // entry, stale preview value).
-          queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/withdrawals"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/withdrawals/preview"] });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.earnings });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.user });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.withdrawals });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.withdrawalPreview });
           // Reset form
           setCurrentStep(1);
           setWithdrawAmount("");

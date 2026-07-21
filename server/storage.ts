@@ -915,7 +915,7 @@ export class DatabaseStorage implements IStorage {
     sourceType: "ad_view" | "weekly_task" | "daily_task";
     guildId?: string; // required for Engine_C
     tx?: any; // optional outer transaction — when provided, no inner db.transaction() is opened
-  }): Promise<{ success: boolean; pointsCredited: number; realPkrValue: number; earning?: Earning }> {
+  }): Promise<{ success: boolean; pointsCredited: number; realPkrValue: string; earning?: Earning }> {
     const [
       engineAThorxCutPct,
       engineBThorxCutPct,
@@ -988,18 +988,15 @@ export class DatabaseStorage implements IStorage {
     }
     // 'Indirect' — no PKR payout, only PS (userPkrShare/thorxProfitPkr stay 0).
 
-    // Convert only userPkrShare to a JS number — drawThorxCard() requires it.
-    // thorxProfitPkrD and guildPoolPkrD stay as Decimal objects all the way
-    // to the SQL write boundary to eliminate IEEE 754 float drift (audit finding F).
-    const userPkrShare = userPkrShareD.toNumber();
-
     // Step 2: Thorx Card draw (if the user has a PKR share to convert).
+    // Pass the Decimal as toFixed(4) string — drawThorxCard accepts number | string
+    // so we never convert to IEEE 754 float (F-02 audit fix).
     // Apply rank-tier bonus to variance bounds (A/S ranks see wider swings).
-    let cardResult = { pointsCredited: 0, realPkrValue: 0, cardVariance: 1.0, targetPoints: 0 };
-    if (userPkrShare > 0) {
+    let cardResult = { pointsCredited: 0, realPkrValue: "0.0000", cardVariance: 1.0, targetPoints: 0 };
+    if (userPkrShareD.gt(0)) {
       const rankBonus = user.userRankTier === "S-Rank" ? sRankBonusPct / 100 : user.userRankTier === "A-Rank" ? aRankBonusPct / 100 : 0;
       cardResult = drawThorxCard({
-        userPkrShare,
+        userPkrShare: userPkrShareD.toFixed(4),
         conversionRate,
         userRankTier: user.userRankTier,
         varianceMin: Math.max(0, baseVarianceMin - rankBonus),
@@ -1114,7 +1111,7 @@ export class DatabaseStorage implements IStorage {
       type: "earn",
       userId: params.userId,
       guildId: params.guildId,
-      displayMessage: `User '${user.identity}' – ${params.engineType} | Real: Rs.${cardResult.realPkrValue.toFixed(2)} | Points: ${cardResult.pointsCredited} | Thorx: Rs.${thorxProfitPkrD.toFixed(2)}`,
+      displayMessage: `User '${user.identity}' – ${params.engineType} | Real: Rs.${new Decimal(cardResult.realPkrValue).toFixed(2)} | Points: ${cardResult.pointsCredited} | Thorx: Rs.${thorxProfitPkrD.toFixed(2)}`,
       data: { engineType: params.engineType, grossPkr: params.grossPkr, cardResult, thorxProfitPkr: thorxProfitPkrD.toNumber(), guildPoolPkr: guildPoolPkrD.toNumber() },
     });
 
@@ -1143,7 +1140,7 @@ export class DatabaseStorage implements IStorage {
           guildBonusPoints: 0,
           totalPoints: result.pointsCredited,
           vaultPkr: "0.00",
-          walletPkr: result.realPkrValue.toFixed(2),
+          walletPkr: new Decimal(result.realPkrValue).toFixed(2),
           guildId: null,
         };
         return { ...adView, pointsBreakdown: breakdown };

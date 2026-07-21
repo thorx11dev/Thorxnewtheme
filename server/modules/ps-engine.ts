@@ -6,7 +6,7 @@
 // can drop performanceScore to 0 but never demote a user below E-Rank.
 
 import { db } from "../db";
-import { eq, lt, sql as drizzleSql } from "drizzle-orm";
+import { and, eq, isNull, lt, or, sql as drizzleSql } from "drizzle-orm";
 import { users, rankLogs } from "@shared/schema";
 import { storage } from "../storage";
 import { logger } from "../lib/logger";
@@ -91,9 +91,15 @@ export async function applyInactivityPenalties(): Promise<number> {
   const penalty = await cfg<number>("PS_INACTIVITY_PENALTY", 10);
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
 
+  // Idempotency guard: skip users already penalized within this penalty window.
+  // If the job crashes mid-loop and restarts, it will only process users who
+  // have not yet received a penalty stamp in the current period (F-03 fix).
   const stale = await db.select({ id: users.id, identity: users.identity, performanceScore: users.performanceScore })
     .from(users)
-    .where(lt(users.lastActiveAt, cutoff));
+    .where(and(
+      lt(users.lastActiveAt, cutoff),
+      or(isNull(users.inactivityPenaltyAt), lt(users.inactivityPenaltyAt, cutoff))
+    ));
 
   const { emitFeedEvent } = await import("./live-feed");
 

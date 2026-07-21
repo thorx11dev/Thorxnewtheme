@@ -9,7 +9,7 @@
 import Decimal from "decimal.js";
 
 export interface CardDrawParams {
-  userPkrShare: number;   // exact PKR already split from gross for this user
+  userPkrShare: number | string;   // exact PKR already split from gross for this user (string keeps Decimal precision)
   conversionRate: number; // system_config CONVERSION_RATE (TX-Points per Rs.10)
   userRankTier: string;   // affects variance bounds (A-Rank / S-Rank bonus)
   varianceMin: number;    // system_config CARD_VARIANCE_MIN (default 0.80)
@@ -20,7 +20,7 @@ export interface CardDrawParams {
 
 export interface CardResult {
   pointsCredited: number; // random, shown to the user on the Thorx Card
-  realPkrValue: number;   // exact, NEVER changes — basis for withdrawals
+  realPkrValue: string;   // exact string representation — never converted to float
   cardVariance: number;   // the random multiplier actually applied (audit trail)
   targetPoints: number;   // pre-variance baseline (internal reference only)
 }
@@ -52,11 +52,12 @@ export function drawThorxCard(params: CardDrawParams): CardResult {
   min = Math.max(0.01, min);
   if (max < min) max = min;
 
-  const targetPoints = new Decimal(userPkrShare).div(10).times(conversionRate).toNumber();
+  const pkrDecimal = new Decimal(userPkrShare);
+  const targetPoints = pkrDecimal.div(10).times(conversionRate).toNumber();
   const cardVariance = min + Math.random() * (max - min);
   const pointsCredited = Math.max(0, Math.round(targetPoints * cardVariance));
 
-  return { pointsCredited, realPkrValue: userPkrShare, cardVariance, targetPoints };
+  return { pointsCredited, realPkrValue: pkrDecimal.toFixed(4), cardVariance, targetPoints };
 }
 
 export interface CardConfig {
@@ -70,7 +71,7 @@ export interface CardConfig {
 export interface SimulationResult {
   iteration: number;
   pointsCredited: number;
-  realPkrValue: number;
+  realPkrValue: string;
   cardVariance: number;
 }
 

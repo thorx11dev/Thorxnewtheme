@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   XCircle,
   Eye,
+  Loader2,
   Zap,
   Activity,
   TrendingUp,
@@ -739,8 +740,10 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
           disabled={scanMutation.isPending}
           className="h-10 bg-[#111] text-white border-[1.5px] border-[#111] font-black text-[10px] px-5 hover:bg-red-600 hover:border-red-600 rounded-full transition-all uppercase shadow-sm flex items-center gap-2"
         >
-          <Zap size={13} className={scanMutation.isPending ? "animate-pulse" : ""} />
-          {scanMutation.isPending ? "Scanning…" : "Run Risk Scan"}
+          {scanMutation.isPending
+            ? <><Loader2 size={13} className="animate-spin" /> Scanning…</>
+            : <><Zap size={13} /> Run Risk Scan</>
+          }
         </Button>
       </div>
 

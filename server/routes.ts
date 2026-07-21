@@ -1377,10 +1377,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/guilds/bulk-targets", requireTeamRole, async (req, res) => {
     try {
       const adminId = getThorxPrincipalId(req) as string;
-      const { weeklyTarget, scope, difficulty } = req.body;
-      if (!Number.isFinite(weeklyTarget) || weeklyTarget <= 0) {
-        return res.status(400).json({ message: "weeklyTarget must be a positive number." });
-      }
+      const bulkTargetsSchema = z.object({
+        weeklyTarget: z.number().finite().positive("weeklyTarget must be a positive number."),
+        scope: z.enum(["all", "byDifficulty"]).optional(),
+        difficulty: z.string().max(50).optional(),
+      });
+      const parsed = bulkTargetsSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input", errors: parsed.error.flatten() });
+      const { weeklyTarget, scope, difficulty } = parsed.data;
       const count = await storage.adminBulkSetWeeklyTargets(weeklyTarget, scope ?? "all", difficulty, adminId);
       res.json({ updated: count });
     } catch (error) {
@@ -3254,20 +3258,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chatbot API routes - works with or without authentication
   app.post("/api/chat", chatbotRateLimiter, async (req, res) => {
     try {
-      const { message, sessionId } = req.body;
-
-      if (!message || typeof message !== 'string' || !message.trim()) {
-        return res.status(400).json({
-          message: "Message is required",
-          error: "INVALID_INPUT"
-        });
-      }
-
-      // Max length guard — prevents 1MB payloads from being processed/logged
-      // (audit finding Q: previously only a trim check).
-      if (message.length > 1000) {
-        return res.status(400).json({ message: "Message too long. Maximum 1000 characters.", error: "INVALID_INPUT" });
-      }
+      const chatInputSchema = z.object({
+        message:   z.string().min(1, "Message is required").max(1000, "Message too long. Maximum 1000 characters.").trim(),
+        sessionId: z.string().max(200).optional(),
+      });
+      const parsed = chatInputSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input", error: "INVALID_INPUT" });
+      const { message, sessionId } = parsed.data;
 
       let userId = 'anonymous';
       let userName = 'User';
@@ -4580,15 +4577,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/users/:userId/ps", requirePermission("MANAGE_USERS"), profileRateLimiter, async (req, res) => {
     try {
       const adminId = getThorxPrincipalId(req) as string;
-      const { delta, reason } = req.body;
-      if (!Number.isFinite(delta)) return res.status(400).json({ message: "delta must be a number." });
-      // Cap delta to ±500 to prevent runaway rank manipulation via the admin panel.
-      if (delta < -500 || delta > 500) {
-        return res.status(400).json({ message: "delta must be in the range -500 to +500." });
-      }
-      if (!reason || String(reason).trim().length < 5) {
-        return res.status(400).json({ message: "reason (≥5 chars) required." });
-      }
+      const psAdjustSchema = z.object({
+        delta:  z.number().finite().min(-500, "delta must be ≥ -500.").max(500, "delta must be ≤ 500."),
+        reason: z.string().min(5, "reason must be at least 5 characters.").max(500),
+      });
+      const parsed = psAdjustSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input", errors: parsed.error.flatten() });
+      const { delta, reason } = parsed.data;
       // Capture rank before the adjust so we can broadcast the right WS event type.
       const userBefore = await storage.getUserById(req.params.userId);
       const user = await storage.adminAdjustUserPS(req.params.userId, delta, String(reason).trim(), adminId);
@@ -4605,11 +4600,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/guilds/:id/gps", requireTeamRole, async (req, res) => {
     try {
       const adminId = getThorxPrincipalId(req) as string;
-      const { delta, reason } = req.body;
-      if (!Number.isFinite(delta)) return res.status(400).json({ message: "delta must be a number." });
-      if (!reason || String(reason).trim().length < 5) {
-        return res.status(400).json({ message: "reason (≥5 chars) required." });
-      }
+      const gpsAdjustSchema = z.object({
+        delta:  z.number().finite(),
+        reason: z.string().min(5, "reason must be at least 5 characters.").max(500),
+      });
+      const parsed = gpsAdjustSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input", errors: parsed.error.flatten() });
+      const { delta, reason } = parsed.data;
       const guild = await storage.adminAdjustGuildGPS(req.params.id, delta, String(reason).trim(), adminId);
       broadcastGuildEvent(req.params.id, 'guild.gps_updated', { delta, guildId: req.params.id });
       res.json({ guild });
@@ -4622,8 +4619,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/guilds/:id/captain", requireTeamRole, async (req, res) => {
     try {
       const adminId = getThorxPrincipalId(req) as string;
-      const { newCaptainUserId } = req.body;
-      if (!newCaptainUserId) return res.status(400).json({ message: "newCaptainUserId is required." });
+      const captainSchema = z.object({
+        newCaptainUserId: z.string().uuid("newCaptainUserId must be a valid UUID."),
+      });
+      const parsed = captainSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input", errors: parsed.error.flatten() });
+      const { newCaptainUserId } = parsed.data;
       const guild = await storage.adminReassignCaptain(req.params.id, newCaptainUserId, adminId);
       // Notify old captain (demoted) + new captain (promoted) + all guild members (Phase 6.1)
       if (guild.captainId) {
@@ -4640,10 +4641,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/guilds/:id/weekly-target", requireTeamRole, async (req, res) => {
     try {
       const adminId = getThorxPrincipalId(req) as string;
-      const { weeklyTarget } = req.body;
-      if (!Number.isFinite(weeklyTarget) || weeklyTarget <= 0) {
-        return res.status(400).json({ message: "weeklyTarget must be a positive number." });
-      }
+      const weeklyTargetSchema = z.object({
+        weeklyTarget: z.number().finite().positive("weeklyTarget must be a positive number."),
+      });
+      const parsed = weeklyTargetSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input", errors: parsed.error.flatten() });
+      const { weeklyTarget } = parsed.data;
       const guild = await storage.adminSetGuildWeeklyTarget(req.params.id, weeklyTarget, adminId);
       res.json({ guild });
     } catch (error) {
