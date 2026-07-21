@@ -12,15 +12,15 @@ import { QUERY_KEYS } from "@/lib/queryKeys";
  */
 const OWN_DATA_QUERY_KEYS: ReadonlyArray<readonly unknown[]> = [
   QUERY_KEYS.sessionAuth,
-  ["dashboard", "stats"],
-  ["earnings"],
-  ["earnings", "history", "week"],
-  ["referrals"],
-  ["referrals", "leaderboard"],
-  ["commissions"],
-  ["notifications"],
-  ["transactions", "history"],
-  ["/api/withdrawals"],
+  QUERY_KEYS.dashboardStats,
+  QUERY_KEYS.earnings,
+  QUERY_KEYS.earningsHistory,
+  QUERY_KEYS.referrals,
+  QUERY_KEYS.referralsLeaderboard,
+  QUERY_KEYS.commissions,
+  QUERY_KEYS.notifications,
+  QUERY_KEYS.transactionHistory,
+  QUERY_KEYS.withdrawals,
 ];
 
 /** Query keys the team portal's CRM views read — refreshed on any user or team change. */
@@ -90,7 +90,7 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
             variant: "destructive",
           });
           // Invalidate session so ProtectedRoute redirects to /auth
-          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
           return;
         }
 
@@ -134,18 +134,18 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
         }
 
         // ── H.1 guild-scoped events ────────────────────────────────────
-        if (msg.type === "guild.weekly_points") {
-          queryClient.invalidateQueries({ queryKey: ["guild", "weekly-tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId, "weekly-snapshot"] });
+        if (msg.type === "guild.weekly_points" && msg.guildId) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildWeeklyTasks(msg.guildId) });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildWeeklySnapshot(msg.guildId) });
         }
 
-        if (msg.type === "guild.application_received") {
-          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId, "applications"] });
+        if (msg.type === "guild.application_received" && msg.guildId) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildApplications(msg.guildId) });
         }
 
-        if (msg.type === "guild.application_decided" && msg.userId === user.id) {
-          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId, "application-status"] });
-          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
+        if (msg.type === "guild.application_decided" && msg.userId === user.id && msg.guildId) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildApplicationStatus(msg.guildId) });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
           const action = (msg.data as any)?.action;
           toast({
             title: action === "accept" ? "🎉 Guild Application Accepted!" : "Guild Application Update",
@@ -160,18 +160,18 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
           toast({ title: "👋 Nudge from your Guild Captain", description: "Your captain wants you to complete your weekly tasks!" });
         }
 
-        if (msg.type === "guild.mvp_selected") {
-          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId, "members"] });
+        if (msg.type === "guild.mvp_selected" && msg.guildId) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMembers(msg.guildId) });
         }
 
         if (msg.type === "user.ps_updated" && msg.userId === user.id) {
-          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
-          queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardStats });
         }
 
         // ── Phase 6.2: Withdrawal status changed ────────────────────────────
         if (msg.type === "withdrawal_status_changed" && msg.userId === user.id) {
-          queryClient.invalidateQueries({ queryKey: ["/api/withdrawals"] });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.withdrawals });
           const status = (msg.data as any)?.status;
           toast({
             title: status === "approved" ? "✅ Withdrawal Approved" : status === "rejected" ? "❌ Withdrawal Rejected" : "Withdrawal Update",
@@ -186,8 +186,8 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
 
         // ── Phase 6.1: Guild captain changed ────────────────────────────────
         if (msg.type === "guild.captain_changed" && msg.userId === user.id) {
-          queryClient.invalidateQueries({ queryKey: ["/api/guilds/mine"] });
-          queryClient.invalidateQueries({ queryKey: ["session-auth"] });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
           const promoted = (msg.data as any)?.promoted;
           const demoted = (msg.data as any)?.demoted;
           if (promoted) toast({ title: "⚔️ You are now Guild Captain!", description: "Congratulations — you have been promoted to captain." });
@@ -196,9 +196,9 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
 
         // ── Phase 15.8: Sunday guild pool credited ───────────────────────────
         if (msg.type === "guild.pool_credited") {
-          queryClient.invalidateQueries({ queryKey: ["/api/guilds/mine"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId] });
-          queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
+          if (msg.guildId) queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildDetail(msg.guildId) });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardStats });
           if (msg.userId === user.id || !msg.userId) {
             toast({ title: "🎉 Sunday Bonus Credited!", description: "Your weekly guild pool bonus has been distributed to your balance." });
           }
@@ -212,17 +212,17 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
         }
 
         // ── Phase 6.3: Guild settings updated ────────────────────────────────
-        if (msg.type === "guild.settings_updated") {
-          queryClient.invalidateQueries({ queryKey: ["/api/guilds/mine"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/guilds", msg.guildId] });
+        if (msg.type === "guild.settings_updated" && msg.guildId) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildDetail(msg.guildId) });
         }
 
         // ── Audit fix X: Announcement broadcast → instant member refresh ─────
         if (msg.type === "guild.announcement_posted") {
-          const guildId = (msg as any).guildId;
-          if (guildId) {
-            queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
-            queryClient.invalidateQueries({ queryKey: ["/api/guilds/mine"] });
+          const announcedGuildId = (msg as any).guildId as string | undefined;
+          if (announcedGuildId) {
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildDetail(announcedGuildId) });
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
             const announcement = (msg as any).announcement;
             if (announcement) {
               toast({
@@ -235,17 +235,17 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
 
         // ── Audit fix Z: Guild chat WS push → invalidate chat cache ──────────
         if (msg.type === "engine_c:message") {
-          const guildId = (msg as any).guildId;
-          if (guildId) {
-            queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "chat"] });
+          const chatGuildId = (msg as any).guildId as string | undefined;
+          if (chatGuildId) {
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildChat(chatGuildId) });
           }
         }
 
         // ── Audit fix Y: GPS updated → invalidate guild score display ─────────
         if (msg.type === "guild.gps_updated") {
-          const guildId = (msg as any).guildId;
-          if (guildId) {
-            queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId] });
+          const gpsGuildId = (msg as any).guildId as string | undefined;
+          if (gpsGuildId) {
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildDetail(gpsGuildId) });
           }
         }
 

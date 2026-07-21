@@ -13,7 +13,8 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  Loader2
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -218,7 +219,9 @@ export function TeamKeysManager() {
                   onClick={() => addMemberMutation.mutate({ email: newMemberEmail, role: newMemberRole, permissions: newMemberRole === 'team' ? newMemberPermissions : [] })}
                   className="w-full h-12 bg-primary text-white border-[1.5px] border-[#111] font-black text-xs rounded-full hover:bg-primary/80 transition-colors uppercase disabled:opacity-50"
                 >
-                  {addMemberMutation.isPending ? "Generating Token..." : "Process Key Issuance"}
+                  {addMemberMutation.isPending
+                    ? <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" />Generating Token…</span>
+                    : "Process Key Issuance"}
                 </Button>
               </div>
             </DialogContent>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { z } from "zod";
+import { QUERY_KEYS } from "@/lib/queryKeys";
 import { useAuth, type User as AuthUser } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

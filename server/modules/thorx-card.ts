@@ -85,7 +85,8 @@ export function simulateThorxCards(params: {
   engineSplits: { thorxCutPct: number; guildPoolPct?: number; userCutPct: number };
 }): SimulationResult[] {
   const { grossPkr, userRankTier, iterations, config, engineSplits } = params;
-  const userPkrShare = (grossPkr * engineSplits.userCutPct) / 100;
+  // Use Decimal for the split so floating-point errors don't accumulate across iterations
+  const userPkrShare = new Decimal(grossPkr).times(engineSplits.userCutPct).div(100).toNumber();
 
   const results: SimulationResult[] = [];
   for (let i = 0; i < iterations; i++) {

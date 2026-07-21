@@ -992,17 +992,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/guilds", requireSessionAuth, guildInteractionRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
-      const { name, description } = req.body;
-      if (!name || typeof name !== "string" || !name.trim()) {
-        return res.status(400).json({ message: "Guild name is required." });
-      }
+      const createGuildSchema = z.object({
+        name:        z.string().trim().min(3, "Guild name must be at least 3 characters.").max(60, "Guild name cannot exceed 60 characters."),
+        description: z.string().trim().max(500, "Description cannot exceed 500 characters.").optional(),
+      });
+      const parsed = createGuildSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid guild data" });
+      const { name, description } = parsed.data;
       // THORX v3 (spec E.9): B-Rank gate for guild creation.
       const creator = await storage.getUserById(userId);
       const RANK_ORDER = ["E-Rank", "D-Rank", "C-Rank", "B-Rank", "A-Rank", "S-Rank"];
       if (RANK_ORDER.indexOf(creator?.userRankTier || "E-Rank") < RANK_ORDER.indexOf("B-Rank")) {
         return res.status(403).json({ message: "B-Rank or higher required to create a guild.", error: "RANK_GATE" });
       }
-      const guild = await storage.createGuild({ name: name.trim(), description, captainId: userId });
+      const guild = await storage.createGuild({ name, description, captainId: userId });
       res.status(201).json({ guild });
     } catch (error) {
       logger.error({ err: error }, "Create guild error:");
@@ -1730,15 +1733,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Manually trigger rank recalculation
-  app.post("/api/rank/refresh", profileRateLimiter, async (req, res) => {
+  app.post("/api/rank/refresh", requireSessionAuth, profileRateLimiter, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
+      // requireSessionAuth guarantees a valid session; cast is safe here
+      const thorxPid = getThorxPrincipalId(req) as string;
 
       if (thorxPid.startsWith('anonymous_')) {
         return res.json({
