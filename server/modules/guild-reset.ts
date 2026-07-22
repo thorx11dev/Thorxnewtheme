@@ -60,7 +60,7 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
   const prevWeekStart = new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000);
   const prevWeekEnd = new Date(currentWeekStart.getTime() - 1);
 
-  const activeGuilds = await db.select().from(guilds).where(eq(guilds.status, "active"));
+  const activeGuilds = await db.select().from(guilds).where(eq(guilds.status, "active")).limit(500);
 
   let distributed = 0;
   let voided = 0;

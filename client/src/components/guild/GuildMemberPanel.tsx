@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { QUERY_KEYS } from "@/lib/queryKeys";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { RankBadge } from "@/components/RankBadge";
@@ -52,13 +53,13 @@ export function GuildMemberPanel() {
 
   // Membership + guild info
   const { data: membership } = useQuery<any>({
-    queryKey: ["/api/guilds/mine"],
+    queryKey: QUERY_KEYS.guildMine,
     queryFn: async () => { const r = await apiRequest("GET", "/api/guilds/mine"); const d = await r.json(); return d.membership; },
     enabled: !!guildId,
   });
 
   const { data: guild } = useQuery<any>({
-    queryKey: ["/api/guilds", guildId],
+    queryKey: guildId ? QUERY_KEYS.guildDetail(guildId) : [],
     queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}`); const d = await r.json(); return d.guild; },
     enabled: !!guildId,
     refetchInterval: 30000,
@@ -66,7 +67,7 @@ export function GuildMemberPanel() {
 
   // Guild members (for contribution leaderboard)
   const { data: members = [] } = useQuery<any[]>({
-    queryKey: ["/api/guilds", guildId, "members"],
+    queryKey: guildId ? QUERY_KEYS.guildMembers(guildId) : [],
     queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/members`); const d = await r.json(); return d.members ?? []; },
     enabled: !!guildId,
     refetchInterval: 30000,
@@ -111,9 +112,10 @@ export function GuildMemberPanel() {
     // Optimistic update — append message immediately so the chat doesn't flash
     // on refetch. Rolls back on error so the user's text isn't silently lost.
     onMutate: async (message: string) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/guilds", guildId, "chat"] });
-      const prev = queryClient.getQueryData<any[]>(["/api/guilds", guildId, "chat"]);
-      queryClient.setQueryData(["/api/guilds", guildId, "chat"], (old: any[] = []) => [
+      const chatKey = guildId ? QUERY_KEYS.guildChat(guildId) : [];
+      await queryClient.cancelQueries({ queryKey: chatKey });
+      const prev = queryClient.getQueryData<any[]>(chatKey);
+      queryClient.setQueryData(chatKey, (old: any[] = []) => [
         ...old,
         { message, senderId: user?.id, senderName: user?.firstName, createdAt: new Date().toISOString(), _optimistic: true },
       ]);
@@ -122,12 +124,13 @@ export function GuildMemberPanel() {
     },
     onError: (_err: any, _msg: string, context: any) => {
       if (context?.prev !== undefined) {
-        queryClient.setQueryData(["/api/guilds", guildId, "chat"], context.prev);
+        const chatKey = guildId ? QUERY_KEYS.guildChat(guildId) : [];
+        queryClient.setQueryData(chatKey, context.prev);
       }
       toast({ title: "Message not sent", description: "Could not deliver your message. Please try again.", variant: "destructive" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/guilds", guildId, "chat"] });
+      if (guildId) queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildChat(guildId) });
     },
   });
 

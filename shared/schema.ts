@@ -90,6 +90,8 @@ export const users = pgTable("users", {
   // Audit finding 2-D: referral commission lookups and inactivity scans filter
   // by referred_by on every run — missing index caused full users table scan.
   index("users_referred_by_idx").on(table.referredBy),
+  // P-04/4.5: Composite index for leaderboard queries (isActive + role + performanceScore)
+  index("users_active_role_score_idx").on(table.isActive, table.role, table.performanceScore),
   // Financial integrity constraints
   sql`CONSTRAINT check_positive_earnings CHECK (total_earnings >= 0)`,
   sql`CONSTRAINT check_positive_balance CHECK (available_balance >= 0)`,
@@ -245,6 +247,9 @@ export const referrals = pgTable("referrals", {
 ]);
 
 
+
+// MANUAL INDEX (re-apply after fresh imports):
+// CREATE UNIQUE INDEX IF NOT EXISTS withdrawals_one_pending_per_user ON withdrawals(user_id) WHERE status = 'pending';
 
 // Withdrawals/Payouts table
 export const withdrawals = pgTable("withdrawals", {

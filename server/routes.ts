@@ -347,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ttl: sessionTtl,
       pruneSessionInterval: 60 * 60,
     }),
-    secret: sessionSecret || "thorx-secret-key-dev-only",
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     rolling: true,
@@ -3544,11 +3544,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // HilltopAds Configuration Routes (Team/Founder only)
   app.post("/api/hilltopads/config", requireTeamRole, async (req, res) => {
     try {
-      const { apiKey, publisherId, settings } = req.body;
-
-      if (!apiKey) {
-        return res.status(400).json({ message: "API key is required" });
-      }
+      const hilltopAdsConfigSchema = z.object({
+        apiKey:      z.string().min(1, "API key is required").max(500),
+        publisherId: z.string().max(200).optional(),
+        settings:    z.record(z.unknown()).optional().default({}),
+      });
+      const parsed = hilltopAdsConfigSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input" });
+      const { apiKey, publisherId, settings } = parsed.data;
 
       const config = await storage.createHilltopAdsConfig({
         apiKey,
@@ -4224,7 +4227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set (or clear) a user's Trust Status — an admin-assigned account
   // classification surfaced on the Leaderboard. A reason is mandatory
   // whenever a status is being set (not required when clearing to null).
-  app.patch("/api/admin/users/:id/trust-status", requirePermission("MANAGE_USERS"), async (req, res) => {
+  app.patch("/api/admin/users/:id/trust-status", requirePermission("MANAGE_USERS"), adminActionRateLimiter, async (req, res) => {
     try {
       const { id } = req.params;
       const trustSchema = z.object({
@@ -4441,7 +4444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/admin/risk-cases/:id", requirePermission("MANAGE_USERS"), async (req, res) => {
+  app.patch("/api/admin/risk-cases/:id", requirePermission("MANAGE_USERS"), adminActionRateLimiter, async (req, res) => {
     try {
       const riskCaseUpdateSchema = z.object({
         status:             z.enum(["Open", "Under Review", "Cleared", "Actioned"]).optional(),
@@ -4748,25 +4751,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── THORX v3 (spec E.9): Admin — Thorx Card simulator ────────────────────
   app.post("/api/admin/simulate/thorx-card", requireTeamRole, async (req, res) => {
     try {
-      const {
-        iterations, grossPkr, engineType, userRankTier,
-        conversionRate, varianceMin, varianceMax, thorxCutPct, userCutPct,
-      } = req.body;
-      const n = Math.min(Math.max(parseInt(String(iterations ?? "1000")), 1), 10000);
+      const simulateThorxCardSchema = z.object({
+        iterations:    z.coerce.number().int().min(1).max(10000).default(1000),
+        grossPkr:      z.coerce.number().positive().max(100000).default(1.0),
+        engineType:    z.enum(["A", "B", "C"]).default("A"),
+        userRankTier:  z.string().default("E-Rank"),
+        conversionRate: z.coerce.number().positive().default(1000),
+        varianceMin:   z.coerce.number().min(0.1).max(1).default(0.8),
+        varianceMax:   z.coerce.number().min(1).max(3).default(1.2),
+        thorxCutPct:   z.coerce.number().min(0).max(100).default(40),
+        userCutPct:    z.coerce.number().min(0).max(100).default(60),
+      });
+      const parsed = simulateThorxCardSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input" });
+      const { iterations, grossPkr, engineType, userRankTier, conversionRate, varianceMin, varianceMax, thorxCutPct, userCutPct } = parsed.data;
       const result = simulateThorxCards({
-        grossPkr: new Decimal(String(grossPkr ?? "1.0")).toNumber(),
-        engineType: (engineType ?? "A") as "A" | "B" | "C",
-        userRankTier: String(userRankTier ?? "E-Rank"),
-        iterations: n,
-        config: {
-          conversionRate: new Decimal(String(conversionRate ?? "1000")).toNumber(),
-          varianceMin: new Decimal(String(varianceMin ?? "0.8")).toNumber(),
-          varianceMax: new Decimal(String(varianceMax ?? "1.2")).toNumber(),
-        },
-        engineSplits: {
-          thorxCutPct: new Decimal(String(thorxCutPct ?? "40")).toNumber(),
-          userCutPct: new Decimal(String(userCutPct ?? "60")).toNumber(),
-        },
+        grossPkr,
+        engineType: engineType as "A" | "B" | "C",
+        userRankTier,
+        iterations,
+        config: { conversionRate, varianceMin, varianceMax },
+        engineSplits: { thorxCutPct, userCutPct },
       });
       // Bug found during 2026-07-15 production-readiness re-verification:
       // this used to wrap the array as { simulations, count }, but the client

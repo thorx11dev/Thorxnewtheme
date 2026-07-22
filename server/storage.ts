@@ -683,41 +683,17 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser & { id?: string }): Promise<User> {
     const hashedPassword = await bcrypt.hash(insertUser.passwordHash, 10);
     const referralCode = this.generateReferralCode();
+    const { name, ...safeUserFields } = insertUser as any;
+    const userData: any = { ...safeUserFields, passwordHash: hashedPassword, referralCode };
+    if (insertUser.id) { userData.id = insertUser.id; }
 
-    // Validate referredBy if provided
-    if (insertUser.referredBy) {
-      // Check if referrer exists
-      const referrer = await this.getUserById(insertUser.referredBy);
-      if (!referrer) {
-        throw new Error("Invalid referral code: referrer does not exist");
-      }
-
-      // Prevent circular referrals (check if referrer is referred by this user's ID)
-      // This check is only relevant if insertUser.id is already known (e.g., from Supabase)
-      if (insertUser.id && referrer.referredBy === insertUser.id) {
-        throw new Error("Circular referral detected");
-      }
-    }
-
-    // Sanitize input to remove 'name' which exists in schema type but not in DB
-    const { name, ...safeUserFields } = insertUser;
-
-    const userData = {
-      ...safeUserFields,
-      passwordHash: hashedPassword,
-      referralCode,
-    };
-
-    // If external ID is provided (e.g., from Supabase/Firebase), use it
-    if (insertUser.id) {
-      userData.id = insertUser.id;
-    }
-
-    // Wrap user creation + referral insert in a single transaction so that
-    // a referral-insert failure rolls back the whole registration (Finding 1-A).
     const user = await db.transaction(async (tx) => {
+      if (insertUser.referredBy) {
+        const [referrer] = await tx.select().from(users).where(eq(users.id, insertUser.referredBy)).for("update");
+        if (!referrer) throw new Error("Invalid referral code: referrer does not exist");
+        if (insertUser.id && referrer.referredBy === insertUser.id) throw new Error("Circular referral detected");
+      }
       const [newUser] = await tx.insert(users).values(userData).returning();
-
       if (insertUser.referredBy) {
         await tx.insert(referrals).values({
           referrerId: insertUser.referredBy,
@@ -727,10 +703,8 @@ export class DatabaseStorage implements IStorage {
           totalEarned: "0.00",
         });
       }
-
       return newUser;
     });
-
     return user;
   }
 
@@ -1940,19 +1914,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(userTransactions.createdAt))
       .limit(5000); // C1-05: safety cap; no user can accumulate more than 5000 un-withdrawn ledger rows
 
-    let pointsAccumulated = 0;
+    let pointsAccumulatedD = new Decimal(0);
     let exactPkr = new Decimal(0);
     const consumedTransactionIds: string[] = [];
     for (const row of rows) {
-      if (pointsAccumulated >= pointsRequested) break;
-      pointsAccumulated += row.pointsCredited;
+      if (pointsAccumulatedD.gte(new Decimal(pointsRequested))) break;
+      pointsAccumulatedD = pointsAccumulatedD.plus(new Decimal(row.pointsCredited.toString()));
       exactPkr = exactPkr.plus(row.realPkrValue); // Decimal parses the DECIMAL string directly — no float round-trip
       consumedTransactionIds.push(row.id);
     }
 
-    if (pointsAccumulated < pointsRequested) {
+    if (pointsAccumulatedD.lt(new Decimal(pointsRequested))) {
       throw new Error(
-        `Insufficient balance. Available: ${pointsAccumulated} points, requested: ${pointsRequested} points.`
+        `Insufficient balance. Available: ${pointsAccumulatedD.toNumber()} points, requested: ${pointsRequested} points.`
       );
     }
 
@@ -1989,10 +1963,11 @@ export class DatabaseStorage implements IStorage {
   // once an admin approves via processWithdrawal, which recomputes the
   // breakdown fresh against the ledger as of approval time.
   async createWithdrawal(insertWithdrawal: InsertWithdrawal): Promise<Withdrawal> {
-    const pointsRequested = parseInt(insertWithdrawal.amount, 10);
-    if (!Number.isFinite(pointsRequested) || pointsRequested <= 0) {
-      throw new Error("Withdrawal amount must be a positive whole number of TX-Points");
+    const _amtD = new Decimal(insertWithdrawal.amount);
+    if (_amtD.isNaN() || !_amtD.isFinite() || _amtD.lte(0)) {
+      throw new Error("INVALID_AMOUNT: withdrawal amount must be a positive number");
     }
+    const pointsRequested = _amtD.toDecimalPlaces(0, Decimal.ROUND_FLOOR).toNumber();
 
     // ALL pre-flight checks (balance, minimum payout, S-Rank status) and the
     // INSERT are now inside a single transaction with a SELECT FOR UPDATE on the
@@ -3391,7 +3366,7 @@ export class DatabaseStorage implements IStorage {
       last3Months: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
     };
 
-    const calc = (points: number, pkr: number) => {
+    const calc = (points: number, pkr: string) => {
       const pkrD = new Decimal(pkr);
       const feeD = pkrD.times(feePct).dividedBy(100);
       // H-04: Return as fixed-precision strings to preserve Decimal accuracy.
@@ -3407,7 +3382,7 @@ export class DatabaseStorage implements IStorage {
       const [row] = await db
         .select({
           points: sql<number>`COALESCE(SUM(${userTransactions.pointsCredited}), 0)::int`,
-          pkr: sql<number>`COALESCE(SUM(${userTransactions.realPkrValue}::numeric), 0)`,
+          pkr: sql<string>`COALESCE(SUM(${userTransactions.realPkrValue}::numeric), 0)::text`,
         })
         .from(userTransactions)
         .where(and(
@@ -3415,7 +3390,7 @@ export class DatabaseStorage implements IStorage {
           eq(userTransactions.withdrawn, false),
           since ? gte(userTransactions.createdAt, since) : undefined as any
         ) as any);
-      return { points: Number(row.points), pkr: Number(row.pkr) };
+      return { points: Number(row.points), pkr: String(row.pkr ?? "0") };
     };
 
     const [today, thisWeek, thisMonth, last3, allTime] = await Promise.all([
@@ -5175,13 +5150,16 @@ export class DatabaseStorage implements IStorage {
     if (!task || !task.isActive) throw new Error("Task not found or inactive.");
     const now = new Date();
     if (now < task.weekStart || now > task.weekEnd) throw new Error("Task is not available this week.");
-    const [existing] = await db
-      .select()
-      .from(weeklyTaskRecords)
-      .where(and(eq(weeklyTaskRecords.userId, userId), eq(weeklyTaskRecords.taskId, taskId)));
-    if (existing) throw new Error("Task already completed.");
-    const [record] = await db.insert(weeklyTaskRecords).values({ userId, guildId, taskId }).returning();
-    return { record, task };
+
+    return db.transaction(async (tx) => {
+      const [lockedUser] = await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for("update");
+      if (!lockedUser) throw new Error("User not found.");
+      const [existing] = await tx.select().from(weeklyTaskRecords)
+        .where(and(eq(weeklyTaskRecords.userId, userId), eq(weeklyTaskRecords.taskId, taskId)));
+      if (existing) throw new Error("Task already completed.");
+      const [record] = await tx.insert(weeklyTaskRecords).values({ userId, guildId, taskId }).returning();
+      return { record, task };
+    });
   }
 
   /**

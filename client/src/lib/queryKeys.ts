@@ -25,7 +25,7 @@ export const QUERY_KEYS = {
   earnings:              ["earnings"]                          as const,
   earningsHistory:       ["earnings", "history", "week"]       as const,
   withdrawals:           ["/api/withdrawals"]                  as const,
-  withdrawalPreview:     ["/api/withdrawals/preview"]          as const,
+  withdrawalPreview:     (points: number) => ["/api/withdrawals/preview", points] as const,
   withdrawalTimeframe:   ["/api/withdrawals/timeframe-breakdown"] as const,
   adViews:               ["ad-views"]                         as const,
   adViewsToday:          ["ad-views", "today"]                as const,

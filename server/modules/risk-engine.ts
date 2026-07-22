@@ -387,6 +387,51 @@ export async function runFullRiskScan(options?: { broadcastAlerts?: boolean }): 
   const broadcast = options?.broadcastAlerts ?? true;
   // H-11: Hard cap prevents OOM at scale. Increase via system_config RISK_ENGINE_USER_LIMIT
   // if a larger scan is intentionally needed (process in priority order — highest-risk first).
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const allUsers = await db
+    .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+    .from(users)
+    .where(and(eq(users.isActive, true), eq(users.role, "user"), gte(users.lastActiveAt, since24h)))
+    .limit(5000);
+
+  let flagged = 0;
+  let critical = 0;
+
+  for (const u of allUsers) {
+    try {
+      const result = await scoreUser(u.id);
+      const riskCase = await upsertRiskCase(result);
+
+      if (result.severity !== "Low") flagged++;
+      if (result.severity === "Critical") {
+        critical++;
+        if (broadcast) {
+          broadcastRiskAlert({
+            caseId: riskCase.id,
+            userId: u.id,
+            userName: `${u.firstName} ${u.lastName}`.trim(),
+            riskScore: result.riskScore,
+            severity: result.severity,
+            signals: result.signals,
+          });
+        }
+      }
+    } catch (err) {
+      logger.error({ err, userId: u.id }, "[RiskEngine] Failed to score user — continuing to next.");
+    }
+  }
+
+  logger.info({ scanned: allUsers.length, flagged, critical }, "[RiskEngine] Incremental scan complete (active last 24h).");
+  return { scanned: allUsers.length, flagged, critical };
+}
+
+/** Admin-triggered full scan — scans ALL active users with no time filter. */
+export async function runFullUserScan(options?: { broadcastAlerts?: boolean }): Promise<{
+  scanned: number;
+  flagged: number;
+  critical: number;
+}> {
+  const broadcast = options?.broadcastAlerts ?? true;
   const allUsers = await db
     .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
     .from(users)
@@ -420,6 +465,6 @@ export async function runFullRiskScan(options?: { broadcastAlerts?: boolean }): 
     }
   }
 
-  logger.info({ scanned: allUsers.length, flagged, critical }, "[RiskEngine] Scan complete.");
+  logger.info({ scanned: allUsers.length, flagged, critical }, "[RiskEngine] Full user scan complete (all active users).");
   return { scanned: allUsers.length, flagged, critical };
 }

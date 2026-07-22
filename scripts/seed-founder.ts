@@ -9,8 +9,13 @@ import { randomUUID } from "crypto";
  * for that email (create the user in Insforge first, then set FOUNDER_USER_ID).
  */
 async function createFounder() {
-  const email = process.env.FOUNDER_EMAIL || "founder@thorx.com";
-  const password = process.env.FOUNDER_PASSWORD || "Admin123!";
+  const email = process.env.FOUNDER_EMAIL;
+  const password = process.env.FOUNDER_PASSWORD;
+  if (!email || !password) {
+    console.error("ERROR: FOUNDER_EMAIL and FOUNDER_PASSWORD env vars are required.");
+    console.error("Usage: FOUNDER_EMAIL=you@example.com FOUNDER_PASSWORD=secret npx tsx scripts/seed-founder.ts");
+    process.exit(1);
+  }
   const firstName = "Thorx";
   const lastName = "Founder";
   const userId = process.env.FOUNDER_USER_ID || randomUUID();
