@@ -357,6 +357,7 @@ export const dailyTasks = pgTable("daily_tasks", {
 }, (table) => [
   index("daily_tasks_is_active_idx").on(table.isActive),
   index("daily_tasks_target_rank_idx").on(table.targetRank),
+  index("daily_tasks_target_rank_is_active_idx").on(table.targetRank, table.isActive), // H-10: task-by-rank+active queries
 ]);
 export type LeaderboardCache = typeof leaderboardCache.$inferSelect;
 export type InsertLeaderboardCache = typeof leaderboardCache.$inferInsert;

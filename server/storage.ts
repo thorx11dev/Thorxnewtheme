@@ -479,7 +479,7 @@ export interface IStorage {
 
   // ── THORX v3 (spec E.9): Withdrawal preview & referral cash ──────────────
   previewWithdrawal(userId: string, points: number): Promise<any>;
-  getReferralCashBalance(userId: string): Promise<{ balanceCashPkr: number; totalEarnedAllTime: number; referralCount: number }>;
+  getReferralCashBalance(userId: string): Promise<{ balanceCashPkr: string; totalEarnedAllTime: string; referralCount: number }>;
   createReferralCashWithdrawal(userId: string, amount: number, method: string, accountName: string, accountNumber: string, accountDetails: any): Promise<any>;
 
   // ── THORX v3 (spec E.9): Admin ops ────────────────────────────────────────
@@ -1135,7 +1135,7 @@ export class DatabaseStorage implements IStorage {
       userId: params.userId,
       guildId: params.guildId,
       displayMessage: `User '${user.identity}' – ${params.engineType} | Real: Rs.${new Decimal(cardResult.realPkrValue).toFixed(2)} | Points: ${cardResult.pointsCredited} | Thorx: Rs.${thorxProfitPkrD.toFixed(2)}`,
-      data: { engineType: params.engineType, grossPkr: params.grossPkr, cardResult, thorxProfitPkr: thorxProfitPkrD.toNumber(), guildPoolPkr: guildPoolPkrD.toNumber() },
+      data: { engineType: params.engineType, grossPkr: params.grossPkr, cardResult, thorxProfitPkr: thorxProfitPkrD.toFixed(4), guildPoolPkr: guildPoolPkrD.toFixed(4) },
     });
 
     return { success: true, pointsCredited: cardResult.pointsCredited, realPkrValue: cardResult.realPkrValue, earning };
@@ -1153,7 +1153,7 @@ export class DatabaseStorage implements IStorage {
         const result = await this.recordEarnEvent({
           userId: insertAdView.userId,
           engineType: "Engine_A",
-          grossPkr: new Decimal(insertAdView.earnedAmount).toNumber(),
+          grossPkr: insertAdView.earnedAmount, // string preferred — grossPkr accepts string|number (H-04)
           sourceId: adView.id,
           sourceType: "ad_view",
           tx,
@@ -1921,12 +1921,12 @@ export class DatabaseStorage implements IStorage {
     pointsRequested: number,
     dbc: any = db
   ): Promise<{
-    exactPkr: number;
-    platformFee: number;
-    referralCommission: number;
+    exactPkr: string;
+    platformFee: string;
+    referralCommission: string;
     referrerId: string | null;
     referrerName: string | null;
-    userNetPkr: number;
+    userNetPkr: string;
     consumedTransactionIds: string[];
   }> {
     const rows = await dbc
@@ -2013,7 +2013,7 @@ export class DatabaseStorage implements IStorage {
         // Balance / breakdown check with row locked — safe from concurrent writes.
         const breakdown = await this.calculateWithdrawalBreakdown(insertWithdrawal.userId, pointsRequested);
         const minPayout = await this.getSystemConfigValue<number>("MIN_PAYOUT", 100);
-        if (breakdown.exactPkr < minPayout) {
+        if (new Decimal(breakdown.exactPkr).lessThan(minPayout)) {
           throw new Error(`Minimum payout requirement not met. Threshold: Rs.${minPayout}.`);
         }
 
@@ -2034,8 +2034,8 @@ export class DatabaseStorage implements IStorage {
           .values({
             ...insertWithdrawal,
             amount: pointsRequested.toString(),
-            fee: breakdown.platformFee.toFixed(2),
-            netAmount: breakdown.userNetPkr.toFixed(2),
+            fee: new Decimal(breakdown.platformFee).toFixed(2),
+            netAmount: new Decimal(breakdown.userNetPkr).toFixed(2),
             status: initialStatus,
           })
           .returning();
@@ -3375,11 +3375,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWithdrawalTimeframeBreakdowns(userId: string): Promise<{
-    today: { points: number; exactPkr: number; platformFee: number; netPkr: number };
-    thisWeek: { points: number; exactPkr: number; platformFee: number; netPkr: number };
-    thisMonth: { points: number; exactPkr: number; platformFee: number; netPkr: number };
-    last3Months: { points: number; exactPkr: number; platformFee: number; netPkr: number };
-    allTime: { points: number; exactPkr: number; platformFee: number; netPkr: number };
+    today: { points: number; exactPkr: string; platformFee: string; netPkr: string };
+    thisWeek: { points: number; exactPkr: string; platformFee: string; netPkr: string };
+    thisMonth: { points: number; exactPkr: string; platformFee: string; netPkr: string };
+    last3Months: { points: number; exactPkr: string; platformFee: string; netPkr: string };
+    allTime: { points: number; exactPkr: string; platformFee: string; netPkr: string };
   }> {
     const feePct = await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15);
     const now = new Date();
@@ -3436,12 +3436,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProfitLedger(): Promise<{
-    engineCuts: { A: number; B: number; C: number; Referral: number; Manual: number; Indirect: number };
-    withdrawalFeeRevenue: number;
-    referralCommissionsPaid: number;
-    netWithdrawalFeeShare: number;
-    totalProfit: number;
-    daily30Days: { date: string; engineCut: number; feeShare: number; total: number }[];
+    engineCuts: Record<string, string>;
+    withdrawalFeeRevenue: string;
+    referralCommissionsPaid: string;
+    netWithdrawalFeeShare: string;
+    totalProfit: string;
+    daily30Days: { date: string; engineCut: string; feeShare: string; total: string }[];
   }> {
     const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -3616,10 +3616,14 @@ export class DatabaseStorage implements IStorage {
   // ── Founder Profit Ledger ───────────────────────────────────────────────────
 
   async createFounderWithdrawal(data: { amount: string; withdrawalDate: Date; description?: string; createdBy: string }): Promise<FounderWithdrawal> {
-    // C-03: Wrapped in a transaction for atomicity. The founder withdrawal is
-    // an accounting log entry — it does not debit a user balance — but the
-    // transaction ensures any future audit-log companion writes are atomic.
+    // C-03: Wrapped in a transaction with a SELECT … FOR UPDATE lock on the
+    // creator's user row. The founder withdrawal is an accounting log entry
+    // (it does not debit a user balance directly), but the FOR UPDATE lock
+    // serialises concurrent requests from the same founder session, preventing
+    // duplicate accounting rows if two requests race.
     return await db.transaction(async (tx) => {
+      // Acquire a row-level lock on the creator before inserting.
+      await tx.execute(sql`SELECT id FROM users WHERE id = ${data.createdBy} FOR UPDATE`);
       const [fw] = await tx.insert(founderWithdrawals).values({
         amount: data.amount,
         withdrawalDate: data.withdrawalDate,
@@ -4851,8 +4855,8 @@ export class DatabaseStorage implements IStorage {
   // ── THORX v3 (spec E.9): Withdrawal preview & referral cash withdrawal ─────
 
   async previewWithdrawal(userId: string, points: number): Promise<{
-    exactPkr: number; platformFee: number; feePercent: number; referralCommission: number;
-    referrerName: string | null; userNetPkr: number; sRankFastTrack: boolean;
+    exactPkr: string; platformFee: string; feePercent: number; referralCommission: string;
+    referrerName: string | null; userNetPkr: string; sRankFastTrack: boolean;
   }> {
     const breakdown = await this.calculateWithdrawalBreakdown(userId, points);
     const feePercent = await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15);
@@ -4868,7 +4872,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getReferralCashBalance(userId: string): Promise<{ balanceCashPkr: number; totalEarnedAllTime: number; referralCount: number }> {
+  async getReferralCashBalance(userId: string): Promise<{ balanceCashPkr: string; totalEarnedAllTime: string; referralCount: number }> {
     const user = await this.getUserById(userId);
     const [totals] = await db
       .select({ total: sql<string>`COALESCE(SUM(${referralCommissions.commissionAmountPkr}), 0)` })
@@ -5091,7 +5095,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(users.lastActiveAt));
   }
 
-  async adminGetReferralStats(): Promise<{ totalCommissionsPaid: number; totalReferrers: number; totalCommissionCount: number }> {
+  async adminGetReferralStats(): Promise<{ totalCommissionsPaid: string; totalReferrers: number; totalCommissionCount: number }> {
     const [row] = await db
       .select({
         total: sql<string>`COALESCE(SUM(${referralCommissions.commissionAmountPkr}), 0)`,
@@ -5100,7 +5104,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(referralCommissions);
     return {
-      totalCommissionsPaid: new Decimal(row?.total ?? "0").toNumber(),
+      totalCommissionsPaid: new Decimal(row?.total ?? "0").toFixed(2), // H-04: string, not float
       totalReferrers: Number(row?.referrers) || 0,
       totalCommissionCount: Number(row?.count) || 0,
     };
@@ -5225,11 +5229,10 @@ export class DatabaseStorage implements IStorage {
 
       // Q3 decision: route ALL points through recordEarnEvent so every earn
       // event goes through the Thorx Card draw + ledger pipeline.
-      const grossPkr =
-        task.taskCategory === "indirect"
-          ? 0
-          : new Decimal(task.grossPkrPerCompletion ?? "0").toNumber();
-      const engineType: "Engine_C" | "Indirect" = grossPkr > 0 ? "Engine_C" : "Indirect";
+      // H-04: Pass as string — grossPkr accepts string|number; avoid IEEE-754 float conversion.
+      const grossPkrStr = task.taskCategory === "indirect" ? "0" : (task.grossPkrPerCompletion ?? "0");
+      const grossPkr: string | number = task.taskCategory === "indirect" ? 0 : grossPkrStr;
+      const engineType: "Engine_C" | "Indirect" = new Decimal(grossPkrStr).greaterThan(0) ? "Engine_C" : "Indirect";
       const earnResult = await this.recordEarnEvent({
         userId,
         engineType,

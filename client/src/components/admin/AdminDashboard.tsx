@@ -1,3 +1,7 @@
+// ADMIN_PKR_DISPLAY: intentional — the admin/founder portal displays raw PKR
+// values (₨ prefix, PKR labels) for business accounting purposes. This is the
+// internal view and is explicitly excluded from the Points-Only Mandate that
+// applies to the user-facing portal. Do not convert these to TX-Points.
 import React from "react";
 import Decimal from "decimal.js";
 import { useQuery } from "@tanstack/react-query";

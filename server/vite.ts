@@ -3,16 +3,11 @@ import fs from "fs";
 import path from "path";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
+import { logger } from "./lib/logger";
 
+// L-05 / H-13: Replaced console.log with pino logger for consistent structured output.
 export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
+  logger.info({ source }, message);
 }
 
 export async function setupVite(app: Express, server: Server) {

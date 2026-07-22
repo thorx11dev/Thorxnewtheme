@@ -1,3 +1,7 @@
+// ADMIN_PKR_DISPLAY: intentional — admin leaderboard insights shows raw PKR
+// earnings for business analysis. Excluded from Points-Only Mandate (user-facing
+// screens only). parseFloat() on line ~192 is for client-side sort comparison
+// only (not stored or sent to the DB) — float imprecision is acceptable for sort.
 import React, { useEffect, useState, useMemo } from "react";
 import Decimal from "decimal.js";
 import { useDebounce } from "@/hooks/use-debounce";

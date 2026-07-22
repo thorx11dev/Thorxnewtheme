@@ -217,6 +217,27 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildDetail(msg.guildId) });
         }
 
+        // ── H-02: Guild membership state changes — keep UI in sync ───────────
+        if (msg.type === "guild.member_left" && msg.userId === user.id) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
+          toast({ title: "Left guild", description: "You have left the guild." });
+        }
+
+        if (msg.type === "guild.member_removed" && msg.userId === user.id) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
+          toast({ title: "Removed from guild", description: "You have been removed from the guild by the captain.", variant: "destructive" });
+        }
+
+        if (msg.type === "guild.disbanded" && msg.guildId) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
+          if (msg.userId === user.id || !msg.userId) {
+            toast({ title: "Guild disbanded", description: "Your guild has been disbanded.", variant: "destructive" });
+          }
+        }
+
         // ── Audit fix X: Announcement broadcast → instant member refresh ─────
         if (msg.type === "guild.announcement_posted") {
           const announcedGuildId = (msg as any).guildId as string | undefined;

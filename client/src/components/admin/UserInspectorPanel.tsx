@@ -1,3 +1,5 @@
+// ADMIN_PKR_DISPLAY: intentional — inspector panel displays PKR balances for
+// team/founder accounting. Excluded from Points-Only Mandate (user-facing only).
 import React from "react";
 import Decimal from "decimal.js";
 import { 

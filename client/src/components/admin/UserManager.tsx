@@ -1,3 +1,6 @@
+// ADMIN_PKR_DISPLAY: intentional — admin team portal shows raw PKR values for
+// business accounting (₨ balances, PKR labels). Excluded from Points-Only
+// Mandate which applies only to user-facing screens. Do not convert to TX-Points.
 import React, { useState, useEffect } from "react";
 import Decimal from "decimal.js";
 import { downloadFromUrl } from "@/lib/downloadFromUrl";

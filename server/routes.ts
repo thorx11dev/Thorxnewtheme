@@ -21,6 +21,7 @@ import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
 import { runWeeklyGuildReset } from "./modules/guild-reset";
 import { logger } from "./lib/logger";
+import { Sentry } from "./lib/sentry";
 
 // ── H-01: Withdrawal idempotency cache ───────────────────────────────────────
 // Short-TTL in-memory store that deduplicates concurrent/retried withdrawal
@@ -30,9 +31,9 @@ import { logger } from "./lib/logger";
 const _withdrawalIdempCache = new Map<string, { status: number; body: unknown; expiresAt: number }>();
 setInterval(() => {
   const now = Date.now();
-  for (const [k, v] of _withdrawalIdempCache) {
+  _withdrawalIdempCache.forEach((v, k) => {
     if (v.expiresAt < now) _withdrawalIdempCache.delete(k);
-  }
+  });
 }, 30_000).unref();
 
 // ── R-17: AD_INVENTORY runtime cache ─────────────────────────────────────────
@@ -1046,6 +1047,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       )) {
         return res.status(400).json({ message: error.message });
       }
+      // M-11: Capture unexpected failures in Sentry for financial routes
+      Sentry.captureException(error);
       res.status(500).json({ message: "Failed to submit withdrawal request" });
     }
   });

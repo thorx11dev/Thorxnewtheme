@@ -12,6 +12,7 @@ import { startHealthSnapshotJob } from "./jobs/health-snapshot";
 import { startGuildWeeklyResetJob } from "./jobs/guild-weekly-reset";
 import { startInactivityPenaltyJob } from "./jobs/inactivity-penalty";
 import { initSentry, sentryErrorHandler, Sentry } from "./lib/sentry";
+import { pool } from "./db";
 
 // Suppress pg v8 SSL deprecation warning (Railway injects sslmode=require in DATABASE_URL)
 const originalEmitWarning = process.emitWarning;
@@ -99,8 +100,11 @@ function gracefulShutdown(signal: string): void {
     process.exit(1);
   }, 30_000).unref();
   if (typeof (global as any).__thorxServer?.close === "function") {
-    (global as any).__thorxServer.close(() => {
+    (global as any).__thorxServer.close(async () => {
       clearTimeout(drainTimeout);
+      // H-09: Drain DB connection pool after HTTP server closes so in-flight
+      // queries can complete cleanly before the process exits.
+      try { await pool.end(); } catch (e) { logger.error({ err: e }, 'Pool drain error during shutdown'); }
       logger.info({ signal }, 'All connections drained — exiting cleanly');
       process.exit(0);
     });
