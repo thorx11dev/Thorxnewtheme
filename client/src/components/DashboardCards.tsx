@@ -70,7 +70,7 @@ export function DashboardCards() {
   // balanceCashPkr removed — field not sent by /api/user and PKR values must
   // only appear inside the Conversion Room / payout flow (audit finding 1-A, 1-B).
 
-  const { data: referralStats, isLoading: isReferralStatsLoading, isError: isReferralStatsError } = useQuery<{ count: number; totalEarned: string }>({
+  const { data: referralStats, isLoading: isReferralStatsLoading, isError: isReferralStatsError, refetch: refetchReferralStats } = useQuery<{ count: number; totalEarned: string }>({
     queryKey: ["/api/referrals", "dashboard-card"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/referrals");
@@ -79,7 +79,7 @@ export function DashboardCards() {
     },
   });
 
-  const { data: guild, isLoading: isGuildLoading, isError: isGuildError } = useQuery<any>({
+  const { data: guild, isLoading: isGuildLoading, isError: isGuildError, refetch: refetchGuild } = useQuery<any>({
     queryKey: ["/api/guilds", guildId, "dashboard-card"],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/guilds/${guildId}`);
@@ -90,7 +90,7 @@ export function DashboardCards() {
     refetchInterval: 30000,
   });
 
-  const { data: members = [], isLoading: isMembersLoading, isError: isMembersError } = useQuery<any[]>({
+  const { data: members = [], isLoading: isMembersLoading, isError: isMembersError, refetch: refetchMembers } = useQuery<any[]>({
     queryKey: ["/api/guilds", guildId, "members", "dashboard-card"],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/guilds/${guildId}/members`);
@@ -134,7 +134,7 @@ export function DashboardCards() {
             {isReferralStatsLoading
               ? <Skeleton className="h-3 w-24 rounded" />
               : isReferralStatsError
-              ? <span className="text-red-400">Failed to load</span>
+              ? <button onClick={() => refetchReferralStats()} className="text-red-400 text-xs font-bold uppercase tracking-wider hover:underline">Failed to load — Retry</button>
               : `${referralStats?.count ?? 0} referral${(referralStats?.count ?? 0) === 1 ? "" : "s"}`}
           </p>
           <button
@@ -189,7 +189,7 @@ export function DashboardCards() {
             {isMembersLoading
               ? <Skeleton className="h-8 w-32 rounded" />
               : isMembersError
-              ? <span className="text-red-400 text-lg">—</span>
+              ? <button onClick={() => refetchMembers()} className="text-red-400 text-base font-bold uppercase tracking-wider hover:underline">Retry</button>
               : `${(me?.weeklyPointsContributed ?? 0).toLocaleString()} pts this wk`}
           </p>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
@@ -206,7 +206,7 @@ export function DashboardCards() {
           {isGuildLoading
             ? <><Skeleton className="h-6 w-28 rounded mb-2" /><Skeleton className="h-2 w-full rounded" /></>
             : isGuildError
-            ? <p className="text-xs text-red-400 font-bold uppercase tracking-wider">Failed to load guild data</p>
+            ? <button onClick={() => refetchGuild()} className="text-xs text-red-400 font-bold uppercase tracking-wider hover:underline">Failed to load — Retry</button>
             : <>
                 <p className="text-lg font-black text-foreground mb-2">
                   {currentWeeklyPoints.toLocaleString()} / {weeklyTarget.toLocaleString()}

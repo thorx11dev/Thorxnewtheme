@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Clock, CheckCircle2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Decimal from "decimal.js";
 
 interface ReferralStatsCardProps {
     stats: {
@@ -18,7 +19,7 @@ interface ReferralStatsCardProps {
 }
 
 const toPoints = (pkrStr: string) =>
-    `${Math.round(parseFloat(pkrStr || "0") * 100).toLocaleString()} TX-Pts`;
+    `${new Decimal(pkrStr || "0").times(100).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber().toLocaleString()} TX-Pts`;
 
 export function ReferralStatsCard({ stats, className }: ReferralStatsCardProps) {
     return (

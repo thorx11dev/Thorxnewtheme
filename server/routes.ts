@@ -1052,7 +1052,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(410).json({ message: "Use PATCH /api/guilds/:id/applications/:applicationId instead.", error: "ENDPOINT_RETIRED" });
   });
 
-  app.post("/api/guilds/:id/leave", requireSessionAuth, async (req, res) => {
+  app.post("/api/guilds/:id/leave", requireSessionAuth, guildInteractionRateLimiter, async (req, res) => {
     try {
       const userId = getThorxPrincipalId(req) as string;
       await storage.leaveGuild(req.params.id, userId);

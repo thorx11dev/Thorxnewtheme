@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { downloadFromUrl } from "@/lib/downloadFromUrl";
 import { Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -209,7 +210,7 @@ export function PayoutControl() {
     const searchParam = debouncedSearch ? `search=${encodeURIComponent(debouncedSearch)}` : '';
     const idsParam = selectedIds.length > 0 ? `ids=${selectedIds.join(',')}` : '';
     const query = [statusParam, searchParam, idsParam].filter(Boolean).join('&');
-    window.location.href = apiAbsolutePath(`/api/admin/withdrawals/export${query ? `?${query}` : ""}`);
+    downloadFromUrl(apiAbsolutePath(`/api/admin/withdrawals/export${query ? `?${query}` : ""}`), "payouts-export.csv");
     toast({ 
       title: selectedIds.length > 0 ? "Selective Ledger Export" : "Full Ledger Export", 
       description: `Downloading ${selectedIds.length > 0 ? selectedIds.length : 'filtered'} payout nodes.` 

@@ -337,6 +337,19 @@ export function AdminDashboard() {
         </ToggleGroup>
       </div>
 
+      {/* Metrics error banner */}
+      {metricsError && (
+        <div className="flex items-center gap-3 rounded-lg border-2 border-destructive/40 bg-destructive/5 px-4 py-3 text-sm font-bold text-destructive">
+          <span>⚠ Failed to load platform metrics.</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="ml-auto underline underline-offset-2 hover:opacity-80"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Section 1: System Health */}
       <section className="space-y-3">
         <SectionLabel text="System Health" />

@@ -330,6 +330,25 @@ export default function EnhancedVideoPlayer({
     return `+${Math.round(parseFloat(amount))} TX-PTS`;
   };
 
+  // Lock/unlock body scroll when mobile fullscreen is active.
+  // Doing this inside useEffect guarantees the cleanup runs on unmount,
+  // preventing a permanent scroll-lock if the component is removed while
+  // fullscreen is open (e.g. navigation away mid-video).
+  useEffect(() => {
+    if (!isMobileDevice) return;
+    if (isFullscreen) {
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
+  }, [isFullscreen, isMobileDevice]);
+
   // Fullscreen change event listeners
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -373,10 +392,9 @@ export default function EnhancedVideoPlayer({
         setIsFullscreen(true);
 
         if (isMobileDevice) {
-          // Mobile-specific fullscreen behavior
+          // Mobile-specific fullscreen behavior — overflow lock applied via
+          // useEffect below (watches isFullscreen) so cleanup is guaranteed.
           document.body.classList.add('video-fullscreen-active');
-          document.documentElement.style.overflow = 'hidden';
-          document.body.style.overflow = 'hidden';
 
           // Add mobile-specific viewport meta tag adjustments
           const viewport = document.querySelector('meta[name=viewport]');
@@ -417,10 +435,8 @@ export default function EnhancedVideoPlayer({
         setIsFullscreen(false);
 
         if (isMobileDevice) {
-          // Mobile exit fullscreen
+          // Mobile exit fullscreen — overflow cleared via useEffect cleanup.
           document.body.classList.remove('video-fullscreen-active');
-          document.documentElement.style.overflow = '';
-          document.body.style.overflow = '';
 
           // Reset viewport meta tag
           const viewport = document.querySelector('meta[name=viewport]');

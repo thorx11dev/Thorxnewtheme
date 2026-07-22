@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { downloadFromUrl } from "@/lib/downloadFromUrl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Users, 
@@ -212,7 +213,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
     const searchParam = debouncedSearch ? `search=${encodeURIComponent(debouncedSearch)}` : '';
     const idsParam = selectedIds.length > 0 ? `ids=${selectedIds.join(',')}` : '';
     const query = [searchParam, idsParam].filter(Boolean).join('&');
-    window.location.href = apiAbsolutePath(`/api/admin/users/export${query ? `?${query}` : ""}`);
+    downloadFromUrl(apiAbsolutePath(`/api/admin/users/export${query ? `?${query}` : ""}`), "users-export.csv");
     toast({ 
       title: selectedIds.length > 0 ? "Selective Data Export" : "Directory Export", 
       description: `Downloading ${selectedIds.length > 0 ? selectedIds.length : 'filtered'} user nodes.` 

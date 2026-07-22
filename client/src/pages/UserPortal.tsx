@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import Decimal from "decimal.js";
 import { z } from "zod";
 import { QUERY_KEYS } from "@/lib/queryKeys";
 import { useAuth, type User as AuthUser } from "@/hooks/useAuth";
@@ -1316,8 +1317,8 @@ export default function UserPortal() {
     const referralEarnings = parseFloat(referralsData?.stats?.totalEarned || '0');
     const totalEarnings = parseFloat(displayUser?.totalEarnings || '0');
 
-    // Calculate remaining from other sources
-    const otherEarnings = totalEarnings - adViewsEarnings - referralEarnings;
+    // Calculate remaining from other sources — use Decimal to avoid float drift
+    const otherEarnings = new Decimal(totalEarnings).minus(adViewsEarnings).minus(referralEarnings).toNumber();
     const guildBonusEarnings = Math.max(0, otherEarnings * 0.7);
     const bonusesEarnings = Math.max(0, otherEarnings * 0.3);
 

@@ -519,6 +519,9 @@ const RANK_DEFAULT_AVATARS: Record<string, string> = {
 };
 
 export class DatabaseStorage implements IStorage {
+  /** Epoch-ms timestamp of the last successful leaderboard cache refresh. */
+  private _leaderboardLastRefreshedMs = 0;
+
   constructor() {
     this.bootstrapConfig().catch(err => {
       logger.error({ err }, "Critical: Failed to bootstrap system configuration");
@@ -3006,6 +3009,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async refreshLeaderboardCache(): Promise<void> {
+    // 60-second debounce: skip if a refresh already ran recently.
+    // Prevents runaway triggers (e.g. force-sync hammering) from spawning
+    // concurrent full-table scans at the DB level.
+    const nowMs = Date.now();
+    if (nowMs - this._leaderboardLastRefreshedMs < 60_000) {
+      logger.debug("refreshLeaderboardCache: skipped — refreshed within last 60 s");
+      return;
+    }
+    this._leaderboardLastRefreshedMs = nowMs;
+
     const now = new Date();
 
     // Load admin-tunable weights from system config (defaults match original formula)
