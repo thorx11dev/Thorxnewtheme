@@ -122,6 +122,13 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - 2026-07-22 (re-import): `node_modules/.bin/tsx` missing after import. Ran `npm install` + `npx drizzle-kit push --force` (no conflicts, "Changes applied"). `postgresql-16` module retained in `.replit`. Workflow restarted; app confirmed running on port 5000 (landing page renders, `/api/health` returns `{"status":"healthy","db":"connected"}`). Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder` (201, founder created successfully). Auth regression confirmed: unauthenticated `/api/user` returns 401, founder login returns 200 with role: founder.
 
+- 2026-07-22 (re-import, this session): `node_modules/.bin/tsx` missing after import. Steps taken:
+  1. `npm install` — all packages installed cleanly.
+  2. `npx drizzle-kit push --force` — schema applied with no conflicts ("Changes applied").
+  3. Workflow restarted; app running on port 5000 — landing page renders correctly (`/api/health` returns `{"status":"healthy","db":"connected"}`).
+  4. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder` (201, "Founder account created successfully").
+  5. Auth regression passed: unauthenticated `/api/user` (401) → founder login (200, role: founder) → `/api/admin/config` (200, configs returned) → `/api/team/members` (200, 1 member: Thorx X, accessLevel: founder) → session confirmed active. Only the founder account remains in the `users` table.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
