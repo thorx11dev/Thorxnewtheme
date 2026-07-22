@@ -395,7 +395,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", async (_req, res) => {
     try {
       await db.execute(sql`SELECT 1`);
-      res.json({ status: "healthy", db: "connected", uptime: process.uptime(), timestamp: new Date().toISOString() });
+      // 4.4 — Job liveness: include last-run timestamps so monitoring can
+      // detect stalled background jobs without digging through logs.
+      const { leaderboardRefreshLastRunMs } = await import("./jobs/leaderboard-refresh");
+      const nowMs = Date.now();
+      const LEADERBOARD_INTERVAL_MS = 5 * 60 * 1000;   // 5 min
+      const jobs = {
+        leaderboardRefresh: {
+          lastRunMs: leaderboardRefreshLastRunMs,
+          staleSinceMs: leaderboardRefreshLastRunMs ? nowMs - leaderboardRefreshLastRunMs : null,
+          healthy: leaderboardRefreshLastRunMs === 0
+            ? true // not yet run (server just started)
+            : nowMs - leaderboardRefreshLastRunMs < LEADERBOARD_INTERVAL_MS * 2,
+        },
+      };
+      const jobsHealthy = Object.values(jobs).every((j) => j.healthy);
+      res.status(jobsHealthy ? 200 : 503).json({
+        status: jobsHealthy ? "healthy" : "degraded",
+        db: "connected",
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        jobs,
+      });
     } catch (err) {
       logger.error({ err }, "[Health] DB connectivity check failed");
       res.status(503).json({ status: "unhealthy", db: "disconnected", timestamp: new Date().toISOString() });
@@ -4160,14 +4181,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const targetUser = await storage.getUserById(id);
       if (!targetUser) return res.status(404).json({ message: "User not found" });
 
-      const updatedUser = await storage.setUserTrustStatus(id, status, status === null ? "" : reason.trim(), req.userProfile.id);
+      const safeReason = reason?.trim() ?? "";
+      const updatedUser = await storage.setUserTrustStatus(id, status ?? "", status === null ? "" : safeReason, req.userProfile.id);
 
       await storage.createAuditLog({
         adminId: req.userProfile.id,
         action: "TRUST_STATUS_SET",
         targetType: "user",
         targetId: id,
-        details: { oldStatus: targetUser.trustStatus || null, newStatus: status, reason: status === null ? null : reason.trim() },
+        details: { oldStatus: targetUser.trustStatus || null, newStatus: status, reason: status === null ? null : safeReason },
         ipAddress: req.ip
       });
 
@@ -4774,6 +4796,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input", errors: parsed.error.flatten() });
       const { weeklyTarget } = parsed.data;
       const guild = await storage.adminSetGuildWeeklyTarget(req.params.id, weeklyTarget, adminId);
+      // 3.2 — Push the new target to all connected guild + admin sockets so
+      // CaptainPortal updates without a manual refresh.
+      try {
+        const { broadcastGuildTargetUpdated } = await import("./realtime");
+        broadcastGuildTargetUpdated(req.params.id, weeklyTarget);
+      } catch { /* realtime not initialised yet — safe to skip */ }
       res.json({ guild });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to set weekly target";

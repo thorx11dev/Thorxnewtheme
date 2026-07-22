@@ -21,10 +21,23 @@ export function startLeaderboardRefreshJob(): void {
   logger.info("[LeaderboardRefresh] 5-minute cache refresh job started.");
 }
 
+// Track the last successful run timestamp for health-check liveness reporting.
+export let leaderboardRefreshLastRunMs = 0;
+
 async function runRefresh(): Promise<void> {
   try {
     await storage.refreshLeaderboardCache();
+    leaderboardRefreshLastRunMs = Date.now();
     logger.info("[LeaderboardRefresh] Cache refreshed successfully.");
+
+    // 3.2 — Notify all connected clients so they invalidate their leaderboard
+    // query cache immediately rather than waiting for their own poll interval.
+    try {
+      const { broadcastLeaderboardRefreshed } = await import("../realtime");
+      broadcastLeaderboardRefreshed();
+    } catch (wsErr) {
+      logger.warn({ err: wsErr }, "[LeaderboardRefresh] WS broadcast skipped — realtime not ready.");
+    }
 
     // Piggyback risk scan on the same cadence — fire-and-forget.
     import("../modules/risk-engine")

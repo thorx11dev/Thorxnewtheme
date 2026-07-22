@@ -139,7 +139,10 @@ function computeRankTier(ps: number, thresholds: Record<string, number>): RankTi
 // rankLocked bypasses automatic changes; E-Rank is a hard floor (invariant #7).
 export async function checkAndUpdateRankTier(userId: string, tx?: DbClient): Promise<void> {
   const dbc = tx ?? db;
-  const [user] = await dbc.select().from(users).where(eq(users.id, userId));
+  // 1.2c: SELECT FOR UPDATE inside a transaction prevents two concurrent earn
+  // events from simultaneously promoting the same user (double rank-log bug).
+  const selectQuery = dbc.select().from(users).where(eq(users.id, userId));
+  const [user] = tx ? await selectQuery.for("update") : await selectQuery;
   if (!user || user.rankLocked) return;
 
   const thresholds: Record<string, number> = {

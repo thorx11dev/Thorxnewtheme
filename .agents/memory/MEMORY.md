@@ -21,3 +21,4 @@
 - [Remediation Plan Final](remediation-plan-final.md) — ALL 27 items from 2026-07-22 audit COMPLETE; R-17 AD_INVENTORY→systemConfig w/60s cache; R-20 streaming exports 500-row batches; R-25 getAllUsers capped 200.
 - [Remediation Plan Final V2](remediation-plan-final-v2.md) — ALL 27 items confirmed COMPLETE post-reimport 2026-07-22; R-13 legacy Zod gap was the only remaining fix; tsc clean.
 - [Deep Investigation Final](deep-investigation-final.md) — 5 new findings fixed 2026-07-22: team/emails Zod, daily_tasks SQL filter+indexes, risk cashout configurable, hilltopads pino logger.
+- [Remediation Plan V3 Complete](remediation-plan-v3.md) — ALL 16 remaining items COMPLETE 2026-07-22; GPS Decimal+batched cfg+FOR UPDATE; PS/referral FOR UPDATE; updateUserEarnings optional tx; 3 composite indexes; z-index tokens; leaderboard WS broadcast; GuildManager skeleton; debug-log→pino shim; health job liveness.

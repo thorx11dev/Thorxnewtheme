@@ -197,7 +197,7 @@ export function ProfileModal({ isOpen, onClose, user, activeRefsCount = 0 }: Pro
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[100] bg-black text-white transition-opacity duration-300 ease-out overflow-y-auto",
+        "fixed inset-0 z-profile bg-black text-white transition-opacity duration-300 ease-out overflow-y-auto",
         isVisible ? "opacity-100" : "opacity-0"
       )}
     >

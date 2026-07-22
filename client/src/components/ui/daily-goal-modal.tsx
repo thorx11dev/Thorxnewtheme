@@ -176,7 +176,7 @@ export function DailyGoalModal({
     return (
         <div
             className={cn(
-                "fixed inset-0 z-[100] bg-black text-white transition-opacity duration-500 ease-out overflow-y-auto overflow-x-hidden custom-scrollbar",
+                "fixed inset-0 z-goal bg-black text-white transition-opacity duration-500 ease-out overflow-y-auto overflow-x-hidden custom-scrollbar",
                 isVisible ? "opacity-100" : "opacity-0"
             )}
         >

@@ -174,7 +174,7 @@ export interface IStorage {
   getUserByReferralCode(referralCode: string): Promise<User | undefined>;
   validateUserPassword(email: string, password: string): Promise<User | undefined>;
   updateUser(userId: string, updates: Partial<InsertUser>): Promise<User | undefined>;
-  updateUserEarnings(userId: string, amount: string): Promise<void>;
+  updateUserEarnings(userId: string, amount: string, toPending?: boolean, tx?: any): Promise<void>;
   generatePasswordResetToken(email: string): Promise<string | undefined>;
   resetPasswordWithToken(token: string, newPassword: string): Promise<boolean>;
 
@@ -826,7 +826,11 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  async updateUserEarnings(userId: string, amount: string, toPending: boolean = false): Promise<void> {
+  async updateUserEarnings(userId: string, amount: string, toPending: boolean = false, tx?: any): Promise<void> {
+    // 1.3a: Accept an optional outer transaction so callers that already hold
+    // a db.transaction() can thread it through — keeping the balance mutation
+    // and any surrounding reads fully atomic.
+    const dbc = tx ?? db;
     const updateObj: Record<string, any> = {
       totalEarnings: sql`${users.totalEarnings} + ${amount}`,
       updatedAt: new Date(),
@@ -838,12 +842,12 @@ export class DatabaseStorage implements IStorage {
       updateObj.availableBalance = sql`${users.availableBalance} + ${amount}`;
     }
 
-    await db
+    await dbc
       .update(users)
       .set(updateObj)
       .where(eq(users.id, userId));
 
-    // Check for rank update
+    // Check for rank update (runs after the balance write settles)
     await this.checkAndUpdateRank(userId);
   }
 
@@ -4859,7 +4863,9 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Minimum referral cash withdrawal is Rs. 50.");
     }
     return await db.transaction(async (tx) => {
-      const [user] = await tx.select().from(users).where(eq(users.id, userId));
+      // 1.2a: Row-level lock prevents two concurrent referral withdrawals from
+      // both reading the same balance and both succeeding (overdraw race condition).
+      const [user] = await tx.select().from(users).where(eq(users.id, userId)).for("update");
       if (!user) throw new Error("User not found");
       const balanceD = new Decimal(user.balanceCashPkr ?? "0");
       if (balanceD.lt(new Decimal(amount))) throw new Error(`Insufficient referral balance. Available: Rs.${balanceD.toFixed(2)}.`);

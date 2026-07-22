@@ -441,6 +441,8 @@ export const auditLogs = pgTable("audit_logs", {
   index("audit_logs_target_type_idx").on(table.targetType),
   index("audit_logs_target_id_idx").on(table.targetId),
   index("audit_logs_created_at_idx").on(table.createdAt),
+  // 2.2 — Composite for admin user-audit view: filters on target + time range
+  index("audit_logs_target_user_created_idx").on(table.targetId, table.createdAt),
 ]);
 
 // Internal notes for team collaboration
@@ -554,6 +556,8 @@ export const riskCases = pgTable("risk_cases", {
   index("risk_cases_severity_idx").on(table.severity),
   index("risk_cases_status_idx").on(table.status),
   index("risk_cases_created_at_idx").on(table.createdAt),
+  // 2.2 — Composite for risk watchlist: filters on user + status together
+  index("risk_cases_user_id_status_idx").on(table.userId, table.status),
   sql`CONSTRAINT risk_cases_user_id_unique UNIQUE (user_id)`,
 ]);
 
@@ -578,6 +582,8 @@ export const scoreHistory = pgTable("score_history", {
 }, (table) => [
   index("score_history_user_id_idx").on(table.userId),
   index("score_history_snapshot_at_idx").on(table.snapshotAt),
+  // 2.2 — Composite for time-series lookups in leaderboard and PS engine
+  index("score_history_user_recorded_idx").on(table.userId, table.snapshotAt),
 ]);
 
 export type ScoreHistory = typeof scoreHistory.$inferSelect;
@@ -1095,6 +1101,8 @@ export const guildMembers = pgTable("guild_members", {
   index("guild_members_status_idx").on(table.status),
   // Composite index for "get all active members of guild X" — the most common query
   index("idx_guild_members_active").on(table.guildId, table.userId, table.status),
+  // 2.2 — Tighter composite for captain portal / GPS engine: (guild, status) only
+  index("guild_members_guild_id_status_idx").on(table.guildId, table.status),
   // A user can only hold one non-terminal (pending/active) membership at a time;
   // enforced at the application layer inside the join transaction (see storage.ts) —
   // Postgres partial unique indexes are avoided here to keep Drizzle's push flow simple.

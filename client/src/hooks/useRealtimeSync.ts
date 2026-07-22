@@ -252,6 +252,20 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
         // ── Phase 15.9: Withdrawal status (legacy user:updated path) ─────────
         // Already handled above via withdrawal_status_changed; keep the
         // user:updated path for generic cache flush.
+
+        // ── 3.2: Leaderboard broadcast — invalidate cache for all clients ─────
+        if (msg.type === "leaderboard.refreshed") {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.referralsLeaderboard });
+          queryClient.invalidateQueries({
+            predicate: (q) => typeof q.queryKey[0] === "string" && (q.queryKey[0] as string).includes("/api/leaderboard"),
+          });
+        }
+
+        // ── 3.2: Admin changed guild weekly target — CaptainPortal picks it up ─
+        if (msg.type === "guild.target_updated" && msg.guildId) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildDetail(msg.guildId) });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
+        }
       };
 
       ws.onclose = () => {

@@ -226,6 +226,30 @@ export function setSocketGuild(ws: WebSocket, guildId: string | null) {
 }
 
 /**
+ * 3.2 — Broadcast a leaderboard refresh event to all connected clients so
+ * they immediately invalidate their leaderboard query cache without waiting
+ * for their own poll interval.
+ */
+export function broadcastLeaderboardRefreshed() {
+  const payload = { type: "leaderboard.refreshed", at: Date.now() };
+  sockets.forEach((_meta, ws) => send(ws, payload));
+}
+
+/**
+ * 3.2 — Broadcast a guild weekly-target change to all sockets in that guild
+ * channel plus all admin/team sessions. Called whenever an admin overrides
+ * the weeklyTarget field so CaptainPortal picks it up without a page refresh.
+ */
+export function broadcastGuildTargetUpdated(guildId: string, weeklyTarget: number) {
+  const payload = { type: "guild.target_updated", guildId, weeklyTarget, at: Date.now() };
+  sockets.forEach((meta, ws) => {
+    if (meta.guildId === guildId || meta.canSeeUserActivity) {
+      send(ws, payload);
+    }
+  });
+}
+
+/**
  * Close all open WebSocket connections belonging to a specific user.
  * Per Q3 business decision: sends an explicit SUSPENDED message payload
  * BEFORE closing so the client receives clear UX feedback, not just a close code.

@@ -95,6 +95,30 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         shake: "shake 0.5s ease-in-out",
       },
+      // 3.1 — Canonical z-index token system.
+      // Every layer must use one of these values so stacking order is
+      // deterministic and reviewable in a single place.
+      //
+      // Layer            Token         Value
+      // ─────────────────────────────────────
+      // Loading screen   z-loading     9999
+      // Cursor / FX      z-cursor      9000
+      // Notification      z-notif       800
+      // Profile modal    z-profile     700
+      // Daily goal modal z-goal        600
+      // Ad panel         z-ad          500
+      // Toast            z-toast       400
+      // Dropdowns        z-dropdown    200
+      zIndex: {
+        loading: "9999",
+        cursor: "9000",
+        notif: "800",
+        profile: "700",
+        goal: "600",
+        ad: "500",
+        toast: "400",
+        dropdown: "200",
+      },
     },
   },
   plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],

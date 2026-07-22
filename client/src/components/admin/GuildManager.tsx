@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -279,8 +280,25 @@ export function GuildManager() {
       </div>
 
       {isLoading ? (
-        <div className="p-20 text-center">
-          <div className="w-10 h-10 border-[3px] border-[#111] border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-background border-[1.5px] border-[#111]/10 rounded-2xl p-5 md:p-6 flex flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-36" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-20 rounded-lg" />
+                  <Skeleton className="h-8 w-20 rounded-lg" />
+                </div>
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="space-y-4">

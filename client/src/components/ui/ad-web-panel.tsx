@@ -159,7 +159,7 @@ export function AdWebPanel({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm"
+                        className="fixed inset-0 z-ad bg-black/80 backdrop-blur-sm"
                         onClick={() => { }} // Block clicks
                     />
 
@@ -169,7 +169,7 @@ export function AdWebPanel({
                         animate={{ y: 0 }}
                         exit={{ y: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 200, mass: 0.8 }}
-                        className="fixed inset-0 top-0 z-[70] bg-white flex flex-col shadow-2xl overflow-hidden"
+                        className="fixed inset-0 top-0 z-[510] bg-white flex flex-col shadow-2xl overflow-hidden"
                     >
                         {/* Header - White Background, Minimal */}
                         <div className="bg-white border-b border-gray-100 p-3 md:p-4 flex flex-col gap-3 shadow-sm relative z-20">
