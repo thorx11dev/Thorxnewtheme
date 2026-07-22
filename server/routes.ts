@@ -2661,6 +2661,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcastToUser(updated.userId, 'withdrawal_status_changed', { status, withdrawalId });
       res.json({ success: true, withdrawal: updated });
     } catch (error) {
+      // O-03: Explicitly capture financial failures in Sentry with domain context
+      Sentry.captureException(error, {
+        tags: { domain: "financial", operation: "updateWithdrawalStatus" },
+        extra: { withdrawalId: req.params.id, adminId: req.userProfile?.id },
+      });
       logger.error({ err: error }, "Update withdrawal error");
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update withdrawal" });
     }

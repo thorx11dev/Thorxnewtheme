@@ -93,7 +93,8 @@ export function simulateThorxCards(params: {
 }): SimulationResult[] {
   const { grossPkr, userRankTier, iterations, config, engineSplits } = params;
   // Use Decimal for the split so floating-point errors don't accumulate across iterations
-  const userPkrShare = new Decimal(grossPkr).times(engineSplits.userCutPct).div(100).toNumber();
+  // F-08: Keep full Decimal precision — drawThorxCard accepts number|string; pass string to avoid float drift.
+  const userPkrShare = new Decimal(grossPkr).times(engineSplits.userCutPct).div(100).toFixed(8);
 
   const results: SimulationResult[] = [];
   for (let i = 0; i < iterations; i++) {
