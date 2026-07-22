@@ -1161,14 +1161,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getSystemConfigValue<number>("CONVERSION_RATE", 100),
         storage.getSystemConfigValue<number>("ENGINE_C_USER_CUT_PCT", 45),
       ]);
-      const userCutRate = userCutPct / 100;
+      const userCutPctD = new Decimal(userCutPct);
 
       const safeTasks = (tasks as any[]).map((task) => {
         const { grossPkrPerCompletion, ...rest } = task;
-        const grossPkr = parseFloat(grossPkrPerCompletion || "0");
-        const isIndirect = task.taskCategory === "indirect" || !grossPkr;
-        const txPointsReward = isIndirect ? 0 : Math.round(grossPkr * userCutRate * conversionRate);
-        const txPointsRewardMax = txPointsReward ? Math.round(txPointsReward * 1.2) : 0;
+        const grossPkrD = new Decimal(grossPkrPerCompletion ?? "0");
+        const isIndirect = task.taskCategory === "indirect" || grossPkrD.isZero();
+        const txPointsReward = isIndirect
+          ? 0
+          : grossPkrD.times(userCutPctD).div(100).times(conversionRate)
+              .toDecimalPlaces(0, Decimal.ROUND_FLOOR).toNumber();
+        const txPointsRewardMax = txPointsReward
+          ? new Decimal(txPointsReward).times(1.2).toDecimalPlaces(0, Decimal.ROUND_FLOOR).toNumber()
+          : 0;
         return { ...rest, txPointsReward, txPointsRewardMax };
       });
 
@@ -3691,7 +3696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // THORX v3 (spec B.2, L.3): Engine B CPA tasks require C-Rank.
       // Gate check is BEFORE the transaction so a failed rank check does not
       // consume the task slot — spec invariant L.3: "E-Rank user → 403 RANK_GATE".
-      const isCpaTask = task.taskCategory === 'cpa_offer' && task.grossPkrPerCompletion && parseFloat(task.grossPkrPerCompletion) > 0;
+      const isCpaTask = task.taskCategory === 'cpa_offer' && task.grossPkrPerCompletion && new Decimal(task.grossPkrPerCompletion).gt(0);
 
       if (isCpaTask) {
         const user = await storage.getUserById(userId);
@@ -3724,7 +3729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const earnResult = await storage.recordEarnEvent({
             userId,
             engineType: isCpaTask ? 'Engine_B' : 'Indirect',
-            grossPkr: isCpaTask ? parseFloat(task.grossPkrPerCompletion!) : 0,
+            grossPkr: isCpaTask ? new Decimal(task.grossPkrPerCompletion!).toNumber() : 0,
             sourceId: updatedRecord?.id ?? taskId,
             sourceType: 'daily_task',
             tx, // ← threads the outer transaction through so both writes are atomic
@@ -3975,10 +3980,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/team/members", requireTeamRole, async (req, res) => {
+  app.post("/api/team/members", requireTeamRole, adminActionRateLimiter, async (req, res) => {
     try {
       if (!req.userProfile) return res.status(401).send();
-      const { email, role } = req.body;
+      const teamMemberSchema = z.object({
+        email: z.string().email(),
+        role: z.enum(["admin", "team"]),
+        permissions: z.array(z.string().max(50)).max(20).optional(),
+      });
+      const parsedMember = teamMemberSchema.safeParse(req.body);
+      if (!parsedMember.success) return res.status(400).json({ message: parsedMember.error.errors[0]?.message ?? "Invalid input" });
+      const { email, role, permissions } = parsedMember.data;
       const isAdminOrFounder = req.userProfile.role === 'founder' || req.userProfile.role === 'admin';
       
       if (!isAdminOrFounder) return res.status(403).json({ message: "Insufficient authorization level to issue keys." });
@@ -4029,11 +4041,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/team/members/:id", requireTeamRole, async (req, res) => {
+  app.patch("/api/team/members/:id", requireTeamRole, adminActionRateLimiter, async (req, res) => {
     try {
       if (!req.userProfile) return res.status(401).send();
+      const patchMemberSchema = z.object({
+        accessLevel: z.string().min(1).max(50).optional(),
+        isActive: z.boolean().optional(),
+      });
+      const parsedPatch = patchMemberSchema.safeParse(req.body);
+      if (!parsedPatch.success) return res.status(400).json({ message: parsedPatch.error.errors[0]?.message ?? "Invalid input" });
       const { id } = req.params;
-      const { accessLevel, isActive } = req.body;
+      const { accessLevel, isActive } = parsedPatch.data;
 
       // Only admin or founder can modify team member records
       const actorRole = req.userProfile.role;
@@ -4090,11 +4108,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/users/:id/rank", requirePermission("MANAGE_USERS"), profileRateLimiter, async (req, res) => {
     try {
       const { id } = req.params;
-      const { rank, locked } = req.body;
-
-      if (typeof rank !== "string" || !RANK_NAMES.includes(rank)) {
-        return res.status(400).json({ message: `Rank must be one of: ${RANK_NAMES.join(", ")}` });
-      }
+      const rankSchema = z.object({
+        rank: z.enum(RANK_NAMES as [string, ...string[]]),
+        locked: z.boolean().optional(),
+      });
+      const parsedRank = rankSchema.safeParse(req.body);
+      if (!parsedRank.success) return res.status(400).json({ message: parsedRank.error.errors[0]?.message ?? "Invalid input" });
+      const { rank, locked } = parsedRank.data;
 
       const targetUser = await storage.getUserById(id);
       if (!targetUser) return res.status(404).json({ message: "User not found" });
@@ -4126,12 +4146,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/admin/users/:id/trust-status", requirePermission("MANAGE_USERS"), async (req, res) => {
     try {
       const { id } = req.params;
-      const { status, reason } = req.body;
-
-      if (status !== null && (typeof status !== "string" || !TRUST_STATUSES.includes(status))) {
-        return res.status(400).json({ message: `Status must be one of: ${TRUST_STATUSES.join(", ")}` });
-      }
-      if (status !== null && (typeof reason !== "string" || !reason.trim())) {
+      const trustSchema = z.object({
+        status: z.enum(TRUST_STATUSES as [string, ...string[]]).nullable(),
+        reason: z.string().max(500).optional(),
+      });
+      const parsedTrust = trustSchema.safeParse(req.body);
+      if (!parsedTrust.success) return res.status(400).json({ message: parsedTrust.error.errors[0]?.message ?? "Invalid input" });
+      const { status, reason } = parsedTrust.data;
+      if (status !== null && (!reason || !reason.trim())) {
         return res.status(400).json({ message: "A reason is required when setting a trust status." });
       }
 
@@ -4269,9 +4291,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/system-config", requireTeamRole, async (req, res) => {
+  app.post("/api/admin/system-config", requirePermission("MANAGE_SYSTEM"), adminActionRateLimiter, async (req, res) => {
     try {
-      const { key, value } = req.body;
+      const sysConfigSchema = z.object({
+        key: z.string().min(1).max(100),
+        value: z.string().max(500),
+      });
+      const parsed = sysConfigSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid input" });
+      const { key, value } = parsed.data;
       const config = await storage.updateSystemConfig(key, value, getThorxPrincipalId(req)!);
       res.json(config);
     } catch (error) {
@@ -4442,13 +4470,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/guilds/:id/applications/:applicationId", requireSessionAuth, async (req, res) => {
     try {
       const captainId = getThorxPrincipalId(req) as string;
-      const { action, rejectionReason } = req.body;
-      if (!["accept", "reject"].includes(action)) {
-        return res.status(400).json({ message: "action must be 'accept' or 'reject'." });
-      }
-      if (rejectionReason && (typeof rejectionReason !== "string" || rejectionReason.length > 500)) {
-        return res.status(400).json({ message: "Rejection reason cannot exceed 500 characters." });
-      }
+      const guildAppSchema = z.object({
+        action: z.enum(["accept", "reject"]),
+        rejectionReason: z.string().max(500).optional(),
+      });
+      const parsedApp = guildAppSchema.safeParse(req.body);
+      if (!parsedApp.success) return res.status(400).json({ message: parsedApp.error.errors[0]?.message ?? "Invalid input" });
+      const { action, rejectionReason } = parsedApp.data;
       const membership = await storage.decideGuildApplication(
         req.params.id, req.params.applicationId, captainId, action, rejectionReason
       );
@@ -4642,18 +4670,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } = req.body;
       const n = Math.min(Math.max(parseInt(String(iterations ?? "1000")), 1), 10000);
       const result = simulateThorxCards({
-        grossPkr: parseFloat(String(grossPkr ?? "1.0")),
+        grossPkr: new Decimal(String(grossPkr ?? "1.0")).toNumber(),
         engineType: (engineType ?? "A") as "A" | "B" | "C",
         userRankTier: String(userRankTier ?? "E-Rank"),
         iterations: n,
         config: {
-          conversionRate: parseFloat(String(conversionRate ?? "1000")),
-          varianceMin: parseFloat(String(varianceMin ?? "0.8")),
-          varianceMax: parseFloat(String(varianceMax ?? "1.2")),
+          conversionRate: new Decimal(String(conversionRate ?? "1000")).toNumber(),
+          varianceMin: new Decimal(String(varianceMin ?? "0.8")).toNumber(),
+          varianceMax: new Decimal(String(varianceMax ?? "1.2")).toNumber(),
         },
         engineSplits: {
-          thorxCutPct: parseFloat(String(thorxCutPct ?? "40")),
-          userCutPct: parseFloat(String(userCutPct ?? "60")),
+          thorxCutPct: new Decimal(String(thorxCutPct ?? "40")).toNumber(),
+          userCutPct: new Decimal(String(userCutPct ?? "60")).toNumber(),
         },
       });
       // Bug found during 2026-07-15 production-readiness re-verification:
