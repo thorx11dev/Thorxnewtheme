@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import Decimal from "decimal.js";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -289,7 +290,7 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Total Members", value: insights?.totalCount ?? "—", icon: <Users size={18} /> },
-          { label: "Top Earner", value: insights?.globalRanking?.[0] ? `PKR ${Number(insights.globalRanking[0].totalEarnings || "0").toLocaleString()}` : "—", icon: <TrendingUp size={18} /> },
+          { label: "Top Earner", value: insights?.globalRanking?.[0] ? `PKR ${new Decimal(insights.globalRanking[0].totalEarnings || "0").toFixed(2)}` : "—", icon: <TrendingUp size={18} /> },
           { label: "Top Referrer", value: insights?.topReferrers?.[0] ? `${insights.topReferrers[0].level1Count || 0} direct` : "—", icon: <Trophy size={18} /> },
           { label: "Watchlist", value: insights?.anomalies?.length ?? 0, icon: <AlertTriangle size={18} /> },
         ].map((stat) => (
@@ -426,7 +427,7 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                           </td>
                           <td className="p-5">
                             <span className="font-black text-sm tabular-nums text-[#111]">
-                              PKR {parseFloat(user.totalEarnings || "0").toLocaleString()}
+                              PKR {new Decimal(user.totalEarnings || "0").toFixed(2)}
                             </span>
                           </td>
                           <td className="p-5">
@@ -565,7 +566,7 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
                           {/* L2 cell removed */}
                           <td className="p-5">
                             <span className="font-black text-sm tabular-nums text-[#111]">
-                              PKR {parseFloat(user.totalEarnings || "0").toLocaleString()}
+                              PKR {new Decimal(user.totalEarnings || "0").toFixed(2)}
                             </span>
                           </td>
                           <td className="p-5 text-right">

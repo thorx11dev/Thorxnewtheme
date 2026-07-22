@@ -2501,7 +2501,8 @@ export class DatabaseStorage implements IStorage {
         return user;
       }
 
-      const totalEarnings = new Decimal(user.totalEarnings || "0").toNumber();
+      // H-04: Use Decimal comparison — avoids IEEE-754 drift at large earning thresholds.
+      const totalEarningsD = new Decimal(user.totalEarnings || "0");
 
       // Count direct active referrals
       const [{ count: refCount }] = await tx
@@ -2515,7 +2516,7 @@ export class DatabaseStorage implements IStorage {
 
       // Evaluate Rank based on BOTH earnings and referrals thresholds
       for (const rank of RANKS) {
-        if (totalEarnings >= rank.minEarned && activeRefs >= rank.minRefs) {
+        if (totalEarningsD.greaterThanOrEqualTo(rank.minEarned) && activeRefs >= rank.minRefs) {
           newRank = rank.name;
         }
       }
@@ -3133,7 +3134,7 @@ export class DatabaseStorage implements IStorage {
 
     // Pre-sort arrays for percentile normalization (O(n log n) once each)
     const earningsSorted = [...allQualifiedUsers]
-      .map(u => new Decimal(u.totalEarnings || "0").toNumber())
+      .map(u => new Decimal(u.totalEarnings || "0").toNumber()) // float intentional — sort/percentile only, never stored
       .sort((a, b) => a - b);
     const referralsSorted = [...allQualifiedUsers]
       .map(u => l1Map.get(u.id) ?? 0)
@@ -3150,7 +3151,7 @@ export class DatabaseStorage implements IStorage {
 
     const scoredUsers = allQualifiedUsers.map(u => {
       const accountAgeDays = Math.max(1, (now.getTime() - new Date(u.createdAt!).getTime()) / 86400000);
-      const earned = new Decimal(u.totalEarnings || "0").toNumber();
+      const earned = new Decimal(u.totalEarnings || "0").toNumber(); // float intentional — percentile comparison only
 
       // 1. Earnings Score (0-100) — percentile rank among all qualified users
       const earningsScore = percentileRank(earningsSorted, earned);
@@ -3653,23 +3654,21 @@ export class DatabaseStorage implements IStorage {
     const monthInD = new Decimal(monthProfitRow?.total ?? '0');
     const totalOutD = new Decimal(totalOutRow?.total ?? '0');
     const monthOutD = new Decimal(monthOutRow?.total ?? '0');
-    const totalIn = totalInD.toNumber();
-    const monthIn = monthInD.toNumber();
-    const totalOut = totalOutD.toNumber();
-    const monthOut = monthOutD.toNumber();
-    const safe = totalInD.minus(totalOutD).toNumber();
-    const monthBalance = monthInD.minus(monthOutD).toNumber();
+    // H-04: Eliminate .toNumber() intermediaries — call .toFixed() directly on Decimal
+    // to preserve full precision through to the JSON response boundary.
+    const safeD = totalInD.minus(totalOutD);
+    const monthBalanceD = monthInD.minus(monthOutD);
     const daysSinceLast = lastWd?.createdAt ? Math.floor((Date.now() - new Date(lastWd.createdAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
 
     return {
-      totalProfitEarned: totalIn.toFixed(2),
-      thisMonthProfitEarned: monthIn.toFixed(2),
-      totalWithdrawnToPersonal: totalOut.toFixed(2),
-      thisMonthWithdrawn: monthOut.toFixed(2),
-      safeToWithdrawNow: Math.max(0, safe).toFixed(2),
-      monthlyBalance: monthBalance.toFixed(2),
-      isOverWithdrawn: safe < 0,
-      overWithdrawnAmount: safe < 0 ? Math.abs(safe).toFixed(2) : '0',
+      totalProfitEarned: totalInD.toFixed(2),
+      thisMonthProfitEarned: monthInD.toFixed(2),
+      totalWithdrawnToPersonal: totalOutD.toFixed(2),
+      thisMonthWithdrawn: monthOutD.toFixed(2),
+      safeToWithdrawNow: safeD.isNegative() ? "0.00" : safeD.toFixed(2),
+      monthlyBalance: monthBalanceD.toFixed(2),
+      isOverWithdrawn: safeD.isNegative(),
+      overWithdrawnAmount: safeD.isNegative() ? safeD.abs().toFixed(2) : "0",
       currentFeeRate: String(feeRate),
       lastWithdrawalDate: lastWd?.withdrawalDate?.toISOString() ?? null,
       daysSinceLastWithdrawal: daysSinceLast,
@@ -4880,8 +4879,8 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.referredBy, userId));
     return {
-      balanceCashPkr: new Decimal(user?.balanceCashPkr ?? "0").toNumber(),
-      totalEarnedAllTime: new Decimal(totals?.total ?? "0").toNumber(),
+      balanceCashPkr: new Decimal(user?.balanceCashPkr ?? "0").toFixed(2),
+      totalEarnedAllTime: new Decimal(totals?.total ?? "0").toFixed(2),
       referralCount: Number(count) || 0,
     };
   }

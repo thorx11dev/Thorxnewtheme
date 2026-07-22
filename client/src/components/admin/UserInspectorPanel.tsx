@@ -1,4 +1,5 @@
 import React from "react";
+import Decimal from "decimal.js";
 import { 
   X, 
   User, 
@@ -136,7 +137,7 @@ export function UserInspectorPanel({ user, isOpen, onClose, onViewInCRM }: UserI
                 <span className="text-[10px] font-medium uppercase tracking-wide">Total Earned</span>
               </div>
               <div className="text-lg font-semibold tabular-nums text-zinc-900">
-                PKR {parseFloat(user.totalEarnings || "0").toLocaleString()}
+                PKR {new Decimal(user.totalEarnings || "0").toFixed(2)}
               </div>
             </div>
             <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-1.5">
@@ -145,7 +146,7 @@ export function UserInspectorPanel({ user, isOpen, onClose, onViewInCRM }: UserI
                 <span className="text-[10px] font-medium uppercase tracking-wide">Available</span>
               </div>
               <div className="text-lg font-semibold tabular-nums text-primary">
-                PKR {parseFloat(user.availableBalance || "0").toLocaleString()}
+                PKR {new Decimal(user.availableBalance || "0").toFixed(2)}
               </div>
             </div>
           </div>

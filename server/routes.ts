@@ -22,6 +22,19 @@ import { simulateThorxCards } from "./modules/thorx-card";
 import { runWeeklyGuildReset } from "./modules/guild-reset";
 import { logger } from "./lib/logger";
 
+// ── H-01: Withdrawal idempotency cache ───────────────────────────────────────
+// Short-TTL in-memory store that deduplicates concurrent/retried withdrawal
+// submissions carrying the same X-Idempotency-Key header within a 60-second
+// window.  Belt-and-suspenders alongside the DB partial unique index on pending
+// withdrawals.  Single-process only — sufficient for Replit deployments.
+const _withdrawalIdempCache = new Map<string, { status: number; body: unknown; expiresAt: number }>();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _withdrawalIdempCache) {
+    if (v.expiresAt < now) _withdrawalIdempCache.delete(k);
+  }
+}, 30_000).unref();
+
 // ── R-17: AD_INVENTORY runtime cache ─────────────────────────────────────────
 // The ad inventory is stored in system_config under AD_INVENTORY_JSON so an
 // admin can adjust rewards/durations without a code deployment. A 60-second
@@ -981,6 +994,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
 
+      // H-01: Idempotency key deduplication — client sends X-Idempotency-Key UUID
+      // generated fresh for each new withdrawal attempt and stable through retries.
+      const idempotencyKey = req.headers["x-idempotency-key"] as string | undefined;
+      if (idempotencyKey) {
+        const cached = _withdrawalIdempCache.get(`${userId}:${idempotencyKey}`);
+        if (cached && cached.expiresAt > Date.now()) {
+          logger.info({ userId, idempotencyKey }, "[Withdrawals] Idempotency hit — returning cached response");
+          return res.status(cached.status).json(cached.body);
+        }
+      }
+
       // Payout always open — minimum balance enforced in storage layer (Blueprint v2026)
       // Explicitly pick only the user-supplied fields — never spread req.body directly
       // so an attacker who adds `status: "approved"` or `fee: "0"` to the payload
@@ -998,11 +1022,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const withdrawal = await storage.createWithdrawal(withdrawalData);
 
-      res.status(201).json({
-        success: true,
-        withdrawal,
-        message: "Withdrawal request submitted successfully"
-      });
+      const responseBody = { success: true, withdrawal, message: "Withdrawal request submitted successfully" };
+      // H-01: Cache the successful response so retried requests with the same key
+      // return the same 201 without creating a duplicate withdrawal.
+      if (idempotencyKey) {
+        _withdrawalIdempCache.set(`${userId}:${idempotencyKey}`, {
+          status: 201,
+          body: responseBody,
+          expiresAt: Date.now() + 60_000,
+        });
+      }
+      res.status(201).json(responseBody);
     } catch (error) {
       logger.error({ err: error }, "Create withdrawal error");
       if (error instanceof z.ZodError) {

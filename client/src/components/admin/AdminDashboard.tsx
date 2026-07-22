@@ -1,4 +1,5 @@
 import React from "react";
+import Decimal from "decimal.js";
 import { useQuery } from "@tanstack/react-query";
 import {
   Users, Activity, DollarSign, TrendingUp, TrendingDown, Minus,
@@ -278,7 +279,7 @@ export function AdminDashboard() {
   const newRegistrationsInWindow = Number(metrics?.activeUsers ?? 0);  // count of users registered in selected window
   // H-08: Use Number() on API string values — display-only, no arithmetic on these
   // floats. The server now returns Decimal-serialized strings (H-04/H-05 fix).
-  const safePkr = (v: string | number | null | undefined) => Number(v ?? "0") || 0;
+  const safePkr = (v: string | number | null | undefined) => { try { return new Decimal(String(v ?? "0")).toNumber(); } catch { return 0; } };
   const totalEarnings      = safePkr(metrics?.totalEarnings);
   const pendingTotal       = safePkr(metrics?.pendingWithdrawalTotal);
   const pendingCount       = metrics?.pendingWithdrawalCount ?? 0;
@@ -307,7 +308,7 @@ export function AdminDashboard() {
         : { month: "short", day: "numeric" }
       ),
       registrations: item.count,
-      revenue: typeof item.amount === "number" ? item.amount : parseFloat(String(item.amount ?? "0")),
+      revenue: (() => { try { return new Decimal(String(item.amount ?? "0")).toNumber(); } catch { return 0; } })(),
     };
   });
 

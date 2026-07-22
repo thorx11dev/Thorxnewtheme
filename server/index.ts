@@ -41,6 +41,17 @@ function validateRequiredEnv(): void {
     }
     logger.warn({ service: "thorx-api", env: process.env.NODE_ENV }, "CREDENTIAL_ENCRYPTION_KEY is not set — credential storage will use the fallback key. Set this env var before going to production.");
   }
+  // L-03: Warn if BOOTSTRAP_SECRET is absent in production — the founder endpoint
+  // has no other guard and any caller could create the admin account.
+  if (process.env.NODE_ENV === "production" && !process.env.BOOTSTRAP_SECRET) {
+    logger.warn("BOOTSTRAP_SECRET is not set — /api/bootstrap-founder is unprotected. Set this secret before receiving production traffic.");
+  }
+
+  // L-06: Warn if SENTRY_DSN is absent in production so the silence is never accidental.
+  if (process.env.NODE_ENV === "production" && !process.env.SENTRY_DSN) {
+    logger.warn("SENTRY_DSN is not set — Sentry error tracking is disabled. Set this env var to enable production error monitoring.");
+  }
+
   const required: Array<{ key: string; hint: string }> = [
     { key: "DATABASE_URL", hint: "Add a PostgreSQL database to this Replit" },
     { key: "SESSION_SECRET", hint: "Generate with: openssl rand -hex 32" },

@@ -22,9 +22,11 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  extraHeaders?: Record<string, string>,
 ): Promise<Response> {
   const headers: Record<string, string> = {
     ...(data ? { "Content-Type": "application/json" } : {}),
+    ...extraHeaders,
   };
 
   if (UNSAFE_METHODS.has(method.toUpperCase())) {

@@ -894,6 +894,7 @@ export default function UserPortal() {
 
   // Payout section states
   const [currentStep, setCurrentStep] = useState(1);
+  const [withdrawalKey, setWithdrawalKey] = useState(() => crypto.randomUUID());
   const [withdrawAmount, setWithdrawAmount] = useState(""); // TX-Points requested (not PKR)
   const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null); // Phase 9.1
   const [selectedMethod, setSelectedMethod] = useState("");
@@ -2657,7 +2658,7 @@ export default function UserPortal() {
           }
         };
 
-        const response = await apiRequest("POST", "/api/withdrawals", payload);
+        const response = await apiRequest("POST", "/api/withdrawals", payload, { "x-idempotency-key": withdrawalKey });
 
         if (response.ok) {
           toast({
@@ -2676,6 +2677,7 @@ export default function UserPortal() {
           setWithdrawAmount("");
           setSelectedMethod("");
           setPaymentDetails({ name: "", number: "", email: "", iban: "" });
+          setWithdrawalKey(crypto.randomUUID()); // rotate idempotency key after success
         } else {
           const error = await response.json();
           toast({

@@ -385,10 +385,13 @@ export async function runFullRiskScan(options?: { broadcastAlerts?: boolean }): 
   critical: number;
 }> {
   const broadcast = options?.broadcastAlerts ?? true;
+  // H-11: Hard cap prevents OOM at scale. Increase via system_config RISK_ENGINE_USER_LIMIT
+  // if a larger scan is intentionally needed (process in priority order — highest-risk first).
   const allUsers = await db
     .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
     .from(users)
-    .where(and(eq(users.isActive, true), eq(users.role, "user")));
+    .where(and(eq(users.isActive, true), eq(users.role, "user")))
+    .limit(5000);
 
   let flagged = 0;
   let critical = 0;

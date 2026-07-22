@@ -60,7 +60,9 @@ export async function verifyEmailDomainMX(domain: string): Promise<boolean> {
     const mxRecords = await dns.resolveMx(domain);
     return mxRecords && mxRecords.length > 0;
   } catch (error) {
-    console.error(`MX lookup failed for domain ${domain}:`, error);
+    // H-13: structured log via pino — console.error removed
+    const { logger } = await import("./lib/logger");
+    logger.error({ err: error, domain }, "MX lookup failed");
     return false;
   }
 }

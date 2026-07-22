@@ -199,6 +199,7 @@ export const leaderboardCache = pgTable("leaderboard_cache", {
   index("leaderboard_rank_idx").on(table.globalRank),
   index("leaderboard_user_id_idx").on(table.userId),
   index("leaderboard_recorded_at_idx").on(table.recordedAt),
+  index("leaderboard_score_desc_idx").on(table.performanceScore), // H-10: ordered score reads
 ]);
 
 // advertisements table removed — was never written to (orphaned).
@@ -1204,6 +1205,7 @@ export const pointsLedger = pgTable("points_ledger", {
   index("points_ledger_source_type_idx").on(table.sourceType),
   index("points_ledger_created_at_idx").on(table.createdAt),
   index("points_ledger_week_start_idx").on(table.weekStart),
+  index("points_ledger_guild_week_user_idx").on(table.guildId, table.weekStart, table.userId), // H-10: GPS weekly aggregation
 ]);
 
 export const insertPointsLedgerSchema = createInsertSchema(pointsLedger).omit({
