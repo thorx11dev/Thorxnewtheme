@@ -2160,12 +2160,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adjustType = req.body.type === 'deduct' ? 'subtract' : 'add';
         pointsDelta = txPointsDelta;
       } else {
-        // Legacy single-field API (backward compat)
-        pkrAmount = amount;
-        adjustType = type as 'add' | 'subtract';
-        if (adjustType === 'add' && creditIntent && !['verified_deposit', 'admin_credit'].includes(creditIntent)) {
-          return res.status(400).json({ message: "Invalid creditIntent value" });
+        // Legacy single-field API (backward compat) — R-13: Zod validates all fields
+        const legacySchema = z.object({
+          amount: z.string().regex(/^\d+(\.\d{1,4})?$/, "amount must be a non-negative decimal string"),
+          type: z.enum(["add", "subtract"]),
+          reason: z.string().min(5).max(500),
+          creditIntent: z.enum(["verified_deposit", "admin_credit"]).optional(),
+        });
+        const legacyParsed = legacySchema.safeParse(req.body);
+        if (!legacyParsed.success) {
+          return res.status(400).json({ message: legacyParsed.error.errors[0]?.message ?? "Validation failed" });
         }
+        pkrAmount = legacyParsed.data.amount;
+        adjustType = legacyParsed.data.type;
       }
 
       const user = await storage.adjustUserBalance(userId, pkrAmount, adjustType, adminId, reason, creditIntent ?? 'admin_credit', pointsDelta);
