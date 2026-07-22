@@ -1071,7 +1071,7 @@ export class DatabaseStorage implements IStorage {
           .update(guilds)
           .set({
             weeklyBonusPool: sql`${guilds.weeklyBonusPool} + ${guildPoolPkrD.toFixed(4)}`,
-            currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${new Decimal(params.grossPkr).times(100).toDecimalPlaces(0).toNumber()}`,
+            currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${new Decimal(params.grossPkr).times(100).toDecimalPlaces(0).toString()}`,
           })
           .where(eq(guilds.id, params.guildId));
       }
@@ -3760,8 +3760,8 @@ export class DatabaseStorage implements IStorage {
     const ago14d = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const ago24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    // Pending withdrawals
-    const pendingRows = await db.select({ id: withdrawals.id, amount: withdrawals.amount, createdAt: withdrawals.createdAt }).from(withdrawals).where(eq(withdrawals.status, 'pending'));
+    // Pending withdrawals — capped at 1000 rows for aggregation safety (2-E)
+    const pendingRows = await db.select({ id: withdrawals.id, amount: withdrawals.amount, createdAt: withdrawals.createdAt }).from(withdrawals).where(eq(withdrawals.status, 'pending')).limit(1000);
     const pendingTotal = pendingRows.reduce((s, w) => s.plus(new Decimal(w.amount ?? "0")), new Decimal(0));
     const oldestPending = pendingRows.reduce((oldest, w) => (!w.createdAt ? oldest : !oldest || w.createdAt < oldest ? w.createdAt : oldest), null as Date | null);
     const oldestPendingDays = oldestPending ? Math.floor((now.getTime() - oldestPending.getTime()) / (1000 * 60 * 60 * 24)) : null;

@@ -53,9 +53,15 @@ export function drawThorxCard(params: CardDrawParams): CardResult {
   if (max < min) max = min;
 
   const pkrDecimal = new Decimal(userPkrShare);
-  const targetPoints = pkrDecimal.div(10).times(conversionRate).toNumber();
-  const cardVariance = min + Math.random() * (max - min);
-  const pointsCredited = Math.max(0, Math.round(targetPoints * cardVariance));
+  // Keep Decimal through the full chain — only convert to number at the
+  // final integer step to avoid float-multiply precision drift.
+  const targetPointsD = pkrDecimal.div(10).times(conversionRate);
+  const cardVariance = min + Math.random() * (max - min); // Math.random() variance is intentionally float (display-only)
+  const pointsCredited = Math.max(
+    0,
+    targetPointsD.times(cardVariance).toDecimalPlaces(0, Decimal.ROUND_FLOOR).toNumber(),
+  );
+  const targetPoints = targetPointsD.toDecimalPlaces(0, Decimal.ROUND_FLOOR).toNumber();
 
   return { pointsCredited, realPkrValue: pkrDecimal.toFixed(4), cardVariance, targetPoints };
 }

@@ -301,6 +301,8 @@ export function DailyGoalModal({
                                         onSecretCodeChange={(val: string) => setVideoCodes(prev => ({ ...prev, [task.id]: val }))}
                                         onVerify={() => handleCodeSubmit(task.id)}
                                         onGo={() => handleTaskClick(task, record)}
+                                        isGoLoading={clickMutation.isPending}
+                                        isVerifyLoading={verifyMutation.isPending}
                                         isVisible={isVisible}
                                         type={task.type}
                                         delay={350 + (index * 50)}
@@ -320,7 +322,8 @@ export function DailyGoalModal({
 function AccordionTask({ 
     id, index, title, statusText, isCompleted, isExpanded, onToggle, 
     instructions, actionUrl, secretCodeRequired, secretCodeValue, 
-    onSecretCodeChange, onVerify, onGo, isMandatory, isVisible, type, delay = 300 
+    onSecretCodeChange, onVerify, onGo, isMandatory, isVisible, type, delay = 300,
+    isGoLoading = false, isVerifyLoading = false,
 }: any) {
     const TypeIcon = id === 'payout-ads' ? PlayIcon : (id === 'payout-cpa' ? TargetIcon : (type === 'video' ? Youtube : (type === 'social' ? Send : Globe)));
 
@@ -412,9 +415,10 @@ function AccordionTask({
                                                 />
                                                 <Button 
                                                     onClick={onVerify}
-                                                    className="h-12 md:h-14 px-6 md:px-8 bg-black hover:bg-zinc-800 text-white rounded-none font-black uppercase text-xs"
+                                                    disabled={isVerifyLoading}
+                                                    className="h-12 md:h-14 px-6 md:px-8 bg-black hover:bg-zinc-800 text-white rounded-none font-black uppercase text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                    Verify
+                                                    {isVerifyLoading ? "Verifying…" : "Verify"}
                                                 </Button>
                                             </div>
                                         </div>
@@ -424,9 +428,10 @@ function AccordionTask({
                                         {!isCompleted && id !== 'payout-ads' && id !== 'payout-cpa' && (
                                             <Button 
                                                 onClick={onGo}
-                                                className="flex-1 h-14 md:h-16 bg-black hover:bg-zinc-800 text-white rounded-none font-black uppercase tracking-widest text-xs md:text-sm flex items-center justify-center gap-3"
+                                                disabled={isGoLoading}
+                                                className="flex-1 h-14 md:h-16 bg-black hover:bg-zinc-800 text-white rounded-none font-black uppercase tracking-widest text-xs md:text-sm flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                Go to Link
+                                                {isGoLoading ? "Opening…" : "Go to Link"}
                                                 <ExternalLink className="w-4 h-4" />
                                             </Button>
                                         )}

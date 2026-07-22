@@ -374,6 +374,8 @@ export const taskRecords = pgTable("task_records", {
   // Composite index for "has user completed task X?" lookup — 2026-07-15 perf audit
   index("task_records_user_task_idx").on(table.userId, table.taskId),
   index("task_records_user_completed_at_idx").on(table.userId, table.completedAt),
+  // 2-D: composite for daily-task completion status checks (user_id + status)
+  index("task_records_user_id_status_idx").on(table.userId, table.status),
 ]);
 
 // Chat messages for support chatbot
