@@ -317,6 +317,7 @@ export interface IStorage {
     referralEarnings: string;
     adsWatchedToday: number;
     adsWatchedTotal: number;
+    dailyGoal: number;
     dailyGoalProgress: number;
   }>;
   getEarningsHistory(userId: string, period: 'week' | 'month' | 'year'): Promise<Array<{ date: string; amount: string }>>;
@@ -2673,6 +2674,7 @@ export class DatabaseStorage implements IStorage {
       referralEarnings: referralEarningsResult?.total || "0.00",
       adsWatchedToday,
       adsWatchedTotal: totalAdViewsResult?.count || 0,
+      dailyGoal,
       dailyGoalProgress,
       // THORX v3 fields (spec B.2, F.2)
       txPointsBalance: user.txPointsBalance ?? 0,

@@ -1368,10 +1368,16 @@ export default function UserPortal() {
 
   const earningTypesData = calculateEarningsBreakdown();
 
-  const dailyGoal = 50;
+  // PKR earnings target (separate from ad count limit — this drives a lifetime
+  // earnings progress indicator, not the daily ad cap).
+  const dailyEarningsGoalPkr = 50;
   const currentProgress = parseFloat(displayUser?.totalEarnings || '0.00');
-  const progressPercentage = Math.min((currentProgress / dailyGoal) * 100, 100);
-  const remainingAds = Math.max(0, 5 - adsWatchedTodayCount);
+  const progressPercentage = Math.min((currentProgress / dailyEarningsGoalPkr) * 100, 100);
+
+  // Ad daily limit — reads from dashboardStats which pulls MAX_ADS_PER_DAY
+  // from system_config, so admin changes propagate to the UI within 30 s.
+  const adsDailyLimit = dashboardStats?.dailyGoal || 20;
+  const remainingAds = Math.max(0, adsDailyLimit - adsWatchedTodayCount);
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -1597,7 +1603,7 @@ export default function UserPortal() {
         isOpen={showDailyGoalModal}
         onClose={() => setShowDailyGoalModal(false)}
         adsWatched={todayAdViews?.count || 0}
-        adsTarget={5}
+        adsTarget={adsDailyLimit}
         cpaCount={cpaCompletedCount}
         cpaTarget={0}
       />
@@ -2097,9 +2103,9 @@ export default function UserPortal() {
                       <TechnicalLabel text="DAILY GOAL" className="text-muted-foreground text-xs" />
                     </div>
                     <p className="text-2xl md:text-3xl font-black text-primary mb-3 group-hover:text-primary/90 transition-colors" data-testid="text-work-daily-goal">
-                      {Math.round((completedAds.size / 5) * 100)}%
+                      {Math.round((adsWatchedTodayCount / adsDailyLimit) * 100)}%
                     </p>
-                    <Progress value={Math.round((completedAds.size / 5) * 100)} className="progress-enhanced h-2 mb-3" />
+                    <Progress value={Math.round((adsWatchedTodayCount / adsDailyLimit) * 100)} className="progress-enhanced h-2 mb-3" />
                   </motion.div>
                 </div>
 
