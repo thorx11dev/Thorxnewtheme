@@ -489,7 +489,7 @@ export interface IStorage {
   adminReassignCaptain(guildId: string, newCaptainUserId: string, adminId: string): Promise<any>;
   adminSetGuildWeeklyTarget(guildId: string, weeklyTarget: number, adminId: string): Promise<any>;
   adminBulkSetWeeklyTargets(weeklyTarget: number, scope: 'all' | 'byDifficulty', difficulty: string | undefined, adminId: string): Promise<number>;
-  updateGuildSettings(guildId: string, captainId: string, settings: { name?: string; description?: string; minRankRequired?: string; recruitmentOpen?: boolean; pinnedMemberId?: string | null; avatarUrl?: string; targetDifficulty?: string; }): Promise<any>;
+  updateGuildSettings(guildId: string, captainId: string, settings: { name?: string; description?: string; minRankRequired?: string; recruitmentOpen?: boolean; isPublic?: boolean; pinnedMemberId?: string | null; avatarUrl?: string; targetDifficulty?: string; }): Promise<any>;
   postGuildAnnouncement(guildId: string, captainId: string, text: string): Promise<any>;
   clearGuildAnnouncement(guildId: string, captainId: string): Promise<any>;
   adminGetInactiveCaptains(inactiveDays?: number): Promise<any[]>;
@@ -926,7 +926,7 @@ export class DatabaseStorage implements IStorage {
   async recordEarnEvent(params: {
     userId: string;
     engineType: "Engine_A" | "Engine_B" | "Engine_C" | "Indirect";
-    grossPkr: number; // from network/task config
+    grossPkr: string | number; // from network/task config — string preferred (Decimal-safe)
     sourceId: string; // ad_view.id or task_record.id
     sourceType: "ad_view" | "weekly_task" | "daily_task";
     guildId?: string; // required for Engine_C
@@ -1050,7 +1050,7 @@ export class DatabaseStorage implements IStorage {
         engineType: params.engineType,
         pointsCredited: cardResult.pointsCredited,
         realPkrValue: userPkrShareD.toFixed(4),
-        grossPkr: params.grossPkr.toFixed(4),
+        grossPkr: new Decimal(params.grossPkr).toFixed(4),
         thorxProfitPkr: thorxProfitPkrD.toFixed(4),
         guildPoolPkr: guildPoolPkrD.toFixed(4),
         conversionRate: Math.round(conversionRate),
@@ -1064,7 +1064,7 @@ export class DatabaseStorage implements IStorage {
           .update(guilds)
           .set({
             weeklyBonusPool: sql`${guilds.weeklyBonusPool} + ${guildPoolPkrD.toFixed(4)}`,
-            currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${Math.round(params.grossPkr * 100)}`,
+            currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${new Decimal(params.grossPkr).times(100).toDecimalPlaces(0).toNumber()}`,
           })
           .where(eq(guilds.id, params.guildId));
       }
@@ -2469,7 +2469,7 @@ export class DatabaseStorage implements IStorage {
   // Rank System Logic
   async checkAndUpdateRank(userId: string): Promise<User> {
     // Use transaction to prevent race conditions
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // Get user with row-level lock to prevent concurrent updates
       const [user] = await tx
         .select()
@@ -4503,7 +4503,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateGuildSettings(guildId: string, captainId: string, settings: {
     name?: string; description?: string; minRankRequired?: string;
-    recruitmentOpen?: boolean; pinnedMemberId?: string | null; avatarUrl?: string;
+    recruitmentOpen?: boolean; isPublic?: boolean; pinnedMemberId?: string | null; avatarUrl?: string;
     targetDifficulty?: string;
   }): Promise<any> {
     const membership = await this.getUserGuildMembership(captainId);
@@ -4515,6 +4515,7 @@ export class DatabaseStorage implements IStorage {
     if (settings.description !== undefined) updates.description = settings.description;
     if (settings.minRankRequired !== undefined) updates.minRankRequired = settings.minRankRequired;
     if (settings.recruitmentOpen !== undefined) updates.recruitmentOpen = settings.recruitmentOpen;
+    if (settings.isPublic !== undefined) updates.isPublic = settings.isPublic; // R-26
     if ("pinnedMemberId" in settings) updates.pinnedMemberId = settings.pinnedMemberId;
     if (settings.avatarUrl !== undefined) updates.avatarUrl = settings.avatarUrl;
 
@@ -5401,7 +5402,7 @@ export class MemStorage {
   async adminReassignCaptain(_guildId: string, _newCaptainUserId: string, _adminId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async adminSetGuildWeeklyTarget(_guildId: string, _weeklyTarget: number, _adminId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async adminBulkSetWeeklyTargets(_weeklyTarget: number, _scope: 'all' | 'byDifficulty', _difficulty: string | undefined, _adminId: string): Promise<number> { throw new Error("Not implemented in MemStorage"); }
-  async updateGuildSettings(_guildId: string, _captainId: string, _settings: any): Promise<any> { throw new Error("Not implemented in MemStorage"); }
+  async updateGuildSettings(_guildId: string, _captainId: string, _settings: { name?: string; description?: string; minRankRequired?: string; recruitmentOpen?: boolean; isPublic?: boolean; pinnedMemberId?: string | null; avatarUrl?: string; targetDifficulty?: string; }): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async postGuildAnnouncement(_guildId: string, _captainId: string, _text: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async clearGuildAnnouncement(_guildId: string, _captainId: string): Promise<any> { throw new Error("Not implemented in MemStorage"); }
   async adminGetInactiveCaptains(_inactiveDays?: number): Promise<any[]> { throw new Error("Not implemented in MemStorage"); }

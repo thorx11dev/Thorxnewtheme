@@ -448,10 +448,10 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                       })()}
                     </td>
                     <td className="p-6">
-                      <div className="font-black text-base text-[#111] mb-1 leading-none">{parseFloat(user.availableBalance).toLocaleString()}</div>
+                      <div className="font-black text-base text-[#111] mb-1 leading-none">{Number(user.availableBalance || "0").toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                       <div className="flex items-center gap-1.5">
                          <span className="text-[9px] uppercase tracking-widest text-zinc-400 font-bold">Total:</span>
-                         <span className="text-[10px] font-black text-[#111]/50">{parseFloat(user.totalEarnings).toLocaleString()}</span>
+                         <span className="text-[10px] font-black text-[#111]/50">{Number(user.totalEarnings || "0").toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     </td>
                     <td className="p-6 text-right">

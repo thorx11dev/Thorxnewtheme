@@ -216,6 +216,7 @@ export function CaptainPortal() {
         description: guild.description || "",
         minRankRequired: guild.minRankRequired || "E-Rank",
         recruitmentOpen: guild.recruitmentOpen ?? true,
+        isPublic: guild.isPublic ?? true,
         targetDifficulty: guild.targetDifficulty || "medium",
       });
     }
@@ -590,6 +591,24 @@ export function CaptainPortal() {
                     </label>
                   ))}
                 </div>
+              </div>
+
+              {/* R-26: Guild discoverability toggle */}
+              <div>
+                <label className="text-xs text-zinc-500 block mb-1">Discoverability</label>
+                <div className="flex gap-4">
+                  {[{ v: true, l: "Public (discoverable)" }, { v: false, l: "Private (invite only)" }].map(opt => (
+                    <label key={String(opt.v)} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input type="radio" name="isPublic" checked={settingsForm.isPublic === opt.v} onChange={() => setSettingsForm((f: any) => ({ ...f, isPublic: opt.v }))} />
+                      {opt.l}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-zinc-400 mt-1">
+                  {settingsForm.isPublic
+                    ? "Your guild appears in the discovery list and accepts public applications."
+                    : "Your guild is hidden from discovery. Only invite links can bring in members."}
+                </p>
               </div>
 
               {/* Weekly target difficulty */}

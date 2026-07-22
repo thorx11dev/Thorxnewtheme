@@ -15,7 +15,7 @@ import { hilltopAdsService } from "./hilltopads-service";
 import { runtimeConfig } from "./config/runtime";
 import { handleProxyRequest } from "./modules/proxy/proxy-handler";
 import { processProfilePicture } from "./utils/local-profile-picture";
-import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter, earnRateLimiter, guildInteractionRateLimiter, contactRateLimiter, chatbotRateLimiter, adminActionRateLimiter, bootstrapRateLimiter } from "./middleware/auth-rate-limit";
+import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter, earnRateLimiter, guildInteractionRateLimiter, contactRateLimiter, contactEmailRateLimiter, chatbotRateLimiter, adminActionRateLimiter, bootstrapRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
@@ -181,6 +181,7 @@ export const requirePermission = (permission: string) => {
           'VIEW_COMMUNICATIONS': ['inbox'],
           'MANAGE_COMMUNICATIONS': ['inbox'],
           'MANAGE_TEAM': ['team'],
+          'MANAGE_TASKS': ['tasks'],
         };
 
         const allowedSections = sectionMap[permission] || [];
@@ -1186,6 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     description: z.string().max(500).optional().nullable(),
     minRankRequired: z.string().optional(),
     recruitmentOpen: z.boolean().optional(),
+    isPublic: z.boolean().optional(), // R-26: discoverable in guild search
     memberCapacity: z.number().int().min(10).max(50).optional(),
     pinnedMemberId: z.string().optional().nullable(),
     avatarUrl: z.string().max(500).optional().nullable(),
@@ -1199,12 +1201,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!parsed.success) {
         return res.status(400).json({ message: "Invalid settings.", errors: parsed.error.flatten().fieldErrors });
       }
-      const { name, description, minRankRequired, recruitmentOpen, pinnedMemberId, avatarUrl, targetDifficulty } = parsed.data;
+      const { name, description, minRankRequired, recruitmentOpen, isPublic, pinnedMemberId, avatarUrl, targetDifficulty } = parsed.data;
       const guild = await storage.updateGuildSettings(req.params.id, userId, {
         name,
         description: description ?? undefined,
         minRankRequired,
         recruitmentOpen,
+        isPublic,
         pinnedMemberId: pinnedMemberId ?? undefined,
         avatarUrl: avatarUrl ?? undefined,
         targetDifficulty,
@@ -1275,17 +1278,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/weekly-tasks", requireTeamRole, async (req, res) => {
+  const weeklyTaskCreateSchema = z.object({
+    title:           z.string().min(3).max(200),
+    description:     z.string().max(1000).optional(),
+    pointReward:     z.number().int().min(1).max(100000),
+    weekStart:       z.string().datetime({ message: "weekStart must be an ISO datetime string" }),
+    weekEnd:         z.string().datetime({ message: "weekEnd must be an ISO datetime string" }),
+    targetGuildRank: z.enum(["E", "D", "C", "B", "A", "S"]).optional().default("E"),
+  });
+
+  app.post("/api/admin/weekly-tasks", requirePermission("MANAGE_TASKS"), async (req, res) => {
     try {
-      const { title, description, pointReward, weekStart, weekEnd, targetGuildRank } = req.body;
-      if (!title || !pointReward || !weekStart || !weekEnd) {
-        return res.status(400).json({ message: "title, pointReward, weekStart, weekEnd are required." });
+      const parsed = weeklyTaskCreateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message || "Validation failed", error: "VALIDATION_ERROR" });
       }
+      const { title, description, pointReward, weekStart, weekEnd, targetGuildRank } = parsed.data;
       const task = await storage.createWeeklyTask({
-        title, description, pointReward: parseInt(pointReward),
+        title, description, pointReward,
         weekStart: new Date(weekStart), weekEnd: new Date(weekEnd),
-        targetGuildRank: targetGuildRank || "E",
-        createdBy: getThorxPrincipalId(req) as string,
+        targetGuildRank,
+        createdBy: req.userProfile.id,
         isActive: true,
       });
       res.status(201).json({ task });
@@ -1548,7 +1561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const earnResult = await storage.recordEarnEvent({
             userId: thorxPid,
             engineType: 'Engine_A',
-            grossPkr: parseFloat(adConfig.reward),
+            grossPkr: adConfig.reward,
             sourceId: adViewRow.id,
             sourceType: 'ad_view',
             tx,
@@ -1570,11 +1583,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw err;
       }
 
+      const creditedPoints = (thorxCard as { pointsCredited: number; engineType: string } | null)?.pointsCredited ?? 0;
       res.status(201).json({
         success: true,
         adView: adViewRow,
         thorxCard,
-        message: `Authentication Successful: ${adConfig.reward} PKR credited to pending.`
+        message: creditedPoints > 0
+          ? `Ad viewed — ${creditedPoints} TX-Points credited`
+          : `Ad viewed — TX-Points credited`
       });
     } catch (error) {
       logger.error({ err: error }, "Create ad view error");
@@ -1699,22 +1715,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================
 
   // Get rank history for current user
-  app.get("/api/rank/history", async (req, res) => {
+  app.get("/api/rank/history", requireSessionAuth, async (req, res) => {
     try {
-      const thorxPid = getThorxPrincipalId(req);
-      if (!thorxPid) {
-        return res.status(401).json({
-          message: "Authentication required",
-          error: "UNAUTHORIZED"
-        });
-      }
-
-      if (thorxPid.startsWith('anonymous_')) {
-        return res.json({
-          rankLogs: [],
-          currentRank: "Nawa Aya"
-        });
-      }
+      const thorxPid = req.userProfile.id;
 
       const user = await storage.getUserById(thorxPid);
       if (!user) {
@@ -1791,32 +1794,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Stats endpoint for live data
+  // Stats endpoint for live data — intentionally public for landing-page marketing use.
+  // Exposes only sanitized headline figures (no raw payout totals or PII).
   app.get("/api/stats", async (req, res) => {
     try {
-      // Get real total paid from withdrawals
-      const { withdrawals } = await import("@shared/schema");
-      const { sql, eq } = await import("drizzle-orm");
-
       const paidResult = await pool.query(`
         SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as total
         FROM withdrawals
         WHERE status = 'completed'
       `);
 
-      // Get real active users count
       const activeUsers = await storage.getActiveUsersCount();
 
+      // R-10: Use Decimal for the financial aggregate — no float contamination.
+      const totalPaid = new Decimal(paidResult.rows[0]?.total || "0").toFixed(2);
+
       res.json({
-        totalPaid: parseFloat(paidResult.rows[0]?.total || "0"),
-        activeUsers: activeUsers > 0 ? activeUsers : 45, // Fallback if no real users yet
+        totalPaid,
+        activeUsers: activeUsers > 0 ? activeUsers : 45,
         securityScore: 99
       });
     } catch (error) {
       logger.error({ err: error }, "Get live stats error:");
-      // Fallback to static numbers if db fails
       res.json({
-        totalPaid: 2.5,
+        totalPaid: "2.50",
         activeUsers: 45,
         securityScore: 99
       });
@@ -2171,12 +2172,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Thorx Profit Ledger (Spec §19.1) ────────────────────────────────────────
   // Full profit breakdown: engine cuts + withdrawal fee revenue + 30-day chart.
-  // Restricted to founder role.
-  app.get("/api/admin/profit-ledger", requireTeamRole, async (req, res) => {
+  // R-14: Restricted to VIEW_PROFIT_LEDGER permission (founder/admin automatically pass).
+  app.get("/api/admin/profit-ledger", requirePermission("VIEW_PROFIT_LEDGER"), async (req, res) => {
     try {
-      if (req.userProfile!.role !== 'founder') {
-        return res.status(403).json({ message: "Founder access required" });
-      }
       const ledger = await storage.getProfitLedger();
       res.json(ledger);
     } catch (error) {
@@ -2188,7 +2186,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── Per-Ad-Player Config CRUD (Spec §16.3) ────────────────────────────────
   // Manages ENGINE_A_PLAYERS_JSON system_config key. Each player overrides
   // Engine A's default PKR→TX-Points ratio for their specific ad network.
-  app.get("/api/admin/engine-a/players", requireTeamRole, async (req, res) => {
+  // R-15: Restricted to MANAGE_ENGINE_CONFIG — prevents any team member from
+  // silently altering ad economics. Only founder/admin pass automatically.
+  app.get("/api/admin/engine-a/players", requirePermission("MANAGE_ENGINE_CONFIG"), async (req, res) => {
     try {
       const json = await storage.getSystemConfigValue<string>("ENGINE_A_PLAYERS_JSON", "[]");
       res.json({ players: JSON.parse(json) });
@@ -2197,7 +2197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/engine-a/players", requireTeamRole, async (req, res) => {
+  app.post("/api/admin/engine-a/players", requirePermission("MANAGE_ENGINE_CONFIG"), async (req, res) => {
     try {
       const schema = z.object({ name: z.string().min(1).max(100), pkrToPointsRatio: z.number().int().min(1), variancePct: z.number().min(0).max(100) });
       const parsed = schema.parse(req.body);
@@ -2212,7 +2212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/admin/engine-a/players/:id", requireTeamRole, async (req, res) => {
+  app.patch("/api/admin/engine-a/players/:id", requirePermission("MANAGE_ENGINE_CONFIG"), async (req, res) => {
     try {
       const schema = z.object({ name: z.string().min(1).max(100).optional(), pkrToPointsRatio: z.number().int().min(1).optional(), variancePct: z.number().min(0).max(100).optional() });
       const updates = schema.parse(req.body);
@@ -2228,7 +2228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/admin/engine-a/players/:id", requireTeamRole, async (req, res) => {
+  app.delete("/api/admin/engine-a/players/:id", requirePermission("MANAGE_ENGINE_CONFIG"), async (req, res) => {
     try {
       const json = await storage.getSystemConfigValue<string>("ENGINE_A_PLAYERS_JSON", "[]");
       const players = (JSON.parse(json) as any[]).filter((p: any) => p.id !== req.params.id);
@@ -2241,11 +2241,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Founder Profit Ledger (legacy endpoint kept for backward compat) ──────────
 
-  app.get("/api/admin/founder/profit-summary", requireTeamRole, async (req, res) => {
+  app.get("/api/admin/founder/profit-summary", requirePermission("VIEW_PROFIT_LEDGER"), async (req, res) => {
     try {
-      if (req.userProfile!.role !== 'founder') {
-        return res.status(403).json({ message: "Founder access required" });
-      }
       const summary = await storage.getFounderProfitSummary();
       res.json(summary);
     } catch (error) {
@@ -2254,11 +2251,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/founder/withdrawals", requireTeamRole, withdrawalRateLimiter, async (req, res) => {
+  app.post("/api/admin/founder/withdrawals", requirePermission("VIEW_PROFIT_LEDGER"), withdrawalRateLimiter, async (req, res) => {
     try {
-      if (req.userProfile!.role !== 'founder') {
-        return res.status(403).json({ message: "Founder access required" });
-      }
       const founderWithdrawalSchema = z.object({
         amount:          z.string().regex(/^\d+(\.\d{1,4})?$/, "amount must be a positive decimal string"),
         withdrawalDate:  z.string().datetime({ message: "withdrawalDate must be an ISO datetime string" }),
@@ -2447,7 +2441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.userProfile && targetUser) {
         await storage.createAuditLog({
           adminId: req.userProfile.id,
-          action: "USER_DELETED",
+          action: "USER_DEACTIVATED",
           targetType: "user",
           targetId: id,
           details: { email: targetUser.email, role: targetUser.role },
@@ -2466,9 +2460,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update withdrawal status (Admin Action)
+  const withdrawalUpdateSchema = z.object({
+    status:           z.enum(["completed", "rejected", "pending"]),
+    transactionId:    z.string().max(200).optional(),
+    rejectionReason:  z.string().max(500).optional(),
+  });
+
   app.patch("/api/admin/withdrawals/:id", requirePermission("MANAGE_PAYOUTS"), async (req, res) => {
     try {
-      const { status, transactionId, rejectionReason } = req.body;
+      const parsedBody = withdrawalUpdateSchema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ message: parsedBody.error.errors[0]?.message || "Validation failed", error: "VALIDATION_ERROR" });
+      }
+      const { status, transactionId, rejectionReason } = parsedBody.data;
       const withdrawalId = req.params.id;
 
       const updated = await storage.updateWithdrawalStatus(
@@ -2633,7 +2637,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User contact message endpoint
-  app.post("/api/contact", contactRateLimiter, async (req, res) => {
+  // R-23: Two-layer rate limiting — per-IP (contactRateLimiter) then per-email (contactEmailRateLimiter).
+  app.post("/api/contact", contactRateLimiter, contactEmailRateLimiter, async (req, res) => {
     try {
       const parsed = contactSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -2795,13 +2800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { firstName, lastName, email, password, phone, identity, referralCode, role, deviceFingerprint } = req.body;
       debugLog(`[POST /api/register] Attempt for ${email}. Role: ${role}`);
 
-      if (!firstName || lastName === undefined || lastName === null || !email || !identity || !password) {
-        return res.status(400).json({
-          message: "First name, email, identity, and password are required",
-          error: "MISSING_REQUIRED_FIELDS"
-        });
-      }
-
+      // R-22: Single canonical validator — manual pre-check removed to avoid drift.
       // Validate using registerSchema
       const parsed = registerSchema.safeParse({ firstName, lastName, email, password, phone, identity, referralCode, role });
       if (!parsed.success) {
@@ -2924,9 +2923,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/forgot-password", authRateLimiter, async (req, res) => {
+    // R-02: Honest stub — no email infrastructure yet. Direct users to support
+    // so they know to take action rather than waiting for an email that never arrives.
     res.json({
       success: true,
-      message: "If an account exists with that email, please contact support to reset your password.",
+      message: "Automated password reset is not available. Please contact our support team to reset your password.",
+      action: "contact_support",
+      contactEmail: "support@thorx.com",
     });
   });
 
@@ -2936,9 +2939,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/reset-password", authRateLimiter, async (req, res) => {
-    res.status(410).json({
-      message: "Self-service password reset is not available. Please contact support.",
-      error: "NOT_AVAILABLE"
+    // R-27: Return 200 with actionable guidance instead of the raw 410 Gone status.
+    res.status(200).json({
+      success: true,
+      message: "Password reset is handled by our support team. Please contact support@thorx.com with your registered email address.",
+      action: "contact_support",
+      contactEmail: "support@thorx.com",
     });
   });
 

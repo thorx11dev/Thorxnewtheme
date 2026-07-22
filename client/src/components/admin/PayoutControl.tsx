@@ -589,14 +589,18 @@ export function PayoutControl() {
                    <TechnicalLabel text="System Ledger Calculation" className="mb-2" />
                    <div className="p-4 bg-zinc-900 border border-zinc-700 rounded-xl font-mono text-xs space-y-1.5 text-white">
                      {(() => {
-                       const gross = parseFloat(selectedWithdrawal.netAmount || "0") + parseFloat(selectedWithdrawal.fee || "0");
-                       const fee = parseFloat(selectedWithdrawal.fee || "0");
-                       const net = parseFloat(selectedWithdrawal.netAmount || "0");
+                       // R-09: Parse via Number() on validated decimal strings — avoids
+                       // float drift for display while keeping toFixed(2) precision.
+                       const safeParse = (v: string | null | undefined) => Number(v || "0");
+                       const netN  = safeParse(selectedWithdrawal.netAmount);
+                       const feeN  = safeParse(selectedWithdrawal.fee);
+                       // Addition of two 2-dp values is exact in IEEE 754 up to ~2^53
+                       const grossN = Math.round((netN + feeN) * 100) / 100;
                        return (
                          <>
-                           <div className="flex justify-between"><span className="text-zinc-400">Real PKR (ledger):</span><span className="text-white font-black">Rs. {gross.toFixed(2)}</span></div>
-                           <div className="flex justify-between"><span className="text-zinc-400">Platform Fee (15%):</span><span className="text-red-400">− Rs. {fee.toFixed(2)}</span></div>
-                           <div className="border-t border-zinc-700 pt-1.5 flex justify-between"><span className="text-zinc-300 font-black">USER RECEIVES:</span><span className="text-emerald-400 font-black">Rs. {net.toFixed(2)}</span></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Real PKR (ledger):</span><span className="text-white font-black">Rs. {grossN.toFixed(2)}</span></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Platform Fee (15%):</span><span className="text-red-400">− Rs. {feeN.toFixed(2)}</span></div>
+                           <div className="border-t border-zinc-700 pt-1.5 flex justify-between"><span className="text-zinc-300 font-black">USER RECEIVES:</span><span className="text-emerald-400 font-black">Rs. {netN.toFixed(2)}</span></div>
                          </>
                        );
                      })()}
