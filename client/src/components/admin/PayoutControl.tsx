@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Decimal from "decimal.js";
 import { downloadFromUrl } from "@/lib/downloadFromUrl";
 import { Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -430,7 +431,7 @@ export function PayoutControl() {
                          <div className="text-[9px] font-bold text-zinc-400 mt-1 truncate max-w-[150px]">{withdrawal.accountName}</div>
                       </td>
                       <td className="p-6 text-center">
-                        <div className="font-black text-sm text-[#111]">₨ {parseFloat(withdrawal.amount).toLocaleString()}</div>
+                        <div className="font-black text-sm text-[#111]">₨ {new Decimal(withdrawal.amount || "0").toFixed(2)}</div>
                         <div className="text-[9px] font-black uppercase text-zinc-400 tracking-widest mt-0.5">{withdrawal.method}</div>
                       </td>
                       <td className="p-6">
@@ -550,7 +551,7 @@ export function PayoutControl() {
                   <div>
                     <TechnicalLabel text="Payout Amount" className="mb-2" />
                     <div className="p-4 bg-zinc-900 border border-zinc-900 rounded-xl">
-                      <div className="text-2xl font-bold text-primary">₨ {parseFloat(selectedWithdrawal?.amount || "0").toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-primary">₨ {new Decimal(selectedWithdrawal?.amount || "0").toFixed(2)}</div>
                       <div className="text-[9px] font-semibold text-white/40 uppercase tracking-widest mt-1">Beneficiary Node Payout</div>
                     </div>
                   </div>
@@ -589,18 +590,16 @@ export function PayoutControl() {
                    <TechnicalLabel text="System Ledger Calculation" className="mb-2" />
                    <div className="p-4 bg-zinc-900 border border-zinc-700 rounded-xl font-mono text-xs space-y-1.5 text-white">
                      {(() => {
-                       // R-09: Parse via Number() on validated decimal strings — avoids
-                       // float drift for display while keeping toFixed(2) precision.
-                       const safeParse = (v: string | null | undefined) => Number(v || "0");
-                       const netN  = safeParse(selectedWithdrawal.netAmount);
-                       const feeN  = safeParse(selectedWithdrawal.fee);
-                       // Addition of two 2-dp values is exact in IEEE 754 up to ~2^53
-                       const grossN = Math.round((netN + feeN) * 100) / 100;
+                       // R-09: Use Decimal.js for exact arithmetic — eliminates IEEE 754
+                       // float drift between the displayed ledger value and the stored one.
+                       const net   = new Decimal(selectedWithdrawal.netAmount  || "0");
+                       const fee   = new Decimal(selectedWithdrawal.fee         || "0");
+                       const gross = net.plus(fee);
                        return (
                          <>
-                           <div className="flex justify-between"><span className="text-zinc-400">Real PKR (ledger):</span><span className="text-white font-black">Rs. {grossN.toFixed(2)}</span></div>
-                           <div className="flex justify-between"><span className="text-zinc-400">Platform Fee (15%):</span><span className="text-red-400">− Rs. {feeN.toFixed(2)}</span></div>
-                           <div className="border-t border-zinc-700 pt-1.5 flex justify-between"><span className="text-zinc-300 font-black">USER RECEIVES:</span><span className="text-emerald-400 font-black">Rs. {netN.toFixed(2)}</span></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Real PKR (ledger):</span><span className="text-white font-black">Rs. {gross.toFixed(2)}</span></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Platform Fee (15%):</span><span className="text-red-400">− Rs. {fee.toFixed(2)}</span></div>
+                           <div className="border-t border-zinc-700 pt-1.5 flex justify-between"><span className="text-zinc-300 font-black">USER RECEIVES:</span><span className="text-emerald-400 font-black">Rs. {net.toFixed(2)}</span></div>
                          </>
                        );
                      })()}

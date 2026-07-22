@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Decimal from "decimal.js";
 import { downloadFromUrl } from "@/lib/downloadFromUrl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -871,11 +872,11 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   <div className="p-4 bg-zinc-900 border border-zinc-900 rounded-xl space-y-3">
                     <div>
                       <div className="text-[9px] font-semibold text-white/40 uppercase tracking-widest">Available Balance</div>
-                      <div className="text-2xl font-bold text-white">₨ {parseFloat(selectedUser?.availableBalance || "0").toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-white">₨ {new Decimal(selectedUser?.availableBalance || "0").toFixed(2)}</div>
                     </div>
                     <div>
                       <div className="text-[9px] font-semibold text-white/40 uppercase tracking-widest">Lifetime Earnings</div>
-                      <div className="text-lg font-bold text-primary">₨ {parseFloat(selectedUser?.totalEarnings || "0").toLocaleString()}</div>
+                      <div className="text-lg font-bold text-primary">₨ {new Decimal(selectedUser?.totalEarnings || "0").toFixed(2)}</div>
                     </div>
                   </div>
                 </div>

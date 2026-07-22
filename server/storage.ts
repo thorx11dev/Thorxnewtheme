@@ -1480,7 +1480,13 @@ export class DatabaseStorage implements IStorage {
   // Get all users for team data management — paginated to prevent full-table
   // memory bomb at scale (audit finding R). Sensitive fields (passwordHash,
   // verificationToken) are projected out so they never reach the admin UI.
-  async getAllUsers(limit = 500, offset = 0): Promise<User[]> {
+  async getAllUsers(limit = 100, offset = 0): Promise<User[]> {
+    // R-25: getAllUsers is a legacy bulk-fetch. Prefer getUsersPaginated() for
+    // any new caller. Cap at 200 rows and warn so callers can be migrated.
+    if (limit > 200) {
+      logger.warn({ limit }, "[getAllUsers] limit exceeds 200 — capped. Migrate caller to getUsersPaginated().");
+      limit = 200;
+    }
     try {
       const result = await db
         .select({

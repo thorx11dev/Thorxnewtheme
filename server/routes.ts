@@ -22,6 +22,34 @@ import { simulateThorxCards } from "./modules/thorx-card";
 import { runWeeklyGuildReset } from "./modules/guild-reset";
 import { logger } from "./lib/logger";
 
+// ── R-17: AD_INVENTORY runtime cache ─────────────────────────────────────────
+// The ad inventory is stored in system_config under AD_INVENTORY_JSON so an
+// admin can adjust rewards/durations without a code deployment. A 60-second
+// in-memory TTL cache prevents a DB round-trip on every ad-view request.
+interface AdItem { reward: string; duration: number; type: string }
+let _adInventoryCache: Record<string, AdItem> | null = null;
+let _adInventoryCacheExpiry = 0;
+const AD_INVENTORY_TTL_MS = 60_000;
+
+async function getAdInventory(): Promise<Record<string, AdItem>> {
+  if (_adInventoryCache && Date.now() < _adInventoryCacheExpiry) return _adInventoryCache;
+  try {
+    const raw = await storage.getSystemConfigValue<any>("AD_INVENTORY_JSON", []);
+    const items: any[] = Array.isArray(raw) ? raw : JSON.parse(String(raw));
+    const map: Record<string, AdItem> = {};
+    for (const item of items) {
+      if (item?.id) map[item.id] = { reward: String(item.reward ?? "0.02"), duration: Number(item.duration ?? 5), type: String(item.type ?? "network") };
+    }
+    if (!map["hilltop_fallback"]) map["hilltop_fallback"] = { reward: "0.02", duration: 5, type: "network" };
+    _adInventoryCache = map;
+    _adInventoryCacheExpiry = Date.now() + AD_INVENTORY_TTL_MS;
+    return map;
+  } catch {
+    // Graceful fallback — never block an ad-view on config failure
+    return { hilltop_fallback: { reward: "0.02", duration: 5, type: "network" } };
+  }
+}
+
 /** Authenticated user id from session cookie. */
 export function getThorxPrincipalId(req: Request): string | undefined {
   return req.session?.userId;
@@ -1503,19 +1531,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const thorxPid = getThorxPrincipalId(req) as string;
 
-      // 🏆 REAL-TIME AD REWARD REGISTRY (Server-Side Only)
-      // This is the source of truth for all ad rewards.
-      // Frontend only sends the ID.
-      const AD_INVENTORY: Record<string, { reward: string, duration: number, type: string }> = {
-        "ad_001": { reward: "0.25", duration: 30, type: "video" },
-        "ad_002": { reward: "0.15", duration: 15, type: "banner" },
-        "ad_003": { reward: "0.50", duration: 45, type: "video_premium" },
-        "ad_004": { reward: "0.10", duration: 10, type: "pop_under" },
-        "hilltop_fallback": { reward: "0.02", duration: 5, type: "network" }
-      };
-
+      // R-17: Ad inventory is now runtime-configurable via system_config
+      // (AD_INVENTORY_JSON key). getAdInventory() uses a 60-second TTL cache
+      // so admins can update rewards/durations without a code deployment.
+      const inventory = await getAdInventory();
       const { adId } = req.body;
-      const adConfig = AD_INVENTORY[adId] || AD_INVENTORY["hilltop_fallback"];
+      const adConfig = inventory[adId] || inventory["hilltop_fallback"];
 
       let adViewRow: any;
       let thorxCard: { pointsCredited: number; engineType: string } | null = null;
@@ -2036,44 +2057,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const status = req.query.status as string;
       const ids = req.query.ids ? (req.query.ids as string).split(',') : undefined;
 
-      // Get all matching withdrawals (large limit for export to avoid pagination)
-      const { withdrawals: allWithdrawals } = await storage.getWithdrawalsPaginated({ 
-        page: 1, 
-        limit: 10000, 
-        search, 
-        status,
-        ids
-      });
-
-      // Professional CSV generation with accurate and full data
-      const headers = ["ID", "Beneficiary", "Email", "Phone", "Identity", "Rank", "Amount (PKR)", "Method", "Account Name", "Account Number", "Status", "Created At"];
-      const rows = allWithdrawals.map(w => [
-        w.id,
-        `${w.user.firstName} ${w.user.lastName}`,
-        w.user.email,
-        w.user.phone,
-        w.user.identity,
-        w.user.rank,
-        w.amount,
-        w.method,
-        w.accountName,
-        w.accountNumber,
-        w.status,
-        new Date(w.createdAt ?? new Date()).toISOString().split('T')[0]
-      ]);
-
-      const csvContent = [
-        headers.join(","),
-        ...rows.map(row => row.map(cell => `"${String(cell || "").replace(/"/g, '""')}"`).join(","))
-      ].join("\n");
-
-      res.setHeader("Content-Type", "text/csv");
       const filename = ids ? "THORX-Selected-Payouts" : "THORX-Full-Payout-Ledger";
+      res.setHeader("Content-Type", "text/csv");
       res.setHeader("Content-Disposition", `attachment; filename=${filename}-${new Date().toISOString().split('T')[0]}.csv`);
-      res.send(csvContent);
+
+      // R-20: Stream in 500-row batches — never loads the full dataset into memory.
+      const headers = ["ID", "Beneficiary", "Email", "Phone", "Identity", "Rank", "Amount (PKR)", "Method", "Account Name", "Account Number", "Status", "Created At"];
+      res.write(headers.map(h => `"${h}"`).join(",") + "\n");
+
+      const toCsvRow = (cells: (string | null | undefined)[]) =>
+        cells.map(c => `"${String(c || "").replace(/"/g, '""')}"`).join(",");
+
+      const BATCH = 500;
+      let page = 1;
+      while (true) {
+        const { withdrawals: batch } = await storage.getWithdrawalsPaginated({ page, limit: BATCH, search, status, ids });
+        for (const w of batch) {
+          res.write(toCsvRow([
+            w.id,
+            `${w.user.firstName} ${w.user.lastName}`,
+            w.user.email,
+            w.user.phone,
+            w.user.identity,
+            w.user.rank,
+            w.amount,
+            w.method,
+            w.accountName,
+            w.accountNumber,
+            w.status,
+            new Date(w.createdAt ?? new Date()).toISOString().split('T')[0],
+          ]) + "\n");
+        }
+        if (batch.length < BATCH) break; // last page reached
+        if (ids) break;                  // selective export: one batch is enough
+        page++;
+      }
+      res.end();
     } catch (error) {
       logger.error({ err: error }, "Export withdrawals error");
-      res.status(500).json({ message: "Failed to export withdrawals" });
+      if (!res.headersSent) res.status(500).json({ message: "Failed to export withdrawals" });
     }
   });
 
@@ -2180,6 +2202,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       logger.error({ err: error }, "Profit ledger error:");
       res.status(500).json({ message: "Failed to fetch profit ledger" });
+    }
+  });
+
+  // ── Ad Inventory CRUD (R-17) ──────────────────────────────────────────────
+  // Runtime-configurable ad inventory stored in system_config.AD_INVENTORY_JSON.
+  // Admins can adjust rewards/durations without a code deployment.
+  // The in-process getAdInventory() cache expires within 60 s after any PATCH.
+  const adInventoryItemSchema = z.object({
+    id:       z.string().min(1).max(80).regex(/^[a-z0-9_]+$/i, "id must be alphanumeric/underscore"),
+    reward:   z.string().regex(/^\d+(\.\d{1,4})?$/, "reward must be a non-negative decimal string"),
+    duration: z.number().int().min(1).max(3600),
+    type:     z.string().min(1).max(50),
+    label:    z.string().max(100).optional(),
+  });
+
+  app.get("/api/admin/ad-inventory", requirePermission("MANAGE_ENGINE_CONFIG"), async (req, res) => {
+    try {
+      const raw = await storage.getSystemConfigValue<any>("AD_INVENTORY_JSON", []);
+      const items = Array.isArray(raw) ? raw : JSON.parse(String(raw));
+      res.json({ items });
+    } catch (error) {
+      logger.error({ err: error }, "Get ad-inventory error");
+      res.status(500).json({ message: "Failed to fetch ad inventory" });
+    }
+  });
+
+  app.patch("/api/admin/ad-inventory", requirePermission("MANAGE_ENGINE_CONFIG"), async (req, res) => {
+    try {
+      const schema = z.object({ items: z.array(adInventoryItemSchema).min(1) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Validation failed" });
+
+      // Ensure hilltop_fallback always exists as the last-resort entry
+      const items = parsed.data.items;
+      if (!items.some(i => i.id === "hilltop_fallback")) {
+        items.push({ id: "hilltop_fallback", reward: "0.02", duration: 5, type: "network", label: "Network Fallback" });
+      }
+      await storage.setSystemConfigValue("AD_INVENTORY_JSON", items);
+      // Bust the in-process cache so the next ad-view picks up the new config
+      _adInventoryCache = null;
+      _adInventoryCacheExpiry = 0;
+      logger.info({ count: items.length }, "[AdInventory] Updated via admin PATCH");
+      res.json({ success: true, items });
+    } catch (error) {
+      logger.error({ err: error }, "Patch ad-inventory error");
+      res.status(500).json({ message: "Failed to update ad inventory" });
     }
   });
 
@@ -2393,41 +2461,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const search = req.query.search as string;
       const ids = req.query.ids ? (req.query.ids as string).split(',') : undefined;
 
-      const { users: allUsers } = await storage.getUsersPaginated({ 
-        page: 1, 
-        limit: 10000, 
-        search,
-        ids
-      });
-
-      const headers = ["ID", "First Name", "Last Name", "Email", "Phone", "Identity", "Role", "Rank", "Available Balance", "Total Earnings", "Referral Code", "Created At"];
-      const rows = allUsers.map(u => [
-        u.id, u.firstName, u.lastName, u.email, u.phone, u.identity, u.role, u.rank, u.availableBalance, u.totalEarnings, u.referralCode, new Date(u.createdAt ?? new Date()).toISOString()
-      ]);
-
-      const csvContent = [
-        headers.join(","),
-        ...rows.map(row => row.map(cell => `"${String(cell || "").replace(/"/g, '""')}"`).join(","))
-      ].join("\n");
-
-      res.setHeader("Content-Type", "text/csv");
       const filename = ids ? "THORX-Selected-Users" : "THORX-User-Directory";
+      res.setHeader("Content-Type", "text/csv");
       res.setHeader("Content-Disposition", `attachment; filename=${filename}-${new Date().toISOString().split('T')[0]}.csv`);
-      
-      // Log Data Exfiltration
+
+      // R-20: Stream in 500-row batches — avoids loading 10K rows into memory.
+      const headers = ["ID", "First Name", "Last Name", "Email", "Phone", "Identity", "Role", "Rank", "Available Balance", "Total Earnings", "Referral Code", "Created At"];
+      res.write(headers.map(h => `"${h}"`).join(",") + "\n");
+
+      const toCsvRow = (cells: (string | null | undefined)[]) =>
+        cells.map(c => `"${String(c || "").replace(/"/g, '""')}"`).join(",");
+
+      const BATCH = 500;
+      let page = 1;
+      let totalRecords = 0;
+      while (true) {
+        const { users: batch } = await storage.getUsersPaginated({ page, limit: BATCH, search, ids });
+        for (const u of batch) {
+          res.write(toCsvRow([
+            u.id, u.firstName, u.lastName, u.email, u.phone ?? "", u.identity ?? "",
+            u.role ?? "user", u.rank ?? "", u.availableBalance, u.totalEarnings,
+            u.referralCode ?? "", new Date(u.createdAt ?? new Date()).toISOString(),
+          ]) + "\n");
+        }
+        totalRecords += batch.length;
+        if (batch.length < BATCH) break;
+        if (ids) break;
+        page++;
+      }
+
+      // Audit log after streaming completes
       await storage.createAuditLog({
         adminId: req.userProfile!.id,
         action: "LEDGER_EXPORTED",
         targetType: "system",
         targetId: "user_directory",
-        details: { exportType: ids ? "selective" : "full", records: rows.length, search, ids },
-        ipAddress: req.ip
+        details: { exportType: ids ? "selective" : "full", records: totalRecords, search, ids },
+        ipAddress: req.ip,
       });
 
-      res.send(csvContent);
+      res.end();
     } catch (error) {
       logger.error({ err: error }, "Export users error:");
-      res.status(500).json({ message: "Failed to export user directory" });
+      if (!res.headersSent) res.status(500).json({ message: "Failed to export user directory" });
     }
   });
 
