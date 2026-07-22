@@ -15,7 +15,7 @@ import { hilltopAdsService } from "./hilltopads-service";
 import { runtimeConfig } from "./config/runtime";
 import { handleProxyRequest } from "./modules/proxy/proxy-handler";
 import { processProfilePicture } from "./utils/local-profile-picture";
-import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter, earnRateLimiter, guildInteractionRateLimiter, contactRateLimiter, chatbotRateLimiter } from "./middleware/auth-rate-limit";
+import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter, earnRateLimiter, guildInteractionRateLimiter, contactRateLimiter, chatbotRateLimiter, adminActionRateLimiter, bootstrapRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
@@ -500,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/users/:id/action", requirePermission("VIEW_ANALYTICS"), async (req, res) => {
+  app.post("/api/admin/users/:id/action", requirePermission("MANAGE_USERS"), adminActionRateLimiter, async (req, res) => {
     try {
       const { id } = req.params;
       const { action, payload } = z.object({
@@ -2674,7 +2674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Bootstrap founder endpoint — dev/first-boot only
   // Disabled in production. In dev, requires BOOTSTRAP_SECRET env var if set.
-  app.post("/api/bootstrap-founder", async (req, res) => {
+  app.post("/api/bootstrap-founder", bootstrapRateLimiter, async (req, res) => {
     // Hard-disable in production
     if (runtimeConfig.isProd) {
       return res.status(403).json({
@@ -2698,13 +2698,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const { email, password, firstName, lastName } = req.body;
-
-      if (!email || !password || !firstName || !lastName) {
-        return res.status(400).json({
-          message: "Email, password, first name, and last name are required"
-        });
+      // C1-03 / C2-04: Zod validation replaces manual truthy check
+      const parsed = z.object({
+        email: z.string().email().max(255),
+        password: z.string().min(6).max(128),
+        firstName: z.string().min(1).max(80).trim(),
+        lastName: z.string().min(1).max(80).trim(),
+        bootstrapSecret: z.string().optional(),
+      }).safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Validation failed", errors: parsed.error.flatten() });
       }
+      const { email, password, firstName, lastName } = parsed.data;
 
       // Check if any team members already exist
       const existingTeamMembers = await storage.getTeamMembers();

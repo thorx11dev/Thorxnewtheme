@@ -86,7 +86,7 @@ export default function TeamPortal() {
             <div className="w-20 h-20 bg-black border-4 border-primary rounded-full flex items-center justify-center mb-6 animate-pulse">
               <Lock className="text-primary w-10 h-10" />
             </div>
-            <h2 className="text-3xl font-black uppercase text-[#111] mb-4 tracking-tighter">Secure Matrix Blocked</h2>
+            <h2 className="text-xl sm:text-3xl font-black uppercase text-[#111] mb-4 tracking-tighter">Secure Matrix Blocked</h2>
             <p className="max-w-md text-sm font-bold text-zinc-500 uppercase tracking-widest leading-relaxed mb-8">
               Structural integrity check failed. Your current administrative node does not possess the cryptographic clearance required to synchronize with the <span className="text-[#111] font-black">{activeSection.toUpperCase()}</span> protocol.
             </p>

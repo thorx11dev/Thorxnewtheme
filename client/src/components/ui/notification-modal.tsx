@@ -197,7 +197,7 @@ export function NotificationModal({
 
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-lg leading-tight text-white/90 font-black tracking-tight group-hover:text-white transition-colors uppercase">
-                                                                    Received <span className="text-primary">${parseFloat(commission.amount).toFixed(2)}</span> from {commission.sourceUser.firstName}
+                                                                    Received <span className="text-primary">{Math.round(parseFloat(commission.amount)).toLocaleString()} TX-PTS</span> from {commission.sourceUser.firstName}
                                                                 </p>
                                                                 <div className="flex items-center gap-3 mt-2">
                                                                     <span className="text-[10px] font-mono text-white/30 tracking-widest uppercase">

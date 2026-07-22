@@ -243,7 +243,7 @@ export function AdminDashboard() {
   // NOTE: `activeUsers` from this endpoint is actually NEW REGISTRATIONS in the
   // selected date window (getUsersCountInRange counts by createdAt). We label it
   // as "New Registrations" to be accurate. Extended metrics are always all-time.
-  const { data: metrics, isLoading: metricsLoading } = useQuery<ExtendedMetrics>({
+  const { data: metrics, isLoading: metricsLoading, isError: metricsError } = useQuery<ExtendedMetrics>({
     queryKey: ["/api/team/metrics", dateRange],
     queryFn: async () => {
       const res = await fetch(`/api/team/metrics?range=${dateRange}`, { credentials: "include" });

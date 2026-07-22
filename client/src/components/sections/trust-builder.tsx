@@ -155,11 +155,11 @@ export default function TrustBuilder({ isActive, onAdvance }: TrustBuilderProps)
         <div className="grid md:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-12">
           {/* Total Payouts */}
           <div className="split-card bg-black text-white p-4 md:p-8 text-center">
-            <TechnicalLabel text="TOTAL-PAYOUTS" className="text-white/70 mb-4" />
+            <TechnicalLabel text="TX-PTS DISTRIBUTED" className="text-white/70 mb-4" />
             <div className="text-5xl font-black counter-display text-primary mb-4">
-              ₨<span ref={totalPaidRef} data-testid="text-total-paid">0</span>
+              <span ref={totalPaidRef} data-testid="text-total-paid">0</span>
             </div>
-            <p className="text-lg">Distributed to members</p>
+            <p className="text-lg">TX-Points earned collectively</p>
             <Barcode className="w-full h-10 bg-white mt-6" />
           </div>
 

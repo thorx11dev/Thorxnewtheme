@@ -130,6 +130,45 @@ export const contactRateLimiter = rateLimit({
   validate: false,
 });
 
+// ─── Admin user action rate limiter ──────────────────────────────────────────
+/**
+ * Rate limiter for the /api/admin/users/:id/action endpoint.
+ * 30 requests per admin session per 15 minutes — allows burst corrections
+ * but prevents automated mass-action abuse (audit finding C2-02).
+ * Keyed by userId so different admins share separate quotas.
+ */
+export const adminActionRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many admin actions. Try again in 15 minutes.", error: "RATE_LIMITED" },
+  skip: skipLocalhost,
+  keyGenerator: (req: Request) => {
+    const userId = (req.session as any)?.userId;
+    if (userId) return `admin-action:${userId}`;
+    return `admin-action-ip:${ipKeyGenerator(req)}`;
+  },
+  validate: false,
+});
+
+// ─── Bootstrap rate limiter ───────────────────────────────────────────────────
+/**
+ * Rate limiter for /api/bootstrap-founder.
+ * 3 attempts per IP per hour — the endpoint is idempotent but must not be
+ * hammerable (audit finding C1-03 / C2-02).
+ */
+export const bootstrapRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many bootstrap attempts.", error: "RATE_LIMITED" },
+  skip: skipLocalhost,
+  keyGenerator: ipKeyGenerator,
+  validate: false,
+});
+
 // ─── Chatbot rate limiter ─────────────────────────────────────────────────────
 /**
  * Rate limiter for the AI chatbot endpoint.

@@ -106,7 +106,7 @@ export function AdminNavigation({ activeSection, onSectionChange, onLogout, clas
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] border-l-4 border-[#111] bg-white p-0">
+            <SheetContent side="right" className="w-[85vw] max-w-[300px] border-l-4 border-[#111] bg-white p-0">
               <SheetHeader className="p-6 border-b-[1.5px] border-[#111]/10 text-left">
                 <TechnicalLabel text="Navigation" className="mb-2" />
                 <SheetTitle className="text-xl font-black uppercase text-[#111]">Secure Terminal</SheetTitle>

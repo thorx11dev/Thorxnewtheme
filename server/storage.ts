@@ -1429,7 +1429,8 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(userCredentials)
       .where(eq(userCredentials.userId, userId))
-      .orderBy(desc(userCredentials.createdAt));
+      .orderBy(desc(userCredentials.createdAt))
+      .limit(100); // C2-06: prevent unbounded scan
   }
 
   async getAllUserCredentials(): Promise<Array<UserCredential & { user: User }>> {
@@ -1858,7 +1859,8 @@ export class DatabaseStorage implements IStorage {
       .from(commissionLogs)
       .innerJoin(users, eq(commissionLogs.sourceUserId, users.id))
       .where(eq(commissionLogs.beneficiaryId, userId))
-      .orderBy(desc(commissionLogs.createdAt));
+      .orderBy(desc(commissionLogs.createdAt))
+      .limit(500); // C2-06: prevent unbounded scan
 
     return results;
   }
@@ -1905,7 +1907,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(userTransactions)
       .where(and(eq(userTransactions.userId, userId), eq(userTransactions.withdrawn, false)))
-      .orderBy(asc(userTransactions.createdAt));
+      .orderBy(asc(userTransactions.createdAt))
+      .limit(5000); // C1-05: safety cap; no user can accumulate more than 5000 un-withdrawn ledger rows
 
     let pointsAccumulated = 0;
     let exactPkr = new Decimal(0);
@@ -2073,17 +2076,23 @@ export class DatabaseStorage implements IStorage {
       const pointsRequested = parseInt(withdrawal.amount, 10);
       breakdown = await this.calculateWithdrawalBreakdown(withdrawal.userId, pointsRequested, tx);
 
+      // C1-04: Wrap breakdown numbers in Decimal immediately — native float arithmetic
+      // on DECIMAL columns accumulates sub-paisa drift; all subsequent math uses Decimal.
+      const exactPkrD = new Decimal(breakdown.exactPkr.toString());
+      const platformFeeD = new Decimal(breakdown.platformFee.toString());
+      const referralCommissionD = new Decimal(breakdown.referralCommission.toString());
+      const userNetPkrD = new Decimal(breakdown.userNetPkr.toString());
       // thorxFeeShare = platformFee - referralCommission (Spec §18.2)
-      const thorxShare = breakdown.platformFee - breakdown.referralCommission;
+      const thorxShareD = platformFeeD.minus(referralCommissionD);
       const [updatedWithdrawal] = await tx
         .update(withdrawals)
         .set({
           status: "completed",
           transactionId: transactionId || null,
-          fee: breakdown.platformFee.toFixed(2),
-          netAmount: breakdown.userNetPkr.toFixed(2),
-          thorxFeeShare: thorxShare.toFixed(2),
-          referralCommissionPaid: breakdown.referralCommission.toFixed(2),
+          fee: platformFeeD.toFixed(4),
+          netAmount: userNetPkrD.toFixed(4),
+          thorxFeeShare: thorxShareD.toFixed(4),
+          referralCommissionPaid: referralCommissionD.toFixed(4),
           processedAt: new Date(),
           updatedAt: new Date(),
         })
@@ -2094,7 +2103,7 @@ export class DatabaseStorage implements IStorage {
         .update(users)
         .set({
           txPointsBalance: sql`${users.txPointsBalance} - ${pointsRequested}`,
-          totalWithdrawn: sql`${users.totalWithdrawn} + ${breakdown.userNetPkr.toFixed(2)}`,
+          totalWithdrawn: sql`${users.totalWithdrawn} + ${userNetPkrD.toFixed(4)}`,
           updatedAt: new Date(),
         })
         .where(eq(users.id, withdrawal.userId));
@@ -2108,14 +2117,14 @@ export class DatabaseStorage implements IStorage {
 
       // 1-tier referral commission only (Appendix A #4) — paid from the
       // platform fee into the referrer's balanceCashPkr, never txPointsBalance.
-      if (breakdown.referrerId && breakdown.referralCommission > 0) {
-        const feeRateUsed = (await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15)) / 100;
-        const refShareRateUsed = (await this.getSystemConfigValue<number>("REFERRAL_FEE_SHARE_PCT", 50)) / 100;
+      if (breakdown.referrerId && referralCommissionD.gt(0)) {
+        const feeRateUsed = new Decimal(await this.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15)).div(100);
+        const refShareRateUsed = new Decimal(await this.getSystemConfigValue<number>("REFERRAL_FEE_SHARE_PCT", 50)).div(100);
 
         await tx
           .update(users)
           .set({
-            balanceCashPkr: sql`${users.balanceCashPkr} + ${breakdown.referralCommission.toFixed(2)}`,
+            balanceCashPkr: sql`${users.balanceCashPkr} + ${referralCommissionD.toFixed(4)}`,
             updatedAt: new Date(),
           })
           .where(eq(users.id, breakdown.referrerId));
@@ -2124,9 +2133,9 @@ export class DatabaseStorage implements IStorage {
           referrerId: breakdown.referrerId,
           inviteeId: withdrawalUserId,
           withdrawalId,
-          commissionAmountPkr: breakdown.referralCommission.toFixed(2),
-          inviteeNetPkr: breakdown.userNetPkr.toFixed(2),
-          platformFeePkr: breakdown.platformFee.toFixed(2),
+          commissionAmountPkr: referralCommissionD.toFixed(4),
+          inviteeNetPkr: userNetPkrD.toFixed(4),
+          platformFeePkr: platformFeeD.toFixed(4),
           feeRateUsed: feeRateUsed.toFixed(4),
           refShareRateUsed: refShareRateUsed.toFixed(4),
         });
@@ -2138,7 +2147,7 @@ export class DatabaseStorage implements IStorage {
         action: "WITHDRAWAL_APPROVED",
         targetType: "withdrawal",
         targetId: withdrawalId,
-        details: { ...breakdown, reason: `Approved payout of Rs.${breakdown.userNetPkr.toFixed(2)}` } as any,
+        details: { ...breakdown, reason: `Approved payout of Rs.${userNetPkrD.toFixed(2)}` } as any,
       });
 
       return updatedWithdrawal;
@@ -2148,14 +2157,14 @@ export class DatabaseStorage implements IStorage {
     await emitFeedEvent({
       type: "withdrawal",
       userId: withdrawalUserId,
-      displayMessage: `Payout approved: '${user?.identity ?? withdrawalUserId}' → Rs.${breakdown.userNetPkr.toFixed(2)} | Fee: Rs.${breakdown.platformFee.toFixed(2)}${breakdown.referralCommission > 0 ? ` | Ref: Rs.${breakdown.referralCommission.toFixed(2)}` : ""}`,
+      displayMessage: `Payout approved: '${user?.identity ?? withdrawalUserId}' → Rs.${new Decimal(breakdown.userNetPkr.toString()).toFixed(2)} | Fee: Rs.${new Decimal(breakdown.platformFee.toString()).toFixed(2)}${new Decimal(breakdown.referralCommission.toString()).gt(0) ? ` | Ref: Rs.${new Decimal(breakdown.referralCommission.toString()).toFixed(2)}` : ""}`,
       data: breakdown,
     });
 
     await this.createNotification({
       userId: withdrawalUserId,
       title: "Payout Processed",
-      message: `Rs.${breakdown.userNetPkr.toFixed(2)} sent to your account.${transactionId ? ` Transaction: ${transactionId}` : ""}`,
+      message: `Rs.${new Decimal(breakdown.userNetPkr.toString()).toFixed(2)} sent to your account.${transactionId ? ` Transaction: ${transactionId}` : ""}`,
       type: "system",
     });
 

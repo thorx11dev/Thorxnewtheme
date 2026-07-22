@@ -838,6 +838,7 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
             </p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b-[1.5px] border-[#111]/10 bg-zinc-50">
@@ -926,6 +927,7 @@ export function RiskWatchlistPanel({ onViewUserInCRM }: { onViewUserInCRM?: (ema
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

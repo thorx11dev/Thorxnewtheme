@@ -2656,7 +2656,7 @@ export default function UserPortal() {
           toast({
             title: "Payout Request Submitted!",
             description: withdrawalPreview
-              ? `Your withdrawal of ${formatCurrency(withdrawAmount)} PTS (Rs. ${withdrawalPreview.userNetPkr.toFixed(2)} net) has been submitted for processing.`
+              ? `Your withdrawal of ${formatCurrency(withdrawAmount)} PTS (Est. Rs. ${withdrawalPreview.userNetPkr.toFixed(2)} net) has been submitted for processing.`
               : `Your withdrawal of ${formatCurrency(withdrawAmount)} PTS has been submitted for processing.`,
           });
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.earnings });
@@ -2894,7 +2894,7 @@ export default function UserPortal() {
                         )}
                         {withdrawalPreview && (
                           <div className="text-sm md:text-base font-bold text-foreground/70">
-                            ≈ Rs. {withdrawalPreview.exactPkr.toFixed(2)} · Net after 15% fee: Rs. {withdrawalPreview.userNetPkr.toFixed(2)}
+                            Estimated Final Payout: ≈ Rs. {withdrawalPreview.exactPkr.toFixed(2)} gross · Rs. {withdrawalPreview.userNetPkr.toFixed(2)} net (after {withdrawalPreview.feePercent ?? 15}% fee)
                           </div>
                         )}
                       </div>

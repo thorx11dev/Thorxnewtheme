@@ -28,6 +28,11 @@ process.on('unhandledRejection', (reason, promise) => {
 // Startup environment validation — fail fast with a clear message rather than
 // crashing silently on the first DB query (Finding 2-P).
 function validateRequiredEnv(): void {
+  // C2-09: Warn (don't fatal) when CREDENTIAL_ENCRYPTION_KEY is absent — credentials
+  // will still encrypt but with a fallback that reduces security posture.
+  if (!process.env.CREDENTIAL_ENCRYPTION_KEY) {
+    logger.warn("CREDENTIAL_ENCRYPTION_KEY is not set — credential storage will use the fallback key. Set this env var before going to production.");
+  }
   const required: Array<{ key: string; hint: string }> = [
     { key: "DATABASE_URL", hint: "Add a PostgreSQL database to this Replit" },
     { key: "SESSION_SECRET", hint: "Generate with: openssl rand -hex 32" },

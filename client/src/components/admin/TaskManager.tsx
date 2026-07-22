@@ -141,9 +141,16 @@ export function TaskManager() {
       const res = await apiRequest("PATCH", `/api/admin/tasks/${id}`, updates);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, { updates }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/tasks'] });
-    }
+      toast({
+        title: updates.isActive !== undefined
+          ? updates.isActive ? "Task Activated" : "Task Deactivated"
+          : "Task Updated",
+        description: "Task status synchronized.",
+      });
+    },
+    onError: (error: any) => toast({ title: "Update Failed", description: error.message, variant: "destructive" }),
   });
 
   const handleSave = (e: React.FormEvent<HTMLFormElement>) => {

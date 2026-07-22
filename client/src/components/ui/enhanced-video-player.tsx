@@ -97,9 +97,9 @@ function AreaPlayer({
   const duration = 30; // Video duration in seconds
   const playerRef = useRef<HTMLDivElement>(null);
 
-  // Format currency
+  // Format ad credit as TX-Points (C1-01: no $ currency symbol on ad rewards)
   const formatCurrency = (amount: string) => {
-    return `$${parseFloat(amount).toFixed(2)}`;
+    return `+${Math.round(parseFloat(amount))} TX-PTS`;
   };
 
   const formatVideoTime = (seconds: number) => {
@@ -325,9 +325,9 @@ export default function EnhancedVideoPlayer({
     { id: "active", icon: MoreHorizontal, active: true }
   ];
 
-  // Format currency
+  // Format ad credit as TX-Points (C1-01: no $ currency symbol on ad rewards)
   const formatCurrency = (amount: string) => {
-    return `$${parseFloat(amount).toFixed(2)}`;
+    return `+${Math.round(parseFloat(amount))} TX-PTS`;
   };
 
   // Fullscreen change event listeners

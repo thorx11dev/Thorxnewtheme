@@ -1329,6 +1329,9 @@ export const userTransactions = pgTable("user_transactions", {
   index("idx_user_transactions_user_created").on(table.userId, table.createdAt),
   index("idx_user_transactions_user_withdrawn").on(table.userId, table.withdrawn),
   index("idx_user_transactions_withdrawal").on(table.withdrawalId),
+  // C2-05: FIFO ledger query (userId + withdrawn=false ORDER BY createdAt) needs a composite
+  // covering index — the two separate indexes above force a bitmap AND / merge scan.
+  index("idx_user_transactions_fifo").on(table.userId, table.withdrawn, table.createdAt),
   // NOTE: a partial unique index also exists on the live DB but cannot be expressed
   // in Drizzle's table-definition DSL:
   //   CREATE UNIQUE INDEX uniq_user_transactions_source
