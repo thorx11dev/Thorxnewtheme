@@ -111,6 +111,14 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
   5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `scripts/provision-founder.mjs` using env vars.
   6. Auth regression verified via HTTPS dev domain: CSRF double-submit cookie (`thorx.csrf.v2`) obtained via GET, echoed as `x-csrf-token` header on POSTs. register (201, role: user) → authenticated profile (200) → logout (200) → unauthenticated profile (401 UNAUTHORIZED) confirmed. Founder login: 200 (role: founder, email: thorx11dev@gmail.com). All auth flows clean.
 
+- 2026-07-22 (re-import): `node_modules/.bin/tsx` missing after import. Steps taken:
+  1. `npm install` — all packages installed cleanly.
+  2. `npx drizzle-kit push --force` — schema applied with no conflicts ("Changes applied").
+  3. `postgresql-16` module retained in `.replit`.
+  4. Workflow restarted; app running on port 5000 — landing page renders correctly.
+  5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `scripts/provision-founder.mjs` using env vars.
+  6. Full auth regression passed (16 checks): unauthenticated `/api/user` (401 NO_SESSION) → register QA account with `identity` field (201, role: user, rank: Nawa Aya) → `/api/user` (200, full session) → logout (200 Logout successful) → `/api/user` (401 NO_SESSION) → wrong-password login (401 UNAUTHORIZED) → correct-password login (200 Login successful, user nested under `user` key) → duplicate email rejected (400 DUPLICATE_EMAIL) → QA account deleted from DB. Founder login (200, role: founder, permissions: ["all"]) → `/api/user` (200) → `/api/admin/config` (200) → `/api/team/members` (200, 1 member: Thorx X, accessLevel: founder) → founder logout (200) → `/api/user` (401 NO_SESSION). Only founder account remains in `users` table.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
