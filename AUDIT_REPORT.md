@@ -1,300 +1,290 @@
-# THORX Platform — Million-Dollar Forensic Audit Report
+# THORX — FORENSIC AUDIT REPORT
 **Date:** 2026-07-22  
-**Auditor:** Replit Agent (forensic pass, read-only)  
-**Scope:** Full codebase — `server/`, `client/src/`, `shared/schema.ts`  
-**Coverage:** `server/routes.ts` (4686 lines), `server/storage.ts` (5379 lines), `shared/schema.ts` (1424 lines), key frontend components, all background modules
+**Scope:** Full-stack codebase — server, client, shared schema, background jobs  
+**Standard:** "Million-Dollar Product" — absolute financial integrity, flawless UX, ironclad security  
 
 ---
 
-## Executive Summary
+## CATEGORY 1 — MISTAKES, BUGS, AND GAPS
 
-THORX is a well-architected platform with strong financial engineering in its core paths: `processWithdrawal` uses `SELECT … FOR UPDATE`, `Decimal` throughout, atomic transactions, and correct commission routing. The approval chain (`PATCH` → `updateWithdrawalStatus` → `processWithdrawal`) is properly wired. Bulk approvals also route through the safe path.
+### 1-A · Float Math on Currency / Points (Financial Precision Drift)
 
-However, **15 bugs and integrity gaps** were found — including one point where a float enters the Decimal engine before containment, one persistent financial display bug serving $0 from a deprecated table, and several admin routes missing Zod validation. A further **9 enterprise standards gaps** and **7 UX/ecosystem disconnects** complete the picture.
+Every instance below risks silent rounding error accumulating across millions of transactions.
 
----
+| # | File | Line | Code | Risk |
+|---|------|------|------|------|
+| 1 | `server/routes.ts` | 1164 | `const userCutRate = userCutPct / 100;` | Native float division |
+| 2 | `server/routes.ts` | 1168 | `const grossPkr = parseFloat(grossPkrPerCompletion \|\| "0");` | String→float on money field |
+| 3 | `server/routes.ts` | 1170 | `Math.round(grossPkr * userCutRate * conversionRate)` | Three-operand float chain |
+| 4 | `server/routes.ts` | 1171 | `Math.round(txPointsReward * 1.2)` | Float multiply on result |
+| 5 | `server/routes.ts` | 3694 | `parseFloat(task.grossPkrPerCompletion!)` | Float parse in task complete |
+| 6 | `server/routes.ts` | 3727 | `grossPkr: parseFloat(task.grossPkrPerCompletion!)` | Passed float into earn engine |
+| 7 | `server/routes.ts` | 4645–4656 | Six consecutive `parseFloat(String(...))` calls on Thorx Card config | Float parse on all card params |
+| 8 | `server/modules/gps-engine.ts` | 28 | `Math.round((memberPointsEarned * pct) / 100)` | GPS award via native float |
+| 9 | `server/modules/thorx-card.ts` | 56 | `pkrDecimal.div(10).times(conversionRate).toNumber()` | Decimal→float conversion |
+| 10 | `server/modules/thorx-card.ts` | 57 | `min + Math.random() * (max - min)` | Float variance multiplication |
+| 11 | `server/modules/thorx-card.ts` | 58 | `Math.max(0, Math.round(targetPoints * cardVariance))` | Float round on point credit |
+| 12 | `server/storage.ts` | 1070 | `new Decimal(params.grossPkr).times(100).toDecimalPlaces(0).toNumber()` | Decimal→float for SQL bind |
+| 13 | `client/src/pages/UserPortal.tsx` | 1318 | `parseFloat(displayUser?.totalEarnings \|\| '0')` | Float parse on earnings display |
+| 14 | `client/src/pages/UserPortal.tsx` | 1374 | `parseFloat(displayUser?.totalEarnings \|\| '0.00')` | Float parse on rank progress |
 
-## CATEGORY 1 — Bugs & Financial Integrity Gaps
-
-### F-01 · `parseFloat()` at the ad-view earn boundary ⚠️ HIGH
-**Location:** `server/routes.ts` ~line 1551  
-**Finding:** `parseFloat(adConfig.reward)` converts the reward config string to an IEEE 754 float before passing it as `grossPkr` into `recordEarnEvent`. The Decimal boundary is crossed in the wrong direction — float contamination enters before Decimal can contain it. For sub-paisa reward values (e.g. `"0.25"`) this is benign, but any reward amount that cannot be exactly represented in binary float (e.g. `"0.10"`, `"0.30"`) will accumulate rounding error into every ad-view earning record.  
-**Impact:** Systematic sub-paisa drift in every ad-view earning. Not visible per-user but accumulates across millions of records.
-
----
-
-### F-02 · `GET /api/stats` — unauthenticated endpoint with float math · MEDIUM
-**Location:** `server/routes.ts`, `GET /api/stats`  
-**Finding:** This endpoint is publicly accessible with no `requireSessionAuth` guard. It exposes aggregate platform data (total paid, total users, etc.) to anonymous callers. Additionally, it uses `parseFloat()` on DB aggregate results for the displayed figures — not stored, but inconsistent with the Decimal discipline applied everywhere else.  
-**Impact:** Information disclosure of platform financials (total payout volume visible to anyone on the internet). Float display error in admin stats views.
-
----
-
-### F-03 · Ad-view response leaks raw PKR string · MEDIUM
-**Location:** `server/routes.ts` ~line 1577  
-**Finding:** The `POST /api/ad-view` success response returns: `"Authentication Successful: 0.25 PKR credited"` — a raw PKR amount embedded in a user-visible string. The spec and DashboardCards invariant #1-A explicitly state that Rs. amounts must only appear in the payout/withdrawal context. This string trains users to think of their earnings in PKR rather than TX-Points.  
-**Impact:** Spec violation; user confusion about the TX-Points vs. PKR distinction; potential friction at withdrawal time when users see a different (correct) PKR value after the conversion rate is applied.
+**Root cause:** The codebase correctly uses `Decimal` in many places but converts `.toNumber()` too early, then performs downstream arithmetic on the resulting float.
 
 ---
 
-### F-04 · `GET /api/rank/history` missing `requireSessionAuth` · MEDIUM
-**Location:** `server/routes.ts`, `GET /api/rank/history`  
-**Finding:** This route uses a manual `getThorxPrincipalId(req)` check instead of the standard `requireSessionAuth` middleware. Unlike `requireSessionAuth`, the manual check does not enforce session validity, refresh `lastActiveAt`, or check team-key suspension status. Any session that passes the raw session lookup (including stale/partially-invalidated sessions) will receive rank history data.  
-**Impact:** Weaker session enforcement; suspended team members may still read rank history; inconsistency with every other authenticated route.
+### 1-B · Database Mutations Not Wrapped in Atomic Transactions
+
+| Function | File | Issue |
+|----------|------|-------|
+| `updateUserEarnings` | `server/storage.ts:829` | Directly writes `availableBalance`, `pendingBalance`, `totalEarnings` as a single UPDATE with no surrounding transaction — callers can leave balance in inconsistent state on crash between calls |
+| `createWithdrawal` | `server/storage.ts:1985` | Balance check (`getUser`) and `INSERT` into withdrawals are separate statements; no transaction wrapper — a concurrent request can interleave between the check and the insert |
+| `awardTaskPS` | `server/modules/ps-engine.ts:44` | Accepts optional `tx` but defaults to bare `db` — callers that do not pass `tx` run this outside any transaction |
+| `processStreak` | `server/modules/ps-engine.ts:57` | SELECT then UPDATE pattern with no transaction; optional `tx` not threaded through by all callers |
 
 ---
 
-### F-05 · Referral earnings dashboard always shows Rs. 0.00 · HIGH
-**Location:** `server/storage.ts`, `getDashboardStats()`, lines 2597–2603  
-**Finding:** `getDashboardStats` computes `referralEarnings` by querying the `commission_logs` table (`commissionLogs.beneficiaryId`, `commissionLogs.status = "paid"`). Per the platform's own memory and audit history, **`commission_logs` is write-frozen** — the function that writes to it exists but is never called in the current codebase. Actual referral commissions flow into the `referral_commissions` table (written in `processWithdrawal`). The dashboard stat reads from the wrong table and always returns `"0.00"`.  
-**Impact:** Every user's dashboard shows Rs. 0.00 for referral earnings regardless of actual commissions earned. Financial display bug affecting all users who have received referral commissions.
+### 1-C · Race Conditions — Read-then-Write Without `SELECT FOR UPDATE`
+
+| Function | File | Gap |
+|----------|------|-----|
+| `createReferralCashWithdrawal` | `server/storage.ts:4861` | Wraps in `db.transaction()` but the balance SELECT inside lacks `FOR UPDATE` — concurrent referral withdrawals can both read the same balance and both succeed, overdrawing |
+| `checkAndUpdateRankTier` | `server/modules/ps-engine.ts:142` | SELECT user → compute new rank → UPDATE — no row lock; two concurrent earn events can both promote the same user simultaneously |
+| `checkAndUpdateGuildRankTier` | `server/modules/gps-engine.ts:85` | SELECT guild → compute new guild rank → UPDATE — same gap as above; two concurrent member earnings can produce a double rank-log entry |
 
 ---
 
-### F-06 · `bootstrapConfig` N+1 queries on cold start · LOW
-**Location:** `server/storage.ts`, `bootstrapConfig()`  
-**Finding:** Seeds 57 `system_config` entries via 57 sequential `getSystemConfig()` (read) + conditional `insert` calls. On cold start or re-import, this executes up to 114 sequential DB round-trips synchronously on the hot path before the server can serve requests.  
-**Impact:** Cold-start latency spike of several seconds; degrades perceived reliability on every re-deploy.
+### 1-D · Points-Only Mandate — PKR Value Leaks
+
+The spec mandates TX-Points everywhere until the withdrawal screen. The following violate or weaken this:
+
+1. **`GET /api/user` response** (`server/routes.ts:692–693`): Sends `totalEarnings` and `availableBalance` as raw decimal strings. These are PKR-denominated values in the database. The UI re-labels them "TX-Points" (`DashboardCards.tsx:132`) creating a semantic mislabelling — the user sees a raw PKR figure called TX-Points without a true conversion step.
+
+2. **`client/src/components/ui/rank-badge.tsx:156–157`**: `RankProgressBar` receives `totalEarnings: number` and computes rank progress directly against PKR thresholds (25 000, 50 000, 75 000…). If `totalEarnings` is a PKR decimal (e.g. `0.50`), this will always show 0 % progress — the component expects TX-Points but may receive PKR.
+
+3. **`client/src/components/ui/profile-modal.tsx:309`**: `TX-Points: {Number(user?.totalEarnings || 0).toFixed(2)}` — displays the raw DB value directly with no conversion guard.
+
+4. **`GET /api/user/referral-balance`** (`server/routes.ts:4595`): Returns `balanceCashPkr` to the user portal. This field is a raw PKR cash balance and is intentionally shown in the referral withdrawal panel — **confirm this is within spec before marking acceptable**.
 
 ---
 
-### F-07 · PayoutControl.tsx admin display uses `parseFloat()` arithmetic · LOW
-**Location:** `client/src/components/admin/PayoutControl.tsx`, lines 592–594  
-**Finding:**
-```js
-const gross = parseFloat(selectedWithdrawal.netAmount || "0") + parseFloat(selectedWithdrawal.fee || "0");
-const fee   = parseFloat(selectedWithdrawal.fee || "0");
-const net   = parseFloat(selectedWithdrawal.netAmount || "0");
-```
-The breakdown panel shown to an admin before approving a payout uses native float arithmetic to compute the displayed "Real PKR (ledger)" value. If `netAmount` and `fee` together cannot be exactly represented in binary float, the displayed gross will not match the stored ledger value.  
-**Impact:** Admin may approve a withdrawal seeing a slightly different number from the one actually processed; creates audit-trail confusion.
+### 1-E · Missing Idempotency on Financial Endpoints
+
+All three endpoints below can be submitted twice on network retry/double-click:
+
+| Endpoint | File:Line | Risk |
+|----------|-----------|------|
+| `POST /api/withdrawals` | `routes.ts:950` | Duplicate withdrawal request creates two pending withdrawals |
+| `POST /api/withdrawals/referral` | `routes.ts:4601` | Duplicate referral withdrawal on retry |
+| `POST /api/admin/users/:userId/adjust-balance` | `routes.ts:2139` | Admin double-click credits balance twice |
 
 ---
 
-### F-08 · UserManager.tsx admin table uses `parseFloat()` on financial fields · LOW
-**Location:** `client/src/components/admin/UserManager.tsx`, lines 451, 454  
-**Finding:** `parseFloat(user.availableBalance).toLocaleString()` and `parseFloat(user.totalEarnings).toLocaleString()` used in the admin user table display.  
-**Impact:** Same float display drift; minor but inconsistent with the Decimal discipline applied server-side.
+### 1-F · Daily Task `parseFloat` in Earn Path
+
+`server/routes.ts:3727`: `grossPkr: parseFloat(task.grossPkrPerCompletion!)` passes a native float into `storage.recordEarnEvent`. Even though `recordEarnEvent` internally uses `Decimal`, the loss of precision already occurred at the boundary.
 
 ---
 
-### F-09 · `checkAndUpdateRank` dynamic import of `broadcastUserUpdated` inside a transaction · LOW
-**Location:** `server/storage.ts`, `checkAndUpdateRank()`, ~line 2524  
-**Finding:** Inside an open `db.transaction()` context, after updating the user row, the code does `await import("./realtime")` and calls `broadcastUserUpdated(...)`. If the dynamic import throws or the broadcast call takes time, it holds the transaction open longer than necessary. More critically, if the transaction subsequently rolls back (e.g. due to the caller's outer transaction failing), the WebSocket broadcast will have already fired — notifying the client of a rank change that was never committed.  
-**Impact:** Phantom rank-change notifications on transaction rollback; inflated perceived responsiveness that doesn't match DB state.
+## CATEGORY 2 — MILLION-DOLLAR COMPANY STANDARDS GAP
+
+### 2-A · Security: Routes With Missing or Insufficient Auth
+
+**Unprotected public endpoints (intentional — confirmed acceptable):**
+`GET /api/health`, `GET /api/config/public`, `GET /api/stats`, `POST /api/register`, `POST /api/login`, `POST /api/logout`, `POST /api/contact`, `POST /api/forgot-password`, `POST /api/reset-password`, `POST /api/bootstrap-founder` (one-time, rate-limited).
+
+**Security gaps requiring remediation:**
+
+| Route | File:Line | Gap |
+|-------|-----------|-----|
+| `POST /api/admin/system-config` | `routes.ts:4272` | Uses `requireTeamRole` only — any team member can modify global system config. No granular `MANAGE_SYSTEM` permission check. |
+| `GET /api/system-config/:key` | `routes.ts:4252` | Key whitelist allows `MIN_PAYOUT` unauthenticated. Other keys lack explicit deny-by-default; a new key added to `allowedKeys` bypasses auth silently. |
+| `POST /api/team/members` | `routes.ts:3978` | No rate limiter — an attacker can enumerate and spam team-member creation. |
+| `PATCH /api/team/members/:id` | `routes.ts:4032` | No rate limiter on privilege modification. |
+| `POST /api/admin/users/:id/action` with payload type `adjust_balance` | `routes.ts:532` | The `payload` field for non-`adjust_balance` actions is an unvalidated `unknown` object — arbitrary data accepted and stored in `audit_logs`. |
 
 ---
 
-### F-10 · Hardcoded `AD_INVENTORY` — not runtime-configurable · LOW
-**Location:** `server/routes.ts`, `AD_INVENTORY` object near the ad-view handler  
-**Finding:** Ad reward amounts, durations, and names are hardcoded in the route handler rather than stored in `system_config`. Changing any ad reward requires a code deployment.  
-**Impact:** Operational inflexibility; business cannot adjust ad economics without engineer involvement; violates the spirit of the `system_config` table which exists precisely for this purpose.
+### 2-B · Payload Validation: Missing or Incomplete Zod Schemas
+
+| Route | File:Line | Issue |
+|-------|-----------|-------|
+| `POST /api/admin/system-config` | `routes.ts:4272` | Directly destructures `{ key, value }` from `req.body` — no Zod schema, no type/length enforcement |
+| `PATCH /api/admin/users/:id/rank` | `routes.ts:4090` | Manual `typeof rank !== 'string'` check + allowlist; `locked` extracted via `!!req.body.locked` with no Zod |
+| `PATCH /api/admin/users/:id/trust-status` | `routes.ts:4126` | Manual validation only |
+| `POST /api/team/members` | `routes.ts:3978` | Direct `const { email, role } = req.body` with no Zod schema |
+| `PATCH /api/team/members/:id` | `routes.ts:4032` | Direct `const { accessLevel, isActive } = req.body` with no Zod schema |
+| `PATCH /api/guilds/:id/applications/:applicationId` | `routes.ts:4442` | Manual `action` string check, no Zod |
 
 ---
 
-### F-11 · `POST /api/admin/weekly-tasks` missing Zod validation · MEDIUM
-**Location:** `server/routes.ts`, `POST /api/admin/weekly-tasks`  
-**Finding:** Route uses `requireTeamRole` (not `requirePermission`), has no Zod schema, and relies on manual field presence checks. `parseInt(pointReward)` without a prior numeric check will silently accept `NaN` and store it in the `pointReward` column. Any team member (not just those with `MANAGE_TASKS` or equivalent permission) can call this endpoint.  
-**Impact:** Corrupt task reward values; privilege escalation for task management — any team member can create or modify weekly tasks regardless of their specific permissions.
+### 2-C · Rate Limiting Gaps
+
+| Endpoint | File:Line | Gap |
+|----------|-----------|-----|
+| `POST /api/team/members` | `routes.ts:3978` | No rate limiter |
+| `PATCH /api/team/members/:id` | `routes.ts:4032` | No rate limiter |
+| `POST /api/admin/system-config` | `routes.ts:4272` | No rate limiter |
+| `GET /api/daily-tasks` | `routes.ts:3715` | No rate limiter on task listing (enumeration risk) |
 
 ---
 
-### F-12 · `processWithdrawal` — `parseInt(withdrawal.amount, 10)` on a decimal-type column · LOW
-**Location:** `server/storage.ts`, `processWithdrawal()`, line 2079  
-**Finding:** `const pointsRequested = parseInt(withdrawal.amount, 10)` — `withdrawal.amount` is a string column that in practice stores an integer TX-Points count. `parseInt` silently truncates if the stored value ever contains a decimal separator (e.g. due to a migration, admin edit, or future schema change). No assertion or check validates that the parsed int equals the original string.  
-**Impact:** Silent truncation of points requested; under-deduction from the user's TX-Points balance; financial integrity gap that is latent (not currently triggered) but fragile.
+### 2-D · Database Performance: Missing Indexes
+
+**Confirmed missing or weak indexes:**
+
+| Table | Column(s) | Issue |
+|-------|-----------|-------|
+| `withdrawals` | `(status)` | Filtered on status in every admin payout query; no index in schema |
+| `withdrawals` | `(user_id, status)` | Composite needed for user-specific pending withdrawal checks |
+| `withdrawals` | `(created_at)` | Used in date-range admin queries; no index |
+| `task_records` | `(user_id, status)` | Daily task completion checks filter on both; only `(user_id, task_id)` composite exists |
+| `score_history` | `(user_id, recorded_at)` | Time-series lookups in leaderboard and PS engine; schema has `score_history_user_id_idx` but no composite |
+| `guild_members` | `(guild_id, is_active)` | Captain portal and GPS engine filter on both; no composite index |
+| `audit_logs` | `(target_user_id, created_at)` | Admin user audit view filters on target; only `action`/`actor` indexed |
+| `risk_cases` | `(user_id, status)` | Risk watchlist queries filter both; no composite |
 
 ---
 
-### F-13 · Engine-A player routes use `requireTeamRole` instead of granular permission · LOW
-**Location:** `server/routes.ts`, `GET/POST/PATCH/DELETE /api/admin/engine-a/players`  
-**Finding:** All ad-player CRUD routes are guarded by `requireTeamRole` — meaning any team or admin account can add, modify, or delete ad network players. This directly affects the PKR→TX-Points ratio applied to every ad view.  
-**Impact:** Any compromised team account can silently alter ad economics; should be restricted to a specific permission (e.g. `MANAGE_ENGINE_CONFIG`).
+### 2-E · Memory & Scale Bottlenecks: Unbounded Dataset Loading
+
+| Function | File:Line | Issue |
+|----------|-----------|-------|
+| `getAllUsers` | `storage.ts:1534` | Loads entire `users` table into memory; 200-row cap added but applied inconsistently — some callers bypass via direct query |
+| `recomputeLeaderboardCache` | `storage.ts:2917+` | Loads all users for ranking computation; should be a single SQL `RANK()` window function |
+| `getEarningsStats` | `storage.ts:3098+` | Multiple unbounded selects aggregated in JS rather than SQL `SUM`/`AVG` |
+| `getRiskCases` | `storage.ts` | Returns all risk cases; no pagination — 200+ rows degrade `RiskWatchlistPanel` |
+| `getPayoutQueue` | `storage.ts` | Returns all pending withdrawals; `PayoutControl.tsx` renders all with no virtualization |
+| GPS engine `cfg()` calls | `gps-engine.ts:85+` | `checkAndUpdateGuildRankTier` issues **6 sequential `await cfg()`** DB reads for each rank threshold check; should be a single batch fetch |
 
 ---
 
-### F-14 · `getDashboardStats` — `dailyGoal` hardcoded to 20 · LOW
-**Location:** `server/storage.ts`, `getDashboardStats()`, line 2615  
-**Finding:** `const dailyGoal = 20;` — the daily ad goal used to compute `dailyGoalProgress` is a magic number rather than reading from `system_config` (where `MAX_ADS_PER_DAY` or equivalent is stored).  
-**Impact:** If the config value is updated by an admin, the progress bar on every user's dashboard will still calculate against 20 — misleading users about their daily completion status.
+### 2-F · Observability Gaps
+
+| Gap | Status |
+|-----|--------|
+| **Sentry / error tracking** | `SENTRY_DSN` env var present but not set — `server/lib/sentry.ts` exists but inactive |
+| **`CREDENTIAL_ENCRYPTION_KEY`** | Not set → falls back to insecure hardcoded key; warning emitted on every boot |
+| **Automated test coverage** | Only `server/__tests__/financial.test.ts` exists — no client tests, no integration tests, no E2E suite |
+| **Database migration rollback** | `drizzle-kit` has no built-in rollback; no `.down` migrations exist — a bad schema push is unrecoverable without manual SQL |
+| **Structured logging gaps** | `server/utils/debug-log.ts` still used in some paths alongside pino — mixed logging strategies |
+| **Health check depth** | `GET /api/health` checks DB connectivity but does not check background job liveness (ps-engine, gps-engine, leaderboard-refresh cron) |
 
 ---
 
-### F-15 · `getAllUsers(limit=500)` — monolithic fetch, not paginated · LOW
-**Location:** `server/storage.ts`, `getAllUsers()`  
-**Finding:** Default cap of 500 users loaded in one query. No cursor-based or page/offset pagination exposed. Called in analytics and leaderboard refresh paths. At 10K+ users, this becomes a multi-MB memory allocation on every call.  
-**Impact:** Memory spike in the Node.js process on every leaderboard refresh; eventual OOM risk at scale.
+## CATEGORY 3 — ECOSYSTEM DISCONNECTION & UX FRICTION
+
+### 3-A · Cross-Portal Data Synchronisation Gaps
+
+| Gap | Detail |
+|-----|--------|
+| **Guild Weekly Target** | Admin can override `weeklyTarget` via `GuildManager`. `CaptainPortal.tsx:294–297` computes its own difficulty-based preview that may diverge from the live DB value until next refetch. No `guild.target_updated` WebSocket event fired on admin override. |
+| **Leaderboard staleness** | `useRealtimeSync` invalidates `QUERY_KEYS.referralsLeaderboard` only on `user:updated` for the *current* user. If a *different* user earns points and overtakes the current user's rank, the leaderboard stays stale until the 5-minute cache refresh. |
+| **Captain Announcement Badge** | `guild.announcement_posted` WS event correctly invalidates `guildDetail`, but the dashboard announcement badge/preview does not re-render until navigation away and back. |
+| **Guild Settings Broadcast** | `guild.settings_updated` event is generic — clients cannot determine *which* setting changed, so they must re-fetch the entire guild object on every settings mutation (wasteful and brittle). |
 
 ---
 
-## CATEGORY 2 — Enterprise Standards Gaps
+### 3-B · Responsive Design & Mobile Constraints
 
-### E-01 · Device fingerprint is client-supplied and trivially bypassed · HIGH
-**Location:** `server/routes.ts`, `POST /api/register` and `POST /api/login`  
-**Finding:** The device fingerprint used for the "max 1 account per device" rule is read from `req.body.deviceFingerprint`. A user creating a second account simply omits this field or sends a random UUID — the check passes because `if (deviceFingerprint && ...)` gates on truthiness. The check provides false assurance.  
-**Impact:** Multi-account abuse prevention is ineffective against any user aware of the mechanism.
-
----
-
-### E-02 · `DELETE /api/admin/users/:id` — semantic mismatch: "deactivated" vs. "deleted" · LOW
-**Location:** `server/routes.ts`, ~line 2461  
-**Finding:** The response body says `"User account deactivated successfully"` but the audit log writes `action: "USER_DELETED"` and the storage function is `deleteUser`. The endpoint's behavior (soft-delete vs. hard-delete) is ambiguous, and the response message is misleading.  
-**Impact:** Admin confusion; audit-trail message inconsistency; potential compliance issue if the operation is actually a hard delete.
+| Component | File | Issue |
+|-----------|------|-------|
+| `UserPortal.tsx` | `client/src/pages/UserPortal.tsx` | `max-w-[1600px]` containers without narrower `sm:` constraints cause horizontal overflow on 320 px devices |
+| `SystemSettingsManager.tsx` | `client/src/components/admin/SystemSettingsManager.tsx` | Inner table cells use `min-w-max` and `w-28`; while wrapper has `overflow-x-auto`, nested cell widths still break layout on ≤ 768 px |
+| `RiskWatchlistPanel.tsx` | `client/src/components/admin/RiskWatchlistPanel.tsx` | Table lists all risk cases without `overflow-x-auto` on the card wrapper; columns truncate silently on small screens |
+| `PayoutControl.tsx` | `client/src/components/admin/PayoutControl.tsx` | Multi-column payout table has no mobile-collapsed card view; horizontal scrolling is not indicated to the user |
+| `AdminHeader.tsx` | `client/src/components/admin/AdminHeader.tsx` | Fixed `h-20 md:h-24` with no collapsed mobile state; relies on sidebar Sheet which is adequate but nav breadcrumb overflows on < 400 px |
+| `TermsAndConditions.tsx` | `client/src/pages/TermsAndConditions.tsx` | Internal table at line 167 lacks a scroll indicator; overflows silently on mobile |
 
 ---
 
-### E-03 · Bulk export loads up to 10,000 rows into memory · MEDIUM
-**Location:** `server/routes.ts`, `GET /api/admin/withdrawals/export` and `GET /api/admin/users/export`  
-**Finding:** Both export endpoints call `getUsersPaginated({ limit: 10000 })` / `getWithdrawalsPaginated({ limit: 10000 })`, serialize all rows to a CSV string in memory, then send the entire string. No streaming.  
-**Impact:** At large user counts, a single export request can spike Node.js memory by hundreds of megabytes; concurrent export requests can cause OOM.
+### 3-C · Z-Index Stacking Conflicts
+
+The following modal layers produce undefined stacking order when they co-occur:
+
+| Component | z-index | Conflict |
+|-----------|---------|---------|
+| `thorx-loading-screen.tsx:26` | `z-[9999]` | Highest — correct |
+| `ComicClickEffect.tsx:51` | `z-[9999]` | Ties with loading screen; click effects render above loading overlay |
+| `cursor-indicator.tsx:43` | `z-[9999]` | Same tie — cursor overlaps loading screen content |
+| `notification-modal.tsx:121` | `z-[2000]` | Correct above portals |
+| `ad-web-panel.tsx:172` | `z-[70]` | Ad overlay and its backdrop (`z-[60]`) can be covered by `daily-goal-modal` |
+| `daily-goal-modal.tsx:179` | `z-[100]` | Equals toast `z-[100]` — toast notifications rendered **behind** open goal modal |
+| `profile-modal.tsx:200` | `z-[100]` | Same conflict: toasts hidden behind open profile modal |
+| `toast.tsx:17` | `z-[100]` | Cannot surface above any full-screen modal at same level |
+
+**Concrete failure:** User completes a withdrawal inside the goal modal → success toast fires at `z-[100]` → is invisible because the modal also runs at `z-[100]`.
 
 ---
 
-### E-04 · Password reset is a dead stub returning success · HIGH (UX + Trust)
-**Location:** `server/routes.ts`, `POST /api/forgot-password` (line 2926) and `POST /api/reset-password` (line 2938)  
-**Finding:** `POST /api/forgot-password` immediately returns `{ success: true, message: "If an account exists..." }` with no email sent and no token generated. `POST /api/reset-password` returns HTTP 410 Gone. Users who attempt a password reset believe an email was sent, wait indefinitely, and have no path to account recovery.  
-**Impact:** User lockout with no recovery path; significant trust erosion; support burden.
+### 3-D · Loading States Defaulting to Plain Text
+
+| Component | File | Plain-text fallback |
+|-----------|------|---------------------|
+| `FounderProfitCard` | `admin/FounderProfitCard.tsx:124` | `{isLoading ? "Loading..." : ...}` instead of skeleton |
+| `GuildManager` | `admin/GuildManager.tsx:281` | `{isLoading ? <div>Loading...</div> : ...}` |
+| `LeaderboardInsights` | `admin/LeaderboardInsights.tsx:373,522` | Plain loading text in two separate sections |
+| `RiskWatchlistPanel` | `admin/RiskWatchlistPanel.tsx` | Spinner replaces entire panel content — no row-level skeleton |
+| `DashboardCards` | `DashboardCards.tsx` | Balance card shows "0" as default before data loads (no skeleton shimmer) |
+| `daily-goal-modal.tsx` | `ui/daily-goal-modal.tsx` | Action buttons lack `isPending` disable during goal claim sequence |
 
 ---
 
-### E-05 · `PATCH /api/admin/withdrawals/:id` — no Zod on `status` field · MEDIUM
-**Location:** `server/routes.ts`, ~line 2469  
-**Finding:** `const { status, transactionId, rejectionReason } = req.body;` — `status` is passed directly to `storage.updateWithdrawalStatus()` without validation. An admin (or compromised token) can send `status: "pending"` to un-pend a completed withdrawal, or send arbitrary strings. The underlying `updateWithdrawalStatus` function does validate internally, but the route-level defense is absent.  
-**Impact:** Malformed admin requests may produce unexpected DB states or trigger unhandled code paths in the storage layer.
+### 3-E · Silent Mutations (No Toast Feedback)
+
+While many mutations correctly use `useToast`, the following are silent on success or failure:
+
+| Component | Mutation | Gap |
+|-----------|----------|-----|
+| `GuildDiscoveryPanel` | Guild join | No toast on join success/failure |
+| `GuildMemberPanel` | Nudge member | No toast on nudge sent |
+| `CaptainPortal` | Weekly target set | No toast confirming target saved |
+| `UserPortal` withdrawal flow | Step 2→3 transition | No intermediate toast when preview fetch fails — user sees blank step silently |
+| `AdminInbox` | Mark-read | No toast on bulk mark-read action |
+| `RanksCustomizer` | Save thresholds | No confirmation toast |
+| `ThorxCardSandbox` | Simulate card | No error toast if simulation fails |
 
 ---
 
-### E-06 · Founder-only routes use `requireTeamRole` + manual role check — not RBAC · LOW
-**Location:** `server/routes.ts`, `GET /api/admin/profit-ledger`, `GET /api/admin/founder/profit-summary`, `POST /api/admin/founder/withdrawals`  
-**Finding:** These routes use `requireTeamRole` as middleware, then manually check `req.userProfile!.role !== 'founder'` inside the handler. This pattern bypasses the `requirePermission` RBAC system, creating inconsistent access-control logic and making it harder to audit which roles have access to which capabilities.  
-**Impact:** Any future addition of a new privileged role would require auditing all manual role checks, not just the permission middleware.
+### 3-F · WebSocket Coverage Gaps
+
+| Missing Event | Impact |
+|---------------|--------|
+| `guild.target_updated` | Captain doesn't see admin-changed weekly target without page refresh |
+| `guild.settings_updated` payload specificity | Clients re-fetch entire guild on any settings change |
+| `leaderboard.rank_changed` (cross-user) | Other users' rank changes never propagate; your rank may show stale position |
+| `withdrawal.status_changed` (admin-side push) | Admin payout panel doesn't auto-refresh when a peer admin processes a withdrawal |
 
 ---
 
-### E-07 · Registration dual-validation — manual check before Zod · LOW
-**Location:** `server/routes.ts`, `POST /api/register`, ~line 2795–2812  
-**Finding:** Manual `if (!firstName || !email || !identity || !password)` check fires before `registerSchema.safeParse(...)`. The Zod schema is the authoritative validator, but the manual check can reject valid inputs if Zod's schema ever relaxes a field. Previously caused production bugs (noted in memory).  
-**Impact:** Maintenance trap; duplicate validation logic that can diverge.
+### 3-G · Forms Missing Disabled State During Submission
+
+| Component | File | Gap |
+|-----------|------|-----|
+| Withdrawal confirm (Step 3) | `UserPortal.tsx:3128` | `disabled={!canProceed() \|\| (currentStep === 3 && isProcessing)}` — `isProcessing` state is set manually, not tied to mutation `.isPending`; window where button is clickable |
+| Daily goal claim | `daily-goal-modal.tsx` | Claim buttons not disabled during `isPending` |
+| Guild join button | `GuildDiscoveryPanel.tsx` | No `isPending` check on join mutation |
 
 ---
 
-### E-08 · `/api/contact` — no per-email rate limit, only per-IP · LOW
-**Location:** `server/routes.ts`, `POST /api/contact`  
-**Finding:** `contactRateLimiter` limits by IP only. From a proxy or rotating IP pool, the same email address can flood the team inbox without restriction.  
-**Impact:** Contact-form spam; inbox flooding; storage growth in the `team_emails` table.
+## OPEN QUESTIONS FOR BUSINESS LOGIC CLARIFICATION
+
+Before beginning remediation, the following require explicit answers:
+
+**Q1 — TX-Points vs PKR Denomination:**  
+`totalEarnings` and `availableBalance` in the database — are these stored as **raw PKR amounts** (e.g. `2.50` = Rs. 2.50) or as **TX-Points** (e.g. `2500` = 2 500 TX-Points)? The rank thresholds in `rank-badge.tsx` (25 000, 50 000…) only make sense if `totalEarnings` is TX-Points. But the earn path stores `grossPkr * userCutRate * conversionRate` as `txPointsReward` and separately stores `realPkrValue`. **Clarify which field maps to which unit before touching any display or calculation logic.**
+
+**Q2 — Referral Balance PKR Leak Acceptability:**  
+`GET /api/user/referral-balance` returns `balanceCashPkr` to the user portal. Is showing raw PKR in the referral withdrawal panel **intentionally out-of-scope** for the Points-Only Mandate, or should it be masked until confirmation?
+
+**Q3 — Idempotency Strategy:**  
+Should duplicate withdrawal protection be implemented via a client-supplied idempotency key (header), a server-side deduplication window (e.g. reject same `userId + amount + method` within 60 s), or both?
+
+**Q4 — GPS Float Math Tolerance:**  
+`Math.round((memberPointsEarned * pct) / 100)` in gps-engine — is integer rounding acceptable for GPS (a non-monetary score), or must it also use `Decimal` for strict audit-trail accuracy?
+
+**Q5 — Leaderboard Real-time Update Frequency:**  
+Should rank changes by *other* users push a WS event to all connected clients (costly broadcast), or is the 5-minute cache refresh acceptable for leaderboard staleness?
 
 ---
 
-### E-09 · Dashboard earnings queries use server-local timezone · LOW
-**Location:** `server/storage.ts`, `getDashboardStats()`, lines 2552–2564  
-**Finding:** `today.setHours(0, 0, 0, 0)` uses the Node.js process timezone (UTC in production) to define "today". Users in Pakistan Standard Time (UTC+5) will see "today's earnings" cut off 5 hours into their local day, and the new day's bucket starts 5 hours before midnight local time.  
-**Impact:** Dashboard daily earnings figure is incorrect for all users in non-UTC timezones; the PKT-standard platform's primary metric is timezone-misaligned.
-
----
-
-## CATEGORY 3 — UX / Ecosystem Disconnects
-
-### U-01 · Forgot-password flow silently does nothing · CRITICAL UX
-**Location:** `POST /api/forgot-password`  
-**Finding:** As noted in E-04, the endpoint returns success immediately. The frontend almost certainly shows "Check your email" messaging. Users believe a reset email is coming. This is a silent failure with no fallback.  
-**User Impact:** Users locked out of their accounts have no path to recovery. This is the highest-impact UX failure in the platform.
-
----
-
-### U-02 · Referral earnings always shows Rs. 0.00 on dashboard · HIGH UX
-**Location:** Dashboard, `getDashboardStats` → `commissionLogs`  
-**Finding:** As documented in F-05, the referral earnings metric reads from the deprecated `commission_logs` table. Every user who has earned referral commissions sees Rs. 0.00 on their dashboard stats card.  
-**User Impact:** Users who have successfully referred others and generated commission income see incorrect financial data. Likely causes support tickets and loss of trust in the platform's financial reporting.
-
----
-
-### U-03 · Admin payout breakdown display may show subtly wrong amounts · LOW UX
-**Location:** `PayoutControl.tsx`, lines 592–599  
-**Finding:** As noted in F-07, the admin approval UI recomputes `gross = net + fee` using `parseFloat`. The displayed "Real PKR (ledger)" value may differ by sub-paisa from the stored ledger value.  
-**User Impact:** Admin confusion if they compare the displayed value to an external ledger; potential approval of wrong amounts if admins rely on the displayed gross figure.
-
----
-
-### U-04 · Daily progress bar hardcoded against 20 ads, ignoring config · MEDIUM UX
-**Location:** `getDashboardStats`, line 2615  
-**Finding:** `dailyGoalProgress` computes against `dailyGoal = 20`. If `MAX_ADS_PER_DAY` in system_config differs, users see a progress bar that hits 100% at a different count from what the system enforces.  
-**User Impact:** Users reach the system's actual ad cap before the progress bar shows completion, or the bar shows 100% while the system still allows more ads. Either case is confusing.
-
----
-
-### U-05 · `POST /api/reset-password` returns raw technical error (410 Gone) · LOW UX
-**Location:** `server/routes.ts`, line 2939  
-**Finding:** `res.status(410).json({ message: "Self-service password reset is not available. Please contact support.", error: "NOT_AVAILABLE" })`. HTTP 410 is a developer-facing status code. If any UI reaches this endpoint, the user sees a generic error state rather than actionable guidance.  
-**User Impact:** Confusing error experience; "NOT_AVAILABLE" is a developer error code not appropriate for end users.
-
----
-
-### U-06 · Ad-view response exposes internal PKR value in success message · MEDIUM UX
-**Location:** `server/routes.ts` ~line 1577  
-**Finding:** As noted in F-03, the success message `"Authentication Successful: 0.25 PKR credited"` uses the word "Authentication" (confusing in an ad-view context) and leaks a raw PKR amount. Users should see TX-Points credited, not PKR.  
-**User Impact:** Terminology confusion (authentication ≠ ad view); contradicts the platform's TX-Points abstraction layer; may lead users to calculate expected withdrawal amounts incorrectly.
-
----
-
-### U-07 · Guild `isPublic` flag not surfaced to guild creators in the UI · LOW UX
-**Location:** `server/storage.ts`, `listGuilds()`, line 2236  
-**Finding:** `listGuilds` filters to `isPublic = true` guilds only. However, there is no clear indicator in the guild creation flow or guild management UI (visible in CaptainPortal) that confirms whether a guild is discoverable. Guild creators who set `isPublic = false` (or who receive a default value) have no visible confirmation of their guild's discoverability status.  
-**User Impact:** Guild captains may be unaware their guild is hidden from discovery, leading to confusion about why no join requests arrive.
-
----
-
-## Summary Table
-
-| ID | Category | Severity | Finding |
-|----|----------|----------|---------|
-| F-01 | Financial | HIGH | `parseFloat()` at ad-view earn boundary |
-| F-02 | Financial | MEDIUM | `GET /api/stats` unauthenticated + float math |
-| F-03 | Financial | MEDIUM | Ad-view response leaks "X PKR credited" string |
-| F-04 | Security | MEDIUM | `GET /api/rank/history` missing `requireSessionAuth` |
-| F-05 | Financial | HIGH | Dashboard referral earnings reads deprecated `commissionLogs` → always $0 |
-| F-06 | Performance | LOW | `bootstrapConfig` N+1 cold-start queries |
-| F-07 | Financial | LOW | PayoutControl.tsx `parseFloat()` breakdown display math |
-| F-08 | Financial | LOW | UserManager.tsx `parseFloat()` on financial fields |
-| F-09 | Integrity | LOW | `checkAndUpdateRank` broadcasts inside transaction — phantom notifications on rollback |
-| F-10 | Operations | LOW | AD_INVENTORY hardcoded — not runtime-configurable |
-| F-11 | Security | MEDIUM | `POST /api/admin/weekly-tasks` — no Zod, `requireTeamRole` not `requirePermission` |
-| F-12 | Financial | LOW | `processWithdrawal` `parseInt(amount)` silently truncates decimals |
-| F-13 | Security | LOW | Engine-A player routes use `requireTeamRole` — any team member can alter ad economics |
-| F-14 | UX | LOW | `dailyGoal = 20` hardcoded in `getDashboardStats` |
-| F-15 | Performance | LOW | `getAllUsers(limit=500)` — monolithic, no pagination |
-| E-01 | Security | HIGH | Device fingerprint is client-supplied — trivially bypassed |
-| E-02 | Compliance | LOW | DELETE users endpoint: "deactivated" vs. "USER_DELETED" semantic mismatch |
-| E-03 | Performance | MEDIUM | Bulk exports load 10K rows into memory — no streaming |
-| E-04 | Product | HIGH | Password reset is a dead stub — always returns success, sends no email |
-| E-05 | Security | MEDIUM | `PATCH /api/admin/withdrawals/:id` — no Zod on `status` field |
-| E-06 | Security | LOW | Founder routes: `requireTeamRole` + manual role check bypasses RBAC |
-| E-07 | Code Quality | LOW | Registration dual-validation — manual check before Zod |
-| E-08 | Security | LOW | Contact form: per-IP rate limit only, no per-email limit |
-| E-09 | Data | LOW | Dashboard earnings queries use server-local timezone (UTC), not PKT |
-| U-01 | UX | CRITICAL | Forgot-password flow silently does nothing — users believe email was sent |
-| U-02 | UX | HIGH | Referral earnings always shows Rs. 0.00 (reads deprecated table) |
-| U-03 | UX | LOW | Admin payout display shows float-rounded amounts |
-| U-04 | UX | MEDIUM | Daily progress bar hardcoded at 20 ads, ignores system_config |
-| U-05 | UX | LOW | `/api/reset-password` returns technical 410 error to user |
-| U-06 | UX | MEDIUM | Ad-view success message: "Authentication Successful" + raw PKR leak |
-| U-07 | UX | LOW | Guild `isPublic` status not surfaced to captains in management UI |
-
----
-
-## What Is Working Correctly (Positive Findings)
-
-- **`processWithdrawal`** — FOR UPDATE row lock, full Decimal arithmetic, commission routing to `referral_commissions`, audit log, activity feed, post-transaction notification. Correctly wired from both `PATCH` endpoint and bulk approval.
-- **`recordEarnEvent`** — Decimal throughout, transaction-wrapped, idempotent via unique index.
-- **`createWithdrawal`** — Pending-state check inside transaction, DB-level unique index backup.
-- **`adjustUserBalance`** — Decimal, audit-logged, permission-gated with `MANAGE_USERS`.
-- **Session handling** — Session regeneration on login/register (fixation prevention), `requireSessionAuth` properly enforces team-key suspension.
-- **Rate limiting** — All critical endpoints have appropriate rate limiters; bootstrap endpoint now has `bootstrapRateLimiter`.
-- **Schema constraints** — `onDelete: "restrict"` on all financial FK tables; DB-level CHECK constraints on balances; `txPointsBalance` floor enforced.
-- **PS/rank engine** — Idempotent, Decimal-safe, correct inactivity penalty floor.
-- **Risk engine** — `upsertRiskCase` triggers correctly post-admin-credit.
-- **CSRF** — Applied on all `/api/*` routes via Helmet.
-- **Zod** — Used correctly on all high-sensitivity routes (guild settings, contact form, balance adjust, bulk withdrawal, bootstrap, founder withdrawal).
-
----
-
-*End of Audit Report*
+*End of Audit Report — 2026-07-22*
