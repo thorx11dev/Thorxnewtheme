@@ -103,6 +103,14 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 
 - 2026-07-21 (deep audit fix sprint): All 6 remaining audit findings closed. Changes: (1) `server/modules/thorx-card.ts` — `userPkrShare` now accepts `number | string`, `realPkrValue` returned as `string` (Decimal-exact); (2) `server/storage.ts` — passes `userPkrShareD.toFixed(4)` to `drawThorxCard`, return type updated to `realPkrValue: string`; (3) `server/modules/ps-engine.ts` — inactivity penalty loop is now idempotent: only processes users where `inactivityPenaltyAt IS NULL OR inactivityPenaltyAt < cutoff`, preventing double-penalties on crash-restart; (4) `server/routes.ts` — all 6 remaining manual-check routes now use `z.safeParse()` Zod schemas: `bulk-targets`, `/ps`, `/gps`, `/captain`, `/weekly-target`, `/api/chat`; (5) `client/src/pages/UserPortal.tsx` — all 9 hardcoded query keys replaced with `QUERY_KEYS.*` constants; `chatMutation.onSuccess` now invalidates `QUERY_KEYS.chatHistory`; (6) `client/src/components/admin/RiskWatchlistPanel.tsx` — "Scanning…" plain text replaced with `Loader2 animate-spin` spinner. `npx tsc --noEmit` passes with zero errors. App confirmed running on port 5000.
 
+- 2026-07-22 (re-import): `node_modules/.bin/tsx` missing after import. Steps taken:
+  1. `npm install` — all packages installed cleanly.
+  2. `npx drizzle-kit push --force` — schema applied with no conflicts ("Changes applied").
+  3. Restored `postgresql-16` to `.replit` modules (dropped during import auto-generation).
+  4. Workflow restarted; app running on port 5000 — landing page renders correctly.
+  5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `scripts/provision-founder.mjs` using env vars.
+  6. Auth regression verified via HTTPS dev domain: CSRF double-submit cookie (`thorx.csrf.v2`) obtained via GET, echoed as `x-csrf-token` header on POSTs. register (201, role: user) → authenticated profile (200) → logout (200) → unauthenticated profile (401 UNAUTHORIZED) confirmed. Founder login: 200 (role: founder, email: thorx11dev@gmail.com). All auth flows clean.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
