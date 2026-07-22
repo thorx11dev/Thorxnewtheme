@@ -1969,13 +1969,15 @@ export class DatabaseStorage implements IStorage {
 
     const userNetPkr = exactPkr.minus(platformFee);
 
+    // H-04: Return as fixed-precision strings — never .toNumber() — so IEEE-754
+    // rounding cannot corrupt financial values in transit to the client.
     return {
-      exactPkr: exactPkr.toNumber(),
-      platformFee: platformFee.toNumber(),
-      referralCommission: referralCommission.toNumber(),
+      exactPkr: exactPkr.toFixed(4),
+      platformFee: platformFee.toFixed(4),
+      referralCommission: referralCommission.toFixed(4),
       referrerId: referrer?.id ?? null,
       referrerName: referrer?.identity ?? null,
-      userNetPkr: userNetPkr.toNumber(),
+      userNetPkr: userNetPkr.toFixed(4),
       consumedTransactionIds,
     };
   }
@@ -3084,8 +3086,8 @@ export class DatabaseStorage implements IStorage {
     const wHealth   = await this.getSystemConfigValue<number>("SCORE_WEIGHT_HEALTH",   0.15);
     const cohortDiscountDays = await this.getSystemConfigValue<number>("SCORE_COHORT_DISCOUNT_DAYS", 14);
 
-    // Clear existing cache for current period
-    await db.delete(leaderboardCache);
+    // C-07: leaderboard cache DELETE + INSERT are performed atomically AFTER
+    // computation so a crash never leaves the table empty. Fetch users first.
 
     // Fetch qualified users + L1 referral counts in parallel.
     // Previous version used two per-row correlated subqueries (O(2N) DB round-trips);
@@ -3204,11 +3206,17 @@ export class DatabaseStorage implements IStorage {
     }));
 
     // Batch insert into leaderboard cache (top 10,000 for enterprise performance)
+    // C-07: Wrap DELETE + all cache INSERTs in one transaction — old data stays
+    // live until the new set is fully written; a crash rolls back to the previous
+    // cache instead of leaving an empty table.
     const topEntries = cacheEntries.slice(0, 10000);
-    for (let i = 0; i < topEntries.length; i += 500) {
-      const chunk = topEntries.slice(i, i + 500);
-      await db.insert(leaderboardCache).values(chunk);
-    }
+    await db.transaction(async (tx) => {
+      await tx.delete(leaderboardCache);
+      for (let i = 0; i < topEntries.length; i += 500) {
+        const chunk = topEntries.slice(i, i + 500);
+        await tx.insert(leaderboardCache).values(chunk);
+      }
+    });
 
     // Persist score history snapshot (batch of 500 to keep DB writes cheap)
     for (let i = 0; i < topEntries.length; i += 500) {
@@ -3385,11 +3393,12 @@ export class DatabaseStorage implements IStorage {
     const calc = (points: number, pkr: number) => {
       const pkrD = new Decimal(pkr);
       const feeD = pkrD.times(feePct).dividedBy(100);
+      // H-04: Return as fixed-precision strings to preserve Decimal accuracy.
       return {
         points,
-        exactPkr: pkrD.toNumber(),
-        platformFee: feeD.toDecimalPlaces(2).toNumber(),
-        netPkr: pkrD.minus(feeD).toDecimalPlaces(2).toNumber(),
+        exactPkr: pkrD.toFixed(4),
+        platformFee: feeD.toDecimalPlaces(2).toFixed(2),
+        netPkr: pkrD.minus(feeD).toDecimalPlaces(2).toFixed(2),
       };
     };
 
@@ -3459,24 +3468,35 @@ export class DatabaseStorage implements IStorage {
       `),
     ]);
 
-    const engineCuts = { A: 0, B: 0, C: 0, Referral: 0, Manual: 0, Indirect: 0 } as any;
+    // H-05: Use Decimal throughout to prevent float accumulation errors on
+    // large financial aggregates in the profit ledger.
+    const engineCutsD: Record<string, Decimal> = {
+      A: new Decimal(0), B: new Decimal(0), C: new Decimal(0),
+      Referral: new Decimal(0), Manual: new Decimal(0), Indirect: new Decimal(0),
+    };
     for (const r of cutRows) {
       const key = r.engine === 'Engine_A' ? 'A' : r.engine === 'Engine_B' ? 'B' : r.engine === 'Engine_C' ? 'C' : r.engine ?? 'Indirect';
-      engineCuts[key] = (engineCuts[key] ?? 0) + Number(r.cut);
+      engineCutsD[key] = (engineCutsD[key] ?? new Decimal(0)).plus(new Decimal(r.cut ?? 0));
     }
-    const totalEngineCuts = Object.values(engineCuts).reduce((a: number, b: any) => a + Number(b), 0) as number;
+    const totalEngineCutsD = Object.values(engineCutsD).reduce((a, b) => a.plus(b), new Decimal(0));
+    // Serialize as fixed strings for JSON — never .toNumber() on financial values.
+    const engineCuts = Object.fromEntries(
+      Object.entries(engineCutsD).map(([k, v]) => [k, v.toFixed(4)])
+    );
 
     const wdData = (wdRow as any).rows?.[0] ?? (wdRow as any)[0] ?? {};
-    const withdrawalFeeRevenue = Number(wdData.fee_revenue ?? 0) + Number(wdData.ref_paid ?? 0);
-    const referralCommissionsPaid = Number(wdData.ref_paid ?? 0);
-    const netWithdrawalFeeShare = Number(wdData.fee_revenue ?? 0);
+    const feeRevenueD = new Decimal(wdData.fee_revenue ?? 0);
+    const refPaidD    = new Decimal(wdData.ref_paid ?? 0);
+    const withdrawalFeeRevenue    = feeRevenueD.plus(refPaidD).toFixed(4);
+    const referralCommissionsPaid = refPaidD.toFixed(4);
+    const netWithdrawalFeeShare   = feeRevenueD.toFixed(4);
 
     const dailyRows = ((daily as unknown) as { rows: any[] }).rows ?? [];
     const daily30Days = dailyRows.map((r: any) => ({
       date: String(r.day).slice(0, 10),
-      engineCut: Number(r.engine_cut),
-      feeShare: 0, // per-day fee share requires withdrawal-date join — aggregated at top level
-      total: Number(r.engine_cut),
+      engineCut: new Decimal(r.engine_cut ?? 0).toFixed(4),
+      feeShare: "0.0000", // per-day fee share requires withdrawal-date join — aggregated at top
+      total: new Decimal(r.engine_cut ?? 0).toFixed(4),
     }));
 
     return {
@@ -3484,7 +3504,7 @@ export class DatabaseStorage implements IStorage {
       withdrawalFeeRevenue,
       referralCommissionsPaid,
       netWithdrawalFeeShare,
-      totalProfit: totalEngineCuts + netWithdrawalFeeShare,
+      totalProfit: totalEngineCutsD.plus(feeRevenueD).toFixed(4),
       daily30Days,
     };
   }
@@ -3595,13 +3615,18 @@ export class DatabaseStorage implements IStorage {
   // ── Founder Profit Ledger ───────────────────────────────────────────────────
 
   async createFounderWithdrawal(data: { amount: string; withdrawalDate: Date; description?: string; createdBy: string }): Promise<FounderWithdrawal> {
-    const [fw] = await db.insert(founderWithdrawals).values({
-      amount: data.amount,
-      withdrawalDate: data.withdrawalDate,
-      description: data.description,
-      createdBy: data.createdBy,
-    }).returning();
-    return fw;
+    // C-03: Wrapped in a transaction for atomicity. The founder withdrawal is
+    // an accounting log entry — it does not debit a user balance — but the
+    // transaction ensures any future audit-log companion writes are atomic.
+    return await db.transaction(async (tx) => {
+      const [fw] = await tx.insert(founderWithdrawals).values({
+        amount: data.amount,
+        withdrawalDate: data.withdrawalDate,
+        description: data.description,
+        createdBy: data.createdBy,
+      }).returning();
+      return fw;
+    });
   }
 
   async getFounderWithdrawals(limit = 50, offset = 0): Promise<{ withdrawals: FounderWithdrawal[]; total: number }> {
@@ -3736,13 +3761,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async reclassifyEarning(earningId: string, newType: string, adminId: string): Promise<void> {
-    await db.update(earnings).set({ type: newType }).where(eq(earnings.id, earningId));
-    await db.insert(auditLogs).values({
-      adminId,
-      action: "RECLASSIFY_EARNING",
-      targetType: "earning",
-      targetId: earningId,
-      details: { newType, reclassifiedBy: adminId },
+    // C-02: Both statements must succeed atomically — if the audit log insert
+    // fails after the update, the reclassification must roll back entirely.
+    await db.transaction(async (tx) => {
+      await tx.update(earnings).set({ type: newType }).where(eq(earnings.id, earningId));
+      await tx.insert(auditLogs).values({
+        adminId,
+        action: "RECLASSIFY_EARNING",
+        targetType: "earning",
+        targetId: earningId,
+        details: { newType, reclassifiedBy: adminId },
+      });
     });
   }
 

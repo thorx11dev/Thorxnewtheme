@@ -289,7 +289,7 @@ export function LeaderboardInsights({ onViewUserInCRM }: { onViewUserInCRM?: (em
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Total Members", value: insights?.totalCount ?? "—", icon: <Users size={18} /> },
-          { label: "Top Earner", value: insights?.globalRanking?.[0] ? `PKR ${parseFloat(insights.globalRanking[0].totalEarnings || "0").toLocaleString()}` : "—", icon: <TrendingUp size={18} /> },
+          { label: "Top Earner", value: insights?.globalRanking?.[0] ? `PKR ${Number(insights.globalRanking[0].totalEarnings || "0").toLocaleString()}` : "—", icon: <TrendingUp size={18} /> },
           { label: "Top Referrer", value: insights?.topReferrers?.[0] ? `${insights.topReferrers[0].level1Count || 0} direct` : "—", icon: <Trophy size={18} /> },
           { label: "Watchlist", value: insights?.anomalies?.length ?? 0, icon: <AlertTriangle size={18} /> },
         ].map((stat) => (

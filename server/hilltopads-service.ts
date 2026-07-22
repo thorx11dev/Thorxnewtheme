@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { logger } from "./lib/logger";
 import type { InsertHilltopAdsStat } from "@shared/schema";
 
 interface HilltopAdsStatsResponse {
@@ -130,7 +131,7 @@ export class HilltopAdsService {
         }
       }
     } catch (error) {
-      console.error("Failed to sync HilltopAds inventory:", error);
+      logger.error({ err: error }, "Failed to sync HilltopAds inventory");
       throw error;
     }
   }
@@ -171,7 +172,7 @@ export class HilltopAdsService {
         });
       }
     } catch (error) {
-      console.error("Failed to sync HilltopAds stats:", error);
+      logger.error({ err: error }, "Failed to sync HilltopAds stats");
       throw error;
     }
   }

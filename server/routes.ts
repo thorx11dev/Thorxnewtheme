@@ -15,7 +15,7 @@ import { hilltopAdsService } from "./hilltopads-service";
 import { runtimeConfig } from "./config/runtime";
 import { handleProxyRequest } from "./modules/proxy/proxy-handler";
 import { processProfilePicture } from "./utils/local-profile-picture";
-import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter, earnRateLimiter, guildInteractionRateLimiter, contactRateLimiter, contactEmailRateLimiter, chatbotRateLimiter, adminActionRateLimiter, bootstrapRateLimiter } from "./middleware/auth-rate-limit";
+import { authRateLimiter, withdrawalRateLimiter, profileRateLimiter, earnRateLimiter, guildInteractionRateLimiter, contactRateLimiter, contactEmailRateLimiter, chatbotRateLimiter, adminActionRateLimiter, bootstrapRateLimiter, publicApiRateLimiter } from "./middleware/auth-rate-limit";
 import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
@@ -458,7 +458,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/team/invitations/verify/:token", async (req, res) => {
+  // H-06: Rate limiter added — invitation tokens must not be brute-forceable.
+  app.get("/api/team/invitations/verify/:token", authRateLimiter, async (req, res) => {
     try {
       const invitation = await storage.getTeamInvitationByToken(req.params.token);
       if (!invitation) {
@@ -928,7 +929,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const role = 'user'; // Filter to only show Users, not founders/team members
 
       const result = await storage.getUsersPaginated({ page, limit, search, sort, sortOrder, role });
-      res.json(result);
+      // C-01: passwordHash must never be exposed to team portal clients regardless of trust level.
+      const sanitized = {
+        ...result,
+        users: result.users.map(({ passwordHash: _ph, ...safe }: any) => safe),
+      };
+      res.json(sanitized);
     } catch (error) {
       logger.error({ err: error }, "Fetch users error:");
       res.status(500).json({ message: "Failed to fetch users" });
@@ -1106,6 +1112,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getThorxPrincipalId(req) as string;
       await storage.leaveGuild(req.params.id, userId);
+      // H-02: Broadcast to the leaving user and all guild members so UI
+      // updates in real-time without requiring a page refresh.
+      broadcastUserUpdated(userId, "guild_left");
+      broadcastGuildEvent(req.params.id, 'guild.member_left', { userId, guildId: req.params.id });
       res.json({ success: true });
     } catch (error) {
       logger.error({ err: error }, "Leave guild error:");
@@ -1118,6 +1128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const captainId = getThorxPrincipalId(req) as string;
       await storage.removeGuildMember(req.params.id, req.params.userId, captainId);
+      // H-02: Broadcast to the removed user so their portal reflects the change
+      // immediately rather than waiting for a manual refresh.
+      broadcastUserUpdated(req.params.userId, "guild_removed");
+      broadcastGuildEvent(req.params.id, 'guild.member_removed', { userId: req.params.userId, guildId: req.params.id });
       res.json({ success: true });
     } catch (error) {
       logger.error({ err: error }, "Remove guild member error:");
@@ -1496,6 +1510,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid status." });
       }
       const guild = await storage.setGuildStatus(req.params.id, parsed.data.status);
+      // H-02: Broadcast status change so all guild members' portals update in real-time
+      // (critical for 'disbanded' — members must be evicted from the guild UI immediately).
+      broadcastGuildEvent(req.params.id, 'guild.status_changed', { guildId: req.params.id, status: parsed.data.status });
       res.json({ guild });
     } catch (error) {
       logger.error({ err: error }, "Admin set guild status error:");
@@ -1843,7 +1860,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Stats endpoint for live data — intentionally public for landing-page marketing use.
   // Exposes only sanitized headline figures (no raw payout totals or PII).
-  app.get("/api/stats", async (req, res) => {
+  // C-05/H-03: publicApiRateLimiter (30 req/min) protects this unauthenticated endpoint.
+  // H-03: Hardcoded fallback data removed — errors return a real zero-state.
+  app.get("/api/stats", publicApiRateLimiter, async (_req, res) => {
     try {
       const paidResult = await pool.query(`
         SELECT COALESCE(SUM(CAST(amount AS NUMERIC)), 0) as total
@@ -1853,21 +1872,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const activeUsers = await storage.getActiveUsersCount();
 
-      // R-10: Use Decimal for the financial aggregate — no float contamination.
+      // Use Decimal for the financial aggregate — no float contamination.
       const totalPaid = new Decimal(paidResult.rows[0]?.total || "0").toFixed(2);
 
       res.json({
         totalPaid,
-        activeUsers: activeUsers > 0 ? activeUsers : 45,
+        activeUsers,
         securityScore: 99
       });
     } catch (error) {
       logger.error({ err: error }, "Get live stats error:");
-      res.json({
-        totalPaid: "2.50",
-        activeUsers: 45,
-        securityScore: 99
-      });
+      // Return a genuine zero-state on error — never fabricate trust signals.
+      res.json({ totalPaid: "0.00", activeUsers: 0, securityScore: 99 });
     }
   });
 
@@ -3526,20 +3542,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public/Authenticated System Configuration Access
-  app.get("/api/config/:key", async (req, res) => {
+  // C-05: Strict public allowlist — only non-sensitive UI keys are exposed without auth.
+  // Business-sensitive keys (fee %, conversion rate, ad network config) require auth.
+  const PUBLIC_CONFIG_KEYS = new Set(["MIN_PAYOUT"]);
+  app.get("/api/config/:key", publicApiRateLimiter, async (req, res) => {
     try {
       const { key } = req.params;
-      const allowedKeys = [
-        "AD_NETWORKS", "CPA_NETWORKS", "MIN_PAYOUT",
-        "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT",
-        "CONVERSION_RATE",
-      ];
-      
-      if (!allowedKeys.includes(key)) {
-        return res.status(403).json({ 
-          message: "Access to this configuration key is restricted.",
-          error: "RESTRICTED_ACCESS"
-        });
+
+      if (!PUBLIC_CONFIG_KEYS.has(key)) {
+        // Require authentication for any key outside the safe public set.
+        const principalId = getThorxPrincipalId(req);
+        if (!principalId) {
+          return res.status(403).json({
+            message: "Access to this configuration key is restricted.",
+            error: "RESTRICTED_ACCESS"
+          });
+        }
+        // Authenticated users may only read keys explicitly permitted for their role.
+        // For now, require team-level access for any non-public key.
+        const profile = req.userProfile;
+        if (!profile || !["founder", "admin", "team"].includes(profile.role)) {
+          return res.status(403).json({
+            message: "Access to this configuration key requires elevated permissions.",
+            error: "RESTRICTED_ACCESS"
+          });
+        }
       }
 
       const value = await storage.getSystemConfigValue(key, null);
@@ -4293,12 +4320,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Authenticated system config read — only allow specific public keys without auth
-  app.get("/api/system-config/:key", async (req, res) => {
+  // C-05: Rate-limited and auth-gated system config lookup.
+  app.get("/api/system-config/:key", publicApiRateLimiter, async (req, res) => {
     try {
-      const PUBLIC_KEYS = ["MIN_PAYOUT"];
+      const SYSTEM_PUBLIC_KEYS = new Set(["MIN_PAYOUT"]);
       const key = req.params.key;
 
-      if (!PUBLIC_KEYS.includes(key)) {
+      if (!SYSTEM_PUBLIC_KEYS.has(key)) {
         const principalId = getThorxPrincipalId(req);
         if (!principalId) {
           return res.status(401).json({ message: "Authentication required" });
@@ -4309,6 +4337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!config) return res.status(404).json({ message: "Config not found" });
       res.json(config);
     } catch (error) {
+      logger.error({ err: error, key: req.params.key }, "Error fetching system-config");
       res.status(500).json({ message: "Failed to fetch config" });
     }
   });

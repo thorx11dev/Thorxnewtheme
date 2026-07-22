@@ -276,11 +276,14 @@ export function AdminDashboard() {
 
   // Derived values — all correctly sourced
   const newRegistrationsInWindow = Number(metrics?.activeUsers ?? 0);  // count of users registered in selected window
-  const totalEarnings      = parseFloat(metrics?.totalEarnings ?? "0");
-  const pendingTotal       = parseFloat(metrics?.pendingWithdrawalTotal ?? "0");
+  // H-08: Use Number() on API string values — display-only, no arithmetic on these
+  // floats. The server now returns Decimal-serialized strings (H-04/H-05 fix).
+  const safePkr = (v: string | number | null | undefined) => Number(v ?? "0") || 0;
+  const totalEarnings      = safePkr(metrics?.totalEarnings);
+  const pendingTotal       = safePkr(metrics?.pendingWithdrawalTotal);
   const pendingCount       = metrics?.pendingWithdrawalCount ?? 0;
   const oldestDays         = metrics?.oldestPendingDays ?? null;
-  const unverifiedTotal    = parseFloat(metrics?.unverifiedCreditTotal ?? "0");
+  const unverifiedTotal    = safePkr(metrics?.unverifiedCreditTotal);
   const unverifiedCount    = metrics?.unverifiedCreditCount ?? 0;
   const growthRate         = metrics?.userGrowthRate ?? 0;
   const thisWeek           = metrics?.userGrowthThisWeek ?? 0;
@@ -289,7 +292,7 @@ export function AdminDashboard() {
   const l2                 = metrics?.networkL2Total ?? 0;
   const networkRatio       = metrics?.networkRatio ?? 0;
   const totalReferrals     = metrics?.totalReferrals ?? 0;
-  const totalCommissions   = parseFloat(metrics?.totalCommissionsPaid ?? "0");
+  const totalCommissions   = safePkr(metrics?.totalCommissionsPaid);
   const activity24h        = metrics?.teamActivity24h ?? 0;
   const activityAvg        = metrics?.teamActivityAvg7d ?? 0;
   const mostActive         = metrics?.mostActiveTeamMember ?? null;

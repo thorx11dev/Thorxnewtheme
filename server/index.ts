@@ -11,7 +11,7 @@ import { startLeaderboardRefreshJob } from "./jobs/leaderboard-refresh";
 import { startHealthSnapshotJob } from "./jobs/health-snapshot";
 import { startGuildWeeklyResetJob } from "./jobs/guild-weekly-reset";
 import { startInactivityPenaltyJob } from "./jobs/inactivity-penalty";
-import { initSentry, sentryErrorHandler } from "./lib/sentry";
+import { initSentry, sentryErrorHandler, Sentry } from "./lib/sentry";
 
 // Suppress pg v8 SSL deprecation warning (Railway injects sslmode=require in DATABASE_URL)
 const originalEmitWarning = process.emitWarning;
@@ -22,8 +22,10 @@ process.emitWarning = ((warning: string | Error, ...args: any[]) => {
 
 import { logger } from "./lib/logger";
 
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error({ promise, reason }, 'Unhandled promise rejection — continuing');
+process.on('unhandledRejection', (reason, _promise) => {
+  logger.error({ reason }, 'Unhandled promise rejection — continuing');
+  // C-06: Forward to Sentry so unhandled rejections appear in the error dashboard.
+  Sentry.captureException(reason instanceof Error ? reason : new Error(String(reason)));
 });
 // Startup environment validation — fail fast with a clear message rather than
 // crashing silently on the first DB query (Finding 2-P).
@@ -31,7 +33,13 @@ function validateRequiredEnv(): void {
   // C2-09: Warn (don't fatal) when CREDENTIAL_ENCRYPTION_KEY is absent — credentials
   // will still encrypt but with a fallback that reduces security posture.
   if (!process.env.CREDENTIAL_ENCRYPTION_KEY) {
-    logger.warn("CREDENTIAL_ENCRYPTION_KEY is not set — credential storage will use the fallback key. Set this env var before going to production.");
+    if (process.env.NODE_ENV === 'production') {
+      // H-14: Missing encryption key in production is a fatal security failure —
+      // all stored ad-network API keys would be encrypted with a known fallback.
+      logger.fatal("CREDENTIAL_ENCRYPTION_KEY is required in production. Generate with: openssl rand -hex 32");
+      process.exit(1);
+    }
+    logger.warn({ service: "thorx-api", env: process.env.NODE_ENV }, "CREDENTIAL_ENCRYPTION_KEY is not set — credential storage will use the fallback key. Set this env var before going to production.");
   }
   const required: Array<{ key: string; hint: string }> = [
     { key: "DATABASE_URL", hint: "Add a PostgreSQL database to this Replit" },
@@ -40,7 +48,7 @@ function validateRequiredEnv(): void {
   const missing = required.filter(({ key }) => !process.env[key]);
   if (missing.length > 0) {
     logger.fatal({ missing: missing.map((m) => m.key) }, "THORX FATAL: missing required env vars — refusing to start");
-    missing.forEach(({ key, hint }) => console.error(`  • ${key} — ${hint}`));
+    missing.forEach(({ key, hint }) => logger.fatal(`  • ${key} — ${hint}`));
     process.exit(1);
   }
 }
@@ -68,6 +76,30 @@ process.on('uncaughtException', (error) => {
     process.exit(1);
   }
 });
+
+// C-04: Graceful shutdown on SIGTERM and SIGINT.
+// Kubernetes, Railway, and Docker send SIGTERM on container stop.
+// Without these handlers the process is killed mid-request, potentially
+// leaving in-flight withdrawal transactions in an unknown state.
+function gracefulShutdown(signal: string): void {
+  logger.info({ signal }, `Received ${signal} — draining connections before exit`);
+  const drainTimeout = setTimeout(() => {
+    logger.fatal({ signal }, 'Graceful shutdown timeout exceeded — forcing exit');
+    process.exit(1);
+  }, 30_000).unref();
+  if (typeof (global as any).__thorxServer?.close === "function") {
+    (global as any).__thorxServer.close(() => {
+      clearTimeout(drainTimeout);
+      logger.info({ signal }, 'All connections drained — exiting cleanly');
+      process.exit(0);
+    });
+  } else {
+    clearTimeout(drainTimeout);
+    process.exit(0);
+  }
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
 
 const app = express();
 

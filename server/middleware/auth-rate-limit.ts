@@ -24,6 +24,22 @@ const ipKeyGenerator = (req: Request): string => {
  * Uses the default keyGenerator (req.ip with IPv6 normalization).
  * trust proxy is already configured at the Express app level.
  */
+/**
+ * Rate limiter for public API endpoints (landing page stats, etc.).
+ * 30 requests per minute per IP — generous enough for real users,
+ * restrictive enough to block scrapers.
+ */
+export const publicApiRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests. Please slow down.", error: "RATE_LIMITED" },
+  skip: skipLocalhost,
+  keyGenerator: ipKeyGenerator,
+  validate: false,
+});
+
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,

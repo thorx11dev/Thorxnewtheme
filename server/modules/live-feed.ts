@@ -5,6 +5,7 @@
 // trail stay complete and consistent.
 
 import { db } from "../db";
+import { logger } from "../lib/logger";
 import { activityFeed } from "@shared/schema";
 
 export type FeedEventType =
@@ -37,6 +38,6 @@ export async function emitFeedEvent(event: FeedEvent): Promise<void> {
     const { broadcastAdminFeedEvent } = await import("../realtime");
     broadcastAdminFeedEvent(event);
   } catch (e) {
-    console.error("Failed to broadcast admin feed event:", e);
+    logger.error({ err: e }, "Failed to broadcast admin feed event");
   }
 }
