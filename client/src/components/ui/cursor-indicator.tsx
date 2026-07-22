@@ -40,7 +40,7 @@ export function CursorIndicator({ show = false, type = 'info' }: CursorIndicator
 
   return (
     <div
-      className="fixed pointer-events-none z-[9999] transition-transform duration-100"
+      className="fixed pointer-events-none z-cursor transition-transform duration-100"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,

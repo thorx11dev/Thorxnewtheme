@@ -48,7 +48,7 @@ const ComicClickEffect: React.FC = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+    <div className="fixed inset-0 pointer-events-none z-cursor overflow-hidden">
       {effects.map((effect) => (
         <div
           key={effect.id}

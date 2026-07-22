@@ -118,7 +118,7 @@ export function NotificationModal({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="fixed inset-0 z-[2000] bg-black text-white flex flex-col overflow-y-auto no-scrollbar"
+                    className="fixed inset-0 z-notif bg-black text-white flex flex-col overflow-y-auto no-scrollbar"
                 >
                     {/* Close Button */}
                     <button

@@ -104,19 +104,20 @@ export default {
       // Loading screen   z-loading     9999
       // Cursor / FX      z-cursor      9000
       // Notification      z-notif       800
+      // Toast            z-toast       750  ← above all modals so toasts are
+      //                                         always visible while a modal is open
       // Profile modal    z-profile     700
       // Daily goal modal z-goal        600
       // Ad panel         z-ad          500
-      // Toast            z-toast       400
       // Dropdowns        z-dropdown    200
       zIndex: {
         loading: "9999",
         cursor: "9000",
         notif: "800",
+        toast: "750",
         profile: "700",
         goal: "600",
         ad: "500",
-        toast: "400",
         dropdown: "200",
       },
     },

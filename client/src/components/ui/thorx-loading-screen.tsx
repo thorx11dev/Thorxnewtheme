@@ -23,7 +23,7 @@ export default function ThorxLoadingScreen({
   }, [duration]);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black cursor-orange">
+    <div className="fixed inset-0 z-loading flex items-center justify-center bg-black cursor-orange">
       <div className="flex flex-col items-center justify-center gap-8 w-full cursor-orange">
         {/* THORX Title */}
         <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white">

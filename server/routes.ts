@@ -4201,7 +4201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/team/members/:id/permissions", requireTeamRole, async (req, res) => {
+  app.patch("/api/team/members/:id/permissions", requireTeamRole, adminActionRateLimiter, async (req, res) => {
     try {
       if (!req.userProfile) return res.status(401).send();
       if (req.userProfile.role !== 'founder') {
