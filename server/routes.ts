@@ -1947,11 +1947,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/team/emails/:id", requireTeamRole, async (req, res) => {
     try {
       const { id } = req.params;
-      const { status, isRead } = req.body;
-      
-      const updates: any = {};
-      if (status) updates.status = status;
-      if (typeof isRead === 'boolean') updates.isRead = isRead;
+      const teamEmailPatchSchema = z.object({
+        status: z.enum(["sent", "read", "archived"]).optional(),
+        isRead: z.boolean().optional(),
+      });
+      const parsed = teamEmailPatchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid request" });
+      }
+      const { status, isRead } = parsed.data;
 
       const updated = await storage.updateTeamEmail(id, {
         status: status || undefined,

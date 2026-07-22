@@ -1,4 +1,7 @@
 import { hilltopAdsService } from "./hilltopads-service";
+import { pino } from "pino";
+
+const logger = pino({ name: "HilltopAdsScheduler" });
 
 export class HilltopAdsScheduler {
   private syncInterval: NodeJS.Timeout | null = null;
@@ -6,22 +9,22 @@ export class HilltopAdsScheduler {
 
   start() {
     if (this.isRunning) {
-      console.log("HilltopAds scheduler is already running");
+      logger.info("HilltopAds scheduler is already running");
       return;
     }
 
     this.isRunning = true;
-    console.log("Starting HilltopAds automated sync scheduler...");
+    logger.info("Starting HilltopAds automated sync scheduler...");
 
     const SYNC_INTERVAL = 24 * 60 * 60 * 1000;
 
     this.syncInterval = setInterval(async () => {
       try {
-        console.log("Running automated HilltopAds sync...");
+        logger.info("Running automated HilltopAds sync...");
         await hilltopAdsService.syncDailyStats();
-        console.log("HilltopAds sync completed successfully");
+        logger.info("HilltopAds sync completed successfully");
       } catch (error) {
-        console.error("HilltopAds automated sync failed:", error);
+        logger.error({ err: error }, "HilltopAds automated sync failed");
       }
     }, SYNC_INTERVAL);
 
@@ -30,11 +33,11 @@ export class HilltopAdsScheduler {
 
   private async runImmediateSync() {
     try {
-      console.log("Running initial HilltopAds inventory sync...");
+      logger.info("Running initial HilltopAds inventory sync...");
       await hilltopAdsService.syncInventory();
-      console.log("Initial inventory sync completed");
+      logger.info("Initial inventory sync completed");
     } catch (error) {
-      console.error("Initial sync failed:", error);
+      logger.error({ err: error }, "Initial sync failed");
     }
   }
 
@@ -43,7 +46,7 @@ export class HilltopAdsScheduler {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
       this.isRunning = false;
-      console.log("HilltopAds scheduler stopped");
+      logger.info("HilltopAds scheduler stopped");
     }
   }
 }

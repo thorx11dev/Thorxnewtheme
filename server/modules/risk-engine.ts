@@ -261,9 +261,11 @@ async function signalCashoutVelocity(userId: string): Promise<RiskSignal> {
 
   if (!recentWithdrawals.length) return { name: "Cash-out Velocity", score: 0, detail: "No recent withdrawal activity." };
 
+  const cashoutWindowHours = await storage.getSystemConfigValue<number>("RISK_CASHOUT_WINDOW_HOURS", 1);
+  const cashoutWindowMs = cashoutWindowHours * 3_600_000;
   const fastWithdrawals = recentWithdrawals.filter((w) => {
     const age = Date.now() - new Date(w.createdAt!).getTime();
-    return age < 3_600_000; // within 1 hour
+    return age < cashoutWindowMs;
   });
 
   const score = Math.min(10, fastWithdrawals.length * 3);

@@ -353,7 +353,10 @@ export const dailyTasks = pgTable("daily_tasks", {
   grossPkrPerCompletion: decimal("gross_pkr_per_completion", { precision: 10, scale: 4 }), // null = indirect
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("daily_tasks_is_active_idx").on(table.isActive),
+  index("daily_tasks_target_rank_idx").on(table.targetRank),
+]);
 export type LeaderboardCache = typeof leaderboardCache.$inferSelect;
 export type InsertLeaderboardCache = typeof leaderboardCache.$inferInsert;
 

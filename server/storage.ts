@@ -619,6 +619,8 @@ export class DatabaseStorage implements IStorage {
       { key: "FEED_RETENTION_DAYS", value: 30, description: "Days to retain activity_feed rows" },
       // ── Ad Engine ─────────────────────────────────────────────────────────────
       { key: "MAX_ADS_PER_DAY", value: 20, description: "Maximum ad views a user can earn from per day" },
+      // ── Risk Engine ───────────────────────────────────────────────────────────
+      { key: "RISK_CASHOUT_WINDOW_HOURS", value: 1, description: "Cash-out velocity signal: withdrawals within this many hours of earning trigger risk points" },
       {
         key: "AD_INVENTORY_JSON",
         value: JSON.stringify([
@@ -1717,13 +1719,14 @@ export class DatabaseStorage implements IStorage {
 
   // --- Task Records Methods ---
   async getDailyTasksForUser(userId: string): Promise<{ task: DailyTask, record: TaskRecord | null }[]> {
-    // Return all daily tasks. Also left join to get the record for this specific user.
+    // Return only active daily tasks. Filter in SQL to avoid loading inactive rows into memory.
     const results = await db
       .select({
         task: dailyTasks,
         record: taskRecords
       })
       .from(dailyTasks)
+      .where(eq(dailyTasks.isActive, true))
       .leftJoin(taskRecords, and(eq(taskRecords.taskId, dailyTasks.id), eq(taskRecords.userId, userId)));
     return results;
   }
