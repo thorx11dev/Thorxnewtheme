@@ -62,6 +62,9 @@ export const QUERY_KEYS = {
   guildWeeklySnapshot:   (id: string) => ["/api/guilds", id, "weekly-snapshot"] as const,
   guildApplicationStatus:(id: string) => ["/api/guilds", id, "application-status"] as const,
   guildMine:             ["/api/guilds/mine"]                  as const,
+  guildTasks:            (id: string) => ["/api/guilds", id, "tasks"]             as const,
+  guildDm:               (id: string, captainId: string) => ["/api/guilds", id, "dm", captainId] as const,
+  guildWeeklyHistory:    (id: string) => ["/api/guilds", id, "weekly-history"]    as const,
 
   // ── Admin ─────────────────────────────────────────────────────────────────
   adminConfig:           ["/api/admin/config"]                 as const,

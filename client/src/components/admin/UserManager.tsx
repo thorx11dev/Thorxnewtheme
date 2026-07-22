@@ -169,7 +169,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
       queryClient.invalidateQueries({ queryKey: ['/api/team/users'] });
       toast({ title: "Balance Adjusted", description: "User's financial ledger has been updated." });
       closeModal();
-    }
+    },
+    onError: (err: any) => toast({ title: "Balance Adjustment Failed", description: err?.message ?? "An unexpected error occurred. Please try again.", variant: "destructive" }),
   });
 
   // THORX v3: PS override mutation (PATCH /api/admin/users/:userId/ps)
@@ -195,7 +196,8 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
       queryClient.invalidateQueries({ queryKey: ['/api/team/users'] });
       toast({ title: "Trust Status Updated", description: "User's trust status has been saved." });
       closeModal();
-    }
+    },
+    onError: (err: any) => toast({ title: "Trust Status Failed", description: err?.message ?? "An unexpected error occurred. Please try again.", variant: "destructive" }),
   });
 
   const createNoteMutation = useMutation({
@@ -840,7 +842,7 @@ export function UserManager({ initialSearch = "" }: { initialSearch?: string }) 
                   User Bio Data
                 </DialogTitle>
               </div>
-              <Button onClick={closeModal} variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-zinc-100 shrink-0">
+              <Button onClick={closeModal} variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-zinc-100 shrink-0" aria-label="Close">
                 <X size={16} className="text-zinc-500" />
               </Button>
             </div>

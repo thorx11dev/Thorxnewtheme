@@ -623,7 +623,7 @@ export default function UserPortal() {
   });
 
   const { data: commissionsData, isLoading: isLoadingCommissions } = useQuery({
-    queryKey: ["commissions"],
+    queryKey: QUERY_KEYS.commissions,
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/commissions");
       return await response.json();
@@ -986,7 +986,7 @@ export default function UserPortal() {
     exactPkr: number; platformFee: number; feePercent: number; referralCommission: number;
     referrerName: string | null; userNetPkr: number; sRankFastTrack: boolean;
   }>({
-    queryKey: ["/api/withdrawals/preview", withdrawPointsRequested],
+    queryKey: QUERY_KEYS.withdrawalPreview(withdrawPointsRequested),
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/withdrawals/preview?points=${withdrawPointsRequested}`);
       if (!res.ok) {
@@ -2671,7 +2671,7 @@ export default function UserPortal() {
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sessionAuth });
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.user });
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.withdrawals });
-          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.withdrawalPreview });
+          queryClient.invalidateQueries({ queryKey: ["/api/withdrawals/preview"] });
           // Reset form
           setCurrentStep(1);
           setWithdrawAmount("");

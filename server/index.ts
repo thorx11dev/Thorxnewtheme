@@ -11,6 +11,7 @@ import { startLeaderboardRefreshJob } from "./jobs/leaderboard-refresh";
 import { startHealthSnapshotJob } from "./jobs/health-snapshot";
 import { startGuildWeeklyResetJob } from "./jobs/guild-weekly-reset";
 import { startInactivityPenaltyJob } from "./jobs/inactivity-penalty";
+import { startRetentionCleanupJob } from "./jobs/retention-cleanup";
 import { initSentry, sentryErrorHandler, Sentry } from "./lib/sentry";
 import { pool } from "./db";
 
@@ -232,5 +233,7 @@ app.use((req, res, next) => {
     startInactivityPenaltyJob();
     // 5-minute leaderboard + risk-scan cron (decoupled from earn events per Q4 decision)
     startLeaderboardRefreshJob();
+    // Nightly retention cleanup (score_history: 90d, audit_logs: 2yr)
+    startRetentionCleanupJob();
   });
 })();

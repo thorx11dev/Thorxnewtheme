@@ -5,14 +5,21 @@
  * pattern) rather than an exact "Sunday 23:59 PKT" cron trigger — a fixed
  * interval sweep can't miss a reset if the process was down at the exact
  * boundary. runWeeklyGuildReset() is idempotent per (guild, week).
+ * P-08: isRunning guard prevents two concurrent resets from racing.
  */
 import { runWeeklyGuildReset } from "../modules/guild-reset";
 import { logger } from "../lib/logger";
 
 export function startGuildWeeklyResetJob(): void {
   const THIRTY_MINUTES = 30 * 60 * 1000;
+  let isRunning = false;
 
   const run = async () => {
+    if (isRunning) {
+      logger.warn("[GuildReset] Previous reset sweep still running — skipping this tick.");
+      return;
+    }
+    isRunning = true;
     try {
       const summary = await runWeeklyGuildReset();
       if (summary.distributed > 0 || summary.voided > 0) {
@@ -20,6 +27,8 @@ export function startGuildWeeklyResetJob(): void {
       }
     } catch (error) {
       logger.error({ err: error }, "[GuildReset] Weekly reset sweep failed.");
+    } finally {
+      isRunning = false;
     }
   };
 

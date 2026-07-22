@@ -29,7 +29,14 @@ async function markLastRun(): Promise<void> {
 }
 
 export function startInactivityPenaltyJob(): void {
+  let isRunning = false;
+
   const run = async () => {
+    if (isRunning) {
+      logger.warn("[InactivityPenalty] Previous sweep still running — skipping this tick.");
+      return;
+    }
+    isRunning = true;
     try {
       const lastRunIso = await storage.getSystemConfigValue<string | null>(LAST_RUN_CONFIG_KEY, null);
       const lastRun = lastRunIso ? new Date(lastRunIso).getTime() : 0;
@@ -40,6 +47,8 @@ export function startInactivityPenaltyJob(): void {
       logger.info({ penalized }, "[InactivityPenalty] Daily sweep complete.");
     } catch (error) {
       logger.error({ err: error }, "[InactivityPenalty] Daily sweep failed.");
+    } finally {
+      isRunning = false;
     }
   };
 

@@ -2080,12 +2080,14 @@ export class DatabaseStorage implements IStorage {
       if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending");
 
       withdrawalUserId = withdrawal.userId;
-      // R-21: Assert the stored amount is a valid integer — parseInt silently
-      // truncates decimals. Fail hard so any corrupt value surfaces immediately.
-      const pointsRequested = parseInt(withdrawal.amount, 10);
-      if (isNaN(pointsRequested) || String(pointsRequested) !== withdrawal.amount.trim()) {
-        throw new Error(`Withdrawal amount is not a valid integer: "${withdrawal.amount}"`);
+      // F-02: Use Decimal to parse the stored amount — parseInt silently truncates
+      // decimals and can produce wrong point counts. Decimal.ROUND_FLOOR matches
+      // the behaviour of createWithdrawal so the two call sites are consistent.
+      const _amtD = new Decimal(withdrawal.amount);
+      if (_amtD.isNaN() || !_amtD.isFinite() || _amtD.lte(0)) {
+        throw new Error(`Withdrawal amount is invalid: "${withdrawal.amount}"`);
       }
+      const pointsRequested = _amtD.toDecimalPlaces(0, Decimal.ROUND_FLOOR).toNumber();
       breakdown = await this.calculateWithdrawalBreakdown(withdrawal.userId, pointsRequested, tx);
 
       // C1-04: Wrap breakdown numbers in Decimal immediately — native float arithmetic

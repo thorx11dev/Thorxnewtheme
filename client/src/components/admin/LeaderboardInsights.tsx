@@ -63,7 +63,7 @@ function UserAvatar({ user, size = 10 }: { user: any; size?: number }) {
       <div className={cn("rounded-full border-[1.5px] border-[#111]/20 overflow-hidden bg-zinc-100 shrink-0", dim)}>
         <img
           src={src}
-          alt=""
+          alt="User avatar"
           className="w-full h-full object-cover"
           onError={() => setFailed(true)}
         />

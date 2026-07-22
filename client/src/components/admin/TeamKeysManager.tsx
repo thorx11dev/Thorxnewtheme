@@ -67,7 +67,8 @@ export function TeamKeysManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
       toast({ title: "Node Protocol Updated", description: "Team member operational status has been synchronized." });
-    }
+    },
+    onError: (err: any) => toast({ title: "Status Update Failed", description: err?.message ?? "An unexpected error occurred.", variant: "destructive" }),
   });
 
   const addMemberMutation = useMutation({
@@ -93,7 +94,8 @@ export function TeamKeysManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
       toast({ title: "Privilege Updated", description: "Team member role has been modified." });
-    }
+    },
+    onError: (err: any) => toast({ title: "Role Update Failed", description: err?.message ?? "An unexpected error occurred.", variant: "destructive" }),
   });
 
   const deleteMemberMutation = useMutation({

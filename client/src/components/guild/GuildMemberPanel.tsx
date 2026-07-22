@@ -75,14 +75,14 @@ export function GuildMemberPanel() {
 
   // Weekly tasks
   const { data: weeklyTasks = [] } = useQuery<any[]>({
-    queryKey: ["/api/guilds", guildId, "tasks"],
+    queryKey: guildId ? QUERY_KEYS.guildTasks(guildId) : [],
     queryFn: async () => { const r = await apiRequest("GET", `/api/tasks?guildId=${guildId}`); const d = await r.json(); return d.weeklyTasks ?? []; },
     enabled: !!guildId,
   });
 
   // Group chat
   const { data: chatMessages = [] } = useQuery<any[]>({
-    queryKey: ["/api/guilds", guildId, "chat"],
+    queryKey: guildId ? QUERY_KEYS.guildChat(guildId) : [],
     queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/chat`); const d = await r.json(); return d.messages ?? d ?? []; },
     enabled: !!guildId && tab === "chat",
     refetchInterval: 30000, // WS push (engine_c:message) handles real-time; poll as fallback (audit fix Z)
@@ -90,7 +90,7 @@ export function GuildMemberPanel() {
 
   // Captain DM
   const { data: dmMessages = [] } = useQuery<any[]>({
-    queryKey: ["/api/guilds", guildId, "dm", guild?.captainId],
+    queryKey: guildId && guild?.captainId ? QUERY_KEYS.guildDm(guildId, guild.captainId) : [],
     queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/dm/${guild?.captainId}`); const d = await r.json(); return d.messages ?? []; },
     enabled: !!guildId && !!guild?.captainId && tab === "dm",
     refetchInterval: 30000, // WS push handles real-time; 30s fallback poll
@@ -98,7 +98,7 @@ export function GuildMemberPanel() {
 
   // Guild weekly performance history (last 8 cycles)
   const { data: weeklyHistory = [] } = useQuery<any[]>({
-    queryKey: ["/api/guilds", guildId, "weekly-history"],
+    queryKey: guildId ? QUERY_KEYS.guildWeeklyHistory(guildId) : [],
     queryFn: async () => { const r = await apiRequest("GET", `/api/guilds/${guildId}/weekly-history`); const d = await r.json(); return d.history ?? d.snapshots ?? []; },
     enabled: !!guildId && tab === "progress",
     staleTime: 60000,

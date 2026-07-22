@@ -114,6 +114,18 @@ export class AdvancedChatbotService {
     this.ngramGenerator = new NGramGenerator();
     this.sentimentAnalyzer = new SentimentAnalyzer();
     this.initializeEngine();
+    // F-06: Evict stale conversation contexts every 5 min (30-min TTL per Q2 default).
+    // Without eviction, long-lived server processes accumulate one entry per user
+    // who ever sent a chat message, eventually exhausting heap under production load.
+    const CONTEXT_TTL_MS = 30 * 60 * 1000;
+    setInterval(() => {
+      const now = Date.now();
+      Array.from(this.conversationContexts.entries()).forEach(([key, ctx]) => {
+        if (now - ctx.updatedAt > CONTEXT_TTL_MS) {
+          this.conversationContexts.delete(key);
+        }
+      });
+    }, 5 * 60 * 1000).unref();
   }
 
   private initializeEngine(): void {

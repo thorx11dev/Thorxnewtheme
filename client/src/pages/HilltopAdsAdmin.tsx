@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RefreshCw, DollarSign, BarChart3, Zap } from "lucide-react";
+import { Loader2, RefreshCw, DollarSign, BarChart3, Zap, AlertCircle } from "lucide-react";
 
 interface HilltopAdsConfig {
   id: string;
@@ -33,19 +33,19 @@ export default function HilltopAdsAdmin() {
   const [apiKey, setApiKey] = useState("");
   const [publisherId, setPublisherId] = useState("");
 
-  const { data: config, isLoading: configLoading } = useQuery<HilltopAdsConfig | null>({
+  const { data: config, isLoading: configLoading, isError: configError } = useQuery<HilltopAdsConfig | null>({
     queryKey: ["/api/hilltopads/config"],
   });
 
-  const { data: zones, isLoading: zonesLoading } = useQuery<HilltopAdsZone[]>({
+  const { data: zones, isLoading: zonesLoading, isError: zonesError } = useQuery<HilltopAdsZone[]>({
     queryKey: ["/api/hilltopads/zones"],
   });
 
-  const { data: revenueData } = useQuery<{ totalRevenue: string }>({
+  const { data: revenueData, isError: revenueError } = useQuery<{ totalRevenue: string }>({
     queryKey: ["/api/hilltopads/revenue"],
   });
 
-  const { data: balanceData } = useQuery<{ balance: number }>({
+  const { data: balanceData, isError: balanceError } = useQuery<{ balance: number }>({
     queryKey: ["/api/hilltopads/balance"],
     enabled: !!config?.apiKey,
   });
@@ -141,6 +141,15 @@ export default function HilltopAdsAdmin() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" data-testid="loading-spinner" />
+      </div>
+    );
+  }
+
+  if (configError || zonesError || revenueError || balanceError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen gap-3 text-destructive">
+        <AlertCircle className="h-6 w-6 shrink-0" />
+        <span className="font-semibold">Failed to load HilltopAds data. Check your network or configuration and try again.</span>
       </div>
     );
   }

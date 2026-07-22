@@ -20,6 +20,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SystemHealthCard } from "./SystemHealthCard";
 import { FounderProfitCard } from "./FounderProfitCard";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient } from "@/lib/queryClient";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -258,7 +259,7 @@ export function AdminDashboard() {
     refetchInterval: 60000,
   });
 
-  const { data: analytics } = useQuery<AnalyticsPoint[]>({
+  const { data: analytics, isError: analyticsError } = useQuery<AnalyticsPoint[]>({
     queryKey: ["/api/admin/analytics", dateRange],
     queryFn: async () => {
       const res = await fetch(`/api/admin/analytics?range=${dateRange}`, { credentials: "include" });
@@ -267,7 +268,7 @@ export function AdminDashboard() {
     },
   });
 
-  const { data: engineRevenue } = useQuery<EngineRevenue>({
+  const { data: engineRevenue, isError: engineRevenueError } = useQuery<EngineRevenue>({
     queryKey: ["/api/admin/analytics/engine-revenue", dateRange],
     queryFn: async () => {
       const res = await fetch(`/api/admin/analytics/engine-revenue?range=${dateRange}`, { credentials: "include" });
@@ -350,7 +351,7 @@ export function AdminDashboard() {
         <div className="flex items-center gap-3 rounded-lg border-2 border-destructive/40 bg-destructive/5 px-4 py-3 text-sm font-bold text-destructive">
           <span>⚠ Failed to load platform metrics.</span>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/team/metrics"] })}
             className="ml-auto underline underline-offset-2 hover:opacity-80"
           >
             Retry
