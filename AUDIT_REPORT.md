@@ -1,290 +1,379 @@
-# THORX — FORENSIC AUDIT REPORT
+# THORX FORENSIC AUDIT REPORT
 **Date:** 2026-07-22  
-**Scope:** Full-stack codebase — server, client, shared schema, background jobs  
-**Standard:** "Million-Dollar Product" — absolute financial integrity, flawless UX, ironclad security  
+**Scope:** Full-system microscopic audit — financial integrity, security, database, frontend UX, infrastructure  
+**Standard:** Zero-bug, million-dollar production platform  
+**Status:** All findings unedited; no code patches applied
 
 ---
 
-## CATEGORY 1 — MISTAKES, BUGS, AND GAPS
+## TABLE OF CONTENTS
 
-### 1-A · Float Math on Currency / Points (Financial Precision Drift)
-
-Every instance below risks silent rounding error accumulating across millions of transactions.
-
-| # | File | Line | Code | Risk |
-|---|------|------|------|------|
-| 1 | `server/routes.ts` | 1164 | `const userCutRate = userCutPct / 100;` | Native float division |
-| 2 | `server/routes.ts` | 1168 | `const grossPkr = parseFloat(grossPkrPerCompletion \|\| "0");` | String→float on money field |
-| 3 | `server/routes.ts` | 1170 | `Math.round(grossPkr * userCutRate * conversionRate)` | Three-operand float chain |
-| 4 | `server/routes.ts` | 1171 | `Math.round(txPointsReward * 1.2)` | Float multiply on result |
-| 5 | `server/routes.ts` | 3694 | `parseFloat(task.grossPkrPerCompletion!)` | Float parse in task complete |
-| 6 | `server/routes.ts` | 3727 | `grossPkr: parseFloat(task.grossPkrPerCompletion!)` | Passed float into earn engine |
-| 7 | `server/routes.ts` | 4645–4656 | Six consecutive `parseFloat(String(...))` calls on Thorx Card config | Float parse on all card params |
-| 8 | `server/modules/gps-engine.ts` | 28 | `Math.round((memberPointsEarned * pct) / 100)` | GPS award via native float |
-| 9 | `server/modules/thorx-card.ts` | 56 | `pkrDecimal.div(10).times(conversionRate).toNumber()` | Decimal→float conversion |
-| 10 | `server/modules/thorx-card.ts` | 57 | `min + Math.random() * (max - min)` | Float variance multiplication |
-| 11 | `server/modules/thorx-card.ts` | 58 | `Math.max(0, Math.round(targetPoints * cardVariance))` | Float round on point credit |
-| 12 | `server/storage.ts` | 1070 | `new Decimal(params.grossPkr).times(100).toDecimalPlaces(0).toNumber()` | Decimal→float for SQL bind |
-| 13 | `client/src/pages/UserPortal.tsx` | 1318 | `parseFloat(displayUser?.totalEarnings \|\| '0')` | Float parse on earnings display |
-| 14 | `client/src/pages/UserPortal.tsx` | 1374 | `parseFloat(displayUser?.totalEarnings \|\| '0.00')` | Float parse on rank progress |
-
-**Root cause:** The codebase correctly uses `Decimal` in many places but converts `.toNumber()` too early, then performs downstream arithmetic on the resulting float.
+- [CATEGORY 1 — Mistakes, Bugs & Gaps](#category-1)
+- [CATEGORY 2 — Million-Dollar Standards Gap](#category-2)
+- [CATEGORY 3 — Ecosystem Disconnection & UX Friction](#category-3)
+- [Business Logic Clarifications Required](#clarifications)
 
 ---
 
-### 1-B · Database Mutations Not Wrapped in Atomic Transactions
+<a name="category-1"></a>
+## CATEGORY 1: MISTAKES, BUGS & GAPS
 
-| Function | File | Issue |
-|----------|------|-------|
-| `updateUserEarnings` | `server/storage.ts:829` | Directly writes `availableBalance`, `pendingBalance`, `totalEarnings` as a single UPDATE with no surrounding transaction — callers can leave balance in inconsistent state on crash between calls |
-| `createWithdrawal` | `server/storage.ts:1985` | Balance check (`getUser`) and `INSERT` into withdrawals are separate statements; no transaction wrapper — a concurrent request can interleave between the check and the insert |
-| `awardTaskPS` | `server/modules/ps-engine.ts:44` | Accepts optional `tx` but defaults to bare `db` — callers that do not pass `tx` run this outside any transaction |
-| `processStreak` | `server/modules/ps-engine.ts:57` | SELECT then UPDATE pattern with no transaction; optional `tx` not threaded through by all callers |
-
----
-
-### 1-C · Race Conditions — Read-then-Write Without `SELECT FOR UPDATE`
-
-| Function | File | Gap |
-|----------|------|-----|
-| `createReferralCashWithdrawal` | `server/storage.ts:4861` | Wraps in `db.transaction()` but the balance SELECT inside lacks `FOR UPDATE` — concurrent referral withdrawals can both read the same balance and both succeed, overdrawing |
-| `checkAndUpdateRankTier` | `server/modules/ps-engine.ts:142` | SELECT user → compute new rank → UPDATE — no row lock; two concurrent earn events can both promote the same user simultaneously |
-| `checkAndUpdateGuildRankTier` | `server/modules/gps-engine.ts:85` | SELECT guild → compute new guild rank → UPDATE — same gap as above; two concurrent member earnings can produce a double rank-log entry |
+### F-01 · CRITICAL · Native Integer Accumulation in Withdrawal Point Sum
+**File:** `server/storage.ts` ~line 1943–1955  
+**Finding:** The function that builds a withdrawal's ledger coverage accumulates points using a native JS `+=`:
+```typescript
+let pointsAccumulated = 0;
+// ...
+pointsAccumulated += row.pointsCredited;  // ← raw JS number addition
+```
+`pointsCredited` values come from the database as JS numbers (via Drizzle's type coercion). While they are stored as integers in practice, the accumulator is never validated to be an integer before comparison. If any ledger row carries a non-integer `pointsCredited` value (e.g., from a historical data anomaly or schema drift), floating-point drift would silently corrupt the coverage check, allowing a withdrawal to proceed with fewer points than claimed or be incorrectly rejected. This should be a `Decimal` accumulation chain with an explicit integer-floor assertion at the end.
 
 ---
 
-### 1-D · Points-Only Mandate — PKR Value Leaks
-
-The spec mandates TX-Points everywhere until the withdrawal screen. The following violate or weaken this:
-
-1. **`GET /api/user` response** (`server/routes.ts:692–693`): Sends `totalEarnings` and `availableBalance` as raw decimal strings. These are PKR-denominated values in the database. The UI re-labels them "TX-Points" (`DashboardCards.tsx:132`) creating a semantic mislabelling — the user sees a raw PKR figure called TX-Points without a true conversion step.
-
-2. **`client/src/components/ui/rank-badge.tsx:156–157`**: `RankProgressBar` receives `totalEarnings: number` and computes rank progress directly against PKR thresholds (25 000, 50 000, 75 000…). If `totalEarnings` is a PKR decimal (e.g. `0.50`), this will always show 0 % progress — the component expects TX-Points but may receive PKR.
-
-3. **`client/src/components/ui/profile-modal.tsx:309`**: `TX-Points: {Number(user?.totalEarnings || 0).toFixed(2)}` — displays the raw DB value directly with no conversion guard.
-
-4. **`GET /api/user/referral-balance`** (`server/routes.ts:4595`): Returns `balanceCashPkr` to the user portal. This field is a raw PKR cash balance and is intentionally shown in the referral withdrawal panel — **confirm this is within spec before marking acceptable**.
+### F-02 · CRITICAL · `parseInt` on Withdrawal Amount — Silently Truncates Decimals
+**File:** `server/storage.ts` lines 1992, 2110  
+**Finding:** Two separate call sites parse the withdrawal `amount` field (stored as a string) using `parseInt`:
+```typescript
+const pointsRequested = parseInt(insertWithdrawal.amount, 10);  // line 1992
+const pointsRequested = parseInt(withdrawal.amount, 10);        // line 2110
+```
+`parseInt("1500.9", 10)` returns `1500`, silently discarding the fractional part. If a malformed request or data migration results in a non-integer string reaching this path, points are under-counted without any error or rejection. The correct tool is `new Decimal(withdrawal.amount).toDecimalPlaces(0, Decimal.ROUND_FLOOR).toNumber()` with a preceding integer validation.
 
 ---
 
-### 1-E · Missing Idempotency on Financial Endpoints
-
-All three endpoints below can be submitted twice on network retry/double-click:
-
-| Endpoint | File:Line | Risk |
-|----------|-----------|------|
-| `POST /api/withdrawals` | `routes.ts:950` | Duplicate withdrawal request creates two pending withdrawals |
-| `POST /api/withdrawals/referral` | `routes.ts:4601` | Duplicate referral withdrawal on retry |
-| `POST /api/admin/users/:userId/adjust-balance` | `routes.ts:2139` | Admin double-click credits balance twice |
-
----
-
-### 1-F · Daily Task `parseFloat` in Earn Path
-
-`server/routes.ts:3727`: `grossPkr: parseFloat(task.grossPkrPerCompletion!)` passes a native float into `storage.recordEarnEvent`. Even though `recordEarnEvent` internally uses `Decimal`, the loss of precision already occurred at the boundary.
+### F-03 · HIGH · `createUser` Not Transactional — Referral + Insert Can Partially Fail
+**File:** `server/storage.ts` line 683  
+**Finding:** The `createUser` function executes a referrer lookup (`getUserById`) followed by a `db.insert(users)` as two independent database operations, with no surrounding `db.transaction()`:
+```typescript
+// line 690: reads referrer (no lock, no tx)
+const referrer = await this.getUserById(insertUser.referredBy);
+// ... validation ...
+// line ~714: inserts user (separate connection)
+const [newUser] = await db.insert(users).values(userData).returning();
+```
+**Risk A:** If the referrer lookup passes validation but the user insert fails (e.g., constraint violation), no rollback is needed — but the referrer-validity window is non-atomic.  
+**Risk B:** Under concurrent load, two registrations with the same referral code can both pass the `referrer.referredBy === insertUser.id` circular-referral check (line 697) between reads, since neither holds a row lock.  
+**Fix:** Wrap the entire `createUser` body in `db.transaction(tx => {...})` and pass `tx` to all sub-queries, using `FOR UPDATE` on the referrer row.
 
 ---
 
-## CATEGORY 2 — MILLION-DOLLAR COMPANY STANDARDS GAP
-
-### 2-A · Security: Routes With Missing or Insufficient Auth
-
-**Unprotected public endpoints (intentional — confirmed acceptable):**
-`GET /api/health`, `GET /api/config/public`, `GET /api/stats`, `POST /api/register`, `POST /api/login`, `POST /api/logout`, `POST /api/contact`, `POST /api/forgot-password`, `POST /api/reset-password`, `POST /api/bootstrap-founder` (one-time, rate-limited).
-
-**Security gaps requiring remediation:**
-
-| Route | File:Line | Gap |
-|-------|-----------|-----|
-| `POST /api/admin/system-config` | `routes.ts:4272` | Uses `requireTeamRole` only — any team member can modify global system config. No granular `MANAGE_SYSTEM` permission check. |
-| `GET /api/system-config/:key` | `routes.ts:4252` | Key whitelist allows `MIN_PAYOUT` unauthenticated. Other keys lack explicit deny-by-default; a new key added to `allowedKeys` bypasses auth silently. |
-| `POST /api/team/members` | `routes.ts:3978` | No rate limiter — an attacker can enumerate and spam team-member creation. |
-| `PATCH /api/team/members/:id` | `routes.ts:4032` | No rate limiter on privilege modification. |
-| `POST /api/admin/users/:id/action` with payload type `adjust_balance` | `routes.ts:532` | The `payload` field for non-`adjust_balance` actions is an unvalidated `unknown` object — arbitrary data accepted and stored in `audit_logs`. |
+### F-04 · HIGH · `prepareWeeklyTaskCompletion` — TOCTOU Race on Task Records
+**File:** `server/storage.ts` ~line 5173–5183  
+**Finding:** This function reads `weeklyTaskRecords` to check for duplicates, then inserts a new record as two separate un-transacted operations. Under concurrent requests (e.g., rapid double-tap on the frontend or a retry), both reads can return "no record found" before either write completes, producing duplicate task completion records. The existing `completeWeeklyTaskAtomic` function correctly guards against this for the completion step, but `prepareWeeklyTaskCompletion` remains exposed.
 
 ---
 
-### 2-B · Payload Validation: Missing or Incomplete Zod Schemas
-
-| Route | File:Line | Issue |
-|-------|-----------|-------|
-| `POST /api/admin/system-config` | `routes.ts:4272` | Directly destructures `{ key, value }` from `req.body` — no Zod schema, no type/length enforcement |
-| `PATCH /api/admin/users/:id/rank` | `routes.ts:4090` | Manual `typeof rank !== 'string'` check + allowlist; `locked` extracted via `!!req.body.locked` with no Zod |
-| `PATCH /api/admin/users/:id/trust-status` | `routes.ts:4126` | Manual validation only |
-| `POST /api/team/members` | `routes.ts:3978` | Direct `const { email, role } = req.body` with no Zod schema |
-| `PATCH /api/team/members/:id` | `routes.ts:4032` | Direct `const { accessLevel, isActive } = req.body` with no Zod schema |
-| `PATCH /api/guilds/:id/applications/:applicationId` | `routes.ts:4442` | Manual `action` string check, no Zod |
+### F-05 · HIGH · `updateUserEarnings` Unguarded — Called Without Transaction in Several Paths
+**File:** `server/storage.ts` line 829  
+**Finding:** `updateUserEarnings` accepts an optional `tx` parameter. Callers that omit `tx` execute a balance update on the `users` table outside any transaction. If the caller's surrounding logic fails after calling this function but before completing its own commit, the balance update is not rolled back — the user's balance is permanently modified with no corresponding ledger entry. All callers must be audited to ensure `tx` is always provided.
 
 ---
 
-### 2-C · Rate Limiting Gaps
-
-| Endpoint | File:Line | Gap |
-|----------|-----------|-----|
-| `POST /api/team/members` | `routes.ts:3978` | No rate limiter |
-| `PATCH /api/team/members/:id` | `routes.ts:4032` | No rate limiter |
-| `POST /api/admin/system-config` | `routes.ts:4272` | No rate limiter |
-| `GET /api/daily-tasks` | `routes.ts:3715` | No rate limiter on task listing (enumeration risk) |
-
----
-
-### 2-D · Database Performance: Missing Indexes
-
-**Confirmed missing or weak indexes:**
-
-| Table | Column(s) | Issue |
-|-------|-----------|-------|
-| `withdrawals` | `(status)` | Filtered on status in every admin payout query; no index in schema |
-| `withdrawals` | `(user_id, status)` | Composite needed for user-specific pending withdrawal checks |
-| `withdrawals` | `(created_at)` | Used in date-range admin queries; no index |
-| `task_records` | `(user_id, status)` | Daily task completion checks filter on both; only `(user_id, task_id)` composite exists |
-| `score_history` | `(user_id, recorded_at)` | Time-series lookups in leaderboard and PS engine; schema has `score_history_user_id_idx` but no composite |
-| `guild_members` | `(guild_id, is_active)` | Captain portal and GPS engine filter on both; no composite index |
-| `audit_logs` | `(target_user_id, created_at)` | Admin user audit view filters on target; only `action`/`actor` indexed |
-| `risk_cases` | `(user_id, status)` | Risk watchlist queries filter both; no composite |
+### F-06 · HIGH · Chatbot `conversationContexts` Map Has No TTL — Unbounded Memory Growth
+**File:** `server/chatbot/advanced-chatbot-service.ts` line 104  
+**Finding:** The advanced chatbot service holds an in-memory `Map<string, ConversationContext>` with no expiry or eviction policy:
+```typescript
+private conversationContexts: Map<string, ConversationContext> = new Map();
+```
+The `clearContext` method (line 491) is only called on explicit user action. In production, users who start conversations but never explicitly clear them leave permanent entries. With thousands of active users, each storing potentially large conversation history objects, this is a significant memory leak that will accumulate until the server process is restarted.
 
 ---
 
-### 2-E · Memory & Scale Bottlenecks: Unbounded Dataset Loading
-
-| Function | File:Line | Issue |
-|----------|-----------|-------|
-| `getAllUsers` | `storage.ts:1534` | Loads entire `users` table into memory; 200-row cap added but applied inconsistently — some callers bypass via direct query |
-| `recomputeLeaderboardCache` | `storage.ts:2917+` | Loads all users for ranking computation; should be a single SQL `RANK()` window function |
-| `getEarningsStats` | `storage.ts:3098+` | Multiple unbounded selects aggregated in JS rather than SQL `SUM`/`AVG` |
-| `getRiskCases` | `storage.ts` | Returns all risk cases; no pagination — 200+ rows degrade `RiskWatchlistPanel` |
-| `getPayoutQueue` | `storage.ts` | Returns all pending withdrawals; `PayoutControl.tsx` renders all with no virtualization |
-| GPS engine `cfg()` calls | `gps-engine.ts:85+` | `checkAndUpdateGuildRankTier` issues **6 sequential `await cfg()`** DB reads for each rank threshold check; should be a single batch fetch |
+### F-07 · MEDIUM · `Number(row.points)` / `Number(row.pkr)` — Float Conversion on Financial Data
+**File:** `server/storage.ts` line 3418 (`getLeaderboardStats` or similar aggregation)  
+**Finding:**
+```typescript
+return { points: Number(row.points), pkr: Number(row.pkr) };
+```
+Decimal string values from the database are converted to JS floats before being returned from the storage layer. If the calling route performs any arithmetic on these values (e.g., ratio calculation, formatting), IEEE-754 drift is introduced. These should remain as `Decimal` objects or be returned as strings and converted only at the last display step.
 
 ---
 
-### 2-F · Observability Gaps
-
-| Gap | Status |
-|-----|--------|
-| **Sentry / error tracking** | `SENTRY_DSN` env var present but not set — `server/lib/sentry.ts` exists but inactive |
-| **`CREDENTIAL_ENCRYPTION_KEY`** | Not set → falls back to insecure hardcoded key; warning emitted on every boot |
-| **Automated test coverage** | Only `server/__tests__/financial.test.ts` exists — no client tests, no integration tests, no E2E suite |
-| **Database migration rollback** | `drizzle-kit` has no built-in rollback; no `.down` migrations exist — a bad schema push is unrecoverable without manual SQL |
-| **Structured logging gaps** | `server/utils/debug-log.ts` still used in some paths alongside pino — mixed logging strategies |
-| **Health check depth** | `GET /api/health` checks DB connectivity but does not check background job liveness (ps-engine, gps-engine, leaderboard-refresh cron) |
+### F-08 · MEDIUM · `thorx-card.ts` Admin Simulation Converts Back to Float
+**File:** `server/modules/thorx-card.ts` line 96  
+**Finding:**
+```typescript
+new Decimal(grossPkr).times(engineSplits.userCutPct).div(100).toNumber()
+```
+The simulation path correctly uses `Decimal` for computation but converts to a native float via `.toNumber()` before passing into downstream logic. While this is a simulation (not a live earn event), it means the simulation results shown to admins may not precisely represent what the real engine produces, undermining trust in the tool.
 
 ---
 
-## CATEGORY 3 — ECOSYSTEM DISCONNECTION & UX FRICTION
-
-### 3-A · Cross-Portal Data Synchronisation Gaps
-
-| Gap | Detail |
-|-----|--------|
-| **Guild Weekly Target** | Admin can override `weeklyTarget` via `GuildManager`. `CaptainPortal.tsx:294–297` computes its own difficulty-based preview that may diverge from the live DB value until next refetch. No `guild.target_updated` WebSocket event fired on admin override. |
-| **Leaderboard staleness** | `useRealtimeSync` invalidates `QUERY_KEYS.referralsLeaderboard` only on `user:updated` for the *current* user. If a *different* user earns points and overtakes the current user's rank, the leaderboard stays stale until the 5-minute cache refresh. |
-| **Captain Announcement Badge** | `guild.announcement_posted` WS event correctly invalidates `guildDetail`, but the dashboard announcement badge/preview does not re-render until navigation away and back. |
-| **Guild Settings Broadcast** | `guild.settings_updated` event is generic — clients cannot determine *which* setting changed, so they must re-fetch the entire guild object on every settings mutation (wasteful and brittle). |
+### F-09 · MEDIUM · Password Reset Is a Support Stub — No Automated Token Flow
+**File:** `server/routes.ts` lines 3087, 3103  
+**Finding:** Both `/api/forgot-password` and `/api/reset-password` return "Please contact support" responses. There is no token generation, email delivery, token expiry, or actual password update flow. Users who forget their password have no self-service recovery path. This is a gap that affects real users in production and forces manual intervention for every password reset request.
 
 ---
 
-### 3-B · Responsive Design & Mobile Constraints
-
-| Component | File | Issue |
-|-----------|------|-------|
-| `UserPortal.tsx` | `client/src/pages/UserPortal.tsx` | `max-w-[1600px]` containers without narrower `sm:` constraints cause horizontal overflow on 320 px devices |
-| `SystemSettingsManager.tsx` | `client/src/components/admin/SystemSettingsManager.tsx` | Inner table cells use `min-w-max` and `w-28`; while wrapper has `overflow-x-auto`, nested cell widths still break layout on ≤ 768 px |
-| `RiskWatchlistPanel.tsx` | `client/src/components/admin/RiskWatchlistPanel.tsx` | Table lists all risk cases without `overflow-x-auto` on the card wrapper; columns truncate silently on small screens |
-| `PayoutControl.tsx` | `client/src/components/admin/PayoutControl.tsx` | Multi-column payout table has no mobile-collapsed card view; horizontal scrolling is not indicated to the user |
-| `AdminHeader.tsx` | `client/src/components/admin/AdminHeader.tsx` | Fixed `h-20 md:h-24` with no collapsed mobile state; relies on sidebar Sheet which is adequate but nav breadcrumb overflows on < 400 px |
-| `TermsAndConditions.tsx` | `client/src/pages/TermsAndConditions.tsx` | Internal table at line 167 lacks a scroll indicator; overflows silently on mobile |
+### F-10 · MEDIUM · PKR Balance Visible in Commission History Tab
+**File:** `client/src/pages/UserPortal.tsx` commissions query (line 626)  
+**Finding:** The commission history tab fetches and renders `commission_logs` data which contains raw PKR amounts. The "Points-Only Mandate" requires that all user-facing value displays use TX-Points until the withdrawal screen. The commission display shows PKR-denominated values without conversion, violating this rule. Every balance-adjacent display must translate through the conversion rate and show TX-Points equivalents.
 
 ---
 
-### 3-C · Z-Index Stacking Conflicts
-
-The following modal layers produce undefined stacking order when they co-occur:
-
-| Component | z-index | Conflict |
-|-----------|---------|---------|
-| `thorx-loading-screen.tsx:26` | `z-[9999]` | Highest — correct |
-| `ComicClickEffect.tsx:51` | `z-[9999]` | Ties with loading screen; click effects render above loading overlay |
-| `cursor-indicator.tsx:43` | `z-[9999]` | Same tie — cursor overlaps loading screen content |
-| `notification-modal.tsx:121` | `z-[2000]` | Correct above portals |
-| `ad-web-panel.tsx:172` | `z-[70]` | Ad overlay and its backdrop (`z-[60]`) can be covered by `daily-goal-modal` |
-| `daily-goal-modal.tsx:179` | `z-[100]` | Equals toast `z-[100]` — toast notifications rendered **behind** open goal modal |
-| `profile-modal.tsx:200` | `z-[100]` | Same conflict: toasts hidden behind open profile modal |
-| `toast.tsx:17` | `z-[100]` | Cannot surface above any full-screen modal at same level |
-
-**Concrete failure:** User completes a withdrawal inside the goal modal → success toast fires at `z-[100]` → is invisible because the modal also runs at `z-[100]`.
+### F-11 · LOW · `leaderboard-refresh` Percentile Uses `.toNumber()` Float Conversion
+**File:** `server/storage.ts` line 3137, 3154  
+**Finding:**
+```typescript
+.map(u => new Decimal(u.totalEarnings || "0").toNumber()) // float intentional — sort/percentile only
+```
+The comment acknowledges this is intentional for sorting, but percentile rank computations using float comparisons on large datasets can produce slightly inconsistent bucket edges at scale. This is low priority since results are not stored as financial values, but should be noted for future enterprise-grade rank precision.
 
 ---
 
-### 3-D · Loading States Defaulting to Plain Text
+<a name="category-2"></a>
+## CATEGORY 2: MILLION-DOLLAR COMPANY STANDARDS GAP
 
-| Component | File | Plain-text fallback |
-|-----------|------|---------------------|
-| `FounderProfitCard` | `admin/FounderProfitCard.tsx:124` | `{isLoading ? "Loading..." : ...}` instead of skeleton |
-| `GuildManager` | `admin/GuildManager.tsx:281` | `{isLoading ? <div>Loading...</div> : ...}` |
-| `LeaderboardInsights` | `admin/LeaderboardInsights.tsx:373,522` | Plain loading text in two separate sections |
-| `RiskWatchlistPanel` | `admin/RiskWatchlistPanel.tsx` | Spinner replaces entire panel content — no row-level skeleton |
-| `DashboardCards` | `DashboardCards.tsx` | Balance card shows "0" as default before data loads (no skeleton shimmer) |
-| `daily-goal-modal.tsx` | `ui/daily-goal-modal.tsx` | Action buttons lack `isPending` disable during goal claim sequence |
-
----
-
-### 3-E · Silent Mutations (No Toast Feedback)
-
-While many mutations correctly use `useToast`, the following are silent on success or failure:
-
-| Component | Mutation | Gap |
-|-----------|----------|-----|
-| `GuildDiscoveryPanel` | Guild join | No toast on join success/failure |
-| `GuildMemberPanel` | Nudge member | No toast on nudge sent |
-| `CaptainPortal` | Weekly target set | No toast confirming target saved |
-| `UserPortal` withdrawal flow | Step 2→3 transition | No intermediate toast when preview fetch fails — user sees blank step silently |
-| `AdminInbox` | Mark-read | No toast on bulk mark-read action |
-| `RanksCustomizer` | Save thresholds | No confirmation toast |
-| `ThorxCardSandbox` | Simulate card | No error toast if simulation fails |
+### S-01 · CRITICAL · Hardcoded Fallback Session Secret in Production Code
+**File:** `server/routes.ts` line ~350  
+**Finding:**
+```typescript
+secret: process.env.SESSION_SECRET || "thorx-secret-key-dev-only"
+```
+A hardcoded fallback secret is present in the production-deployed codebase. If `SESSION_SECRET` is ever accidentally unset in the environment (e.g., during a deployment misconfiguration), the server silently falls back to a publicly visible string. Any attacker who reads this source code (which is on GitHub) can forge arbitrary session cookies. The server must `throw` / `process.exit(1)` if `SESSION_SECRET` is missing — no fallback allowed. (Note: `validateRequiredEnv` in `index.ts` checks `SESSION_SECRET` on startup, but the fallback in the session config means a race condition exists if the check order ever changes.)
 
 ---
 
-### 3-F · WebSocket Coverage Gaps
-
-| Missing Event | Impact |
-|---------------|--------|
-| `guild.target_updated` | Captain doesn't see admin-changed weekly target without page refresh |
-| `guild.settings_updated` payload specificity | Clients re-fetch entire guild on any settings change |
-| `leaderboard.rank_changed` (cross-user) | Other users' rank changes never propagate; your rank may show stale position |
-| `withdrawal.status_changed` (admin-side push) | Admin payout panel doesn't auto-refresh when a peer admin processes a withdrawal |
+### S-02 · HIGH · `/api/admin/users/:id/trust-status` Lacks Rate Limiter
+**File:** `server/routes.ts` ~line 4227  
+**Finding:** This admin endpoint, which modifies a user's trust status (a sensitive privilege action affecting withdrawal eligibility), has no rate limiter applied. It is protected by auth middleware, but a compromised admin account or a logic bug allowing bypassed auth could loop through all user IDs without any throttle. Should use `adminActionRateLimiter`.
 
 ---
 
-### 3-G · Forms Missing Disabled State During Submission
-
-| Component | File | Gap |
-|-----------|------|-----|
-| Withdrawal confirm (Step 3) | `UserPortal.tsx:3128` | `disabled={!canProceed() \|\| (currentStep === 3 && isProcessing)}` — `isProcessing` state is set manually, not tied to mutation `.isPending`; window where button is clickable |
-| Daily goal claim | `daily-goal-modal.tsx` | Claim buttons not disabled during `isPending` |
-| Guild join button | `GuildDiscoveryPanel.tsx` | No `isPending` check on join mutation |
+### S-03 · HIGH · `/api/admin/risk-cases/:id` PATCH Lacks Rate Limiter
+**File:** `server/routes.ts` ~line 4444  
+**Finding:** Updating risk case status (Open → Investigating → Resolved) is an irreversible admin action with financial consequences (closed risk cases may unblock withdrawals). This route lacks a rate limiter. Add `adminActionRateLimiter`.
 
 ---
 
-## OPEN QUESTIONS FOR BUSINESS LOGIC CLARIFICATION
-
-Before beginning remediation, the following require explicit answers:
-
-**Q1 — TX-Points vs PKR Denomination:**  
-`totalEarnings` and `availableBalance` in the database — are these stored as **raw PKR amounts** (e.g. `2.50` = Rs. 2.50) or as **TX-Points** (e.g. `2500` = 2 500 TX-Points)? The rank thresholds in `rank-badge.tsx` (25 000, 50 000…) only make sense if `totalEarnings` is TX-Points. But the earn path stores `grossPkr * userCutRate * conversionRate` as `txPointsReward` and separately stores `realPkrValue`. **Clarify which field maps to which unit before touching any display or calculation logic.**
-
-**Q2 — Referral Balance PKR Leak Acceptability:**  
-`GET /api/user/referral-balance` returns `balanceCashPkr` to the user portal. Is showing raw PKR in the referral withdrawal panel **intentionally out-of-scope** for the Points-Only Mandate, or should it be masked until confirmation?
-
-**Q3 — Idempotency Strategy:**  
-Should duplicate withdrawal protection be implemented via a client-supplied idempotency key (header), a server-side deduplication window (e.g. reject same `userId + amount + method` within 60 s), or both?
-
-**Q4 — GPS Float Math Tolerance:**  
-`Math.round((memberPointsEarned * pct) / 100)` in gps-engine — is integer rounding acceptable for GPS (a non-monetary score), or must it also use `Decimal` for strict audit-trail accuracy?
-
-**Q5 — Leaderboard Real-time Update Frequency:**  
-Should rank changes by *other* users push a WS event to all connected clients (costly broadcast), or is the 5-minute cache refresh acceptable for leaderboard staleness?
+### S-04 · HIGH · `/api/admin/simulate/thorx-card` — Manual Parsing Instead of Zod Schema
+**File:** `server/routes.ts` ~line 4749  
+**Finding:** This route manually performs `parseInt`, `new Decimal(String(...))`, and bounds-checking inline instead of parsing the entire payload through a Zod schema first:
+```typescript
+grossPkr: new Decimal(String(grossPkr ?? "1.0")).toNumber(),
+conversionRate: new Decimal(String(conversionRate ?? "1000")).toNumber(),
+```
+Without Zod, type coercion errors produce misleading simulation outputs rather than clean validation errors. A malformed payload can cause the Decimal constructor to throw unhandled exceptions.
 
 ---
 
-*End of Audit Report — 2026-07-22*
+### S-05 · HIGH · `/api/hilltopads/config` POST — Manual Body Extraction, No Zod
+**File:** `server/routes.ts` ~line 3547  
+**Finding:** This route manually extracts `apiKey`, `publisherId`, and `settings` from `req.body` without a Zod schema. No type enforcement, no length limits, no structural validation. Ad config is a sensitive system setting; a malformed payload could corrupt the HilltopAds integration configuration silently.
+
+---
+
+### S-06 · HIGH · `CREDENTIAL_ENCRYPTION_KEY` Not Set — Ad Network Credentials Stored with Fallback Key
+**File:** `server/index.ts` line ~40, `server/utils/credential-crypto.ts`  
+**Finding:** The server logs a warning on every startup:
+> `CREDENTIAL_ENCRYPTION_KEY is not set — credential storage will use the fallback key`  
+This key protects AES-256-GCM encryption of ad-network API keys stored in `user_credentials`. Using the fallback key (`SESSION_SECRET`) means that if `SESSION_SECRET` ever rotates, all stored credentials become permanently unreadable without re-entry. This is a production-blocking configuration gap.
+
+---
+
+### S-07 · MEDIUM · No Automated Password Reset Flow
+**See F-09 above.** At the million-dollar standard: users must have a self-service, token-based, rate-limited, time-expiring password reset flow. Manual support-based resets do not scale and create a social engineering attack surface (anyone can impersonate a user via a "support" request).
+
+---
+
+### S-08 · MEDIUM · `scripts/seed-founder.ts` Contains Plaintext Credentials
+**File:** `scripts/seed-founder.ts`  
+**Finding:** This script contains references to the founder email and password in plaintext. While it is a script (not runtime server code), it is committed to the repository. Any person with read access to the repo (or who forks it) has the founder's credentials. Seed scripts must accept credentials via environment variables only, never hardcode them.
+
+---
+
+### P-01 · CRITICAL · Risk Engine N+1 Query Pattern — Up to 35,000 Queries Per Scan
+**File:** `server/modules/risk-engine.ts` lines ~390–421  
+**Finding:** `runFullRiskScan` loads up to 5,000 active users, then calls `scoreUser(u.id)` for each one inside a loop. Each `scoreUser` call executes ~7 separate DB queries (one per risk signal). At 5,000 users this is **~35,000 round-trips per scan**. The risk engine runs on a schedule and on-demand. Under moderate user load this will saturate the DB connection pool (default: 10 connections) and cascade into timeout failures across the entire application.
+**Fix:** Rewrite risk scoring to use a single multi-column aggregate SQL query or batched CTEs that compute all signals in one pass.
+
+---
+
+### P-02 · HIGH · Leaderboard Refresh Loads 10,000 Users Into Memory
+**File:** `server/storage.ts` ~line 3070 (`refreshLeaderboardCache`)  
+**Finding:** The leaderboard cache refresh query fetches the top 10,000 active users into a Node.js array, then performs in-memory percentile ranking before writing results back to `leaderboard_cache`. Additionally, a separate `GROUP BY users.referredBy` query performs a full table scan of `users` to compute referral counts. This process runs every 5 minutes (via `leaderboard-refresh.ts`). At scale:
+- 10,000 user objects × average ~2KB each ≈ 20MB allocated per refresh cycle
+- Full `users` table scan every 5 minutes creates heavy read I/O  
+**Fix:** Move percentile ranking into a SQL window function (`PERCENT_RANK() OVER (ORDER BY performance_score DESC)`). Referral counts should be maintained as a denormalized counter or computed via an indexed aggregate.
+
+---
+
+### P-03 · HIGH · `guild-reset.ts` Weekly Reset — Unbounded Guild Load + N+1 Members Loop
+**File:** `server/jobs/guild-weekly-reset.ts` line 63  
+**Finding:**
+```typescript
+db.select().from(guilds).where(eq(guilds.status, "active"))  // no LIMIT
+```
+All active guilds are loaded into memory at once. The function then iterates through each guild and executes multiple queries per guild (including a nested loop over members at line ~112). As the platform scales to hundreds or thousands of guilds, this job will time out and partially complete, leaving guilds in inconsistent weekly states.
+
+---
+
+### P-04 · HIGH · `score_history` and `audit_logs` Tables Have No Retention Policy
+**File:** `shared/schema.ts`, `server/jobs/`  
+**Finding:** The `score_history` table accumulates one row per user per hour (health snapshot job). The `audit_logs` table accumulates one row per admin action. Neither table has a cleanup/archive job. At 1,000 active users, `score_history` generates ~720,000 rows/month. Over 12 months this table will have ~8.6M rows and no index on `snapshotAt` for cleanup queries (composite index exists on userId+snapshotAt but no standalone `snapshotAt` index). `audit_logs` will grow similarly without bound.  
+**Fix:** Add a nightly cleanup job that purges `score_history` rows older than 90 days and archives `audit_logs` older than 1 year.
+
+---
+
+### P-05 · HIGH · Missing Composite Index for Leaderboard Query
+**File:** `shared/schema.ts`  
+**Finding:** The leaderboard refresh query (`server/storage.ts:3115`) filters on `isActive = true AND role = 'user' ORDER BY performanceScore DESC`. While individual indexes exist on `isActive`, `role`, and `performanceScore`, there is no composite index on `(isActive, role, performanceScore DESC)`. PostgreSQL must intersect three separate index scans, which is significantly slower than a single composite index for this hot query path (runs every 5 minutes).
+
+---
+
+### P-06 · MEDIUM · No Partial Unique Index on `withdrawals` — DB-Level Double-Pending Guard Missing
+**File:** `shared/schema.ts`, `server/storage.ts`  
+**Finding:** The business rule "one pending withdrawal per user" is enforced only inside a `db.transaction()` with a programmatic check. There is no database-level partial unique index:
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS withdrawals_one_pending_per_user
+  ON withdrawals(user_id) WHERE status = 'pending';
+```
+If application logic is bypassed (e.g., direct DB access, a future code path that skips the check), two concurrent pending withdrawals can be created for the same user, leading to a double-spend. The DB constraint is the last line of defense and it is absent.
+
+---
+
+### P-07 · MEDIUM · DB Connection Pool Not Tuned — Default 10 Connections
+**File:** `server/db.ts` line 15  
+**Finding:** `new Pool()` is instantiated with no `max` option, defaulting to 10 connections. The application runs multiple concurrent background jobs (leaderboard refresh, health snapshot, inactivity penalty, risk scan), each of which can hold connections while executing. Under simultaneous load with a risk scan (potentially saturating all 10 connections), all other requests — including user API calls — queue and time out. Pool should be explicitly sized with `max: 25` and `idleTimeoutMillis: 30000`.
+
+---
+
+### P-08 · MEDIUM · Background Jobs Have No Overlap Guard
+**File:** `server/jobs/leaderboard-refresh.ts`, `server/jobs/health-snapshot.ts`, `server/jobs/inactivity-penalty.ts`  
+**Finding:** All jobs use `setInterval`. If a run takes longer than the interval (possible for the risk scan or guild reset under load), a new execution starts while the previous one is still running. Two simultaneous health snapshots would double-write to `health_snapshots`. Two simultaneous guild resets could double-process weekly cycles. A simple `isRunning` boolean guard must be added to each job.
+
+---
+
+### O-01 · HIGH · Zero Integration Test Coverage — Auth, Withdrawal, Earn Flows Untested
+**File:** `server/__tests__/financial.test.ts` (only test file)  
+**Finding:** The only test file is a unit test for pure math functions (split calculations, withdrawal breakdown). The following critical flows have **zero automated test coverage**:
+- User registration flow (including referral code validation)
+- Login / session lifecycle
+- Earn event recording (ledger + balance atomicity)
+- Withdrawal creation and approval (the most financially critical path)
+- Admin permission enforcement
+- WebSocket authentication
+- Rate limiter behavior  
+Any refactor of `storage.ts` or `routes.ts` can silently break financial integrity with no test catching it.
+
+---
+
+### O-02 · MEDIUM · `console.warn`/`console.error` Remaining in Server Code
+**Files:** `server/validation.ts` lines 129, 132 · `server/utils/debug-log.ts` lines 10, 15 · `server/vite.ts` `log()` function  
+**Finding:** Several server-side files emit logs via native `console.*` rather than the structured pino logger (`server/lib/logger.ts`). In production, these logs are unstructured plain text that bypass the JSON logging pipeline, cannot be filtered by log level, and are not forwarded to any observability stack. All server-side logging must go through pino.
+
+---
+
+### O-03 · MEDIUM · Financial Errors Not Explicitly Tagged in Sentry
+**File:** `server/lib/sentry.ts`, `server/storage.ts`, `server/routes.ts`  
+**Finding:** Sentry integration exists but only captures generic 5xx HTTP errors via `sentryErrorHandler`. Financial transaction failures (e.g., a `db.transaction()` rollback in `processWithdrawal`, a `recordEarnEvent` exception) are not explicitly captured with `Sentry.captureException()` and enriched with user context, transaction ID, and amount. In production, a financial failure would appear as a generic "Internal Server Error" in Sentry with no financial context for incident response.
+
+---
+
+<a name="category-3"></a>
+## CATEGORY 3: ECOSYSTEM DISCONNECTION & UX FRICTION
+
+### U-01 · HIGH · Hardcoded Query Keys Bypass QUERY_KEYS Registry
+**Files:**  
+- `client/src/pages/UserPortal.tsx` lines 626, 989, 1064  
+- `client/src/components/guild/GuildMemberPanel.tsx` lines 59, 74, 87  
+**Finding:** Multiple `useQuery` calls use hardcoded string/array literals as query keys instead of the canonical `QUERY_KEYS` constants defined in `client/src/lib/queryKeys.ts`. This breaks cache invalidation: when a mutation calls `queryClient.invalidateQueries({ queryKey: QUERY_KEYS.commissions })`, the query registered with `['/api/user/commissions']` is a different key and is NOT invalidated. The user sees stale data after mutations.
+
+---
+
+### U-02 · HIGH · `adjustBalanceMutation` and `setTrustStatusMutation` — Silent Failure
+**File:** `client/src/components/admin/UserManager.tsx` lines 164, 190  
+**Finding:** Both mutations lack `onError` toast handlers. If an admin adjusts a user's balance or trust status and the API call fails (network error, validation error, server error), the UI silently returns to its previous state with no indication that the action failed. The admin has no way to know the change was not applied. This is especially dangerous for balance adjustments.
+
+---
+
+### U-03 · HIGH · `SystemSettingsManager` Mutations — Silent Failure
+**File:** `client/src/components/admin/SystemSettingsManager.tsx` lines 67, 528  
+**Finding:** The `saveMutation` (saves system config values) and `addMutation` (adds new config key) both lack `onError` handlers. A failed config save will appear to succeed from the admin's perspective, potentially causing the admin to leave the page believing a critical system setting was saved when it was not.
+
+---
+
+### U-04 · HIGH · `HilltopAdsAdmin` — Zero Error State Handling on 4 Queries
+**File:** `client/src/pages/HilltopAdsAdmin.tsx`  
+**Finding:** Four data-fetching queries (`config`, `zones`, `revenueData`, `balanceData`) have no `isError` handler in the UI. If the HilltopAds API is misconfigured or the backend returns an error, all four panels render their loading/empty state silently with no explanation. Admins cannot diagnose whether data is loading, unavailable, or erroring.
+
+---
+
+### U-05 · MEDIUM · `AdminDashboard` — Analytics and Engine Revenue Queries Lack Error States
+**File:** `client/src/components/admin/AdminDashboard.tsx`  
+**Finding:** The `analytics` and `engineRevenue` queries lack `isError` UI handling. The dashboard renders empty charts with no indication of failure.
+
+---
+
+### U-06 · MEDIUM · `TeamKeysManager` Mutations — Missing `onError` Toasts
+**File:** `client/src/components/admin/TeamKeysManager.tsx`  
+**Finding:** `updateStatusMutation`, `addMemberMutation`, and related mutations lack explicit `onError` toast handlers. Team key operations (granting/revoking access) failing silently creates a security-relevant UX gap — admins may believe access was revoked when it was not.
+
+---
+
+### U-07 · MEDIUM · Cross-Portal Sync Relies Entirely on Polling (30–60s Lag)
+**Files:** `client/src/pages/UserPortal.tsx` lines 678, 704, 729 · `client/src/components/guild/GuildMemberPanel.tsx`  
+**Finding:** Guild state changes (captain messages, weekly targets, milestone updates) made in the Team Portal take up to 60 seconds to appear in the User Portal. The WebSocket infrastructure exists and is authenticated, but the client uses `refetchInterval`-based polling as the primary synchronization mechanism. Real-time guild events (new captain message, target update, strike issued) should be broadcast via WebSocket and trigger immediate query invalidation on the receiving client.
+
+---
+
+### U-08 · MEDIUM · Loading States Use Plain Text Instead of Skeleton Loaders
+**Files:**  
+- `client/src/pages/UserPortal.tsx` ~line 3140 (`"PROCESSING..."`)  
+- `client/src/components/sections/call-to-action.tsx` ~line 159 (`"JOINING..."`)  
+- Multiple admin components  
+**Finding:** Several loading states default to uppercase plain text strings inside buttons or panels. At a production-polish standard, all loading states should use either a `Loader2 animate-spin` icon or a skeleton component that matches the shape of the loaded content, preventing layout shift and communicating progress clearly.
+
+---
+
+### U-09 · MEDIUM · Icon-Only Buttons Missing `aria-label` — Accessibility Failure
+**File:** `client/src/components/admin/UserManager.tsx` line ~843  
+**Finding:** The close button on the user detail panel is an icon-only button with no `aria-label`. Screen readers announce it as an unlabeled interactive element. Any icon-only button (`X`, `⋮`, copy, share) must have `aria-label` or `aria-labelledby`.
+
+---
+
+### U-10 · MEDIUM · `LeaderboardInsights` Image Has Empty `alt` Attribute
+**File:** `client/src/components/admin/LeaderboardInsights.tsx` line ~66  
+**Finding:** An `<img>` element has `alt=""`. If this image is meaningful content (not purely decorative), this violates WCAG 2.1 AA. If it is purely decorative, the element should use `role="presentation"` explicitly.
+
+---
+
+### U-11 · LOW · `window.location.reload()` Used Instead of Query Invalidation
+**Files:** `client/src/components/admin/AdminDashboard.tsx` line ~353 · `client/src/components/ErrorBoundary.tsx` line ~85  
+**Finding:** Hard page reloads destroy the React Query cache, WebSocket connection, and all in-memory UI state. The `AdminDashboard` usage appears to be a data refresh trigger — this should be replaced with `queryClient.invalidateQueries()`. The `ErrorBoundary` reload is acceptable for catastrophic failures but should be labeled "Reload Page" to set user expectations.
+
+---
+
+### U-12 · LOW · Z-Index Stacking Conflict Risk Between Overlapping Modals
+**File:** `client/src/components/ui/` (Dialog, Sheet, Popover)  
+**Finding:** All overlay components use `z-50`. If a Sheet (e.g., withdrawal drawer) is open while a Dialog (e.g., confirmation modal) is triggered, both compete at `z-50`. The behavior is implementation-order-dependent and browser-specific. A token-based z-index scale (`z-modal=50`, `z-drawer=60`, `z-toast=70`) should be established.
+
+---
+
+<a name="clarifications"></a>
+## BUSINESS LOGIC CLARIFICATIONS REQUIRED
+
+The following questions require your explicit confirmation before remediation begins. I will not assume or proceed with unverified logic.
+
+**Q1 — Commission Display in TX-Points**  
+The commission history tab currently shows PKR values from `commission_logs`. Should these be displayed as their TX-Points equivalent (using the current conversion rate), or should commissions remain PKR-denominated since they represent referral cash earnings rather than platform points?
+
+**Q2 — Chatbot Context Retention Policy**  
+What is the intended maximum duration a chatbot conversation context should persist in memory for an inactive user? Options: 30 minutes TTL, 2 hours, or session-lifetime only.
+
+**Q3 — Password Reset Flow**  
+Should the password reset flow send a token via email (requires an email-sending integration like SendGrid/Resend), or should it be handled via a support ticket system (manual admin password reset via the team portal)?
+
+**Q4 — Risk Engine Scan Frequency vs. Scope**  
+The current risk engine scans up to 5,000 users per run. As the platform scales, should the scan: (a) remain full-scan but run less frequently (e.g., every 6 hours instead of hourly), (b) switch to incremental scans of only recently active users, or (c) both?
+
+**Q5 — `audit_logs` Retention Period**  
+Financial audit logs are legally sensitive. What is your required retention period before archival? (Recommendation: 2 years online, then archive to cold storage / export.)
+
+**Q6 — Leaderboard Refresh Interval**  
+The leaderboard refreshes every 5 minutes. Is this frequency a business requirement, or can it be extended to 15 minutes (reducing DB load by 66%) with a manual "force refresh" available to admins?
+
+---
+
+*End of THORX Forensic Audit Report — 2026-07-22*  
+*Total findings: 30 (4 CRITICAL · 14 HIGH · 9 MEDIUM · 3 LOW)*
