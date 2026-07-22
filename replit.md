@@ -42,12 +42,32 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 - Created via `POST /api/bootstrap-founder` (one-time; blocked once any team member exists)
 - A founder account exists in this environment's database: `thorx11dev@gmail.com` / name "Thorx X" (password set by the user, not stored here). Log in via the normal `/login` flow at `/team-portal` or `/team`.
 
-## Setup notes (this import)
+## Setup notes (this import — 2026-07-22)
 
-- `DATABASE_URL` and `SESSION_SECRET` were already available as environment secrets in this environment.
-- Ran `npm install`, then `npx drizzle-kit push --force` to create all tables from `shared/schema.ts` (database was empty, no leftover `session` table this time).
-- If `db:push` fails with a TTY-prompt error on a fresh database, a leftover `session` table (auto-created by connect-pg-simple at server start) can confuse drizzle-kit's conflict resolver. Drop it (`DROP TABLE IF EXISTS session;`) and rerun `npx drizzle-kit push --force`.
-- `npm run dev` verified working on port 5000 (landing page renders correctly).
+### Steps performed on fresh import
+1. `DATABASE_URL` and `SESSION_SECRET` were already present as Replit environment secrets (auto-injected / previously set).
+2. Ran `npm install` — all dependencies installed successfully.
+3. Ran `npx drizzle-kit push --force` — all tables created from `shared/schema.ts` with zero conflicts.
+4. `npm run dev` verified running on port 5000 — landing page renders, server logs clean.
+5. Founder account provisioned via `POST /api/bootstrap-founder` (one-time endpoint, blocked once any team member exists):
+   - Email: `thorx11dev@gmail.com` | Name: Thorx X | Role: `founder` | Permissions: `["all"]`
+6. Auth flow tested end-to-end via API (all passed):
+   - ✅ New user registration (`POST /api/register`)
+   - ✅ Login (`POST /api/login`) — session cookie issued
+   - ✅ Session verify (`GET /api/user`) — full user object returned
+   - ✅ Logout (`POST /api/logout`) — session destroyed
+   - ✅ Post-logout verify — `401 NO_SESSION` confirmed
+   - ✅ Founder login — `role: founder`, `permissions: ["all"]` confirmed
+
+### Nix modules required
+`.replit` must include `postgresql-16` in the `modules` array — it is required for the Drizzle CLI (`drizzle-kit push`) to connect to Replit's managed PostgreSQL during schema operations.
+
+### If re-importing / fresh DB
+- If `db:push` fails with a TTY-prompt error, a stale `session` table (auto-created by connect-pg-simple on first server start) may block drizzle-kit. Drop it and retry:
+  ```sql
+  DROP TABLE IF EXISTS session;
+  ```
+  Then: `npx drizzle-kit push --force`
 - Founder account provisioned via `POST /api/bootstrap-founder` (email `thorx11dev@gmail.com`, password set by the user, not stored here).
 - Auth flow verified end-to-end over the https dev domain: register (201) → session check (200) → logout (200) → session check (401) → login with correct password (200) → login with wrong password (401, rejected) → duplicate email registration (400, rejected) → founder login/logout (200/200). The temporary test account used for this was deleted afterward; only the founder account remains in the database.
 - Re-verified again on a later re-import (2026-07-14): same steps (`npm install`, `npx drizzle-kit push --force`, restart workflow) got it running cleanly with no schema issues.
