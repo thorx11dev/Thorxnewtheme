@@ -185,3 +185,24 @@ export const chatbotRateLimiter = rateLimit({
   keyGenerator: ipKeyGenerator,
   validate: false,
 });
+
+// ─── Contact form per-email rate limiter ──────────────────────────────────────
+/**
+ * Secondary rate limiter for the public contact form, keyed by submitted email.
+ * 3 submissions per email per hour — the IP-based contactRateLimiter is still
+ * applied first; this adds a per-sender layer so rotating-IP proxies cannot
+ * spam a single email address into the team inbox (audit finding E-08).
+ */
+export const contactEmailRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many contact attempts from this email. Please try again later.", error: "RATE_LIMITED" },
+  skip: skipLocalhost,
+  keyGenerator: (req: Request) => {
+    const email = (req.body?.email ?? "").toLowerCase().trim();
+    return email ? `contact-email:${email}` : `contact-ip-fallback:${ipKeyGenerator(req)}`;
+  },
+  validate: false,
+});

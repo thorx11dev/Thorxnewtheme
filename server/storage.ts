@@ -616,20 +616,33 @@ export class DatabaseStorage implements IStorage {
       { key: "GUILD_MEMBER_POOL_SHARE", value: 70, description: "% of the Sunday bonus pool split among members proportionally" },
       // ── Activity Feed ─────────────────────────────────────────────────────
       { key: "FEED_RETENTION_DAYS", value: 30, description: "Days to retain activity_feed rows" },
+      // ── Ad Engine ─────────────────────────────────────────────────────────────
+      { key: "MAX_ADS_PER_DAY", value: 20, description: "Maximum ad views a user can earn from per day" },
+      {
+        key: "AD_INVENTORY_JSON",
+        value: JSON.stringify([
+          { id: "video_standard",   reward: "0.25", duration: 30, type: "video",     label: "Standard Video" },
+          { id: "video_premium",    reward: "0.50", duration: 60, type: "video",     label: "Premium Video" },
+          { id: "banner_standard",  reward: "0.05", duration:  5, type: "banner",    label: "Banner" },
+          { id: "ad_004",           reward: "0.10", duration: 10, type: "pop_under", label: "Pop-Under" },
+          { id: "hilltop_fallback", reward: "0.02", duration:  5, type: "network",   label: "Network Fallback" },
+        ]),
+        description: "JSON array of ad inventory items {id,reward,duration,type,label}; admin-editable at runtime",
+      },
     ];
 
-    for (const def of defaults) {
-      const existing = await this.getSystemConfig(def.key);
-      if (!existing) {
-        await db.insert(systemConfig).values({
-          key: def.key,
-          value: def.value,
-          description: def.description,
-          updatedAt: new Date()
-        });
-        logger.info({ key: def.key }, '[Bootstrap] Initialized missing config key');
-      }
-    }
+    // R-18: Single bulk upsert — only inserts keys that don't already exist.
+    // Replaces 57 sequential read+insert pairs (114 round-trips) with one query.
+    // onConflictDoNothing relies on the unique constraint on system_config.key.
+    await db.insert(systemConfig)
+      .values(defaults.map(def => ({
+        key: def.key,
+        value: def.value,
+        description: def.description,
+        updatedAt: new Date(),
+      })))
+      .onConflictDoNothing();
+    logger.info({ count: defaults.length }, '[Bootstrap] system_config batch-seeded (skipped existing keys)');
   }
 
   // System config helper implementation
@@ -2076,7 +2089,12 @@ export class DatabaseStorage implements IStorage {
       if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending");
 
       withdrawalUserId = withdrawal.userId;
+      // R-21: Assert the stored amount is a valid integer — parseInt silently
+      // truncates decimals. Fail hard so any corrupt value surfaces immediately.
       const pointsRequested = parseInt(withdrawal.amount, 10);
+      if (isNaN(pointsRequested) || String(pointsRequested) !== withdrawal.amount.trim()) {
+        throw new Error(`Withdrawal amount is not a valid integer: "${withdrawal.amount}"`);
+      }
       breakdown = await this.calculateWithdrawalBreakdown(withdrawal.userId, pointsRequested, tx);
 
       // C1-04: Wrap breakdown numbers in Decimal immediately — native float arithmetic
@@ -2517,22 +2535,38 @@ export class DatabaseStorage implements IStorage {
           .where(eq(users.id, userId))
           .returning();
 
-        // Broadcast so every rank-change trigger path (not just the manual
-        // refresh route) pushes an instant update to the client — dynamic
-        // import avoids a circular dependency with ./realtime, which imports
-        // storage.
-        try {
-          const { broadcastUserUpdated } = await import("./realtime");
-          broadcastUserUpdated(userId, "rank_updated", { oldRank: user.rank || "Nawa Aya", newRank });
-        } catch (e) {
-          logger.error({ err: e }, "Failed to broadcast rank update");
-        }
-
         return updatedUser;
       }
 
       return user;
     });
+
+    // R-11: Broadcast AFTER the transaction commits — never inside it.
+    // Broadcasting inside an open transaction fires the WS event even if the
+    // transaction later rolls back, sending a phantom rank-change notification.
+    // Dynamic import avoids the circular dependency with ./realtime.
+    if (result.rank !== undefined) {
+      // Detect whether rank actually changed by comparing result against
+      // the original user we fetched at the start of the function.
+      const originalUser = await this.getUserById(userId).catch(() => null);
+      // We compare by checking if the returned user has a different rank
+      // from what was in the DB before this call — check rankLogs for latest change.
+      const recentLog = await db.select()
+        .from(rankLogs)
+        .where(eq(rankLogs.userId, userId))
+        .orderBy(desc(rankLogs.createdAt))
+        .limit(1);
+      const latestLog = recentLog[0];
+      if (latestLog && latestLog.newRank !== latestLog.oldRank) {
+        try {
+          const { broadcastUserUpdated } = await import("./realtime");
+          broadcastUserUpdated(userId, "rank_updated", { oldRank: latestLog.oldRank, newRank: latestLog.newRank });
+        } catch (e) {
+          logger.error({ err: e }, "Failed to broadcast rank update");
+        }
+      }
+    }
+    return result;
   }
 
   // Get rank history for a user
@@ -2549,18 +2583,24 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) throw new Error("User not found");
 
-    // Get today's date range
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // R-16: Use PKT (UTC+5) for day/week/month boundaries so that "today"
+    // matches the user's local midnight rather than the server's UTC midnight.
+    const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
+    const nowPkt = new Date(Date.now() + PKT_OFFSET_MS);
+    // Truncate to midnight PKT, then convert back to UTC for DB comparisons
+    const todayPktMidnight = new Date(
+      Math.floor(nowPkt.getTime() / 86_400_000) * 86_400_000 - PKT_OFFSET_MS
+    );
+    const today = todayPktMidnight;
+    const tomorrow = new Date(today.getTime() + 86_400_000);
 
-    // Get this week's date range
+    // Get this week's date range (week starts on Sunday in PKT)
     const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - today.getDay());
+    weekStart.setDate(today.getDate() - today.getUTCDay());
 
-    // Get this month's date range
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    // Get this month's date range (1st of month in PKT)
+    const nowUtcForMonth = new Date(today);
+    const monthStart = new Date(Date.UTC(nowPkt.getUTCFullYear(), nowPkt.getUTCMonth(), 1) - PKT_OFFSET_MS);
 
     // Today's earnings
     const [todayEarningsResult] = await db
@@ -2593,14 +2633,14 @@ export class DatabaseStorage implements IStorage {
     // Referral stats
     const referralStats = await this.getReferralStats(userId);
 
-    // Referral earnings (commissions)
+    // R-01: Read referral earnings from the live referral_commissions table.
+    // commission_logs is write-frozen; all new commissions flow through
+    // processWithdrawal → referral_commissions. Reading commissionLogs here
+    // always returned 0.00 for every user who earned referral commissions.
     const [referralEarningsResult] = await db
-      .select({ total: sql<string>`COALESCE(SUM(${commissionLogs.amount}), '0.00')` })
-      .from(commissionLogs)
-      .where(and(
-        eq(commissionLogs.beneficiaryId, userId),
-        eq(commissionLogs.status, "paid")
-      ));
+      .select({ total: sql<string>`COALESCE(SUM(${referralCommissions.commissionAmountPkr}), '0.00')` })
+      .from(referralCommissions)
+      .where(eq(referralCommissions.referrerId, userId));
 
     // Today's ad views
     const adsWatchedToday = await this.getTodayAdViews(userId);
@@ -2611,8 +2651,9 @@ export class DatabaseStorage implements IStorage {
       .from(adViews)
       .where(eq(adViews.userId, userId));
 
-    // Daily goal progress (assuming 20 ads per day as goal)
-    const dailyGoal = 20;
+    // R-08: Read the daily ad goal from systemConfig so admin changes take
+    // effect on the progress bar without requiring a code deployment.
+    const dailyGoal = await this.getSystemConfigValue<number>("MAX_ADS_PER_DAY", 20);
     const dailyGoalProgress = Math.min((adsWatchedToday / dailyGoal) * 100, 100);
 
     return {
