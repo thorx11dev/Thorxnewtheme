@@ -1,5 +1,6 @@
 import Decimal from "decimal.js";
 import { logger } from "./lib/logger";
+import { Sentry } from "./lib/sentry";
 import {
   users,
   earnings,
@@ -1100,6 +1101,11 @@ export class DatabaseStorage implements IStorage {
       if (err?.code === "23505") {
         throw new Error("This earn event has already been recorded (duplicate submission).");
       }
+      // O-03: Capture financial failures in Sentry for observability
+      Sentry.captureException(err, {
+        tags: { domain: "financial", operation: "recordEarnEvent" },
+        extra: { userId: params.userId, engineType: params.engineType, grossPkr: String(params.grossPkr), sourceType: params.sourceType },
+      });
       throw err;
     }
 

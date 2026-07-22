@@ -20,6 +20,9 @@ export const pool = new Pool({
   connectionTimeoutMillis: 5000,
 });
 pool.on('error', (err: Error) => {
-  console.error('[DB] Unexpected pool error:', err.message);
+  // Use a direct stderr write here — importing the pino logger would create a
+  // circular dependency (logger → db → logger). Pool errors are fatal-adjacent
+  // so we want them in the process output regardless of logger state.
+  process.stderr.write(`[DB] Unexpected pool error: ${err.message}\n`);
 });
 export const db = drizzle(pool, { schema });

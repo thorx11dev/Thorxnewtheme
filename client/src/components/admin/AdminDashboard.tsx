@@ -21,6 +21,7 @@ import { SystemHealthCard } from "./SystemHealthCard";
 import { FounderProfitCard } from "./FounderProfitCard";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
+import { QUERY_KEYS } from "@/lib/queryKeys";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -260,7 +261,7 @@ export function AdminDashboard() {
   });
 
   const { data: analytics, isError: analyticsError } = useQuery<AnalyticsPoint[]>({
-    queryKey: ["/api/admin/analytics", dateRange],
+    queryKey: QUERY_KEYS.adminAnalytics(dateRange),
     queryFn: async () => {
       const res = await fetch(`/api/admin/analytics?range=${dateRange}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch analytics");
@@ -269,7 +270,7 @@ export function AdminDashboard() {
   });
 
   const { data: engineRevenue, isError: engineRevenueError } = useQuery<EngineRevenue>({
-    queryKey: ["/api/admin/analytics/engine-revenue", dateRange],
+    queryKey: QUERY_KEYS.adminEngineRevenue(dateRange),
     queryFn: async () => {
       const res = await fetch(`/api/admin/analytics/engine-revenue?range=${dateRange}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch engine revenue");

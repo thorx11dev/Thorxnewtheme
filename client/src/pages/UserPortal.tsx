@@ -635,7 +635,7 @@ export default function UserPortal() {
   const { data: sysConfig, isLoading: isConfigLoading } = useQuery({
     queryKey: ["/api/config/bulk"],
     queryFn: async () => {
-      const keys = ["MIN_PAYOUT", "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT"];
+      const keys = ["MIN_PAYOUT", "WITHDRAWAL_FEE_PCT", "REFERRAL_FEE_SHARE_PCT", "CONVERSION_RATE"];
       const results = await Promise.all(
         keys.map(k => apiRequest("GET", `/api/config/${k}`).then(r => r.json()))
       );
@@ -646,6 +646,9 @@ export default function UserPortal() {
   const MIN_PAYOUT = parseFloat(sysConfig?.["MIN_PAYOUT"] ?? "100");
   const WITHDRAWAL_FEE_PERCENT = parseFloat(sysConfig?.["WITHDRAWAL_FEE_PCT"] ?? "15");
   const REFERRAL_FEE_SHARE_PERCENT = parseFloat(sysConfig?.["REFERRAL_FEE_SHARE_PCT"] ?? "50");
+  // F-10 / Q1: Commission amounts are stored as PKR in commission_logs.
+  // Convert to TX-Points for display to honour the Points-Only Mandate.
+  const CONVERSION_RATE = parseFloat(sysConfig?.["CONVERSION_RATE"] ?? "100");
 
 
   const { data: payoutRules } = useQuery({
@@ -2567,7 +2570,10 @@ export default function UserPortal() {
                         <div className="text-xs text-muted-foreground">{new Date(commission.createdAt).toLocaleDateString()}</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-black text-lg text-primary">+{formatCurrency(commission.amount)}</div>
+                        <div className="font-black text-lg text-primary">
+                          +{Math.round(parseFloat(commission.amount) * CONVERSION_RATE).toLocaleString()} TX-Points
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">≈ Rs.{parseFloat(commission.amount).toFixed(4)} PKR</div>
                         <div className={`text-[10px] font-black uppercase px-2 py-0.5 border inline-block mt-1 ${commission.status === 'paid' ? 'bg-green-100 border-green-500 text-green-700' :
                           commission.status === 'pending' ? 'bg-yellow-100 border-yellow-500 text-yellow-700' :
                             'bg-red-100 border-red-500 text-red-700'

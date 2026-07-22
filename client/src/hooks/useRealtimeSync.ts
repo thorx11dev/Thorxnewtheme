@@ -217,6 +217,19 @@ export function useRealtimeSync(user: User | null, guildId?: string | null) {
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildDetail(msg.guildId) });
         }
 
+        // ── U-07: Guild strike events — invalidate guild detail so strike count refreshes ──
+        if (msg.type === "guild.strike_issued" && msg.guildId) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildDetail(msg.guildId) });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
+          toast({ title: "⚠️ Guild Strike Issued", description: "Your guild has received a strike from administration.", variant: "destructive" });
+        }
+
+        if (msg.type === "guild.strikes_cleared" && msg.guildId) {
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildDetail(msg.guildId) });
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });
+          toast({ title: "✅ Guild Strikes Cleared", description: "All strikes have been cleared from your guild." });
+        }
+
         // ── H-02: Guild membership state changes — keep UI in sync ───────────
         if (msg.type === "guild.member_left" && msg.userId === user.id) {
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.guildMine });

@@ -84,6 +84,10 @@ export const QUERY_KEYS = {
   adminLiveFeed:         ["/api/admin/live-feed"]              as const,
   adminProfitLedger:     ["/api/admin/profit-ledger"]          as const,
   adminSystemHealthHistory:["/api/admin/system-health/history"] as const,
+  // Dynamic — depend on dateRange filter
+  adminAnalytics:        (range: string) => ["/api/admin/analytics", range]                as const,
+  adminEngineRevenue:    (range: string) => ["/api/admin/analytics/engine-revenue", range] as const,
+  adminMetrics:          (range: string) => ["/api/team/metrics", range]                   as const,
 
   // ── Leaderboard ───────────────────────────────────────────────────────────
   leaderboard:           ["/api/leaderboard"]                  as const,

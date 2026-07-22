@@ -1566,6 +1566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid request." });
       }
       const result = await storage.addManualGuildStrike(req.params.id, parsed.data.reason.trim(), adminId);
+      broadcastGuildEvent(req.params.id, 'guild.strike_issued', { guildId: req.params.id, reason: parsed.data.reason.trim() });
       res.status(201).json(result);
     } catch (error) {
       logger.error({ err: error }, "Admin add guild strike error:");
@@ -1577,6 +1578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const adminId = getThorxPrincipalId(req) as string;
       const guild = await storage.clearGuildStrikes(req.params.id, adminId);
+      broadcastGuildEvent(req.params.id, 'guild.strikes_cleared', { guildId: req.params.id });
       res.json({ guild });
     } catch (error) {
       logger.error({ err: error }, "Admin clear guild strikes error:");

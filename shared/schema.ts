@@ -1438,6 +1438,24 @@ export const activityFeed = pgTable("activity_feed", {
 export type ActivityFeed = typeof activityFeed.$inferSelect;
 export type InsertActivityFeed = typeof activityFeed.$inferInsert;
 
+// ── F-09 / S-07: Password reset tokens ────────────────────────────────────────
+// Stores hashed tokens for the self-service email password-reset flow.
+// tokenHash is SHA-256 of the random 32-byte token sent in the email link.
+// Used (usedAt != null) tokens are treated as invalid; tokens expire after 1 hour.
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id:        varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId:    varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt:    timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_prt_user_created").on(table.userId, table.createdAt),
+  index("idx_prt_token_hash").on(table.tokenHash),
+]);
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
 export const insertUserTransactionSchema = createInsertSchema(userTransactions).omit({ id: true, createdAt: true });
 export const insertReferralCommissionSchema = createInsertSchema(referralCommissions).omit({ id: true, createdAt: true });
 export const insertCaptainMessageSchema = createInsertSchema(captainMessages).omit({ id: true, createdAt: true, isRead: true });
