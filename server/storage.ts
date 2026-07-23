@@ -1061,7 +1061,12 @@ export class DatabaseStorage implements IStorage {
           .update(users)
           .set({
             txPointsBalance: sql`${users.txPointsBalance} + ${cardResult.pointsCredited}`,
-            totalEarnings: sql`${users.totalEarnings} + ${userPkrShareD.toFixed(2)}`,
+            totalEarnings:   sql`${users.totalEarnings}   + ${userPkrShareD.toFixed(2)}`,
+            // F-3 fix: credit availableBalance so the user's withdrawable PKR
+            // balance stays in sync with every earn event recorded via the v3
+            // ledger pipeline. Without this, availableBalance drifts stale and
+            // the displayed balance never reflects real earned PKR.
+            availableBalance: sql`${users.availableBalance} + ${userPkrShareD.toFixed(4)}`,
             lastActiveAt: new Date(),
           })
           .where(eq(users.id, params.userId));
@@ -2253,8 +2258,13 @@ export class DatabaseStorage implements IStorage {
       await tx
         .update(users)
         .set({
-          txPointsBalance: sql`${users.txPointsBalance} - ${pointsRequested}`,
-          totalWithdrawn: sql`${users.totalWithdrawn} + ${userNetPkrD.toFixed(4)}`,
+          txPointsBalance:  sql`${users.txPointsBalance}  - ${pointsRequested}`,
+          totalWithdrawn:   sql`${users.totalWithdrawn}   + ${userNetPkrD.toFixed(4)}`,
+          // F-4 fix: debit availableBalance atomically with the TX-Point debit
+          // so the user's displayed PKR balance stays accurate after withdrawal.
+          // exactPkr is the full gross withdrawn; userNetPkr is after platform fee.
+          // We debit the exact gross amount (same PKR that was credited per earn event).
+          availableBalance: sql`${users.availableBalance} - ${exactPkrD.toFixed(4)}`,
           updatedAt: new Date(),
         })
         .where(eq(users.id, withdrawal.userId));
@@ -3817,8 +3827,10 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [totalProfitRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(fee AS DECIMAL)), 0)::text` }).from(withdrawals).where(eq(withdrawals.status, 'processed'));
-    const [monthProfitRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(fee AS DECIMAL)), 0)::text` }).from(withdrawals).where(and(eq(withdrawals.status, 'processed'), gte(withdrawals.processedAt, monthStart)));
+    // F-5 fix: processWithdrawal sets status='completed', not 'processed'.
+    // Querying 'processed' always returned 0, making the profit summary blank.
+    const [totalProfitRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(fee AS DECIMAL)), 0)::text` }).from(withdrawals).where(eq(withdrawals.status, 'completed'));
+    const [monthProfitRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(fee AS DECIMAL)), 0)::text` }).from(withdrawals).where(and(eq(withdrawals.status, 'completed'), gte(withdrawals.processedAt, monthStart)));
     const [totalOutRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(founderWithdrawals);
     const [monthOutRow] = await db.select({ total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)::text` }).from(founderWithdrawals).where(gte(founderWithdrawals.createdAt, monthStart));
     const [lastWd] = await db.select().from(founderWithdrawals).orderBy(desc(founderWithdrawals.createdAt)).limit(1);
