@@ -49,9 +49,16 @@ export const runtimeConfig = {
   // cookies on Replit (or in prod) and same-site cookies for plain local dev.
   sessionCookieSecure: process.env.SESSION_COOKIE_SECURE
     ? process.env.SESSION_COOKIE_SECURE === "true"
+    // In test mode, supertest uses plain HTTP — Secure cookies are silently
+    // dropped by tough-cookie, breaking session persistence in integration tests.
+    : process.env.NODE_ENV === "test"
+    ? false
     : (isReplit || process.env.NODE_ENV === "production"),
   sessionCookieDomain: process.env.SESSION_COOKIE_DOMAIN || undefined,
-  sessionCookieSameSite: (process.env.SESSION_COOKIE_SAME_SITE || (isReplit || process.env.NODE_ENV === "production" ? "none" : "lax")).toLowerCase() as "lax" | "strict" | "none",
+  sessionCookieSameSite: (process.env.SESSION_COOKIE_SAME_SITE || (
+    process.env.NODE_ENV === "test" ? "lax" :
+    (isReplit || process.env.NODE_ENV === "production") ? "none" : "lax"
+  )).toLowerCase() as "lax" | "strict" | "none",
   proxyAllowedHosts: parseCsv(process.env.PROXY_ALLOWED_HOSTS),
 };
 

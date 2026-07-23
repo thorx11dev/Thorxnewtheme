@@ -109,22 +109,42 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
       const totalContrib = members.reduce((s, m) => s + m.weeklyPointsContributed, 0);
 
       if (totalContrib > 0) {
-        for (const member of members.filter(m => m.weeklyPointsContributed > 0)) {
-          const shareD = memberPoolD
-            .mul(new Decimal(member.weeklyPointsContributed).div(totalContrib))
-            .toDecimalPlaces(2, Decimal.ROUND_DOWN);
-          if (shareD.lessThanOrEqualTo(0)) continue;
-          await db.update(users)
-            .set({ balanceCashPkr: sql`${users.balanceCashPkr} + ${shareD.toFixed(2)}` })
-            .where(eq(users.id, member.userId));
-          await storage.createNotification({
-            userId: member.userId,
-            title: "Sunday Guild Bonus!",
-            message: `Your team bonus: Rs.${shareD.toFixed(2)}`,
-            type: "financial",
-          });
-          totalDistributedD = totalDistributedD.add(shareD);
-        }
+        // Pre-compute every member's share, then fan-out all DB writes concurrently
+        // (replaces the prior sequential await-per-member loop that could time-out
+        // for large guilds and serialised unnecessary DB round-trips).
+        const memberShares = members
+          .filter(m => m.weeklyPointsContributed > 0)
+          .map(m => ({
+            userId: m.userId,
+            shareD: memberPoolD
+              .mul(new Decimal(m.weeklyPointsContributed).div(totalContrib))
+              .toDecimalPlaces(2, Decimal.ROUND_DOWN),
+          }))
+          .filter(({ shareD }) => shareD.greaterThan(0));
+
+        await Promise.all(
+          memberShares.map(({ userId, shareD }) =>
+            db.update(users)
+              .set({ balanceCashPkr: sql`${users.balanceCashPkr} + ${shareD.toFixed(2)}` })
+              .where(eq(users.id, userId))
+          )
+        );
+
+        await Promise.all(
+          memberShares.map(({ userId, shareD }) =>
+            storage.createNotification({
+              userId,
+              title: "Sunday Guild Bonus!",
+              message: `Your team bonus: Rs.${shareD.toFixed(2)}`,
+              type: "financial",
+            })
+          )
+        );
+
+        totalDistributedD = memberShares.reduce(
+          (acc, { shareD }) => acc.add(shareD),
+          totalDistributedD,
+        );
       }
 
       // Rounding dust (paisa) credited to Thorx treasury — logged as platform profit.

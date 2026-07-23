@@ -13,6 +13,11 @@ export default defineConfig({
     include: ["server/__tests__/**/*.test.ts", "**/*.test.ts", "**/*.spec.ts"],
     exclude: ["node_modules", "dist", "client"],
     environment: "node",
+    // Force test-safe cookie settings: isReplit=true on Replit forces secure:true
+    // which tough-cookie (supertest) drops on plain HTTP — sessions never persist.
+    env: {
+      NODE_ENV: "test",
+    },
     // Show each individual test name in output
     reporter: "verbose",
     coverage: {

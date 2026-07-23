@@ -48,7 +48,16 @@ export class HilltopAdsService {
     }
   }
 
-  private async makeRequest<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
+  /**
+   * Execute a GET request against the HilltopAds API with exponential-backoff
+   * retry logic.  Transient 429 / 5xx errors are retried up to MAX_RETRIES
+   * times; 4xx client errors (except 429) are surfaced immediately.
+   */
+  private async makeRequest<T>(
+    endpoint: string,
+    params?: Record<string, string>,
+    { maxRetries = 3, baseDelayMs = 500 }: { maxRetries?: number; baseDelayMs?: number } = {},
+  ): Promise<T> {
     if (!this.apiKey) {
       await this.initialize();
       if (!this.apiKey) {
@@ -63,20 +72,48 @@ export class HilltopAdsService {
       });
     }
 
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-    });
+    let lastError: Error = new Error("Unknown error");
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      // Exponential backoff with full-jitter: delay = rand(0, base * 2^attempt)
+      if (attempt > 0) {
+        const cap = baseDelayMs * Math.pow(2, attempt);
+        const jitter = Math.random() * cap;
+        await new Promise(r => setTimeout(r, jitter));
+        logger.warn(
+          { endpoint, attempt, maxRetries },
+          "[HilltopAds] Retrying after transient error",
+        );
+      }
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`HilltopAds API error: ${response.status} - ${error}`);
+      try {
+        const response = await fetch(url.toString(), {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          // Abort after 10 s to avoid hanging the scheduler indefinitely
+          signal: AbortSignal.timeout(10_000),
+        });
+
+        if (response.ok) {
+          return await response.json() as T;
+        }
+
+        const body = await response.text();
+        // Rate-limit (429) and server errors (5xx) are retryable
+        const isRetryable = response.status === 429 || response.status >= 500;
+        if (!isRetryable || attempt === maxRetries) {
+          throw new Error(`HilltopAds API error: ${response.status} - ${body}`);
+        }
+        lastError = new Error(`HilltopAds API error: ${response.status} - ${body}`);
+      } catch (err) {
+        // Network / timeout errors are retryable
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt === maxRetries) throw lastError;
+      }
     }
-
-    return await response.json();
+    throw lastError;
   }
 
   async getBalance(): Promise<number> {

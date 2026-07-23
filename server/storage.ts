@@ -3306,12 +3306,19 @@ export class DatabaseStorage implements IStorage {
       .map(u => l1Map.get(u.id) ?? 0)
       .sort((a, b) => a - b);
 
+    // O(log n) binary search — replaces the prior O(n) linear scan.
+    // For 10 k users called twice per user = 20 k calls: linear was ~10 k ops
+    // each → 100 M total; binary search is ~14 ops each → 280 k total.
     function percentileRank(sortedArr: number[], value: number): number {
+      if (!sortedArr.length) return 0;
       let lo = 0;
-      for (let i = 0; i < sortedArr.length; i++) {
-        if (sortedArr[i] <= value) lo = i + 1;
-        else break;
+      let hi = sortedArr.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (sortedArr[mid] <= value) lo = mid + 1;
+        else hi = mid;
       }
+      // lo = count of elements ≤ value
       return (lo / sortedArr.length) * 100;
     }
 

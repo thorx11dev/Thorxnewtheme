@@ -325,13 +325,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     throw new Error("SESSION_SECRET must be set in production");
   }
 
-  const rawSameSite = runtimeConfig.sessionCookieSameSite;
+  // In test mode (vitest), runtimeConfig is a module-level constant frozen at
+  // import time, so NODE_ENV=test may not have propagated into it yet (module
+  // cache).  Read process.env directly here — registerRoutes() runs at call
+  // time, so the env is guaranteed to be current.
+  const isTest = process.env.NODE_ENV === "test";
+
+  // Test environments use plain HTTP (supertest); Secure cookies are dropped by
+  // tough-cookie on non-HTTPS connections, causing sessions to never persist.
+  const cookieSecure = isTest ? false : (runtimeConfig.sessionCookieSecure || isProd);
+
+  // SameSite=None without Secure is invalid and rejected by all cookie jars.
+  // Use Lax in test mode so supertest can round-trip the session cookie.
+  const rawSameSite = isTest ? "lax" : runtimeConfig.sessionCookieSameSite;
   const sameSite = (rawSameSite === "none" || rawSameSite === "strict" || rawSameSite === "lax")
     ? rawSameSite
     : "lax";
-
-  // Cross-site cookies require secure=true. Keep secure by default in production only.
-  const cookieSecure = runtimeConfig.sessionCookieSecure || isProd;
 
   if (!isProd) {
     debugLog("Environment detection:", {

@@ -138,11 +138,16 @@ function computeRankTier(ps: number, thresholds: Record<string, number>): RankTi
 // Called after every PS change. PS is the sole input to rank (invariant #6);
 // rankLocked bypasses automatic changes; E-Rank is a hard floor (invariant #7).
 export async function checkAndUpdateRankTier(userId: string, tx?: DbClient): Promise<void> {
-  const dbc = tx ?? db;
   // 1.2c: SELECT FOR UPDATE inside a transaction prevents two concurrent earn
   // events from simultaneously promoting the same user (double rank-log bug).
+  // When no external tx is provided we wrap in our own so the FOR UPDATE lock
+  // is always honoured — previously the lock was skipped on standalone calls.
+  if (!tx) {
+    return db.transaction(async (innerTx) => checkAndUpdateRankTier(userId, innerTx));
+  }
+  const dbc = tx;
   const selectQuery = dbc.select().from(users).where(eq(users.id, userId));
-  const [user] = tx ? await selectQuery.for("update") : await selectQuery;
+  const [user] = await selectQuery.for("update");
   if (!user || user.rankLocked) return;
 
   const thresholds: Record<string, number> = {
