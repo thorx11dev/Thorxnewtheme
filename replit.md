@@ -164,6 +164,11 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
   5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder) provisioned via `POST /api/bootstrap-founder` (201, "Founder account created successfully").
   6. Full auth regression passed (8 checks): unauthenticated `/api/profile` (401) → founder login (200, role: founder) → authenticated profile (200, role: founder) → logout (200) → unauthenticated profile (401) → new user registration (201, role: user) → new user login (200) → new user logout (200). All flows clean.
 
+- 2026-07-23 (re-import): `node_modules/.bin/tsx` missing after import. Steps taken:
+  1. `npm install` — all packages installed cleanly.
+  2. `npx drizzle-kit push --force` — schema applied with no conflicts ("Changes applied").
+  3. Workflow restarted; app running on port 5000 — landing page renders correctly (V1.0 ONLINE shown). HilltopAds API key not configured (expected; non-critical for dev).
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
