@@ -167,7 +167,31 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
 - 2026-07-23 (re-import): `node_modules/.bin/tsx` missing after import. Steps taken:
   1. `npm install` — all packages installed cleanly.
   2. `npx drizzle-kit push --force` — schema applied with no conflicts ("Changes applied").
-  3. Workflow restarted; app running on port 5000 — landing page renders correctly (V1.0 ONLINE shown). HilltopAds API key not configured (expected; non-critical for dev).
+  3. Restored `postgresql-16` to `.replit` modules (dropped by import auto-generation).
+  4. Workflow restarted; app running on port 5000 — landing page renders correctly (V1.0 ONLINE shown). HilltopAds API key not configured (expected; non-critical for dev).
+  5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder` (201, "Founder account created successfully").
+  6. Full 22-point auth regression passed against live dev domain:
+     - ✅ Unauthenticated `/api/user` → 401 NO_SESSION
+     - ✅ New user registration (201, role: user, rank: Nawa Aya)
+     - ✅ Session check after register (200, full user object)
+     - ✅ Logout (200, Logout successful)
+     - ✅ Session check after logout (401 NO_SESSION)
+     - ✅ Wrong-password login rejected (401 UNAUTHORIZED)
+     - ✅ Correct-password login (200 Login successful, user nested under `user` key)
+     - ✅ Duplicate email registration rejected (400 DUPLICATE_EMAIL)
+     - ✅ Invalid email format rejected (400 VALIDATION_ERROR)
+     - ✅ Weak password rejected (400 VALIDATION_ERROR)
+     - ✅ CSRF enforcement — POST without header rejected (CSRF_ERROR)
+     - ✅ Non-existent user login rejected (401 UNAUTHORIZED)
+     - ✅ QA account deleted from DB
+     - ✅ Founder login (200, role: founder, permissions: ["all"])
+     - ✅ `/api/user` founder profile (200, firstName: Thorx, lastName: X)
+     - ✅ `/api/admin/config` (200, 69 config keys)
+     - ✅ `/api/team/members` (200, 1 member: thorx11dev@gmail.com, accessLevel: founder)
+     - ✅ Unauthenticated `/api/team/members` blocked (401 UNAUTHORIZED)
+     - ✅ Founder logout (200, Logout successful)
+     - ✅ Session cleared after founder logout (401 NO_SESSION)
+     - ✅ DB verified: only founder account remains in `users` table
 
 ## User preferences
 
