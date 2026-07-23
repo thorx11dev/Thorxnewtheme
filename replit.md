@@ -193,6 +193,14 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
      - ✅ Session cleared after founder logout (401 NO_SESSION)
      - ✅ DB verified: only founder account remains in `users` table
 
+- 2026-07-23 (re-import, this session): `node_modules/.bin/tsx` missing after import. Steps taken:
+  1. `npm install` — all packages installed cleanly.
+  2. `npx drizzle-kit push --force` — schema applied with no conflicts ("Changes applied", 68 system_config keys seeded).
+  3. Restored `postgresql-16` to `.replit` modules (dropped by import auto-generation).
+  4. Workflow restarted; app running on port 5000 — landing page renders correctly (V1.0 ONLINE shown). HilltopAds API key not configured (expected; non-critical for dev).
+  5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder` (201, "Founder account created successfully").
+  6. Auth verified: unauthenticated `/api/user` (401) → founder login (200, role: founder, firstName: Thorx) → `/api/user` (200, permissions: ["all"]). Only founder account in `users` table.
+
 ## User preferences
 
 - Use Replit's built-in PostgreSQL (no external auth or storage providers)
