@@ -696,6 +696,16 @@ export default function UserPortal() {
   // REAL-TIME ANALYTICS DATA QUERIES
   // ============================================
 
+  // Public platform config — conversionRate, fee pct, daily earnings goal (configurable via admin)
+  const { data: publicConfig } = useQuery({
+    queryKey: QUERY_KEYS.publicConfig,
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/config/public");
+      return res.json() as Promise<{ conversionRate: number; platformName: string; withdrawalFeePct: number; dailyEarningsGoalPkr: number }>;
+    },
+    staleTime: 5 * 60 * 1000, // Re-fetch every 5 min — changes are rare
+  });
+
   // Dashboard statistics - comprehensive real-time data
   const { data: dashboardStats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard", "stats"],
@@ -1372,9 +1382,9 @@ export default function UserPortal() {
 
   const earningTypesData = calculateEarningsBreakdown();
 
-  // PKR earnings target (separate from ad count limit — this drives a lifetime
-  // earnings progress indicator, not the daily ad cap).
-  const dailyEarningsGoalPkr = 50;
+  // PKR earnings target — fetched from system_config (DAILY_EARNINGS_GOAL_PKR),
+  // admin-configurable. Falls back to 50 while the config loads.
+  const dailyEarningsGoalPkr = publicConfig?.dailyEarningsGoalPkr ?? 50;
   const currentProgress = parseFloat(displayUser?.totalEarnings || '0.00');
   const progressPercentage = Math.min((currentProgress / dailyEarningsGoalPkr) * 100, 100);
 

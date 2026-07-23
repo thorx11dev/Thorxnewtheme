@@ -398,13 +398,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NEVER exposes per-engine ratios, PKR values, or business secrets.
   app.get("/api/config/public", async (_req, res) => {
     try {
-      const [conversionRate, withdrawalFeePct] = await Promise.all([
+      const [conversionRate, withdrawalFeePct, dailyEarningsGoalPkr] = await Promise.all([
         storage.getSystemConfigValue<number>("CONVERSION_RATE", 1000),
         storage.getSystemConfigValue<number>("WITHDRAWAL_FEE_PCT", 15),
+        storage.getSystemConfigValue<number>("DAILY_EARNINGS_GOAL_PKR", 50),
       ]);
-      res.json({ conversionRate, platformName: "THORX", withdrawalFeePct });
+      res.json({ conversionRate, platformName: "THORX", withdrawalFeePct, dailyEarningsGoalPkr });
     } catch (error) {
-      res.json({ conversionRate: 1000, platformName: "THORX", withdrawalFeePct: 15 });
+      res.json({ conversionRate: 1000, platformName: "THORX", withdrawalFeePct: 15, dailyEarningsGoalPkr: 50 });
     }
   });
 
@@ -2099,7 +2100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/withdrawals", requirePermission("MANAGE_PAYOUTS"), async (req, res) => {
+  app.get("/api/admin/withdrawals", requirePermission("MANAGE_PAYOUTS"), adminActionRateLimiter, async (req, res) => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 8;
@@ -2297,7 +2298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── Thorx Profit Ledger (Spec §19.1) ────────────────────────────────────────
   // Full profit breakdown: engine cuts + withdrawal fee revenue + 30-day chart.
   // R-14: Restricted to VIEW_PROFIT_LEDGER permission (founder/admin automatically pass).
-  app.get("/api/admin/profit-ledger", requirePermission("VIEW_PROFIT_LEDGER"), async (req, res) => {
+  app.get("/api/admin/profit-ledger", requirePermission("VIEW_PROFIT_LEDGER"), adminActionRateLimiter, async (req, res) => {
     try {
       const ledger = await storage.getProfitLedger();
       res.json(ledger);
@@ -2346,6 +2347,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       _adInventoryCache = null;
       _adInventoryCacheExpiry = 0;
       logger.info({ count: items.length }, "[AdInventory] Updated via admin PATCH");
+      // Audit log — engine config changes must be traceable (enterprise §8)
+      await storage.createAuditLog({
+        adminId: (req as any).user?.id,
+        action: "ENGINE_CONFIG_UPDATE",
+        targetType: "system",
+        targetId: "AD_INVENTORY_JSON",
+        details: { itemCount: items.length, updatedBy: (req as any).user?.email },
+      });
       res.json({ success: true, items });
     } catch (error) {
       logger.error({ err: error }, "Patch ad-inventory error");
@@ -2486,12 +2495,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/system-health/recalculate", requirePermission("MANAGE_USERS"), async (req, res) => {
+  app.post("/api/admin/system-health/recalculate", requirePermission("MANAGE_USERS"), adminActionRateLimiter, async (req, res) => {
     try {
       const { computeAndSaveHealthSnapshot } = await import("./modules/health-engine");
       await computeAndSaveHealthSnapshot();
       const snap = await storage.getLatestHealthSnapshot();
       const ageMinutes = snap?.recordedAt ? (Date.now() - new Date(snap.recordedAt).getTime()) / 60000 : 0;
+      // Audit log — manual health recalculations must be traceable (enterprise §8)
+      await storage.createAuditLog({
+        adminId: (req as any).user?.id,
+        action: "SYSTEM_HEALTH_RECALCULATE",
+        targetType: "system",
+        targetId: "health_engine",
+        details: { triggeredBy: (req as any).user?.email, overallScore: (snap as any)?.overallScore },
+      });
       res.json({ ...snap, isStale: ageMinutes > 90 });
     } catch (error) {
       logger.error({ err: error }, "Recalculate health error:");
@@ -2687,7 +2704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/admin/audit-logs", requirePermission("VIEW_AUDIT_LOGS"), async (req, res) => {
+  app.get("/api/admin/audit-logs", requirePermission("VIEW_AUDIT_LOGS"), adminActionRateLimiter, async (req, res) => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;

@@ -91,4 +91,7 @@ export const QUERY_KEYS = {
 
   // ── Leaderboard ───────────────────────────────────────────────────────────
   leaderboard:           ["/api/leaderboard"]                  as const,
+
+  // ── Public config (unauthenticated — conversionRate, fees, goal) ─────────
+  publicConfig:          ["/api/config/public"]                as const,
 } as const;

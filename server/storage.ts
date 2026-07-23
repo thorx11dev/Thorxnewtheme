@@ -136,7 +136,10 @@ import { encryptCredential, decryptCredential, isEncrypted } from "./utils/crede
 // ── Points Ledger config defaults ────────────────────────────────────────────
 // Real values are read via getSystemConfigValue() from system_config at runtime
 // (team/admin editable); these are only the fallback if a key was never set.
-const DEFAULT_CONVERSION_RATE = 1000; // 1000 points == 1.00 PKR (spec §1.1)
+// TX-Points per Rs.10 earned (not per Rs.1). The thorx-card formula is
+// `pkrDecimal.div(10).times(conversionRate)`, so effective rate = value/10.
+// Default 1000 → 100 TX-Points per Rs.1 PKR — matches spec §1.1 ("default 100").
+const DEFAULT_CONVERSION_RATE = 1000;
 
 // Fixed UTC week boundary: Monday 00:00:00 UTC through Sunday 23:59:59.999 UTC.
 // Not user-configurable in v1 (see design notes in shared/schema.ts).
@@ -535,7 +538,8 @@ export class DatabaseStorage implements IStorage {
       { key: "MIN_PAYOUT", value: 100, description: "Minimum PKR required for withdrawal" },
       { key: "WITHDRAWAL_FEE_PCT", value: 15, description: "Total percentage fee deducted from every payout" },
       { key: "REFERRAL_FEE_SHARE_PCT", value: 50, description: "Share of the withdrawal fee (above) carved out to the withdrawing user's direct referrer; the rest stays with the platform" },
-      { key: "CONVERSION_RATE", value: 1000, description: "Points shown per 1.00 PKR earned (global fallback; per-engine keys take precedence)" },
+      { key: "CONVERSION_RATE", value: 1000, description: "TX-Points per Rs.10 earned (formula: pkr÷10×rate → effective 100 pts per Rs.1 at default 1000; global fallback — per-engine keys take precedence)" },
+      { key: "DAILY_EARNINGS_GOAL_PKR", value: 50, description: "Lifetime-earnings progress bar target shown in User Portal (PKR). Adjust to set the milestone threshold." },
       // ── Per-Engine TX-Points illusion ratios (Spec §1.1) ─────────────────
       { key: "ENGINE_A_PKR_TO_POINTS_RATIO", value: 1000, description: "Engine A (Ad Slots): TX-Points credited per 1.00 PKR of user share" },
       { key: "ENGINE_A_ILLUSION_VARIANCE_PCT", value: 10, description: "Engine A: ±variance % applied to Thorx Card draw (10 = ±10%)" },
@@ -4533,13 +4537,15 @@ export class DatabaseStorage implements IStorage {
   // Points per difficulty tier, keyed by guild rank tier.
   // When a captain selects a difficulty, this table determines the weeklyTarget
   // that gets written to the DB. Admins can still override weeklyTarget directly.
+  // Spec difficulty tiers: low (Easy) | medium (Medium) | high (Hard) | elite (Elite).
+  // Elite is a 4th challenge tier — approximately 2× high, intended for S-Rank guilds.
   static readonly DIFFICULTY_TARGETS: Record<string, Record<string, number>> = {
-    "E-Rank": { low: 10_000,  medium: 25_000,  high:  50_000 },
-    "D-Rank": { low: 25_000,  medium: 50_000,  high: 100_000 },
-    "C-Rank": { low: 50_000,  medium: 100_000, high: 200_000 },
-    "B-Rank": { low: 100_000, medium: 200_000, high: 400_000 },
-    "A-Rank": { low: 200_000, medium: 400_000, high: 800_000 },
-    "S-Rank": { low: 400_000, medium: 800_000, high: 1_600_000 },
+    "E-Rank": { low: 10_000,  medium: 25_000,   high:  50_000,  elite:  100_000 },
+    "D-Rank": { low: 25_000,  medium: 50_000,   high: 100_000,  elite:  200_000 },
+    "C-Rank": { low: 50_000,  medium: 100_000,  high: 200_000,  elite:  400_000 },
+    "B-Rank": { low: 100_000, medium: 200_000,  high: 400_000,  elite:  800_000 },
+    "A-Rank": { low: 200_000, medium: 400_000,  high: 800_000,  elite: 1_600_000 },
+    "S-Rank": { low: 400_000, medium: 800_000,  high: 1_600_000, elite: 3_200_000 },
   };
 
   async updateGuildSettings(guildId: string, captainId: string, settings: {
@@ -4564,9 +4570,9 @@ export class DatabaseStorage implements IStorage {
     // Admin overrides (adminSetGuildWeeklyTarget) always win — this only fires when
     // the captain explicitly changes the difficulty knob.
     if (settings.targetDifficulty !== undefined) {
-      const allowed = ["low", "medium", "high"];
+      const allowed = ["low", "medium", "high", "elite"];
       if (!allowed.includes(settings.targetDifficulty)) {
-        throw new Error("targetDifficulty must be 'low', 'medium', or 'high'.");
+        throw new Error("targetDifficulty must be 'low', 'medium', 'high', or 'elite'.");
       }
       updates.targetDifficulty = settings.targetDifficulty;
 
