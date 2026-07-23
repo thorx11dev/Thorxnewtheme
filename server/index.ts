@@ -12,6 +12,7 @@ import { startHealthSnapshotJob } from "./jobs/health-snapshot";
 import { startGuildWeeklyResetJob } from "./jobs/guild-weekly-reset";
 import { startInactivityPenaltyJob } from "./jobs/inactivity-penalty";
 import { startRetentionCleanupJob } from "./jobs/retention-cleanup";
+import { hilltopAdsScheduler } from "./hilltopads-scheduler";
 import { initSentry, sentryErrorHandler, Sentry } from "./lib/sentry";
 import { pool } from "./db";
 
@@ -100,6 +101,9 @@ function gracefulShutdown(signal: string): void {
     logger.fatal({ signal }, 'Graceful shutdown timeout exceeded — forcing exit');
     process.exit(1);
   }, 30_000).unref();
+  // Stop the HilltopAds polling scheduler before closing HTTP so no in-flight
+  // sync calls are abandoned mid-write.
+  hilltopAdsScheduler.stop();
   if (typeof (global as any).__thorxServer?.close === "function") {
     (global as any).__thorxServer.close(async () => {
       clearTimeout(drainTimeout);
@@ -235,5 +239,7 @@ app.use((req, res, next) => {
     startLeaderboardRefreshJob();
     // Nightly retention cleanup (score_history: 90d, audit_logs: 2yr)
     startRetentionCleanupJob();
+    // HilltopAds daily inventory + stats sync (no-ops gracefully if API key not configured)
+    hilltopAdsScheduler.start();
   });
 })();

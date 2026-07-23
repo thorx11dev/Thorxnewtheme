@@ -1,7 +1,7 @@
 import { hilltopAdsService } from "./hilltopads-service";
-import { pino } from "pino";
+import { logger as rootLogger } from "./lib/logger";
 
-const logger = pino({ name: "HilltopAdsScheduler" });
+const logger = rootLogger.child({ module: "HilltopAdsScheduler" });
 
 export class HilltopAdsScheduler {
   private syncInterval: NodeJS.Timeout | null = null;
