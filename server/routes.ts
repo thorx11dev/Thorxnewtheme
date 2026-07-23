@@ -7,7 +7,7 @@ import connectPg from "connect-pg-simple";
 import { storage, RANK_NAMES } from "./storage";
 import { pool, db } from "./db";
 import { initRealtime, broadcastUserUpdated, broadcastTeamRefresh, broadcastGuildMessage, broadcastGuildEvent, broadcastToUser, closeUserSockets } from "./realtime";
-import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, taskRecords, adViews, dailyTasks, systemConfig, weeklyTasks, auditLogs, insertHilltopAdsConfigSchema, insertHilltopAdsZoneSchema } from "@shared/schema";
+import { insertRegistrationSchema, insertUserSchema, insertWithdrawalSchema, users, teamKeys, insertDailyTaskSchema, insertTaskRecordSchema, taskRecords, adViews, dailyTasks, systemConfig, weeklyTasks, auditLogs, insertHilltopAdsConfigSchema, insertHilltopAdsZoneSchema, passwordResetTokens } from "@shared/schema";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { validateEmailServer, validatePhoneServer, normalizePhoneNumber } from "./validation";
@@ -20,8 +20,10 @@ import { sanitizeUser } from "./utils/sanitize-user";
 import { debugLog } from "./utils/debug-log";
 import { simulateThorxCards } from "./modules/thorx-card";
 import { runWeeklyGuildReset } from "./modules/guild-reset";
+import bcrypt from "bcrypt";
 import { logger } from "./lib/logger";
 import { Sentry } from "./lib/sentry";
+import { sendPasswordResetEmail } from "./lib/email";
 
 // ── H-01: Withdrawal idempotency cache ───────────────────────────────────────
 // Short-TTL in-memory store that deduplicates concurrent/retried withdrawal
@@ -3092,14 +3094,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/forgot-password", authRateLimiter, async (req, res) => {
-    // R-02: Honest stub — no email infrastructure yet. Direct users to support
-    // so they know to take action rather than waiting for an email that never arrives.
-    res.json({
-      success: true,
-      message: "Automated password reset is not available. Please contact our support team to reset your password.",
-      action: "contact_support",
-      contactEmail: "support@thorx.com",
-    });
+    // F-09 / S-07: Self-service email token password-reset flow.
+    // Always return 200 regardless of whether the email exists — prevents
+    // user enumeration (security hardening finding S-07).
+    const parsed = forgotPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid request" });
+    }
+    const { email } = parsed.data;
+    try {
+      const user = await storage.getUserByEmail(email);
+      if (user && user.isActive) {
+        // Invalidate any existing unused tokens for this user (rate-limit abuse prevention)
+        await db.update(passwordResetTokens)
+          .set({ usedAt: new Date() })
+          .where(and(
+            eq(passwordResetTokens.userId, user.id),
+            sql`${passwordResetTokens.usedAt} IS NULL`
+          ));
+
+        // Generate a random 32-byte token; only its SHA-256 hash is stored
+        const rawToken = crypto.randomBytes(32).toString("hex");
+        const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+        await db.insert(passwordResetTokens).values({ userId: user.id, tokenHash, expiresAt });
+
+        // Build the reset URL using the public Replit dev domain when no APP_URL is configured
+        const appUrl = process.env.APP_URL
+          ?? (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "");
+        const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
+
+        // Fire-and-forget — email failures are logged but should not 500 the request
+        sendPasswordResetEmail({ to: email, firstName: user.firstName, resetUrl }).catch((err) => {
+          logger.error({ err, userId: user.id }, "[Email] Password-reset delivery failed");
+        });
+      }
+    } catch (err) {
+      // Log but swallow — we return 200 either way to prevent user enumeration
+      logger.error({ err, email }, "[ForgotPassword] Unexpected error");
+    }
+
+    res.json({ success: true, message: "If an account with that email exists, a reset link has been sent." });
   });
 
   const resetPasswordSchema = z.object({
@@ -3108,13 +3144,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/reset-password", authRateLimiter, async (req, res) => {
-    // R-27: Return 200 with actionable guidance instead of the raw 410 Gone status.
-    res.status(200).json({
-      success: true,
-      message: "Password reset is handled by our support team. Please contact support@thorx.com with your registered email address.",
-      action: "contact_support",
-      contactEmail: "support@thorx.com",
-    });
+    // F-09 / S-07: Validate token, update password, invalidate all sessions.
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "Invalid request" });
+    }
+    const { token, password } = parsed.data;
+    try {
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+      const [record] = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(eq(passwordResetTokens.tokenHash, tokenHash));
+
+      if (!record) return res.status(400).json({ message: "Invalid or expired reset link." });
+      if (record.usedAt) return res.status(400).json({ message: "This reset link has already been used." });
+      if (new Date() > record.expiresAt) return res.status(400).json({ message: "This reset link has expired. Please request a new one." });
+
+      // Hash new password and update the user
+      const passwordHash = await bcrypt.hash(password, 10);
+      await db.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, record.userId));
+
+      // Mark token as used (prevents replay)
+      await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, record.id));
+
+      // Close any active WS sessions — forces re-login on all devices
+      closeUserSockets(record.userId, 4001, "Password reset — please log in again");
+
+      logger.info({ userId: record.userId }, "[ResetPassword] Password updated via email token");
+      res.json({ success: true, message: "Password updated successfully. Please log in with your new password." });
+    } catch (err) {
+      logger.error({ err }, "[ResetPassword] Error during password reset");
+      res.status(500).json({ message: "Failed to reset password. Please try again." });
+    }
   });
 
   // Mark user email as verified (session-based — requires active session)
