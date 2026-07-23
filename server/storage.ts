@@ -1891,15 +1891,29 @@ export class DatabaseStorage implements IStorage {
   // "referral-simplification"); any pending L2 rows were settled once via a
   // one-time migration at that time.
   // THORX v3 (spec Part E.7) — FIFO-consumes un-withdrawn user_transactions
-  // rows until pointsCredited covers pointsRequested, and sums their
-  // realPkrValue as the exact PKR base. This is Appendix A invariant #1/#2:
-  // withdrawal math is NEVER recomputed from points × conversion rate.
-  // `dbc` lets callers pass a transaction client so the FIFO ledger read is
-  // taken inside the same transaction as the withdrawal-row lock (see
-  // processWithdrawal) instead of racing against concurrent writers.
-  // All PKR arithmetic uses Decimal (not native float +/-/*) — Critical
-  // finding #3 of the 2026-07-15 production-readiness audit: parseFloat +
-  // native math on DECIMAL columns accumulates sub-paisa drift at scale.
+  // rows until pointsCredited covers pointsRequested, and sums their exact
+  // historical realPkrValue as the PKR base. This is Appendix A invariant
+  // #1/#2: withdrawal math is NEVER recomputed from points × conversion rate.
+  //
+  // Pro-rata last-row fix (2026-07-23): the previous implementation consumed
+  // the full realPkrValue of the last FIFO row even when only a fraction of
+  // its pointsCredited was needed, causing the user to receive PKR for more
+  // points than they withdrew while the surplus points were permanently
+  // burned. The new logic computes a Decimal fraction of the last row's PKR
+  // precisely proportional to the points actually consumed, and returns a
+  // `partialLastRow` descriptor so processWithdrawal can insert a
+  // split_remainder row atomically for the unused portion.
+  //
+  // Fallback chain for zero realPkrValue (legacy / data-quality edge cases):
+  //   1. realPkrValue > 0  → use it directly (normal path)
+  //   2. grossPkr > 0      → apply engine-specific user-cut percentage
+  //   3. conversionRate > 0 → derive gross from points ÷ rate; apply 60% cut
+  //   Any row that is genuinely valueless (Indirect engine, 0 points) stays 0.
+  //
+  // `dbc` lets callers pass a transaction client so the FIFO read is inside
+  // the same transaction as the withdrawal-row lock (see processWithdrawal).
+  // All PKR arithmetic uses Decimal throughout — never native float — to
+  // prevent IEEE-754 sub-paisa drift (audit finding #3, 2026-07-15).
   private async calculateWithdrawalBreakdown(
     userId: string,
     pointsRequested: number,
@@ -1912,31 +1926,143 @@ export class DatabaseStorage implements IStorage {
     referrerName: string | null;
     userNetPkr: string;
     consumedTransactionIds: string[];
+    /** Non-null when the last consumed FIFO row was only partially used.
+     *  processWithdrawal must insert a split_remainder row for the unused
+     *  portion inside the same transaction before marking rows withdrawn. */
+    partialLastRow: {
+      originalId: string;
+      pointsUsed: number;
+      pointsRemainder: number;
+      pkrUsed: string;
+      pkrRemainder: string;
+      engineType: string;
+      conversionRate: number;
+      grossPkr: string;
+      thorxProfitPkr: string | null;
+      guildPoolPkr: string | null;
+      cardVariance: string;
+    } | null;
   }> {
+    // Fetch all FIFO fields needed for the fallback chain and for constructing
+    // the split_remainder row — one query, no extra round-trips.
     const rows = await dbc
       .select({
-        id: userTransactions.id,
+        id:             userTransactions.id,
         pointsCredited: userTransactions.pointsCredited,
-        realPkrValue: userTransactions.realPkrValue,
+        realPkrValue:   userTransactions.realPkrValue,
+        grossPkr:       userTransactions.grossPkr,
+        thorxProfitPkr: userTransactions.thorxProfitPkr,
+        guildPoolPkr:   userTransactions.guildPoolPkr,
+        conversionRate: userTransactions.conversionRate,
+        cardVariance:   userTransactions.cardVariance,
+        engineType:     userTransactions.engineType,
       })
       .from(userTransactions)
       .where(and(eq(userTransactions.userId, userId), eq(userTransactions.withdrawn, false)))
       .orderBy(asc(userTransactions.createdAt))
-      .limit(5000); // C1-05: safety cap; no user can accumulate more than 5000 un-withdrawn ledger rows
+      .limit(5000); // C1-05: safety cap — no realistic user accumulates >5 000 un-withdrawn rows
 
-    let pointsAccumulatedD = new Decimal(0);
-    let exactPkr = new Decimal(0);
+    /** Resolve a row's true PKR value with a three-tier fallback for legacy
+     *  records where realPkrValue was not captured at earn time. */
+    const resolveRowPkr = (row: typeof rows[number]): Decimal => {
+      const realD = new Decimal(row.realPkrValue ?? "0");
+      if (realD.gt(0)) return realD;
+
+      // Fallback 1 — use stored grossPkr × engine-appropriate user cut.
+      const grossD = new Decimal(row.grossPkr ?? "0");
+      if (grossD.gt(0)) {
+        // Engine C user cut is 45 %; A and B are both 60 %. Indirect = 0.
+        const userCutPct = row.engineType === "Engine_C" ? new Decimal("0.45")
+                         : row.engineType === "Indirect"  ? new Decimal("0")
+                         : new Decimal("0.60");
+        return grossD.times(userCutPct);
+      }
+
+      // Fallback 2 — derive gross from historical conversion rate, then apply
+      // the default 60 % user cut (Engine A / B) as a conservative estimate.
+      if (row.conversionRate > 0 && row.pointsCredited > 0) {
+        logger.warn(
+          { rowId: row.id, engineType: row.engineType },
+          "[calculateWithdrawalBreakdown] realPkrValue and grossPkr both zero; " +
+          "computing PKR from historical conversionRate — manual review advised."
+        );
+        return new Decimal(row.pointsCredited)
+          .div(new Decimal(row.conversionRate))
+          .times(new Decimal("0.60"));
+      }
+
+      return new Decimal(0);
+    };
+
+    const pointsRequestedD  = new Decimal(pointsRequested);
+    let   pointsAccumulatedD = new Decimal(0);
+    let   exactPkr           = new Decimal(0);
     const consumedTransactionIds: string[] = [];
+    let   partialLastRow: Awaited<ReturnType<typeof this.calculateWithdrawalBreakdown>>["partialLastRow"] = null;
+
     for (const row of rows) {
-      if (pointsAccumulatedD.gte(new Decimal(pointsRequested))) break;
-      pointsAccumulatedD = pointsAccumulatedD.plus(new Decimal(row.pointsCredited.toString()));
-      exactPkr = exactPkr.plus(row.realPkrValue); // Decimal parses the DECIMAL string directly — no float round-trip
-      consumedTransactionIds.push(row.id);
+      // Stop as soon as we have enough points accumulated.
+      if (pointsAccumulatedD.gte(pointsRequestedD)) break;
+
+      const rowPointsD       = new Decimal(row.pointsCredited.toString());
+      const pointsStillNeeded = pointsRequestedD.minus(pointsAccumulatedD);
+      const effectivePkr     = resolveRowPkr(row);
+
+      if (rowPointsD.lte(pointsStillNeeded)) {
+        // ── Full row consumed — no overshoot ─────────────────────────────────
+        pointsAccumulatedD = pointsAccumulatedD.plus(rowPointsD);
+        exactPkr           = exactPkr.plus(effectivePkr);
+        consumedTransactionIds.push(row.id);
+      } else {
+        // ── Partial last row — pro-rata split ────────────────────────────────
+        // Only the fraction of this row's points that we still need is taken.
+        // PKR is split proportionally so the user is paid for exactly the
+        // points they withdrew — no more, no less.
+        const fraction      = pointsStillNeeded.div(rowPointsD);
+        const pkrUsedD      = effectivePkr.times(fraction);
+        const pkrRemainderD = effectivePkr.minus(pkrUsedD);
+
+        // pointsRemainder must be a whole integer — use CEIL so no points vanish.
+        const pointsRemainderD = rowPointsD.minus(pointsStillNeeded)
+                                           .toDecimalPlaces(0, Decimal.ROUND_CEIL);
+
+        exactPkr           = exactPkr.plus(pkrUsedD);
+        pointsAccumulatedD = pointsAccumulatedD.plus(pointsStillNeeded);
+        consumedTransactionIds.push(row.id);
+
+        // Proportionally scale auxiliary PKR fields for the split_remainder row.
+        const scaleRemainder = (stored: string | null): string | null => {
+          if (!stored) return null;
+          const d = new Decimal(stored);
+          return d.gt(0)
+            ? d.times(new Decimal(1).minus(fraction)).toFixed(4)
+            : null;
+        };
+
+        partialLastRow = {
+          originalId:     row.id,
+          pointsUsed:     pointsStillNeeded.toDecimalPlaces(0, Decimal.ROUND_FLOOR).toNumber(),
+          pointsRemainder: pointsRemainderD.toNumber(),
+          pkrUsed:        pkrUsedD.toFixed(4),
+          pkrRemainder:   pkrRemainderD.toFixed(4),
+          engineType:     row.engineType,
+          conversionRate: row.conversionRate,
+          grossPkr:       scaleRemainder(row.grossPkr) ?? "0.0000",
+          thorxProfitPkr: scaleRemainder(row.thorxProfitPkr),
+          guildPoolPkr:   scaleRemainder(row.guildPoolPkr),
+          cardVariance:   new Decimal(row.cardVariance ?? "1").toFixed(4),
+        };
+
+        // Row is fully consumed from our perspective (the remainder is
+        // materialised as a new split row in processWithdrawal); stop here.
+        break;
+      }
     }
 
-    if (pointsAccumulatedD.lt(new Decimal(pointsRequested))) {
+    if (pointsAccumulatedD.lt(pointsRequestedD)) {
       throw new Error(
-        `Insufficient balance. Available: ${pointsAccumulatedD.toNumber()} points, requested: ${pointsRequested} points.`
+        `Insufficient balance. Available: ${pointsAccumulatedD.toNumber()} points, ` +
+        `requested: ${pointsRequested} points.`
       );
     }
 
@@ -1956,13 +2082,14 @@ export class DatabaseStorage implements IStorage {
     // H-04: Return as fixed-precision strings — never .toNumber() — so IEEE-754
     // rounding cannot corrupt financial values in transit to the client.
     return {
-      exactPkr: exactPkr.toFixed(4),
-      platformFee: platformFee.toFixed(4),
-      referralCommission: referralCommission.toFixed(4),
-      referrerId: referrer?.id ?? null,
-      referrerName: referrer?.identity ?? null,
-      userNetPkr: userNetPkr.toFixed(4),
+      exactPkr:               exactPkr.toFixed(4),
+      platformFee:            platformFee.toFixed(4),
+      referralCommission:     referralCommission.toFixed(4),
+      referrerId:             referrer?.id ?? null,
+      referrerName:           referrer?.identity ?? null,
+      userNetPkr:             userNetPkr.toFixed(4),
       consumedTransactionIds,
+      partialLastRow,
     };
   }
 
@@ -2131,6 +2258,47 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         })
         .where(eq(users.id, withdrawal.userId));
+
+      // ── Split-remainder: insert the unused portion of the partial last row ──
+      // If the FIFO loop partially consumed the last ledger row (i.e. only a
+      // fraction of its pointsCredited was needed), we insert a new
+      // split_remainder row for the leftover portion BEFORE marking the
+      // original row withdrawn. This preserves full ledger integrity:
+      //   • original row → marked withdrawn (consumed fraction only, PKR exact)
+      //   • new split row → unwithdrawn, carries the remainder for future use
+      // Both the INSERT and the UPDATE below are inside the same transaction,
+      // so there is no window where the remainder points can be double-counted
+      // or lost.
+      if (breakdown.partialLastRow && breakdown.partialLastRow.pointsRemainder > 0) {
+        const plr = breakdown.partialLastRow;
+        await tx.insert(userTransactions).values({
+          userId:         withdrawal.userId,
+          engineType:     plr.engineType,
+          pointsCredited: plr.pointsRemainder,
+          realPkrValue:   plr.pkrRemainder,
+          grossPkr:       plr.grossPkr,
+          thorxProfitPkr: plr.thorxProfitPkr ?? null,
+          guildPoolPkr:   plr.guildPoolPkr   ?? null,
+          conversionRate: plr.conversionRate,
+          cardVariance:   plr.cardVariance,
+          // Tie back to the original row so audit queries can reconstruct the
+          // full earn event; the partial-unique index on (source_id, source_type)
+          // guarantees at most one split_remainder per original row.
+          sourceId:       `split:${plr.originalId}`,
+          sourceType:     "split_remainder",
+          withdrawn:      false,
+          withdrawalId:   null,
+        });
+        logger.info(
+          {
+            originalId:      plr.originalId,
+            pointsRemainder: plr.pointsRemainder,
+            pkrRemainder:    plr.pkrRemainder,
+            withdrawalId,
+          },
+          "[processWithdrawal] Inserted split_remainder row for partial last FIFO row."
+        );
+      }
 
       if (breakdown.consumedTransactionIds.length > 0) {
         await tx

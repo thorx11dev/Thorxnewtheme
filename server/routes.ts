@@ -349,7 +349,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ttl: sessionTtl,
       pruneSessionInterval: 60 * 60,
     }),
-    secret: sessionSecret,
+    // SESSION_SECRET must be set in production (enforced above with a throw).
+    // In development, fall back to a stable process-lifetime random value so
+    // sessions survive hot-reloads without requiring the env var locally.
+    secret: sessionSecret ?? (() => {
+      const dev = (globalThis as any).__devSessionSecret ??=
+        require("crypto").randomBytes(32).toString("hex");
+      return dev;
+    })(),
     resave: false,
     saveUninitialized: false,
     rolling: true,

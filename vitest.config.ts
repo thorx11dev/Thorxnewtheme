@@ -1,6 +1,13 @@
 import { defineConfig } from "vitest/config";
+import path from "path";
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@shared": path.resolve(__dirname, "shared"),
+      "@": path.resolve(__dirname, "client/src"),
+    },
+  },
   test: {
     // Run test files inside server/__tests__/ or any *.test.ts / *.spec.ts
     include: ["server/__tests__/**/*.test.ts", "**/*.test.ts", "**/*.spec.ts"],
