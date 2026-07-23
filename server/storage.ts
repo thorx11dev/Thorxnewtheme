@@ -2217,6 +2217,17 @@ export class DatabaseStorage implements IStorage {
         .where(eq(withdrawals.id, withdrawalId))
         .returning();
 
+      // Audit log written inside the transaction — atomically consistent with the
+      // status update. The route handler writes a second log for belt-and-suspenders
+      // visibility, but this one is the authoritative record even if the route fails.
+      await tx.insert(auditLogs).values({
+        adminId,
+        action: "WITHDRAWAL_REJECTED",
+        targetType: "withdrawal",
+        targetId: withdrawalId,
+        details: { status: "rejected", amount: updatedWithdrawal.amount, beneficiary: updatedWithdrawal.userId, rejectionReason: reason },
+      });
+
       return updatedWithdrawal;
     });
   }

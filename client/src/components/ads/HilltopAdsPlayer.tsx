@@ -51,8 +51,6 @@ export function WaterfallAdPlayer({ onComplete, adFormat = "video" }: WaterfallA
   const loadAdForNetwork = useCallback(async (network: AdNetwork) => {
     try {
       setIsLoading(true);
-      if (import.meta.env.DEV) console.log(`[Waterfall] Loading ad from: ${network.name} (Zone: ${network.zoneId})`);
-      
       // Generic anti-adblock fetcher
       const response = await apiRequest("GET", `/api/hilltopads/anti-adblock/${network.zoneId}`);
       const data = await response.json();

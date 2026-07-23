@@ -587,6 +587,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateUser(id, { isActive: false } as any);
         // Immediately close any active WS connections for this user (Finding 1-F)
         closeUserSockets(id, 4003, "Account suspended");
+        // Audit log — required for zero-trust accountability on destructive actions
+        const adminId = getThorxPrincipalId(req) as string;
+        if (adminId) {
+          await storage.createAuditLog({
+            adminId,
+            action: "USER_SUSPENDED",
+            targetType: "user",
+            targetId: id,
+            details: { email: user.email, role: user.role, previousIsActive: user.isActive },
+            ipAddress: req.ip,
+          });
+        }
       } else if (action === "adjust_balance" && payload && payload.amount !== undefined) {
         // Route through adjustUserBalance so every balance change creates an audit log (Finding 1-D)
         const amount = new Decimal(String(payload.amount));
