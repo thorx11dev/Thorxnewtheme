@@ -352,6 +352,8 @@ export const dailyTasks = pgTable("daily_tasks", {
   secretCode: text("secret_code"), // Code required to pass verification
   instructions: text("instructions"), // How to do the task
   targetRank: text("target_rank").default("E-Rank"), // minimum rank tier to see it (E-Rank..S-Rank)
+  // Engine B Difficulty System: Easy=All, Medium=D+, Hard=C+, Elite=A+
+  difficulty: text("difficulty").default("Easy"), // 'Easy' | 'Medium' | 'Hard' | 'Elite'
   isActive: boolean("is_active").default(true),
   isMandatory: boolean("is_mandatory").default(false), // controls payout access
   // THORX v3 (spec D.5 analogue for daily_tasks): Engine B CPA tasks vs indirect social tasks
@@ -363,6 +365,7 @@ export const dailyTasks = pgTable("daily_tasks", {
   index("daily_tasks_is_active_idx").on(table.isActive),
   index("daily_tasks_target_rank_idx").on(table.targetRank),
   index("daily_tasks_target_rank_is_active_idx").on(table.targetRank, table.isActive), // H-10: task-by-rank+active queries
+  index("daily_tasks_difficulty_idx").on(table.difficulty),
 ]);
 export type LeaderboardCache = typeof leaderboardCache.$inferSelect;
 export type InsertLeaderboardCache = typeof leaderboardCache.$inferInsert;
