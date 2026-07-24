@@ -80,7 +80,7 @@ db.transaction(async (tx) => {
 3. `users.txPointsBalance += pointsCredited`
 4. `users.totalEarnings += userPkrShare`
 5. `users.availableBalance += userPkrShare`
-6. PS award: **+10 PS** (ya `PS_ENGINE_A_REWARD` config value)
+6. PS award: **+5 PS** (default `PS_ENGINE_A_REWARD` config value — seeded as 5 in `storage.ts` line 581; configurable via admin)
 7. Streak update, rank tier check
 
 **Step 6 — Response**
@@ -96,17 +96,25 @@ db.transaction(async (tx) => {
 ### User Ko Kya Milta Hai?
 - **TX-Points** (display, gamification ke liye)
 - **Real PKR** balance (`availableBalance`) — withdrawal ke waqt use hota hai
-- **+10 PS** — rank progression ke liye
-- **Streak update** — daily streak maintain hota hai
+- **+5 PS** (default `PS_ENGINE_A_REWARD`) — rank progression ke liye
+- **Streak update** — agar pehla daily action hai toh streak PS bhi milta hai (Day 1: +5, Day 2: +10, Day 3+: +20)
 
 ### Idempotency (Double-credit Protection)
 - `ad_views` table pe unique index + `uniq_user_transactions_source` on `(source_id, source_type)` — same ad view ID dusri baar submit hoe toh DB automatically reject kar deta hai
 
 ### Ad Inventory Kahan Configure Hota Hai?
 - Admin panel se `AD_INVENTORY_JSON` system_config key update karein
-- Format: `[{ "id": "hilltop1", "reward": "0.02", "duration": 30, "type": "video" }]`
 - 60 second cache — update immediately effective nahi hota, max 60s baad lagta hai
-- `hilltop_fallback` hamesha automatically inject hota hai (0.02 PKR, 5s)
+- `hilltop_fallback` hamesha automatically inject hota hai — agar client ka `adId` kisi entry se match na hoe
+
+**Database mein seeded default values (`storage.ts` lines 630–636):**
+| ID | Reward (grossPkr) | Duration | Type |
+|----|------------------|----------|------|
+| `video_standard` | 0.25 PKR | 30s | video |
+| `video_premium` | 0.50 PKR | 60s | video |
+| `banner_standard` | 0.05 PKR | 5s | banner |
+| `ad_004` | 0.10 PKR | 10s | pop_under |
+| `hilltop_fallback` | 0.02 PKR | 5s | network (runtime fallback) |
 
 ---
 
@@ -274,9 +282,28 @@ broadcastGuildEvent(guildId, 'guild.weekly_points', {
 - WebSocket broadcast: `broadcastGuildMessage(guildId, payload)`
 
 ### Weekly Bonus Pool Distribution
-- Har Sunday guild reset job run hoti hai
-- Pool distribute hota hai: **30% captain, 70% members** (proportional to `weeklyPointsContributed`)
-- GPS reset ho jaata hai, `currentWeeklyPoints` zero hota hai
+Guild reset job (`server/modules/guild-reset.ts`) idempotent periodic sweep karta hai — har guild ka previous UTC week (Mon–Sun) exactly ek baar resolve karta hai.
+
+**Condition (`wasSuccessful`):**
+```javascript
+const wasSuccessful = guild.currentWeeklyPoints >= guild.weeklyTarget && poolD.greaterThan(0)
+```
+
+**Agar target ACHIEVE hua:**
+- `captainShare = pool × 30%` → captain ke `balanceCashPkr` mein credit
+- `memberPool = pool − captainShare` → members mein proportional distribution (unka `weeklyPointsContributed` ke ratio se), `balanceCashPkr` mein credit
+- Rounding dust (paisa) THORX treasury mein jata hai
+- `guild_weekly_snapshots` row: `poolDisposition = 'distributed'`
+
+**Agar target MISS hua:**
+- Pool **VOID** ho jata hai — kisi ko kuch nahi milta
+- `guild_weekly_snapshots` row: `poolDisposition = 'voided'`
+- Live feed event: `"Guild missed target. Pool of Rs.X voided."`
+
+**Har case mein reset:**
+- `guilds.weeklyBonusPool = '0.0000'`
+- `guilds.currentWeeklyPoints = 0`
+- `guild_members.weeklyPointsContributed = 0`, `isMvp = false`
 
 ### Admin Weekly Task Management
 - `GET /api/admin/weekly-tasks` — list (requireTeamRole)
@@ -303,12 +330,14 @@ Engine Indirect woh system hai jismein **referrer user (jo doosre ko refer karta
 
 ### Earn Phase (Engine Indirect ke liye kuch nahi hota)
 ```javascript
-// recordEarnEvent mein:
-// 'Indirect' — no PKR payout, only PS
-// userPkrShare stays 0, thorxProfit stays 0
+// recordEarnEvent mein (storage.ts lines 991, 1098–1101):
+// 'Indirect' — userPkrShare = 0, thorxProfit = 0
+// awardTaskPS NOT called (guarded by: if (engineType !== "Indirect"))
+// processStreak IS called (runs for all engines)
 ```
 - Jab koi indirect task complete hota hai → user ko **0 PKR** milta hai
-- Sirf PS awarded hota hai (non-Indirect cheez)
+- **Task PS bhi nahi milta** — `awardTaskPS()` sirf Engine A/B/C ke liye call hoti hai
+- Lekin **streak PS zaroor milta hai** — `processStreak()` sab engines ke liye run hoti hai (Day 1: +5, Day 2: +10, Day 3+: +20 PS)
 - Referral commission immediately credit nahi hoti
 
 ### Commission Trigger (Withdrawal Approval Pe)
@@ -684,10 +713,10 @@ Step 7: PS award + streak update + rank tier check
 
 | Engine | Trigger | User PKR % | Thorx % | Guild % | PS Award | Key Files |
 |--------|---------|------------|---------|---------|----------|-----------|
-| **Engine A** | Ad Watch | 60% | 40% | — | +10 | routes.ts:1631, HilltopAdsPlayer.tsx |
-| **Engine B** | CPA Task Verify | 60% | 40% | — | +25 | routes.ts:3854 |
-| **Engine C** | Weekly Guild Task | 45% | 20% | 35% | +15 | routes.ts:1289 |
-| **Indirect** | Referral (on withdrawal) | 0% now, commission later | — | — | PS only | storage.ts:processWithdrawal |
+| **Engine A** | Ad Watch | 60% | 40% | — | +5 task PS (default `PS_ENGINE_A_REWARD`) | routes.ts:1631, HilltopAdsPlayer.tsx |
+| **Engine B** | CPA Task Verify | 60% | 40% | — | +25 task PS (default `PS_ENGINE_B_REWARD`) | routes.ts:3854 |
+| **Engine C** | Weekly Guild Task | 45% | 20% | 35% | +15 task PS (default `PS_ENGINE_C_REWARD`) | routes.ts:1289 |
+| **Indirect** | Referral (on withdrawal) | 0% PKR; referrer gets ~7.5% of referred user's withdrawal | — | — | No task PS; streak PS only | storage.ts:processWithdrawal |
 | **HilltopAds Service** | Scheduler (24h) + Manual | N/A | N/A | N/A | N/A | hilltopads-service.ts |
 | **HilltopAds Admin** | Admin action | N/A | N/A | N/A | N/A | HilltopAdsAdmin.tsx |
 | **Ad Completion Tracker** | Client SDK (3s) | 0% (log only) | — | — | — | routes.ts:4079 |
