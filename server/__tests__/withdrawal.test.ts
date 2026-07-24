@@ -183,7 +183,7 @@ describe("Withdrawal lifecycle", () => {
   it("rejects re-approving an already-completed withdrawal", async () => {
     await expect(
       storage.updateWithdrawalStatus(withdrawalId, "completed", founderUserId)
-    ).rejects.toThrow(/not pending/i);
+    ).rejects.toThrow(/not in a processable state|not pending/i);
   });
 });
 

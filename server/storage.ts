@@ -2139,10 +2139,20 @@ export class DatabaseStorage implements IStorage {
         // S-Rank status from the locked row — no second DB trip needed.
         const initialStatus: string = lockedUser.userRankTier === 'S-Rank' ? 'approved' : 'pending';
 
+        // Block duplicate withdrawals for both 'pending' (normal) and 'approved'
+        // (S-Rank fast-track). Without checking 'approved', two concurrent S-Rank
+        // requests could both pass this check (since neither is 'pending') and
+        // both insert, creating duplicate approved withdrawals. The DB partial
+        // indexes uniq_withdrawals_one_pending_per_user and
+        // uniq_withdrawals_one_approved_per_user are the backstop, but the
+        // application-level check gives a user-friendly error first.
         const [pending] = await tx
           .select({ id: withdrawals.id })
           .from(withdrawals)
-          .where(and(eq(withdrawals.userId, insertWithdrawal.userId), eq(withdrawals.status, "pending")))
+          .where(and(
+            eq(withdrawals.userId, insertWithdrawal.userId),
+            sql`${withdrawals.status} IN ('pending', 'approved')`,
+          ))
           .limit(1);
         if (pending) {
           throw new Error("A pending payout request already exists for this account.");
@@ -2221,7 +2231,13 @@ export class DatabaseStorage implements IStorage {
         .for("update");
 
       if (!withdrawal) throw new Error("Withdrawal not found");
-      if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending");
+      // Accept both 'pending' (normal flow) and 'approved' (S-Rank fast-track —
+      // createWithdrawal sets status='approved' for S-Rank users to skip the admin
+      // approval queue, but the financial settlement — FIFO ledger consumption,
+      // balance debit, referral commission — still happens here at processing time).
+      if (withdrawal.status !== "pending" && withdrawal.status !== "approved") {
+        throw new Error("Withdrawal is not in a processable state");
+      }
 
       withdrawalUserId = withdrawal.userId;
       // F-02: Use Decimal to parse the stored amount — parseInt silently truncates
@@ -2347,7 +2363,7 @@ export class DatabaseStorage implements IStorage {
 
       await tx.insert(auditLogs).values({
         adminId,
-        action: "WITHDRAWAL_APPROVED",
+        action: "WITHDRAWAL_COMPLETED",
         targetType: "withdrawal",
         targetId: withdrawalId,
         details: { ...breakdown, reason: `Approved payout of Rs.${userNetPkrD.toFixed(2)}` } as any,
@@ -3734,13 +3750,16 @@ export class DatabaseStorage implements IStorage {
         });
       }
 
-      // If txPointsDelta is provided, insert a user_transactions row to keep
-      // the TX-Points visible ledger in sync with the PKR adjustment (Spec §5.2).
+      // If txPointsDelta is provided, insert a user_transactions row AND update the
+      // txPointsBalance counter so the visible balance stays in sync with the ledger.
+      // Previously only the ledger row was inserted without updating txPointsBalance,
+      // causing adminValidateLedger to report inconsistency after any admin TX-Point
+      // adjustment (audit finding 2026-07-24).
       if (txPointsDelta !== undefined && txPointsDelta !== 0) {
         await tx.insert(userTransactions).values({
           userId,
           engineType: 'Manual' as any,
-          pointsCredited: txPointsDelta,
+          pointsCredited: Math.abs(txPointsDelta),
           realPkrValue: new Decimal(amount).abs().toFixed(4),
           grossPkr: new Decimal(amount).abs().toFixed(4),
           thorxProfitPkr: '0.0000',
@@ -3751,6 +3770,10 @@ export class DatabaseStorage implements IStorage {
           sourceType: 'manual_adjustment' as any,
           withdrawn: false,
         });
+        // Keep txPointsBalance in sync — use SQL arithmetic to avoid race conditions.
+        await tx.update(users)
+          .set({ txPointsBalance: sql`${users.txPointsBalance} + ${txPointsDelta}` })
+          .where(eq(users.id, userId));
       }
 
       await tx.insert(auditLogs).values({
