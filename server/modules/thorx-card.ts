@@ -37,7 +37,9 @@ export function drawThorxCard(params: CardDrawParams): CardResult {
   } = params;
 
   // Rank bonus adjustments to variance range — higher ranks get a wider
-  // (and better-skewed) band, purely on the display/points side.
+  // (and better-skewed) band, purely on the display/points side.  The caller
+  // may already have resolved the configured bounds, so this module is the
+  // single owner of applying the configured rank bonus.
   let min = varianceMin;
   let max = varianceMax;
   if (userRankTier === "A-Rank") {

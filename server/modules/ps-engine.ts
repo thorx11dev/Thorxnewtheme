@@ -49,7 +49,10 @@ export async function awardTaskPS(userId: string, engineType: "A" | "B" | "C", t
   await dbc.update(users)
     .set({ performanceScore: drizzleSql`${users.performanceScore} + ${reward}` })
     .where(eq(users.id, userId));
-  await checkAndUpdateRankTier(userId, tx);
+  // When called inside recordEarnEvent's transaction, the caller performs one
+  // final rank check after all PS changes are applied. Keep the standalone
+  // helper behavior for callers that do not provide a transaction.
+  if (!tx) await checkAndUpdateRankTier(userId);
 }
 
 // Process the daily login/activity streak. Safe to call multiple times a day
@@ -81,7 +84,9 @@ export async function processStreak(userId: string, tx?: DbClient): Promise<{ st
     })
     .where(eq(users.id, userId));
 
-  await checkAndUpdateRankTier(userId, tx);
+  // See awardTaskPS: defer the single rank check to the earn transaction when
+  // a transaction client is supplied.
+  if (!tx) await checkAndUpdateRankTier(userId);
   return { streakDays: newStreakDays, psAwarded };
 }
 

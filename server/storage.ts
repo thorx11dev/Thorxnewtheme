@@ -993,16 +993,19 @@ export class DatabaseStorage implements IStorage {
     // Step 2: Thorx Card draw (if the user has a PKR share to convert).
     // Pass the Decimal as toFixed(4) string — drawThorxCard accepts number | string
     // so we never convert to IEEE 754 float (F-02 audit fix).
-    // Apply rank-tier bonus to variance bounds (A/S ranks see wider swings).
+    // drawThorxCard owns the rank-tier adjustment. Pass the base bounds and
+    // configured bonus values exactly once; applying the bonus here as well
+    // would widen A/S variance ranges twice.
     let cardResult = { pointsCredited: 0, realPkrValue: "0.0000", cardVariance: 1.0, targetPoints: 0 };
     if (userPkrShareD.gt(0)) {
-      const rankBonus = user.userRankTier === "S-Rank" ? sRankBonusPct / 100 : user.userRankTier === "A-Rank" ? aRankBonusPct / 100 : 0;
       cardResult = drawThorxCard({
         userPkrShare: userPkrShareD.toFixed(4),
         conversionRate,
         userRankTier: user.userRankTier,
-        varianceMin: Math.max(0, baseVarianceMin - rankBonus),
-        varianceMax: baseVarianceMax + rankBonus,
+        varianceMin: baseVarianceMin,
+        varianceMax: baseVarianceMax,
+        aRankBonusPct,
+        sRankBonusPct,
       });
     }
 
@@ -1062,10 +1065,9 @@ export class DatabaseStorage implements IStorage {
           .set({
             txPointsBalance: sql`${users.txPointsBalance} + ${cardResult.pointsCredited}`,
             totalEarnings:   sql`${users.totalEarnings}   + ${userPkrShareD.toFixed(2)}`,
-            // F-3 fix: credit availableBalance so the user's withdrawable PKR
-            // balance stays in sync with every earn event recorded via the v3
-            // ledger pipeline. Without this, availableBalance drifts stale and
-            // the displayed balance never reflects real earned PKR.
+            // Credit the exact historical user share. The withdrawal fee is
+            // charged at approval, so the user's cash balance is debited by
+            // the documented net amount there.
             availableBalance: sql`${users.availableBalance} + ${userPkrShareD.toFixed(4)}`,
             lastActiveAt: new Date(),
           })
@@ -2259,12 +2261,11 @@ export class DatabaseStorage implements IStorage {
         .update(users)
         .set({
           txPointsBalance:  sql`${users.txPointsBalance}  - ${pointsRequested}`,
+          // The specification defines both lifetime withdrawn and available
+          // balance in terms of the net amount paid to the user. The platform
+          // fee is recorded separately on the withdrawal row.
           totalWithdrawn:   sql`${users.totalWithdrawn}   + ${userNetPkrD.toFixed(4)}`,
-          // F-4 fix: debit availableBalance atomically with the TX-Point debit
-          // so the user's displayed PKR balance stays accurate after withdrawal.
-          // exactPkr is the full gross withdrawn; userNetPkr is after platform fee.
-          // We debit the exact gross amount (same PKR that was credited per earn event).
-          availableBalance: sql`${users.availableBalance} - ${exactPkrD.toFixed(4)}`,
+          availableBalance: sql`${users.availableBalance} - ${userNetPkrD.toFixed(4)}`,
           updatedAt: new Date(),
         })
         .where(eq(users.id, withdrawal.userId));
