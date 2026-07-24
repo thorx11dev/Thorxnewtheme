@@ -2,7 +2,11 @@
 //
 // Distributes each active guild's weekly bonus pool (30% captain / 70% members,
 // proportional to weeklyPointsContributed) if the guild hit its weeklyTarget,
-// or voids the pool if it did not. Then resets the guild's weekly counters.
+// adding a GUILD_TREASURY_BONUS_PCT bonus on top when target is fully achieved.
+//
+// If target is missed: pool is distributed proportionally based on achievement %.
+// (e.g. 80% of target → 80% of pool distributed; remaining 20% burned to treasury.)
+// NO treasury bonus is awarded on a miss.
 //
 // Design note: the spec's pseudocode assumes an exact "Sunday 23:59 PKT" cron
 // firing once. This codebase intentionally avoids exact-time cron scheduling
@@ -24,8 +28,6 @@ import { storage } from "../storage";
 import { logger } from "../lib/logger";
 
 // Fixed UTC week boundary: Monday 00:00:00 UTC through Sunday 23:59:59.999 UTC.
-// Mirrors the private getUtcWeekBounds() in storage.ts (kept local here to avoid
-// a cross-module export just for this one helper).
 function getUtcWeekBounds(reference: Date): { weekStart: Date; weekEnd: Date } {
   const d = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), reference.getUTCDate()));
   const day = d.getUTCDay(); // 0 = Sunday .. 6 = Saturday
@@ -43,9 +45,77 @@ function toDateOnly(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Distribute a pool to captain (30%) + members (proportional to contribution). Returns total distributed. */
+async function distributePool(
+  guild: typeof guilds.$inferSelect,
+  poolToDistributeD: Decimal,
+  label: string,
+): Promise<Decimal> {
+  if (poolToDistributeD.lte(0)) return new Decimal(0);
+
+  const captainShareD = poolToDistributeD.mul("0.30").toDecimalPlaces(2, Decimal.ROUND_DOWN);
+  const memberPoolD = poolToDistributeD.sub(captainShareD);
+
+  // Captain
+  await db.update(users)
+    .set({ balanceCashPkr: sql`${users.balanceCashPkr} + ${captainShareD.toFixed(2)}` })
+    .where(eq(users.id, guild.captainId));
+  await storage.createNotification({
+    userId: guild.captainId,
+    title: "Sunday Guild Bonus!",
+    message: `${label} — Your captain share: Rs.${captainShareD.toFixed(2)}`,
+    type: "financial",
+  });
+
+  let totalDistributedD = captainShareD;
+
+  // Members
+  const members = await db.select().from(guildMembers)
+    .where(and(eq(guildMembers.guildId, guild.id), eq(guildMembers.status, "active")));
+  const totalContrib = members.reduce((s, m) => s + m.weeklyPointsContributed, 0);
+
+  if (totalContrib > 0 && memberPoolD.gt(0)) {
+    const memberShares = members
+      .filter(m => m.weeklyPointsContributed > 0)
+      .map(m => ({
+        userId: m.userId,
+        shareD: memberPoolD
+          .mul(new Decimal(m.weeklyPointsContributed).div(totalContrib))
+          .toDecimalPlaces(2, Decimal.ROUND_DOWN),
+      }))
+      .filter(({ shareD }) => shareD.greaterThan(0));
+
+    await Promise.all(
+      memberShares.map(({ userId, shareD }) =>
+        db.update(users)
+          .set({ balanceCashPkr: sql`${users.balanceCashPkr} + ${shareD.toFixed(2)}` })
+          .where(eq(users.id, userId))
+      )
+    );
+    await Promise.all(
+      memberShares.map(({ userId, shareD }) =>
+        storage.createNotification({
+          userId,
+          title: "Sunday Guild Bonus!",
+          message: `${label} — Your team share: Rs.${shareD.toFixed(2)}`,
+          type: "financial",
+        })
+      )
+    );
+
+    totalDistributedD = memberShares.reduce(
+      (acc, { shareD }) => acc.add(shareD),
+      totalDistributedD,
+    );
+  }
+
+  return totalDistributedD;
+}
+
 export interface WeeklyGuildResetSummary {
   guildsProcessed: number;
   distributed: number;
+  partial: number;
   voided: number;
   skipped: number;
 }
@@ -60,9 +130,15 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
   const prevWeekStart = new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000);
   const prevWeekEnd = new Date(currentWeekStart.getTime() - 1);
 
+  // Fetch config once — shared across all guilds in this run
+  const [treasuryBonusPct] = await Promise.all([
+    storage.getSystemConfigValue<number>("GUILD_TREASURY_BONUS_PCT", 20),
+  ]);
+
   const activeGuilds = await db.select().from(guilds).where(eq(guilds.status, "active")).limit(500);
 
   let distributed = 0;
+  let partial = 0;
   let voided = 0;
   let skipped = 0;
 
@@ -78,86 +154,45 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
       continue;
     }
 
-    // T-1 audit fix: all PKR arithmetic uses Decimal.js — no native float math.
     const poolD = new Decimal(guild.weeklyBonusPool ?? "0");
     const achieved = guild.currentWeeklyPoints;
     const target = guild.weeklyTarget;
-    const wasSuccessful = achieved >= target && poolD.greaterThan(0);
+
+    // Achievement ratio (capped at 100%)
+    const achievementRatio = target > 0 ? Math.min(achieved / target, 1) : 0;
+    const achievementPct = new Decimal(achievementRatio * 100).toDecimalPlaces(2);
+    const wasSuccessful = achievementRatio >= 1 && poolD.greaterThan(0);
 
     let captainShareD = new Decimal(0);
-    let memberPoolD = new Decimal(0);
+    let memberShareD = new Decimal(0);
+    let treasuryBonusD = new Decimal(0);
     let totalDistributedD = new Decimal(0);
+    let poolDisposition: string;
 
     if (wasSuccessful) {
-      // ROUND_DOWN so we never credit more than the pool
-      captainShareD = poolD.mul("0.30").toDecimalPlaces(2, Decimal.ROUND_DOWN);
-      memberPoolD = poolD.sub(captainShareD); // exact remainder, no rounding
+      // ── TARGET HIT: Full pool + Treasury Bonus (Q2 + Q3) ─────────────────
+      // Treasury bonus = pool × GUILD_TREASURY_BONUS_PCT
+      // THORX subsidises successful guilds from platform revenue.
+      treasuryBonusD = poolD
+        .mul(new Decimal(treasuryBonusPct).div(100))
+        .toDecimalPlaces(2, Decimal.ROUND_DOWN);
+      const totalPoolD = poolD.plus(treasuryBonusD);
 
-      await db.update(users)
-        .set({ balanceCashPkr: sql`${users.balanceCashPkr} + ${captainShareD.toFixed(2)}` })
-        .where(eq(users.id, guild.captainId));
-      await storage.createNotification({
-        userId: guild.captainId,
-        title: "Sunday Guild Bonus!",
-        message: `Your captain share: Rs.${captainShareD.toFixed(2)}`,
-        type: "financial",
-      });
-      totalDistributedD = captainShareD;
+      logger.info(
+        { guildId: guild.id, pool: poolD.toFixed(2), treasuryBonus: treasuryBonusD.toFixed(2), total: totalPoolD.toFixed(2) },
+        "[GuildReset] Target achieved — distributing pool + treasury bonus",
+      );
 
-      const members = await db.select().from(guildMembers)
-        .where(and(eq(guildMembers.guildId, guild.id), eq(guildMembers.status, "active")));
-      const totalContrib = members.reduce((s, m) => s + m.weeklyPointsContributed, 0);
+      totalDistributedD = await distributePool(guild, totalPoolD, "Target Achieved!");
+      captainShareD = totalPoolD.mul("0.30").toDecimalPlaces(2, Decimal.ROUND_DOWN);
+      memberShareD = totalPoolD.sub(captainShareD);
 
-      if (totalContrib > 0) {
-        // Pre-compute every member's share, then fan-out all DB writes concurrently
-        // (replaces the prior sequential await-per-member loop that could time-out
-        // for large guilds and serialised unnecessary DB round-trips).
-        const memberShares = members
-          .filter(m => m.weeklyPointsContributed > 0)
-          .map(m => ({
-            userId: m.userId,
-            shareD: memberPoolD
-              .mul(new Decimal(m.weeklyPointsContributed).div(totalContrib))
-              .toDecimalPlaces(2, Decimal.ROUND_DOWN),
-          }))
-          .filter(({ shareD }) => shareD.greaterThan(0));
-
-        await Promise.all(
-          memberShares.map(({ userId, shareD }) =>
-            db.update(users)
-              .set({ balanceCashPkr: sql`${users.balanceCashPkr} + ${shareD.toFixed(2)}` })
-              .where(eq(users.id, userId))
-          )
-        );
-
-        await Promise.all(
-          memberShares.map(({ userId, shareD }) =>
-            storage.createNotification({
-              userId,
-              title: "Sunday Guild Bonus!",
-              message: `Your team bonus: Rs.${shareD.toFixed(2)}`,
-              type: "financial",
-            })
-          )
-        );
-
-        totalDistributedD = memberShares.reduce(
-          (acc, { shareD }) => acc.add(shareD),
-          totalDistributedD,
-        );
-      }
-
-      // Rounding dust (paisa) credited to Thorx treasury — logged as platform profit.
-      const dustD = poolD.sub(totalDistributedD);
+      // Rounding dust → Thorx treasury (logged only)
+      const dustD = totalPoolD.sub(totalDistributedD);
       if (dustD.greaterThan(0)) {
         logger.info(
-          {
-            guildId: guild.id,
-            poolPkr: poolD.toFixed(4),
-            distributedPkr: totalDistributedD.toFixed(4),
-            dustPkr: dustD.toFixed(4),
-          },
-          "[GuildReset] Rounding dust credited to Thorx treasury."
+          { guildId: guild.id, dustPkr: dustD.toFixed(4) },
+          "[GuildReset] Rounding dust credited to Thorx treasury.",
         );
       }
 
@@ -165,21 +200,59 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
       await emitFeedEvent({
         type: "guild_target",
         guildId: guild.id,
-        displayMessage: `Guild '${guild.name}' hit 100%! Bonus Pool Rs.${poolD.toFixed(2)} distributed.`,
-        data: { wasSuccessful, pool: poolD.toNumber(), captainShare: captainShareD.toNumber(), memberPool: memberPoolD.toNumber() },
+        displayMessage: `Guild '${guild.name}' hit 100%! Pool Rs.${poolD.toFixed(2)} + Treasury Bonus Rs.${treasuryBonusD.toFixed(2)} = Rs.${totalPoolD.toFixed(2)} distributed.`,
+        data: { wasSuccessful: true, achievementPct: 100, pool: poolD.toNumber(), treasuryBonus: treasuryBonusD.toNumber(), totalPool: totalPoolD.toNumber() },
       });
+      poolDisposition = "distributed";
       distributed++;
-    } else {
+
+    } else if (poolD.greaterThan(0) && achievementRatio > 0) {
+      // ── TARGET MISSED WITH PARTIAL PROGRESS: Distribute achievementPct of pool (Q2) ──
+      // Achievement 80% → 80% of pool distributed, remaining 20% burned to treasury.
+      // NO treasury bonus on a miss.
+      const partialPoolD = poolD
+        .mul(new Decimal(achievementRatio))
+        .toDecimalPlaces(2, Decimal.ROUND_DOWN);
+      const burnedD = poolD.sub(partialPoolD);
+
+      logger.info(
+        { guildId: guild.id, achieved, target, achievementRatio: achievementRatio.toFixed(4), partialPool: partialPoolD.toFixed(2), burned: burnedD.toFixed(2) },
+        "[GuildReset] Target missed — partial distribution",
+      );
+
+      totalDistributedD = await distributePool(guild, partialPoolD, `Partial (${achievementPct.toFixed(0)}% achieved)`);
+      captainShareD = partialPoolD.mul("0.30").toDecimalPlaces(2, Decimal.ROUND_DOWN);
+      memberShareD = partialPoolD.sub(captainShareD);
+
+      if (burnedD.greaterThan(0)) {
+        logger.info(
+          { guildId: guild.id, burnedPkr: burnedD.toFixed(4) },
+          "[GuildReset] Unachieved pool portion burned to Thorx treasury.",
+        );
+      }
+
       await emitFeedEvent({
         type: "guild_target",
         guildId: guild.id,
-        displayMessage: `Guild '${guild.name}' missed target. Pool of Rs.${poolD.toFixed(2)} voided.`,
-        data: { wasSuccessful: false, pool: poolD.toNumber() },
+        displayMessage: `Guild '${guild.name}' reached ${achievementPct.toFixed(0)}% of target. Partial pool Rs.${partialPoolD.toFixed(2)} distributed (Rs.${burnedD.toFixed(2)} forfeited).`,
+        data: { wasSuccessful: false, achievementPct: achievementPct.toNumber(), pool: poolD.toNumber(), partialPool: partialPoolD.toNumber(), burned: burnedD.toNumber() },
       });
+      poolDisposition = "partial";
+      partial++;
+
+    } else {
+      // ── TARGET MISSED WITH ZERO PROGRESS OR EMPTY POOL ───────────────────
+      await emitFeedEvent({
+        type: "guild_target",
+        guildId: guild.id,
+        displayMessage: `Guild '${guild.name}' missed target with 0 progress. Pool Rs.${poolD.toFixed(2)} voided.`,
+        data: { wasSuccessful: false, achievementPct: 0, pool: poolD.toNumber() },
+      });
+      poolDisposition = "voided";
       voided++;
     }
 
-    // Snapshot (idempotent — unique on guildId+weekStart; skip if it somehow already exists)
+    // Snapshot (idempotent — unique on guildId+weekStart)
     const [existingSnapshot] = await db
       .select()
       .from(guildWeeklySnapshots)
@@ -193,9 +266,11 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
         achievedPoints: achieved,
         wasSuccessful,
         bonusPoolPkr: poolD.toFixed(4),
-        poolDisposition: wasSuccessful ? "distributed" : "voided",
-        captainShare: wasSuccessful ? captainShareD.toFixed(2) : "0.00",
-        membersShare: wasSuccessful ? memberPoolD.toFixed(2) : "0.00",
+        poolDisposition,
+        captainShare: captainShareD.toFixed(2),
+        membersShare: memberShareD.toFixed(2),
+        treasuryBonusPkr: treasuryBonusD.toFixed(4),
+        achievementPct: achievementPct.toFixed(2),
       });
     }
 
@@ -206,9 +281,9 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
         resolved: true,
         resolvedAt: new Date(),
         bonusPoolPkr: poolD.toFixed(4),
-        poolDisposition: wasSuccessful ? "distributed" : "voided",
-        captainSharePkr: wasSuccessful ? captainShareD.toFixed(2) : "0.00",
-        membersSharePkr: wasSuccessful ? memberPoolD.toFixed(2) : "0.00",
+        poolDisposition,
+        captainSharePkr: captainShareD.toFixed(2),
+        membersSharePkr: memberShareD.toFixed(2),
       }).where(eq(guildWeeklyCycles.id, existingCycle.id));
     } else {
       await db.insert(guildWeeklyCycles).values({
@@ -221,9 +296,9 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
         resolved: true,
         resolvedAt: new Date(),
         bonusPoolPkr: poolD.toFixed(4),
-        poolDisposition: wasSuccessful ? "distributed" : "voided",
-        captainSharePkr: wasSuccessful ? captainShareD.toFixed(2) : "0.00",
-        membersSharePkr: wasSuccessful ? memberPoolD.toFixed(2) : "0.00",
+        poolDisposition,
+        captainSharePkr: captainShareD.toFixed(2),
+        membersSharePkr: memberShareD.toFixed(2),
       });
     }
 
@@ -236,5 +311,5 @@ export async function runWeeklyGuildReset(): Promise<WeeklyGuildResetSummary> {
       .where(eq(guildMembers.guildId, guild.id));
   }
 
-  return { guildsProcessed: activeGuilds.length, distributed, voided, skipped };
+  return { guildsProcessed: activeGuilds.length, distributed, partial, voided, skipped };
 }

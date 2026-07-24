@@ -87,13 +87,13 @@ export async function verifyWebhook(
 
 // ─── HMAC Signature ───────────────────────────────────────────────────────────
 
-interface SigResult { ok: true } | { ok: false; reason: string };
+type SigResult = { ok: true } | { ok: false; reason: string };
 
 async function verifySignature(
   networkId: string,
   rawBody: string,
   received: string | undefined,
-): Promise<{ ok: boolean; reason?: string }> {
+): Promise<SigResult> {
   // Fetch per-network HMAC secret from system_config
   const secretsJson = await storage.getSystemConfigValue<string>(
     "WEBHOOK_SECRETS_JSON",
@@ -137,7 +137,7 @@ async function verifySignature(
 async function checkReplay(
   networkId: string,
   eventId: string,
-): Promise<{ ok: boolean; reason?: string }> {
+): Promise<SigResult> {
   const [existing] = await db
     .select({ id: webhookEvents.id })
     .from(webhookEvents)

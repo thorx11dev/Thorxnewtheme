@@ -116,11 +116,14 @@ import {
   referralCommissions,
   type ReferralCommission,
   type InsertReferralCommission,
+  referralEarnCommissions,
+  type ReferralEarnCommission,
   captainMessages,
   type CaptainMessage,
   type InsertCaptainMessage,
   activityFeed,
   type ActivityFeed,
+  economyState,
 } from "@shared/schema";
 import { drawThorxCard } from "./modules/thorx-card";
 import { awardTaskPS, processStreak } from "./modules/ps-engine";
@@ -140,6 +143,18 @@ import { encryptCredential, decryptCredential, isEncrypted } from "./utils/crede
 // `pkrDecimal.div(10).times(conversionRate)`, so effective rate = value/10.
 // Default 1000 → 100 TX-Points per Rs.1 PKR — matches spec §1.1 ("default 100").
 const DEFAULT_CONVERSION_RATE = 1000;
+
+// Rank reward multipliers — applied to TX-Points (gamification display) per earn event.
+// Higher ranks earn proportionally more points for the same gross PKR amount.
+// Config Q6: E=1.00x, D=1.10x, C=1.20x, B=1.35x, A=1.50x, S=1.75x
+const RANK_REWARD_MULTIPLIERS: Record<string, number> = {
+  "E-Rank": 1.00,
+  "D-Rank": 1.10,
+  "C-Rank": 1.20,
+  "B-Rank": 1.35,
+  "A-Rank": 1.50,
+  "S-Rank": 1.75,
+};
 
 // Fixed UTC week boundary: Monday 00:00:00 UTC through Sunday 23:59:59.999 UTC.
 // Not user-configurable in v1 (see design notes in shared/schema.ts).
@@ -620,6 +635,13 @@ export class DatabaseStorage implements IStorage {
       // ── Guild Reset ───────────────────────────────────────────────────────
       { key: "GUILD_CAPTAIN_POOL_SHARE", value: 30, description: "% of the Sunday bonus pool paid to the captain" },
       { key: "GUILD_MEMBER_POOL_SHARE", value: 70, description: "% of the Sunday bonus pool split among members proportionally" },
+      { key: "GUILD_TREASURY_BONUS_PCT", value: 20, description: "Treasury bonus added on top of the pool when guild hits 100% target (e.g. 20 = +20% bonus from THORX treasury)" },
+      // ── Referral Earn Commission ─────────────────────────────────────────
+      { key: "REFERRAL_EARN_PCT", value: 1, description: "% of gross PKR credited to direct referrer on every earn event (Engine A/B/C). Separate from the withdrawal-based referral fee." },
+      // ── Dynamic Economy Multiplier ────────────────────────────────────────
+      { key: "ECONOMY_MULTIPLIER_ENABLED", value: true, description: "Enable auto-computed economy multiplier based on platform revenue trends" },
+      { key: "ECONOMY_MULTIPLIER_MIN", value: 0.7, description: "Minimum economy multiplier (floor)" },
+      { key: "ECONOMY_MULTIPLIER_MAX", value: 1.5, description: "Maximum economy multiplier (ceiling)" },
       // ── Activity Feed ─────────────────────────────────────────────────────
       { key: "FEED_RETENTION_DAYS", value: 30, description: "Days to retain activity_feed rows" },
       // ── Ad Engine ─────────────────────────────────────────────────────────────
@@ -926,6 +948,9 @@ export class DatabaseStorage implements IStorage {
       engineCUserCutPct,
       globalConversionRate,
       engineAPlayersJson,
+      referralEarnPct,
+      economyEnabled,
+      economyOverrideRaw,
     ] = await Promise.all([
       this.getSystemConfigValue<number>("ENGINE_A_THORX_CUT_PCT", 40),
       this.getSystemConfigValue<number>("ENGINE_B_THORX_CUT_PCT", 40),
@@ -934,6 +959,9 @@ export class DatabaseStorage implements IStorage {
       this.getSystemConfigValue<number>("ENGINE_C_USER_CUT_PCT", 45),
       this.getSystemConfigValue<number>("CONVERSION_RATE", DEFAULT_CONVERSION_RATE),
       this.getSystemConfigValue<string>("ENGINE_A_PLAYERS_JSON", "[]"),
+      this.getSystemConfigValue<number>("REFERRAL_EARN_PCT", 1),
+      this.getSystemConfigValue<boolean>("ECONOMY_MULTIPLIER_ENABLED", true),
+      this.getSystemConfigValue<number | null>("ECONOMY_MULTIPLIER_OVERRIDE", null),
     ]);
 
     // Resolve per-engine ratio + variance (Spec §1.1 / §16.2).
@@ -970,9 +998,40 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(params.userId);
     if (!user) throw new Error("User not found");
 
+    // ── Dynamic Economy Multiplier (Q9) ────────────────────────────────────
+    // Admin override wins; otherwise read today's cached multiplier from economy_state
+    // (computed daily by economy-engine.ts). Falls back to 1.0 if no state row yet.
+    let economyMult = new Decimal(1);
+    if (economyOverrideRaw !== null && economyOverrideRaw !== undefined) {
+      const [eMin, eMax] = await Promise.all([
+        this.getSystemConfigValue<number>("ECONOMY_MULTIPLIER_MIN", 0.7),
+        this.getSystemConfigValue<number>("ECONOMY_MULTIPLIER_MAX", 1.5),
+      ]);
+      economyMult = new Decimal(economyOverrideRaw).clamp(eMin, eMax);
+    } else if (economyEnabled && params.engineType !== "Indirect") {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const [stateRow] = await db
+        .select({ effectiveMultiplier: economyState.effectiveMultiplier })
+        .from(economyState)
+        .where(eq(economyState.date, todayStr as any))
+        .limit(1);
+      if (stateRow?.effectiveMultiplier) {
+        economyMult = new Decimal(stateRow.effectiveMultiplier);
+      }
+    }
+
+    // ── Rank Reward Multiplier (Q6) ─────────────────────────────────────────
+    // Applied to TX-Points (gamification display) — not to real PKR — to
+    // preserve financial integrity while rewarding higher-rank users more.
+    const rankMult = RANK_REWARD_MULTIPLIERS[user.userRankTier] ?? 1.00;
+
     // Step 1: Engine split. Decimal (not native float */) — Critical finding
     // #3 of the 2026-07-15 production-readiness audit.
-    const grossPkrD = new Decimal(params.grossPkr);
+    // Apply economy multiplier to grossPkr before splits so all cuts scale proportionally.
+    const baseGrossPkrD = new Decimal(params.grossPkr);
+    const grossPkrD = params.engineType !== "Indirect"
+      ? baseGrossPkrD.mul(economyMult).toDecimalPlaces(4, Decimal.ROUND_DOWN)
+      : baseGrossPkrD;
     let userPkrShareD = new Decimal(0);
     let thorxProfitPkrD = new Decimal(0);
     let guildPoolPkrD = new Decimal(0);
@@ -993,7 +1052,7 @@ export class DatabaseStorage implements IStorage {
     // Step 2: Thorx Card draw (if the user has a PKR share to convert).
     // Pass the Decimal as toFixed(4) string — drawThorxCard accepts number | string
     // so we never convert to IEEE 754 float (F-02 audit fix).
-    // drawThorxCard owns the rank-tier adjustment. Pass the base bounds and
+    // drawThorxCard owns the rank-tier variance adjustment. Pass the base bounds and
     // configured bonus values exactly once; applying the bonus here as well
     // would widen A/S variance ranges twice.
     let cardResult = { pointsCredited: 0, realPkrValue: "0.0000", cardVariance: 1.0, targetPoints: 0 };
@@ -1008,6 +1067,12 @@ export class DatabaseStorage implements IStorage {
         sRankBonusPct,
       });
     }
+
+    // Apply rank multiplier to TX-Points display value (Q6).
+    // Rounding down to keep integer point counts clean.
+    const rankedPointsCredited = cardResult.pointsCredited > 0
+      ? Math.floor(cardResult.pointsCredited * rankMult)
+      : 0;
 
     // Steps 3-6 are wrapped in a single transaction — Critical finding #2 of
     // the 2026-07-15 production-readiness audit: recordEarnEvent previously
@@ -1037,9 +1102,9 @@ export class DatabaseStorage implements IStorage {
       await tx.insert(userTransactions).values({
         userId: params.userId,
         engineType: params.engineType,
-        pointsCredited: cardResult.pointsCredited,
+        pointsCredited: rankedPointsCredited,
         realPkrValue: userPkrShareD.toFixed(4),
-        grossPkr: new Decimal(params.grossPkr).toFixed(4),
+        grossPkr: grossPkrD.toFixed(4), // effective grossPkr after economy multiplier
         thorxProfitPkr: thorxProfitPkrD.toFixed(4),
         guildPoolPkr: guildPoolPkrD.toFixed(4),
         conversionRate: Math.round(conversionRate),
@@ -1053,17 +1118,17 @@ export class DatabaseStorage implements IStorage {
           .update(guilds)
           .set({
             weeklyBonusPool: sql`${guilds.weeklyBonusPool} + ${guildPoolPkrD.toFixed(4)}`,
-            currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${new Decimal(params.grossPkr).times(100).toDecimalPlaces(0).toString()}`,
+            currentWeeklyPoints: sql`${guilds.currentWeeklyPoints} + ${grossPkrD.times(100).toDecimalPlaces(0).toString()}`,
           })
           .where(eq(guilds.id, params.guildId));
       }
 
       // Step 4: Update user-facing balances + earnings history.
-      if (cardResult.pointsCredited > 0) {
+      if (rankedPointsCredited > 0 || userPkrShareD.gt(0)) {
         await tx
           .update(users)
           .set({
-            txPointsBalance: sql`${users.txPointsBalance} + ${cardResult.pointsCredited}`,
+            txPointsBalance: sql`${users.txPointsBalance} + ${rankedPointsCredited}`,
             totalEarnings:   sql`${users.totalEarnings}   + ${userPkrShareD.toFixed(2)}`,
             // Credit the exact historical user share. The withdrawal fee is
             // charged at approval, so the user's cash balance is debited by
@@ -1085,13 +1150,43 @@ export class DatabaseStorage implements IStorage {
           .returning();
       }
 
+      // Step 4b: Referral earn commission (Q1) — 1% of effective grossPkr to direct referrer.
+      // Only fires for revenue-generating engines (not Indirect). Duplicate-protected by
+      // unique index on (earnerId, earnEventSourceId, earnEventSourceType).
+      if (
+        user.referredBy &&
+        params.engineType !== "Indirect" &&
+        referralEarnPct > 0 &&
+        grossPkrD.gt(0)
+      ) {
+        const commissionD = grossPkrD
+          .times(referralEarnPct)
+          .div(100)
+          .toDecimalPlaces(4, Decimal.ROUND_DOWN);
+        if (commissionD.gt(0)) {
+          await tx
+            .update(users)
+            .set({ balanceCashPkr: sql`${users.balanceCashPkr} + ${commissionD.toFixed(4)}` })
+            .where(eq(users.id, user.referredBy));
+          await tx.insert(referralEarnCommissions).values({
+            referrerId: user.referredBy,
+            earnerId: params.userId,
+            earnEventSourceId: params.sourceId,
+            earnEventSourceType: params.sourceType,
+            grossPkr: grossPkrD.toFixed(4),
+            commissionPkr: commissionD.toFixed(4),
+            commissionRatePct: String(referralEarnPct),
+          });
+        }
+      }
+
       // Step 5: Guild member contribution tracking (Engine C only).
       if (params.engineType === "Engine_C" && params.guildId) {
         await tx
           .update(guildMembers)
-          .set({ weeklyPointsContributed: sql`${guildMembers.weeklyPointsContributed} + ${cardResult.pointsCredited}` })
+          .set({ weeklyPointsContributed: sql`${guildMembers.weeklyPointsContributed} + ${rankedPointsCredited}` })
           .where(and(eq(guildMembers.userId, params.userId), eq(guildMembers.guildId, params.guildId)));
-        await awardMemberGPS(params.guildId, cardResult.pointsCredited, tx);
+        await awardMemberGPS(params.guildId, rankedPointsCredited, tx);
       }
 
       // Step 6: PS award + streak + rank-tier check (PS is the sole rank input — Appendix A #6).
@@ -1125,11 +1220,11 @@ export class DatabaseStorage implements IStorage {
       type: "earn",
       userId: params.userId,
       guildId: params.guildId,
-      displayMessage: `User '${user.identity}' – ${params.engineType} | Real: Rs.${new Decimal(cardResult.realPkrValue).toFixed(2)} | Points: ${cardResult.pointsCredited} | Thorx: Rs.${thorxProfitPkrD.toFixed(2)}`,
-      data: { engineType: params.engineType, grossPkr: params.grossPkr, cardResult, thorxProfitPkr: thorxProfitPkrD.toFixed(4), guildPoolPkr: guildPoolPkrD.toFixed(4) },
+      displayMessage: `User '${user.identity}' – ${params.engineType} | Real: Rs.${userPkrShareD.toFixed(2)} | Points: ${rankedPointsCredited} | Thorx: Rs.${thorxProfitPkrD.toFixed(2)} | EconMult: ${economyMult.toFixed(2)} | RankMult: ${rankMult.toFixed(2)}`,
+      data: { engineType: params.engineType, grossPkr: grossPkrD.toFixed(4), baseGrossPkr: baseGrossPkrD.toFixed(4), economyMult: economyMult.toFixed(4), rankMult, rankedPointsCredited, cardResult, thorxProfitPkr: thorxProfitPkrD.toFixed(4), guildPoolPkr: guildPoolPkrD.toFixed(4) },
     });
 
-    return { success: true, pointsCredited: cardResult.pointsCredited, realPkrValue: cardResult.realPkrValue, earning };
+    return { success: true, pointsCredited: rankedPointsCredited, realPkrValue: userPkrShareD.toFixed(4), earning };
   }
 
   // Ad views methods

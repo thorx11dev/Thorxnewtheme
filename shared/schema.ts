@@ -1414,6 +1414,8 @@ export const guildWeeklySnapshots = pgTable("guild_weekly_snapshots", {
   poolDisposition: text("pool_disposition").notNull(), // distributed | voided
   captainShare: decimal("captain_share", { precision: 10, scale: 2 }).notNull().default("0"),
   membersShare: decimal("members_share", { precision: 10, scale: 2 }).notNull().default("0"),
+  treasuryBonusPkr: decimal("treasury_bonus_pkr", { precision: 12, scale: 4 }).notNull().default("0.0000"),
+  achievementPct: decimal("achievement_pct", { precision: 5, scale: 2 }).notNull().default("0.00"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   unique("idx_guild_snapshots_unique").on(table.guildId, table.weekStart),
@@ -1458,6 +1460,157 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 ]);
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
+// Referral earn commissions — 1% of gross credited to direct referrer on every earn event.
+// Separate from referral_commissions (which tracks withdrawal-based referral fees).
+export const referralEarnCommissions = pgTable("referral_earn_commissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referrerId: varchar("referrer_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  earnerId: varchar("earner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  earnEventSourceId: varchar("earn_event_source_id").notNull(),
+  earnEventSourceType: text("earn_event_source_type").notNull(), // ad_view | weekly_task | daily_task
+  grossPkr: decimal("gross_pkr", { precision: 10, scale: 4 }).notNull(),
+  commissionPkr: decimal("commission_pkr", { precision: 10, scale: 4 }).notNull(),
+  commissionRatePct: decimal("commission_rate_pct", { precision: 5, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_ref_earn_comm_referrer").on(table.referrerId, table.createdAt),
+  index("idx_ref_earn_comm_earner").on(table.earnerId, table.createdAt),
+  // Prevent double-commission for the same earn event
+  unique("idx_ref_earn_comm_source").on(table.earnerId, table.earnEventSourceId, table.earnEventSourceType),
+]);
+export type ReferralEarnCommission = typeof referralEarnCommissions.$inferSelect;
+export type InsertReferralEarnCommission = typeof referralEarnCommissions.$inferInsert;
+
+// ── Economy State — daily multiplier cache ────────────────────────────────────
+export const economyState = pgTable("economy_state", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: date("date").notNull().unique(),
+  autoMultiplier: decimal("auto_multiplier", { precision: 6, scale: 4 }).notNull().default("1.0000"),
+  adminOverride: decimal("admin_override", { precision: 6, scale: 4 }),
+  effectiveMultiplier: decimal("effective_multiplier", { precision: 6, scale: 4 }).notNull().default("1.0000"),
+  revenueBaseline: decimal("revenue_baseline", { precision: 14, scale: 4 }),
+  revenueActual: decimal("revenue_actual", { precision: 14, scale: 4 }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_economy_state_date").on(table.date),
+]);
+export type EconomyState = typeof economyState.$inferSelect;
+
+// ── Ad Network Performance — AI Router data store ────────────────────────────
+export const adNetworkPerformance = pgTable("ad_network_performance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  networkId: varchar("network_id").notNull(),
+  networkName: varchar("network_name").notNull(),
+  date: date("date").notNull(),
+  impressions: integer("impressions").notNull().default(0),
+  completions: integer("completions").notNull().default(0),
+  fillRatePct: decimal("fill_rate_pct", { precision: 5, scale: 2 }).notNull().default("0.00"),
+  completionRatePct: decimal("completion_rate_pct", { precision: 5, scale: 2 }).notNull().default("0.00"),
+  cpmPkr: decimal("cpm_pkr", { precision: 10, scale: 4 }).notNull().default("0.0000"),
+  revenuePkr: decimal("revenue_pkr", { precision: 14, scale: 4 }).notNull().default("0.0000"),
+  routerScore: decimal("router_score", { precision: 6, scale: 4 }).notNull().default("0.0000"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  unique("idx_ad_network_perf_unique").on(table.networkId, table.date),
+  index("idx_ad_network_perf_date").on(table.date),
+]);
+export type AdNetworkPerformance = typeof adNetworkPerformance.$inferSelect;
+
+// ── Webhook Events — replay protection + audit log ───────────────────────────
+export const webhookEvents = pgTable("webhook_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  networkId: varchar("network_id").notNull(),
+  eventId: varchar("event_id").notNull(),
+  eventType: text("event_type").notNull(),
+  payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+  signature: text("signature"),
+  verificationStatus: text("verification_status").notNull().default("pending"), // pending | verified | rejected
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  ipAddress: text("ip_address").notNull().default(""),
+  rewardTriggered: boolean("reward_triggered").notNull().default(false),
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  unique("idx_webhook_events_unique").on(table.networkId, table.eventId),
+  index("idx_webhook_events_status").on(table.verificationStatus, table.createdAt),
+  index("idx_webhook_events_user").on(table.userId, table.createdAt),
+]);
+export type WebhookEvent = typeof webhookEvents.$inferSelect;
+
+// ── Guild Wars — seasonal competition architecture ────────────────────────────
+export const guildWarSeasons = pgTable("guild_war_seasons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  status: text("status").notNull().default("upcoming"), // upcoming | active | completed
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  prizePoolPkr: decimal("prize_pool_pkr", { precision: 14, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_gws_status").on(table.status, table.startDate),
+]);
+export type GuildWarSeason = typeof guildWarSeasons.$inferSelect;
+
+export const guildWars = pgTable("guild_wars", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  seasonId: varchar("season_id").references(() => guildWarSeasons.id, { onDelete: "set null" }),
+  guild1Id: varchar("guild1_id").notNull().references(() => guilds.id, { onDelete: "restrict" }),
+  guild2Id: varchar("guild2_id").notNull().references(() => guilds.id, { onDelete: "restrict" }),
+  status: text("status").notNull().default("scheduled"), // scheduled | active | completed
+  guild1Score: integer("guild1_score").notNull().default(0),
+  guild2Score: integer("guild2_score").notNull().default(0),
+  winnerId: varchar("winner_id").references(() => guilds.id, { onDelete: "set null" }),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  prizePoolPkr: decimal("prize_pool_pkr", { precision: 14, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_gw_status").on(table.status, table.startDate),
+  index("idx_gw_season").on(table.seasonId),
+]);
+export type GuildWar = typeof guildWars.$inferSelect;
+
+export const guildWarParticipants = pgTable("guild_war_participants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  warId: varchar("war_id").notNull().references(() => guildWars.id, { onDelete: "cascade" }),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "restrict" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  pointsContributed: integer("points_contributed").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  unique("idx_gwp_unique").on(table.warId, table.guildId, table.userId),
+  index("idx_gwp_war").on(table.warId, table.guildId),
+]);
+export type GuildWarParticipant = typeof guildWarParticipants.$inferSelect;
+
+export const guildHallOfFame = pgTable("guild_hall_of_fame", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "restrict" }),
+  seasonId: varchar("season_id").notNull().references(() => guildWarSeasons.id, { onDelete: "restrict" }),
+  placement: integer("placement").notNull(), // 1 = champion, 2 = runner-up, 3 = third
+  warsWon: integer("wars_won").notNull().default(0),
+  totalPointsScored: integer("total_points_scored").notNull().default(0),
+  awardedAt: timestamp("awarded_at").notNull().defaultNow(),
+}, (table) => [
+  unique("idx_ghof_unique").on(table.guildId, table.seasonId),
+  index("idx_ghof_season").on(table.seasonId, table.placement),
+]);
+export type GuildHallOfFame = typeof guildHallOfFame.$inferSelect;
+
+export const guildBadges = pgTable("guild_badges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guildId: varchar("guild_id").notNull().references(() => guilds.id, { onDelete: "cascade" }),
+  badgeType: varchar("badge_type").notNull(), // war_winner | season_champion | runner_up | third_place
+  badgeName: varchar("badge_name").notNull(),
+  seasonId: varchar("season_id").references(() => guildWarSeasons.id, { onDelete: "set null" }),
+  awardedAt: timestamp("awarded_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_gb_guild").on(table.guildId, table.awardedAt),
+]);
+export type GuildBadge = typeof guildBadges.$inferSelect;
 
 export const insertUserTransactionSchema = createInsertSchema(userTransactions).omit({ id: true, createdAt: true });
 export const insertReferralCommissionSchema = createInsertSchema(referralCommissions).omit({ id: true, createdAt: true });
