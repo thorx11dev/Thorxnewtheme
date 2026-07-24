@@ -198,7 +198,7 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
   2. `npx drizzle-kit push --force` — schema applied with no conflicts ("Changes applied", 68 system_config keys seeded).
   3. Restored `postgresql-16` to `.replit` modules (dropped by import auto-generation).
   4. Workflow restarted; app running on port 5000 — landing page renders correctly (V1.0 ONLINE shown).
-  5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder`. Password: user-supplied (Aonimran777!). `is_verified` and `trust_status` patched to `true`/`trusted` post-bootstrap. `team_keys` record confirmed: `access_level: founder, permissions: {all}, is_active: true`.
+   5. Founder account (Thorx X / thorx11dev@gmail.com, role: founder, permissions: `["all"]`) provisioned via `POST /api/bootstrap-founder`. Password supplied by the user. `is_verified` and `trust_status` patched to `true`/`trusted` post-bootstrap. `team_keys` record confirmed: `access_level: founder, permissions: {all}, is_active: true`.
   6. Full 26-point auth regression passed:
      - ✅ Unauthenticated /api/user → 401 NO_SESSION
      - ✅ Valid registration → 201 (session active, role: user)
@@ -215,13 +215,15 @@ THORX is a full-stack rewards platform (React + Vite SPA, Express API, PostgreSQ
      - ✅ Authenticated /api/user → 200 (correct user object)
      - ✅ Admin route blocked for regular user → INSUFFICIENT_PERMISSIONS (403)
      - ✅ QA user logout → success, session cleared → 401 confirmed
-     - ✅ Founder login (Aonimran777!) → Login successful, role: founder
+     - ✅ Founder login → Login successful, role: founder
      - ✅ Founder /api/user → email, role: founder, permissions: ["all"]
      - ✅ Founder /api/admin/config → 200
      - ✅ Founder /api/team/members → 200 (1 member: thorx11dev@gmail.com, accessLevel: founder)
      - ✅ Founder logout → success, session cleared → 401
      - ✅ /api/team/members blocked after logout → 401
      - ✅ QA test account deleted from DB; only founder remains
+
+- 2026-07-24 (re-import + auth verification): `node_modules/.bin/tsx` was missing after import. Restored the declared dependencies, added the required `postgresql-16` module to `.replit`, and applied the existing Drizzle schema successfully. Restarted the `Start application` workflow; the landing page renders and `/api/health` reports a connected database. Founder account `thorx11dev@gmail.com` was provisioned as `Thorx X` with founder access, active/verified/trusted status, and an active team key with full permissions. Automated tests pass (46/46), TypeScript check passes, and live HTTPS regression passed for CSRF enforcement, registration, duplicate-email rejection, session persistence, logout invalidation, wrong-password rejection, regular-user team protection, founder login, founder admin/team access, and founder logout. The temporary QA account was deleted. HilltopAds inventory sync remains unavailable until its optional API key is configured; this does not block app startup or authentication.
 
 ## User preferences
 

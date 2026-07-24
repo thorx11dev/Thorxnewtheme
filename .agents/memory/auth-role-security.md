@@ -39,7 +39,7 @@ Created via `scripts/seed-founder.ts`:
 - Use this account to access Team Portal at `/team` or `/team-portal`.
 
 **How to apply:** If DB is wiped, re-run:
-`FOUNDER_EMAIL="thorx11dev@gmail.com" FOUNDER_PASSWORD="Aonimran777!" npx tsx scripts/seed-founder.ts`
+`FOUNDER_EMAIL="thorx11dev@gmail.com" FOUNDER_PASSWORD="<user-supplied-password>" npx tsx scripts/seed-founder.ts`
 Then patch last name: `UPDATE users SET last_name = 'X' WHERE email = 'thorx11dev@gmail.com';`
 (seed-founder.ts hardcodes lastName="Founder" — always fix it after seeding)
 (Do NOT commit credentials — stored here only because this is a dev environment.)

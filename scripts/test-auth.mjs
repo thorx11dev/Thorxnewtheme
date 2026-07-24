@@ -7,6 +7,13 @@ import http from "http";
 
 const HOST = "localhost";
 const PORT = 5000;
+const FOUNDER_EMAIL = process.env.FOUNDER_EMAIL || "thorx11dev@gmail.com";
+const FOUNDER_PASSWORD = process.env.FOUNDER_PASSWORD;
+
+if (!FOUNDER_PASSWORD) {
+  console.error("FOUNDER_PASSWORD is required to run the founder auth checks.");
+  process.exit(1);
+}
 
 function extractCookiesFromHeaders(rawSetCookie = []) {
   const jar = {};
@@ -102,10 +109,10 @@ async function runTests() {
   assert("CSRF cookie issued on first GET", !!jar["thorx.csrf.v2"]);
 
   // ── 2. Founder login ───────────────────────────────────────────────────────
-  console.log("\n▶ [2] Founder Login (thorx11dev@gmail.com / Aonimran777!)");
+  console.log(`\n▶ [2] Founder Login (${FOUNDER_EMAIL})`);
   const login = await post(
     "/api/login",
-    { email: "thorx11dev@gmail.com", password: "Aonimran777!" },
+    { email: FOUNDER_EMAIL, password: FOUNDER_PASSWORD },
     jar
   );
   // Merge any new cookies (including thorx.sid)
@@ -120,7 +127,7 @@ async function runTests() {
   console.log("\n▶ [3] Authenticated Profile Fetch");
   const profile = await get("/api/profile", jar);
   assert("GET /api/profile → 200 when authenticated", profile.status === 200, `got ${profile.status}`);
-  assert("Profile email matches founder", profile.body?.email === "thorx11dev@gmail.com", `got ${profile.body?.email}`);
+  assert("Profile email matches founder", profile.body?.email === FOUNDER_EMAIL, `got ${profile.body?.email}`);
   assert("Profile role is 'founder'", profile.body?.role === "founder", `got ${profile.body?.role}`);
 
   // ── 4. Wrong password rejection ───────────────────────────────────────────
@@ -213,7 +220,7 @@ async function runTests() {
   Object.assign(jar6, seed6.cookies);
   const reLogin = await post(
     "/api/login",
-    { email: "thorx11dev@gmail.com", password: "Aonimran777!" },
+    { email: FOUNDER_EMAIL, password: FOUNDER_PASSWORD },
     jar6
   );
   Object.assign(jar6, reLogin.cookies);
